@@ -8,6 +8,8 @@ pub mod canonical;
 pub mod expr;
 pub mod number;
 pub mod render;
+pub mod series;
+pub mod simplify;
 pub mod symbol;
 
 // Re-export key types at crate root for convenience.
