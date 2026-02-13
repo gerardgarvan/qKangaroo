@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/qsym-core"]
+resolver = "2"

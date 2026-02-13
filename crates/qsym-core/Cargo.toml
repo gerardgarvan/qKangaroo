@@ -1,0 +1,23 @@
+[package]
+name = "qsym-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+# Arbitrary precision arithmetic (GMP backend)
+rug = { version = "1.28", features = ["rational", "serde"] }
+gmp-mpfr-sys = { version = "1.6", features = ["use-system-libs"] }
+
+# Inline small vectors for Expr children
+smallvec = { version = "1", features = ["const_generics", "serde"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+
+# Fast hashing for the dedup table
+rustc-hash = "2"
+
+[dev-dependencies]
+proptest = "1"
+serde_json = "1"
