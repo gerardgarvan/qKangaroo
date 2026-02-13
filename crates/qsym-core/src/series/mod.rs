@@ -11,6 +11,7 @@
 
 pub mod arithmetic;
 pub mod display;
+pub mod generator;
 
 use std::collections::BTreeMap;
 
