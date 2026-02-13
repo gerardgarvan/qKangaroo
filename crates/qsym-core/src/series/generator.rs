@@ -69,8 +69,9 @@ impl InfiniteProductGenerator {
     /// target_order. Thus we need at most target_order factors.
     pub fn ensure_order(&mut self, target_order: i64) {
         let var = self.partial_product.variable();
+        let trunc = self.partial_product.truncation_order();
         while self.factors_included < target_order {
-            let factor = (self.factor_fn)(self.factors_included, var, target_order);
+            let factor = (self.factor_fn)(self.factors_included, var, trunc);
             self.partial_product = arithmetic::mul(&self.partial_product, &factor);
             self.factors_included += 1;
         }
