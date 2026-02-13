@@ -70,6 +70,8 @@ Recent decisions affecting current work:
 - [03-01]: QMonomial uses QRat coeff + i64 power (not generic Expr) -- keeps q-series layer simple and fast
 - [03-01]: Negative order via shifted-a inversion: (a;q)_{-n} = 1/(a*q^{-n};q)_n, reusing finite positive
 - [03-01]: qbin uses numerator/denominator product ratio with arithmetic::invert, not incremental geometric series
+- [03-03]: theta2 returned as series in X=q^{1/4} with integer exponents representing powers of q^{1/4}
+- [03-03]: Shared q2_q2_inf helper extracted for (q^2;q^2)_inf factor common to theta3 and theta4
 - [03-04]: rank_gf and crank_gf return partition_gf directly at z=1 to handle removable singularity
 - [03-04]: odd_parts_gf uses explicit factor loop with inversion rather than qpochhammer_inf_generator with step parameter
 
@@ -83,7 +85,7 @@ None yet.
 - [Research]: Identity proving (Phase 7) needs deep research on cusp theory and valence formula
 - [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
-- [03-02/03]: Plans 03-02 (products) and 03-03 (theta) have uncommitted test files with pre-existing failures; need review before Phase 4
+- [03-02/03]: Plan 03-02 (products) has uncommitted test file; needs review before Phase 4
 
 ## Session Continuity
 
