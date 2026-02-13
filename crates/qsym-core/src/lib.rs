@@ -7,6 +7,7 @@ pub mod arena;
 pub mod canonical;
 pub mod expr;
 pub mod number;
+pub mod qseries;
 pub mod render;
 pub mod series;
 pub mod simplify;
