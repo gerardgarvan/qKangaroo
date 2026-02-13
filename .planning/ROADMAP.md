@@ -167,7 +167,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Expression Foundation | 3/3 | Complete | 2026-02-13 |
-| 2. Simplification & Series Engine | 0/3 | Planned | - |
+| 2. Simplification & Series Engine | 3/3 | Complete | 2026-02-13 |
 | 3. Core q-Series & Partitions | 0/TBD | Not started | - |
 | 4. Series Analysis | 0/TBD | Not started | - |
 | 5. Python API | 0/TBD | Not started | - |
