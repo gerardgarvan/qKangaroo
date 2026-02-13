@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 2 COMPLETE -- Ready for Phase 3
+**Current focus:** Phase 3 -- Core q-series and partitions
 
 ## Current Position
 
-Phase: 2 of 8 (Simplification & Series Engine) -- COMPLETE
-Plan: 3 of 3 in current phase (phase complete)
-Status: Phase Complete
-Last activity: 2026-02-13 -- Completed 02-03-PLAN.md
+Phase: 3 of 8 (Core q-Series & Partitions)
+Plan: 1 of 4 in current phase (1 complete)
+Status: Executing
+Last activity: 2026-02-13 -- Completed 03-01-PLAN.md
 
-Progress: [######....] 26%
+Progress: [######....] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 9 min
-- Total execution time: 0.9 hours
+- Total plans completed: 7
+- Average duration: 8 min
+- Total execution time: 1.0 hours
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [######....] 26%
 |-------|-------|-------|----------|
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
+| 3 - Core q-Series & Partitions | 1/4 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 6 min, 4 min, 5 min, 5 min
+- Last 5 plans: 6 min, 4 min, 5 min, 5 min, 4 min
 - Trend: stable ~5 min/plan
 
 *Updated after each plan completion*
@@ -66,6 +67,9 @@ Recent decisions affecting current work:
 - [02-02]: intern_numeric auto-promotes to Integer when QRat denominator is 1
 - [02-03]: ensure_order uses initial truncation_order (not target_order) for factor construction -- prevents permanent truncation reduction on incremental reuse
 - [02-03]: Use 'ipg' variable name for InfiniteProductGenerator instances ('gen' is a reserved keyword in Rust)
+- [03-01]: QMonomial uses QRat coeff + i64 power (not generic Expr) -- keeps q-series layer simple and fast
+- [03-01]: Negative order via shifted-a inversion: (a;q)_{-n} = 1/(a*q^{-n};q)_n, reusing finite positive
+- [03-01]: qbin uses numerator/denominator product ratio with arithmetic::invert, not incremental geometric series
 
 ### Pending Todos
 
@@ -81,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 02-03-PLAN.md (Phase 2 COMPLETE -- Infinite product generators with 13 identity verification tests)
-Resume file: .planning/phases/02-simplification-series-engine/02-03-SUMMARY.md
+Stopped at: Completed 03-01-PLAN.md (q-Pochhammer symbol and q-binomial coefficient with 15 tests)
+Resume file: .planning/phases/03-core-qseries-partitions/03-01-SUMMARY.md
