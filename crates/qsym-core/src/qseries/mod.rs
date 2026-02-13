@@ -1,15 +1,18 @@
-//! Q-series types and functions: q-Pochhammer symbols, q-binomial coefficients.
+//! Q-series types and functions: q-Pochhammer symbols, q-binomial coefficients, named products.
 //!
 //! This module provides the foundational building blocks for all q-series computations:
 //! - [`QMonomial`]: represents `c * q^m` used as the `a` parameter in q-Pochhammer symbols
 //! - [`PochhammerOrder`]: finite or infinite order for q-Pochhammer products
 //! - [`aqprod`]: general q-Pochhammer symbol (a;q)_n
 //! - [`qbin`]: q-binomial (Gaussian) coefficient [n choose k]_q
+//! - Named products: [`etaq`], [`jacprod`], [`tripleprod`], [`quinprod`], [`winquist`]
 
 pub mod pochhammer;
+pub mod products;
 pub mod qbinomial;
 
 pub use pochhammer::aqprod;
+pub use products::{etaq, jacprod, tripleprod, quinprod, winquist};
 pub use qbinomial::qbin;
 
 use crate::number::QRat;
