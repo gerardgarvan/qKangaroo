@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Expression Foundation** - Hash-consed expression arena, arbitrary precision arithmetic, and rendering
 - [x] **Phase 2: Simplification & Series Engine** - Phased rewrite engine and formal power series with sparse representation
-- [ ] **Phase 3: Core q-Series & Partitions** - q-Pochhammer, named products, theta functions, and partition functions
+- [x] **Phase 3: Core q-Series & Partitions** - q-Pochhammer, named products, theta functions, and partition functions
 - [ ] **Phase 4: Series Analysis** - Series-to-product conversion, factoring, utilities, and relation discovery
 - [ ] **Phase 5: Python API** - PyO3 bindings, session management, DSL, and batch computation
 - [ ] **Phase 6: Hypergeometric Series** - Basic hypergeometric representation, summation formulas, and transformations
@@ -70,10 +70,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- QMonomial, PochhammerOrder, aqprod (q-Pochhammer symbol), and qbin (q-binomial coefficient)
-- [ ] 03-02-PLAN.md -- Named products: etaq, jacprod, tripleprod, quinprod, winquist
-- [ ] 03-03-PLAN.md -- Theta functions: theta2, theta3, theta4 with product representations
-- [ ] 03-04-PLAN.md -- Partition functions (p(n) pentagonal recurrence, restricted GFs) and rank/crank
+- [x] 03-01-PLAN.md -- QMonomial, PochhammerOrder, aqprod (q-Pochhammer symbol), and qbin (q-binomial coefficient)
+- [x] 03-02-PLAN.md -- Named products: etaq, jacprod, tripleprod, quinprod, winquist
+- [x] 03-03-PLAN.md -- Theta functions: theta2, theta3, theta4 with product representations
+- [x] 03-04-PLAN.md -- Partition functions (p(n) pentagonal recurrence, restricted GFs) and rank/crank
 
 ### Phase 4: Series Analysis
 **Goal**: Researchers can convert between series and product representations, factor q-series, and discover algebraic relations -- completing qseries package parity
@@ -169,7 +169,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 |-------|---------------|--------|-----------|
 | 1. Expression Foundation | 3/3 | Complete | 2026-02-13 |
 | 2. Simplification & Series Engine | 3/3 | Complete | 2026-02-13 |
-| 3. Core q-Series & Partitions | 0/4 | Planned | - |
+| 3. Core q-Series & Partitions | 4/4 | Complete | 2026-02-13 |
 | 4. Series Analysis | 0/TBD | Not started | - |
 | 5. Python API | 0/TBD | Not started | - |
 | 6. Hypergeometric Series | 0/TBD | Not started | - |
