@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 1 of 8 (Expression Foundation)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-02-13 -- Completed 01-01-PLAN.md
+Last activity: 2026-02-13 -- Completed 01-02-PLAN.md
 
-Progress: [#.........] 4%
+Progress: [##........] 8%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 26 min
-- Total execution time: 0.4 hours
+- Total plans completed: 2
+- Average duration: 16 min
+- Total execution time: 0.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 - Expression Foundation | 1/3 | 26 min | 26 min |
+| 1 - Expression Foundation | 2/3 | 31 min | 16 min |
 
 **Recent Trend:**
-- Last 5 plans: 26 min
-- Trend: baseline
+- Last 5 plans: 26 min, 5 min
+- Trend: accelerating
 
 *Updated after each plan completion*
 
@@ -51,6 +51,8 @@ Recent decisions affecting current work:
 - [01-01]: ExprRef u32 numeric ordering for canonical sort (deterministic within session)
 - [01-01]: Pre-built GMP/MPFR system libs via MSYS2 packages for Windows GNU target
 - [01-01]: GNU toolchain (x86_64-pc-windows-gnu) required; MSVC target unsupported by gmp-mpfr-sys
+- [01-02]: Division-by-zero panics (assert!) rather than Result -- matches rug and Rust Div convention
+- [01-02]: Integer division is truncating (floor toward zero) per rug default and Rust convention
 
 ### Pending Todos
 
@@ -66,5 +68,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 01-01-PLAN.md (workspace scaffold + ExprArena)
-Resume file: .planning/phases/01-expression-foundation/01-01-SUMMARY.md
+Stopped at: Completed 01-02-PLAN.md (TDD arithmetic edge-case tests + Div impl)
+Resume file: .planning/phases/01-expression-foundation/01-02-SUMMARY.md
