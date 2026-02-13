@@ -1,5 +1,5 @@
 //! Q-series types and functions: q-Pochhammer symbols, q-binomial coefficients,
-//! named products, theta functions, and partition functions.
+//! named products, theta functions, partition functions, and rank/crank.
 //!
 //! This module provides the foundational building blocks for all q-series computations:
 //! - [`QMonomial`]: represents `c * q^m` used as the `a` parameter in q-Pochhammer symbols
@@ -10,17 +10,20 @@
 //! - Theta functions: [`theta2`], [`theta3`], [`theta4`]
 //! - Partition functions: [`partition_count`], [`partition_gf`], [`distinct_parts_gf`],
 //!   [`odd_parts_gf`], [`bounded_parts_gf`]
+//! - Rank/crank: [`rank_gf`], [`crank_gf`]
 
 pub mod partitions;
 pub mod pochhammer;
 pub mod products;
 pub mod qbinomial;
+pub mod rank_crank;
 pub mod theta;
 
 pub use partitions::{partition_count, partition_gf, distinct_parts_gf, odd_parts_gf, bounded_parts_gf};
 pub use pochhammer::aqprod;
 pub use products::{etaq, jacprod, tripleprod, quinprod, winquist};
 pub use qbinomial::qbin;
+pub use rank_crank::{rank_gf, crank_gf};
 pub use theta::{theta2, theta3, theta4};
 
 use crate::number::QRat;
