@@ -5,32 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 1 - Expression Foundation
+**Current focus:** Phase 2 - Simplification & Series Engine
 
 ## Current Position
 
-Phase: 1 of 8 (Expression Foundation)
-Plan: 3 of 3 in current phase
-Status: Phase 1 Complete
-Last activity: 2026-02-13 -- Completed 01-03-PLAN.md
+Phase: 2 of 8 (Simplification & Series Engine)
+Plan: 1 of 3 in current phase
+Status: In Progress
+Last activity: 2026-02-13 -- Completed 02-01-PLAN.md
 
-Progress: [###.......] 12%
+Progress: [####......] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 12 min
-- Total execution time: 0.6 hours
+- Total plans completed: 4
+- Average duration: 10 min
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
+| 2 - Simplification & Series Engine | 1/3 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 26 min, 5 min, 6 min
+- Last 5 plans: 26 min, 5 min, 6 min, 4 min
 - Trend: accelerating
 
 *Updated after each plan completion*
@@ -56,6 +57,10 @@ Recent decisions affecting current work:
 - [01-03]: Always-brace policy for LaTeX sub/superscripts to eliminate edge-case bugs
 - [01-03]: ASCII fallback for non-numeric Unicode sub/superscripts (digits only get Unicode rendering)
 - [01-03]: Neg detection in Add: renders as subtraction (a - b) not addition of negative (a + -b)
+- [02-01]: Hardcoded 'q' as display variable name in FPS Display impl -- no SymbolRegistry access; Phase 3+ can add display_with_arena
+- [02-01]: Shift adjusts truncation_order by k (shift(f, k) has trunc = f.trunc + k)
+- [02-01]: pub(crate) fields on FPS -- arithmetic accesses directly, external users use API
+- [02-01]: PartialEq compares variable + truncation_order + coefficient maps (value equality)
 
 ### Pending Todos
 
@@ -71,5 +76,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 01-03-PLAN.md (LaTeX + Unicode rendering with 67 tests) -- Phase 1 complete
-Resume file: .planning/phases/01-expression-foundation/01-03-SUMMARY.md
+Stopped at: Completed 02-01-PLAN.md (FPS data structure and series arithmetic with 33 TDD tests)
+Resume file: .planning/phases/02-simplification-series-engine/02-01-SUMMARY.md
