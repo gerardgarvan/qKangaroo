@@ -33,12 +33,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every expression type renders to valid LaTeX that compiles without errors
   4. Every expression type renders to readable Unicode for terminal display
   5. Structurally identical expressions always resolve to the same ExprRef (hash-consing deduplication is verifiable)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md -- Workspace scaffold, Expr enum, ExprArena with hash-consing, symbol registry, canonical ordering
+- [ ] 01-02-PLAN.md -- TDD: BigInt/BigRat arithmetic edge case verification
+- [ ] 01-03-PLAN.md -- LaTeX and Unicode rendering for all expression types
 
 ### Phase 2: Simplification & Series Engine
 **Goal**: Expressions can be simplified via rewrite rules and expanded into formal power series with correct truncated arithmetic
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Expression Foundation | 0/TBD | Not started | - |
+| 1. Expression Foundation | 0/3 | Planned | - |
 | 2. Simplification & Series Engine | 0/TBD | Not started | - |
 | 3. Core q-Series & Partitions | 0/TBD | Not started | - |
 | 4. Series Analysis | 0/TBD | Not started | - |
