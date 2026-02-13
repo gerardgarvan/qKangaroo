@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 2 of 8 (Simplification & Series Engine)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-02-13 -- Completed 02-01-PLAN.md
+Last activity: 2026-02-13 -- Completed 02-02-PLAN.md
 
-Progress: [####......] 17%
+Progress: [#####.....] 21%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 10 min
-- Total execution time: 0.7 hours
+- Total plans completed: 5
+- Average duration: 9 min
+- Total execution time: 0.8 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
-| 2 - Simplification & Series Engine | 1/3 | 4 min | 4 min |
+| 2 - Simplification & Series Engine | 2/3 | 9 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 26 min, 5 min, 6 min, 4 min
+- Last 5 plans: 26 min, 5 min, 6 min, 4 min, 5 min
 - Trend: accelerating
 
 *Updated after each plan completion*
@@ -61,6 +61,9 @@ Recent decisions affecting current work:
 - [02-01]: Shift adjusts truncation_order by k (shift(f, k) has trunc = f.trunc + k)
 - [02-01]: pub(crate) fields on FPS -- arithmetic accesses directly, external users use API
 - [02-01]: PartialEq compares variable + truncation_order + coefficient maps (value equality)
+- [02-02]: Direct Rust match arms for simplification rules (not generic pattern matcher) -- handles n-ary operators correctly
+- [02-02]: 4 rule phases with restart-from-phase-1 on change, max 100 iterations for termination guarantee
+- [02-02]: intern_numeric auto-promotes to Integer when QRat denominator is 1
 
 ### Pending Todos
 
@@ -76,5 +79,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 02-01-PLAN.md (FPS data structure and series arithmetic with 33 TDD tests)
-Resume file: .planning/phases/02-simplification-series-engine/02-01-SUMMARY.md
+Stopped at: Completed 02-02-PLAN.md (Phased simplification engine with 37 tests)
+Resume file: .planning/phases/02-simplification-series-engine/02-02-SUMMARY.md
