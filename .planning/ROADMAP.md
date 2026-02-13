@@ -50,12 +50,12 @@ Plans:
   3. Multiplying two O(q^N) series produces the correct result truncated to O(q^N) without creating O(q^2N) intermediates
   4. Lazy generators for infinite products yield correct coefficients on demand up to any requested truncation order
   5. Series addition, multiplication, and coefficient extraction match hand-computed results for known q-series identities (e.g., Euler's identity, Jacobi triple product)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md -- TDD: FormalPowerSeries data structure and series arithmetic (add, mul, invert, shift)
+- [ ] 02-02-PLAN.md -- Phased simplification engine with 4 rule phases (normalize, cancel, collect, simplify)
+- [ ] 02-03-PLAN.md -- Lazy infinite product generators with Euler function and partition function verification
 
 ### Phase 3: Core q-Series & Partitions
 **Goal**: Researchers can compute q-Pochhammer symbols, named products, theta functions, and partition functions matching Garvan's qseries output
@@ -167,7 +167,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Expression Foundation | 3/3 | Complete | 2026-02-13 |
-| 2. Simplification & Series Engine | 0/TBD | Not started | - |
+| 2. Simplification & Series Engine | 0/3 | Not started | - |
 | 3. Core q-Series & Partitions | 0/TBD | Not started | - |
 | 4. Series Analysis | 0/TBD | Not started | - |
 | 5. Python API | 0/TBD | Not started | - |
