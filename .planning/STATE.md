@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 3 -- Core q-series and partitions
+**Current focus:** Phase 3 -- Core q-series and partitions (complete, ready for Phase 4)
 
 ## Current Position
 
 Phase: 3 of 8 (Core q-Series & Partitions)
-Plan: 1 of 4 in current phase (1 complete)
-Status: Executing
-Last activity: 2026-02-13 -- Completed 03-01-PLAN.md
+Plan: 4 of 4 in current phase (4 complete)
+Status: Phase complete
+Last activity: 2026-02-13 -- Completed 03-04-PLAN.md
 
-Progress: [######....] 30%
+Progress: [########..] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 8 min
-- Total execution time: 1.0 hours
+- Total execution time: 1.1 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [######....] 30%
 |-------|-------|-------|----------|
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
-| 3 - Core q-Series & Partitions | 1/4 | 4 min | 4 min |
+| 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 6 min, 4 min, 5 min, 5 min, 4 min
+- Last 5 plans: 4 min, 5 min, 5 min, 4 min, 7 min
 - Trend: stable ~5 min/plan
 
 *Updated after each plan completion*
@@ -70,6 +70,8 @@ Recent decisions affecting current work:
 - [03-01]: QMonomial uses QRat coeff + i64 power (not generic Expr) -- keeps q-series layer simple and fast
 - [03-01]: Negative order via shifted-a inversion: (a;q)_{-n} = 1/(a*q^{-n};q)_n, reusing finite positive
 - [03-01]: qbin uses numerator/denominator product ratio with arithmetic::invert, not incremental geometric series
+- [03-04]: rank_gf and crank_gf return partition_gf directly at z=1 to handle removable singularity
+- [03-04]: odd_parts_gf uses explicit factor loop with inversion rather than qpochhammer_inf_generator with step parameter
 
 ### Pending Todos
 
@@ -81,9 +83,10 @@ None yet.
 - [Research]: Identity proving (Phase 7) needs deep research on cusp theory and valence formula
 - [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
+- [03-02/03]: Plans 03-02 (products) and 03-03 (theta) have uncommitted test files with pre-existing failures; need review before Phase 4
 
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 03-01-PLAN.md (q-Pochhammer symbol and q-binomial coefficient with 15 tests)
-Resume file: .planning/phases/03-core-qseries-partitions/03-01-SUMMARY.md
+Stopped at: Completed 03-04-PLAN.md (partition functions, rank/crank GFs with 15 tests -- Phase 3 complete)
+Resume file: .planning/phases/03-core-qseries-partitions/03-04-SUMMARY.md
