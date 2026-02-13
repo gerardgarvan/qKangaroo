@@ -81,7 +81,12 @@ fn aqprod_finite_positive(
         let exponent = a.power + k;
         // Factor = 1 - a.coeff * q^exponent
         let mut factor = FormalPowerSeries::one(variable, truncation_order);
-        factor.set_coeff(exponent, -a.coeff.clone());
+        if exponent == 0 {
+            // Constant term: factor is (1 - a.coeff), set q^0 to 1-a.coeff
+            factor.set_coeff(0, QRat::one() - a.coeff.clone());
+        } else {
+            factor.set_coeff(exponent, -a.coeff.clone());
+        }
         result = arithmetic::mul(&result, &factor);
     }
 

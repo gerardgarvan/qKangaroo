@@ -157,7 +157,13 @@ pub fn qpochhammer_inf_generator(
             let exp = offset + k;
             let mut factor = FormalPowerSeries::one(var, trunc);
             if exp < trunc {
-                factor.set_coeff(exp, -a.clone());
+                if exp == 0 {
+                    // Constant term: factor is (1 - a), need to set q^0 to 1-a
+                    // (FPS::one already has 1 at q^0)
+                    factor.set_coeff(0, QRat::one() - a.clone());
+                } else {
+                    factor.set_coeff(exp, -a.clone());
+                }
             }
             factor
         }),

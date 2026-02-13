@@ -13,7 +13,6 @@ use crate::series::{FormalPowerSeries, arithmetic};
 use crate::series::generator::{InfiniteProductGenerator, euler_function_generator, qpochhammer_inf_generator};
 use crate::symbol::SymbolId;
 
-#[allow(unused_imports)]
 use super::QMonomial;
 
 /// Compute the generalized eta product: (q^b; q^t)_inf = prod_{n=0}^{inf} (1 - q^{b + t*n})
@@ -281,7 +280,12 @@ fn custom_step_product(
             let exp = base_cap + step_cap * n;
             let mut factor = FormalPowerSeries::one(var, trunc);
             if exp >= 0 && exp < trunc {
-                factor.set_coeff(exp, -coeff_cap.clone());
+                if exp == 0 {
+                    // Constant term: factor is (1 - coeff), set q^0 to 1-coeff
+                    factor.set_coeff(0, QRat::one() - coeff_cap.clone());
+                } else {
+                    factor.set_coeff(exp, -coeff_cap.clone());
+                }
             }
             factor
         }),
