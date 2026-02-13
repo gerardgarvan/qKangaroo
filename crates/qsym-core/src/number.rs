@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// Arbitrary-precision integer wrapper around `rug::Integer`.
 ///
@@ -106,6 +106,29 @@ impl<'a> Mul<&'a QInt> for &'a QInt {
     type Output = QInt;
     fn mul(self, rhs: &'a QInt) -> QInt {
         QInt(rug::Integer::from(&self.0 * &rhs.0))
+    }
+}
+
+impl Div for QInt {
+    type Output = QInt;
+    /// Integer (truncating) division. Panics if divisor is zero.
+    fn div(self, rhs: QInt) -> QInt {
+        assert!(
+            rhs.0.cmp0() != Ordering::Equal,
+            "QInt division by zero"
+        );
+        QInt(rug::Integer::from(&self.0 / &rhs.0))
+    }
+}
+
+impl<'a> Div<&'a QInt> for &'a QInt {
+    type Output = QInt;
+    fn div(self, rhs: &'a QInt) -> QInt {
+        assert!(
+            rhs.0.cmp0() != Ordering::Equal,
+            "QInt division by zero"
+        );
+        QInt(rug::Integer::from(&self.0 / &rhs.0))
     }
 }
 
@@ -236,6 +259,29 @@ impl<'a> Mul<&'a QRat> for &'a QRat {
     type Output = QRat;
     fn mul(self, rhs: &'a QRat) -> QRat {
         QRat(rug::Rational::from(&self.0 * &rhs.0))
+    }
+}
+
+impl Div for QRat {
+    type Output = QRat;
+    /// Rational division. Panics if divisor is zero.
+    fn div(self, rhs: QRat) -> QRat {
+        assert!(
+            rhs.0.cmp0() != Ordering::Equal,
+            "QRat division by zero"
+        );
+        QRat(rug::Rational::from(&self.0 / &rhs.0))
+    }
+}
+
+impl<'a> Div<&'a QRat> for &'a QRat {
+    type Output = QRat;
+    fn div(self, rhs: &'a QRat) -> QRat {
+        assert!(
+            rhs.0.cmp0() != Ordering::Equal,
+            "QRat division by zero"
+        );
+        QRat(rug::Rational::from(&self.0 / &rhs.0))
     }
 }
 
