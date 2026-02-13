@@ -12,7 +12,7 @@ Q-Symbolic delivers an open-source symbolic computation engine for q-series, rep
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Expression Foundation** - Hash-consed expression arena, arbitrary precision arithmetic, and rendering
+- [x] **Phase 1: Expression Foundation** - Hash-consed expression arena, arbitrary precision arithmetic, and rendering
 - [ ] **Phase 2: Simplification & Series Engine** - Phased rewrite engine and formal power series with sparse representation
 - [ ] **Phase 3: Core q-Series & Partitions** - q-Pochhammer, named products, theta functions, and partition functions
 - [ ] **Phase 4: Series Analysis** - Series-to-product conversion, factoring, utilities, and relation discovery
@@ -36,9 +36,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Workspace scaffold, Expr enum, ExprArena with hash-consing, symbol registry, canonical ordering
-- [ ] 01-02-PLAN.md -- TDD: BigInt/BigRat arithmetic edge case verification
-- [ ] 01-03-PLAN.md -- LaTeX and Unicode rendering for all expression types
+- [x] 01-01-PLAN.md -- Workspace scaffold, Expr enum, ExprArena with hash-consing, symbol registry, canonical ordering
+- [x] 01-02-PLAN.md -- TDD: BigInt/BigRat arithmetic edge case verification
+- [x] 01-03-PLAN.md -- LaTeX and Unicode rendering for all expression types
 
 ### Phase 2: Simplification & Series Engine
 **Goal**: Expressions can be simplified via rewrite rules and expanded into formal power series with correct truncated arithmetic
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Expression Foundation | 0/3 | Planned | - |
+| 1. Expression Foundation | 3/3 | Complete | 2026-02-13 |
 | 2. Simplification & Series Engine | 0/TBD | Not started | - |
 | 3. Core q-Series & Partitions | 0/TBD | Not started | - |
 | 4. Series Analysis | 0/TBD | Not started | - |
