@@ -13,7 +13,7 @@ Q-Symbolic delivers an open-source symbolic computation engine for q-series, rep
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Expression Foundation** - Hash-consed expression arena, arbitrary precision arithmetic, and rendering
-- [ ] **Phase 2: Simplification & Series Engine** - Phased rewrite engine and formal power series with sparse representation
+- [x] **Phase 2: Simplification & Series Engine** - Phased rewrite engine and formal power series with sparse representation
 - [ ] **Phase 3: Core q-Series & Partitions** - q-Pochhammer, named products, theta functions, and partition functions
 - [ ] **Phase 4: Series Analysis** - Series-to-product conversion, factoring, utilities, and relation discovery
 - [ ] **Phase 5: Python API** - PyO3 bindings, session management, DSL, and batch computation
@@ -53,9 +53,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- TDD: FormalPowerSeries data structure and series arithmetic (add, mul, invert, shift)
-- [ ] 02-02-PLAN.md -- Phased simplification engine with 4 rule phases (normalize, cancel, collect, simplify)
-- [ ] 02-03-PLAN.md -- Lazy infinite product generators with Euler function and partition function verification
+- [x] 02-01-PLAN.md -- TDD: FormalPowerSeries data structure and series arithmetic (add, mul, invert, shift)
+- [x] 02-02-PLAN.md -- Phased simplification engine with 4 rule phases (normalize, cancel, collect, simplify)
+- [x] 02-03-PLAN.md -- Lazy infinite product generators with Euler function and partition function verification
 
 ### Phase 3: Core q-Series & Partitions
 **Goal**: Researchers can compute q-Pochhammer symbols, named products, theta functions, and partition functions matching Garvan's qseries output
