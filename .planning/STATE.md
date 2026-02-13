@@ -70,6 +70,10 @@ Recent decisions affecting current work:
 - [03-01]: QMonomial uses QRat coeff + i64 power (not generic Expr) -- keeps q-series layer simple and fast
 - [03-01]: Negative order via shifted-a inversion: (a;q)_{-n} = 1/(a*q^{-n};q)_n, reusing finite positive
 - [03-01]: qbin uses numerator/denominator product ratio with arithmetic::invert, not incremental geometric series
+- [03-02]: All 5 product functions implemented together to satisfy module re-export compilation
+- [03-02]: tripleprod/quinprod verified via Jacobi bilateral series identity rather than hand-computed coefficients
+- [03-02]: winquist tested with rational QMonomial coefficients (1/3, 1/5) to avoid integer-offset vanishing edge cases
+- [03-02]: Fixed qpochhammer_inf_generator exp==0 bug: set constant to (1-coeff) not -coeff for zero-exponent factors
 - [03-03]: theta2 returned as series in X=q^{1/4} with integer exponents representing powers of q^{1/4}
 - [03-03]: Shared q2_q2_inf helper extracted for (q^2;q^2)_inf factor common to theta3 and theta4
 - [03-04]: rank_gf and crank_gf return partition_gf directly at z=1 to handle removable singularity
@@ -85,10 +89,10 @@ None yet.
 - [Research]: Identity proving (Phase 7) needs deep research on cusp theory and valence formula
 - [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
-- [03-02/03]: Plan 03-02 (products) has uncommitted test file; needs review before Phase 4
+- [03-02]: qpochhammer_inf_generator had exp==0 bug (now fixed); any pre-existing code using offset=0 with non-unity coefficient was affected
 
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 03-04-PLAN.md (partition functions, rank/crank GFs with 15 tests -- Phase 3 complete)
-Resume file: .planning/phases/03-core-qseries-partitions/03-04-SUMMARY.md
+Stopped at: Completed 03-02-PLAN.md (named infinite products: etaq, jacprod, tripleprod, quinprod, winquist with 13 tests)
+Resume file: .planning/phases/03-core-qseries-partitions/03-02-SUMMARY.md
