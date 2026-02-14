@@ -20,7 +20,12 @@
 //!   [`findcong`], [`findnonhom`], [`findhomcombo`], [`findnonhomcombo`], [`Congruence`],
 //!   [`findlincombomodp`], [`findhommodp`], [`findhomcombomodp`], [`findmaxind`], [`findprod`]
 //! - Identity proving: [`identity`] module for JAC/ETA symbolic models, cusps, and proving engine
+//! - Mock theta functions: [`mock_theta`] module for all 20 classical mock theta functions
+//!   (7 third-order, 10 fifth-order, 3 seventh-order)
+//! - Appell-Lerch sums: [`appell_lerch_m`], [`universal_mock_theta_g2`], [`universal_mock_theta_g3`],
+//!   [`ZwegersCompletion`]
 
+pub mod appell_lerch;
 pub mod factoring;
 pub mod linalg;
 pub mod partitions;
@@ -34,6 +39,8 @@ pub mod theta;
 pub mod utilities;
 pub mod hypergeometric;
 pub mod identity;
+pub mod mock_theta;
+pub mod bailey;
 
 pub use factoring::{qfactor, QFactorization};
 pub use hypergeometric::{HypergeometricSeries, BilateralHypergeometricSeries, eval_phi, eval_psi, SummationResult, TransformationResult, try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon, try_all_summations, heine_transform_1, heine_transform_2, heine_transform_3, sears_transform, watson_transform, bailey_4phi3_q2};
@@ -48,6 +55,8 @@ pub use rank_crank::{rank_gf, crank_gf};
 pub use theta::{theta2, theta3, theta4};
 pub use utilities::{sift, qdegree, lqdegree};
 pub use identity::{JacFactor, JacExpression, EtaExpression, ModularityResult, Cusp, cuspmake, cuspmake1, num_cusps_gamma0, eta_order_at_cusp, cusp_width, total_order, ProofResult, EtaIdentity, prove_eta_identity, IdentityEntry, IdentityDatabase};
+pub use appell_lerch::{appell_lerch_m, universal_mock_theta_g2, universal_mock_theta_g3, ZwegersCompletion};
+pub use bailey::{BaileyPair, BaileyPairType, BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair};
 
 use crate::number::QRat;
 
