@@ -14,6 +14,7 @@
 use crate::number::QRat;
 use crate::series::{FormalPowerSeries, arithmetic};
 use super::linalg::{build_coefficient_matrix, rational_null_space};
+use super::utilities::sift;
 
 /// A polynomial relation P(x, y) = 0 discovered by [`findpoly`].
 ///
@@ -375,4 +376,363 @@ pub fn findpoly(
         deg_x,
         deg_y,
     })
+}
+
+/// A congruence discovered by [`findcong`].
+///
+/// Represents the statement that f(modulus_m * n + residue_b) = 0 (mod divisor_r)
+/// for all n in the tested range.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Congruence {
+    /// The modulus A in f(A*n + B).
+    pub modulus_m: i64,
+    /// The residue B in f(A*n + B).
+    pub residue_b: i64,
+    /// The divisor R such that f(A*n + B) = 0 mod R for all tested n.
+    pub divisor_r: i64,
+}
+
+/// Discover congruences among the coefficients of a formal power series.
+///
+/// For each modulus m in `moduli`, for each residue j in 0..m, extracts the
+/// subsequence f(m*n + j) using [`sift`] and checks whether all coefficients
+/// are divisible by some small prime or by m itself.
+///
+/// This is the key tool for automated discovery of partition congruences.
+/// For example, `findcong(&partition_gf, &[5])` discovers Ramanujan's
+/// famous congruence p(5n+4) = 0 (mod 5).
+///
+/// # Arguments
+///
+/// - `f`: the input series whose coefficients are tested for congruences
+/// - `moduli`: list of moduli to test
+///
+/// # Returns
+///
+/// All discovered congruences, one per (modulus, residue, divisor) triple.
+pub fn findcong(f: &FormalPowerSeries, moduli: &[i64]) -> Vec<Congruence> {
+    let test_primes: &[i64] = &[2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
+
+    let mut results = Vec::new();
+
+    for &m in moduli {
+        assert!(m > 0, "findcong modulus must be positive, got {}", m);
+        for j in 0..m {
+            let sub = sift(f, m, j);
+
+            // Collect all nonzero coefficients from the subsequence
+            let nonzero_coeffs: Vec<QRat> = sub
+                .iter()
+                .map(|(_, c)| c.clone())
+                .filter(|c| !c.is_zero())
+                .collect();
+
+            if nonzero_coeffs.is_empty() {
+                // All zero: trivially divisible by any R, skip (not interesting)
+                continue;
+            }
+
+            // Build a list of candidate divisors: test_primes + m itself (if not already included)
+            let mut candidates: Vec<i64> = test_primes.to_vec();
+            if !candidates.contains(&m) {
+                candidates.push(m);
+            }
+
+            for &r in &candidates {
+                if r <= 1 {
+                    continue;
+                }
+
+                // Check if ALL nonzero coefficients are divisible by r.
+                // Each coefficient is a QRat; for integer-coefficient series,
+                // we check if numerator is divisible by r (denominator should be 1).
+                let r_int = rug::Integer::from(r);
+                let all_div = nonzero_coeffs.iter().all(|c| {
+                    // Coefficient must be an integer (denominator = 1) for congruence testing
+                    let one = rug::Integer::from(1);
+                    if c.denom() != &one {
+                        return false;
+                    }
+                    c.numer().is_divisible(&r_int)
+                });
+
+                if all_div {
+                    results.push(Congruence {
+                        modulus_m: m,
+                        residue_b: j,
+                        divisor_r: r,
+                    });
+                }
+            }
+        }
+    }
+
+    results
+}
+
+/// Find all non-homogeneous polynomial relations of degree <= d among the given series.
+///
+/// Like [`findhom`] but generates all monomials of degree 0, 1, ..., d (not just
+/// exactly d). This allows discovering affine and mixed-degree relations.
+///
+/// The constant monomial (all exponents 0, representing the constant series 1)
+/// is included as the first candidate.
+///
+/// # Arguments
+///
+/// - `series`: the series to find relations among
+/// - `degree`: the maximum total degree
+/// - `topshift`: extra rows for overdetermination
+///
+/// # Returns
+///
+/// A vector of relation vectors, one entry per monomial across all degrees 0..=d.
+pub fn findnonhom(
+    series: &[&FormalPowerSeries],
+    degree: i64,
+    topshift: i64,
+) -> Vec<Vec<QRat>> {
+    let k = series.len();
+    if k == 0 || degree < 0 {
+        return Vec::new();
+    }
+
+    // Generate all monomials of degree 0, 1, ..., degree and concatenate
+    let mut all_monomials: Vec<Vec<i64>> = Vec::new();
+    for d in 0..=degree {
+        let monos = generate_monomials(k, d);
+        all_monomials.extend(monos);
+    }
+
+    let num_monomials = all_monomials.len();
+    if num_monomials == 0 {
+        return Vec::new();
+    }
+
+    // Compute the FPS for each monomial
+    let monomial_series: Vec<FormalPowerSeries> = all_monomials
+        .iter()
+        .map(|exps| compute_monomial_series(series, exps))
+        .collect();
+
+    let candidates: Vec<&FormalPowerSeries> = monomial_series.iter().collect();
+
+    // Determine start_order
+    let start_order = candidates
+        .iter()
+        .filter_map(|fps| fps.min_order())
+        .min()
+        .unwrap_or(0)
+        .min(0);
+
+    // Determine available rows
+    let max_trunc = candidates
+        .iter()
+        .map(|fps| fps.truncation_order())
+        .min()
+        .unwrap();
+
+    let available_rows = (max_trunc - start_order) as usize;
+    let desired_rows = num_monomials + topshift as usize;
+    let num_rows = desired_rows.min(available_rows);
+
+    if num_rows == 0 {
+        return Vec::new();
+    }
+
+    // Build coefficient matrix and compute null space
+    let matrix = build_coefficient_matrix(&candidates, start_order, num_rows);
+    rational_null_space(&matrix)
+}
+
+/// Express a target series as a homogeneous degree-d combination of basis series.
+///
+/// Generates all degree-d monomials in `basis`, prepends `f` to the candidate list,
+/// builds a coefficient matrix, and finds a null space vector with nonzero f-component.
+/// Returns the combination coefficients for each monomial.
+///
+/// # Arguments
+///
+/// - `f`: the target series to express
+/// - `basis`: the basis series
+/// - `degree`: the total degree of the combination
+/// - `topshift`: extra rows for overdetermination
+///
+/// # Returns
+///
+/// `Some(coefficients)` where `f = sum_i coefficients[i] * monomial_i`, with monomials
+/// in the order returned by `generate_monomials(basis.len(), degree)`. Returns `None`
+/// if no such expression exists.
+pub fn findhomcombo(
+    f: &FormalPowerSeries,
+    basis: &[&FormalPowerSeries],
+    degree: i64,
+    topshift: i64,
+) -> Option<Vec<QRat>> {
+    let k = basis.len();
+    if k == 0 || degree < 0 {
+        return None;
+    }
+
+    // Generate all degree-d monomials in basis
+    let monomials = generate_monomials(k, degree);
+    let num_monomials = monomials.len();
+
+    if num_monomials == 0 {
+        return None;
+    }
+
+    // Compute the FPS for each monomial
+    let monomial_series: Vec<FormalPowerSeries> = monomials
+        .iter()
+        .map(|exps| compute_monomial_series(basis, exps))
+        .collect();
+
+    // Build candidates list: [f, monomial_0, monomial_1, ...]
+    let mut candidates: Vec<&FormalPowerSeries> = Vec::with_capacity(num_monomials + 1);
+    candidates.push(f);
+    for ms in &monomial_series {
+        candidates.push(ms);
+    }
+
+    let num_candidates = candidates.len();
+
+    // Determine start_order
+    let start_order = candidates
+        .iter()
+        .filter_map(|fps| fps.min_order())
+        .min()
+        .unwrap_or(0)
+        .min(0);
+
+    // Determine available rows
+    let max_trunc = candidates
+        .iter()
+        .map(|fps| fps.truncation_order())
+        .min()
+        .unwrap();
+
+    let available_rows = (max_trunc - start_order) as usize;
+    let desired_rows = num_candidates + topshift as usize;
+    let num_rows = desired_rows.min(available_rows);
+
+    if num_rows == 0 {
+        return None;
+    }
+
+    // Build coefficient matrix and compute null space
+    let matrix = build_coefficient_matrix(&candidates, start_order, num_rows);
+    let null_space = rational_null_space(&matrix);
+
+    // Look for a null space vector with nonzero first component (for f)
+    for v in &null_space {
+        if !v[0].is_zero() {
+            // Normalize so first component = 1, then negate remaining
+            let scale = QRat::one() / v[0].clone();
+            let coefficients: Vec<QRat> = v[1..]
+                .iter()
+                .map(|c| -(c.clone() * scale.clone()))
+                .collect();
+            return Some(coefficients);
+        }
+    }
+
+    None
+}
+
+/// Express a target series as a non-homogeneous degree <= d combination of basis series.
+///
+/// Like [`findhomcombo`] but uses monomials of degree 0, 1, ..., d instead of
+/// exactly degree d. This allows discovering affine and mixed-degree expressions.
+///
+/// # Arguments
+///
+/// - `f`: the target series to express
+/// - `basis`: the basis series
+/// - `degree`: the maximum total degree
+/// - `topshift`: extra rows for overdetermination
+///
+/// # Returns
+///
+/// `Some(coefficients)` where `f = sum_i coefficients[i] * monomial_i`, with monomials
+/// covering all degrees 0..=d. Returns `None` if no such expression exists.
+pub fn findnonhomcombo(
+    f: &FormalPowerSeries,
+    basis: &[&FormalPowerSeries],
+    degree: i64,
+    topshift: i64,
+) -> Option<Vec<QRat>> {
+    let k = basis.len();
+    if k == 0 || degree < 0 {
+        return None;
+    }
+
+    // Generate all monomials of degree 0, 1, ..., degree
+    let mut all_monomials: Vec<Vec<i64>> = Vec::new();
+    for d in 0..=degree {
+        let monos = generate_monomials(k, d);
+        all_monomials.extend(monos);
+    }
+
+    let num_monomials = all_monomials.len();
+    if num_monomials == 0 {
+        return None;
+    }
+
+    // Compute the FPS for each monomial
+    let monomial_series: Vec<FormalPowerSeries> = all_monomials
+        .iter()
+        .map(|exps| compute_monomial_series(basis, exps))
+        .collect();
+
+    // Build candidates list: [f, monomial_0, monomial_1, ...]
+    let mut candidates: Vec<&FormalPowerSeries> = Vec::with_capacity(num_monomials + 1);
+    candidates.push(f);
+    for ms in &monomial_series {
+        candidates.push(ms);
+    }
+
+    let num_candidates = candidates.len();
+
+    // Determine start_order
+    let start_order = candidates
+        .iter()
+        .filter_map(|fps| fps.min_order())
+        .min()
+        .unwrap_or(0)
+        .min(0);
+
+    // Determine available rows
+    let max_trunc = candidates
+        .iter()
+        .map(|fps| fps.truncation_order())
+        .min()
+        .unwrap();
+
+    let available_rows = (max_trunc - start_order) as usize;
+    let desired_rows = num_candidates + topshift as usize;
+    let num_rows = desired_rows.min(available_rows);
+
+    if num_rows == 0 {
+        return None;
+    }
+
+    // Build coefficient matrix and compute null space
+    let matrix = build_coefficient_matrix(&candidates, start_order, num_rows);
+    let null_space = rational_null_space(&matrix);
+
+    // Look for a null space vector with nonzero first component (for f)
+    for v in &null_space {
+        if !v[0].is_zero() {
+            // Normalize so first component = 1, then negate remaining
+            let scale = QRat::one() / v[0].clone();
+            let coefficients: Vec<QRat> = v[1..]
+                .iter()
+                .map(|c| -(c.clone() * scale.clone()))
+                .collect();
+            return Some(coefficients);
+        }
+    }
+
+    None
 }

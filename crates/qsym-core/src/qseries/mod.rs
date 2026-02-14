@@ -16,7 +16,8 @@
 //! - Factoring: [`qfactor`], [`QFactorization`] -- decompose polynomials into (1-q^i) factors
 //! - Utilities: [`sift`], [`qdegree`], [`lqdegree`] -- subsequence extraction and degree bounds
 //! - Linear algebra: [`rational_null_space`], [`build_coefficient_matrix`], [`modular_null_space`]
-//! - Relation discovery: [`findlincombo`], [`findhom`], [`findpoly`], [`PolynomialRelation`]
+//! - Relation discovery: [`findlincombo`], [`findhom`], [`findpoly`], [`PolynomialRelation`],
+//!   [`findcong`], [`findnonhom`], [`findhomcombo`], [`findnonhomcombo`], [`Congruence`]
 
 pub mod factoring;
 pub mod linalg;
@@ -32,7 +33,7 @@ pub mod utilities;
 
 pub use factoring::{qfactor, QFactorization};
 pub use linalg::{rational_null_space, build_coefficient_matrix, modular_null_space};
-pub use relations::{findlincombo, findhom, findpoly, PolynomialRelation};
+pub use relations::{findlincombo, findhom, findpoly, PolynomialRelation, findcong, findnonhom, findhomcombo, findnonhomcombo, Congruence};
 pub use partitions::{partition_count, partition_gf, distinct_parts_gf, odd_parts_gf, bounded_parts_gf};
 pub use pochhammer::aqprod;
 pub use prodmake::{prodmake, InfiniteProductForm, etamake, EtaQuotient, jacprodmake, JacobiProductForm, mprodmake, qetamake, QEtaForm};
