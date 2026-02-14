@@ -1,4 +1,4 @@
-//! Integration tests for hypergeometric series: eval_phi and eval_psi.
+//! Integration tests for hypergeometric series: eval_phi, eval_psi, and summation formulas.
 //!
 //! Tests verify:
 //! - QMonomial arithmetic (mul, div, is_q_neg_power, try_sqrt)
@@ -7,15 +7,19 @@
 //! - eval_phi termination at correct order
 //! - eval_psi for bilateral 1psi1
 //! - eval_phi for non-terminating 2phi1 basic sanity
+//! - Summation formulas: q-Gauss, q-Vandermonde (both forms), q-Saalschutz, q-Kummer, q-Dixon
+//! - try_all_summations dispatch
 
 use qsym_core::number::QRat;
-use qsym_core::series::arithmetic;
+use qsym_core::series::{arithmetic, FormalPowerSeries};
 use qsym_core::ExprArena;
 use qsym_core::symbol::SymbolId;
 use qsym_core::qseries::{
     QMonomial, PochhammerOrder, aqprod,
     HypergeometricSeries, BilateralHypergeometricSeries,
-    eval_phi, eval_psi,
+    eval_phi, eval_psi, SummationResult,
+    try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon,
+    try_all_summations,
 };
 
 /// Helper: create a SymbolId for "q".
@@ -452,4 +456,386 @@ fn bilateral_series_r_s() {
     };
     assert_eq!(series.r(), 1);
     assert_eq!(series.s(), 1);
+}
+
+// ===========================================================================
+// 10. Summation formula: q-Gauss
+// ===========================================================================
+
+/// q-Gauss summation: _2 phi_1 (q, q^2 ; q^5 ; q, q^2)
+///
+/// z = q^2, c/(ab) = q^5/(q*q^2) = q^2 = z. Match!
+/// Closed form: (q^4;q)_inf * (q^3;q)_inf / [(q^5;q)_inf * (q^2;q)_inf]
+///
+/// Verify try_q_gauss returns ClosedForm matching eval_phi.
+#[test]
+fn summation_q_gauss() {
+    let q = q_var();
+    let trunc = 30;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(1), qm(2)],
+        lower: vec![qm(5)],
+        argument: qm(2),
+    };
+
+    match try_q_gauss(&series, q, trunc) {
+        SummationResult::ClosedForm(closed) => {
+            let eval = eval_phi(&series, q, trunc);
+            for k in 0..trunc {
+                assert_eq!(
+                    closed.coeff(k), eval.coeff(k),
+                    "q-Gauss summation: closed form vs eval_phi mismatch at q^{}", k
+                );
+            }
+        }
+        SummationResult::NotApplicable => {
+            panic!("try_q_gauss should return ClosedForm for this series");
+        }
+    }
+}
+
+// ===========================================================================
+// 11. Summation formula: q-Vandermonde (second form, z=q)
+// ===========================================================================
+
+/// q-Vandermonde (second form): _2 phi_1 (q^2, q^{-3} ; q^4 ; q, q)
+///
+/// a=q^2, q^{-3} terminates at n=3, c=q^4, z=q
+/// Result: a^n * (c/a;q)_n / (c;q)_n = q^6 * (q^2;q)_3 / (q^4;q)_3
+///
+/// Note: eval_phi drops negative-power terms in the q^{-n} factor, so we
+/// verify the closed form against the expected product formula directly.
+#[test]
+fn summation_q_vandermonde_second_form() {
+    let q = q_var();
+    let trunc = 30;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(2), qm(-3)],
+        lower: vec![qm(4)],
+        argument: qm(1),
+    };
+
+    match try_q_vandermonde(&series, q, trunc) {
+        SummationResult::ClosedForm(closed) => {
+            // Verify against manually computed product formula:
+            // a^n * (c/a;q)_n / (c;q)_n where a=q^2, n=3, c=q^4
+            // = q^6 * (q^2;q)_3 / (q^4;q)_3
+            let a_n = FormalPowerSeries::monomial(q, QRat::one(), 6, trunc);
+            let c_over_a_n = aqprod(&qm(2), q, PochhammerOrder::Finite(3), trunc);
+            let c_n = aqprod(&qm(4), q, PochhammerOrder::Finite(3), trunc);
+            let expected = arithmetic::mul(
+                &a_n,
+                &arithmetic::mul(&c_over_a_n, &arithmetic::invert(&c_n)),
+            );
+            for k in 0..trunc {
+                assert_eq!(
+                    closed.coeff(k), expected.coeff(k),
+                    "q-Vandermonde (z=q): closed form vs expected product at q^{}", k
+                );
+            }
+        }
+        SummationResult::NotApplicable => {
+            panic!("try_q_vandermonde should return ClosedForm for z=q case");
+        }
+    }
+}
+
+// ===========================================================================
+// 12. Summation formula: q-Vandermonde (first form)
+// ===========================================================================
+
+/// q-Vandermonde (first form): _2 phi_1 (q^3, q^{-2} ; q^4 ; q, q^3)
+///
+/// a=q^3, q^{-2} (n=2), c=q^4, z = c*q^n/a = q^4*q^2/q^3 = q^3. Match!
+/// Result: (c/a;q)_n / (c;q)_n = (q;q)_2 / (q^4;q)_2
+///
+/// Verify closed form against manually computed finite Pochhammer ratio.
+#[test]
+fn summation_q_vandermonde_first_form() {
+    let q = q_var();
+    let trunc = 30;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(3), qm(-2)],
+        lower: vec![qm(4)],
+        argument: qm(3),
+    };
+
+    match try_q_vandermonde(&series, q, trunc) {
+        SummationResult::ClosedForm(closed) => {
+            // Expected: (c/a;q)_2 / (c;q)_2 = (q;q)_2 / (q^4;q)_2
+            let numer = aqprod(&qm(1), q, PochhammerOrder::Finite(2), trunc);
+            let denom = aqprod(&qm(4), q, PochhammerOrder::Finite(2), trunc);
+            let expected = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+            for k in 0..trunc {
+                assert_eq!(
+                    closed.coeff(k), expected.coeff(k),
+                    "q-Vandermonde (first form): closed form vs expected product at q^{}", k
+                );
+            }
+        }
+        SummationResult::NotApplicable => {
+            panic!("try_q_vandermonde should return ClosedForm for first form");
+        }
+    }
+}
+
+// ===========================================================================
+// 13. Summation formula: q-Saalschutz
+// ===========================================================================
+
+/// q-Saalschutz: _3 phi_2 (q, q^2, q^{-3} ; q^4, q^{-3} ; q, q)
+///
+/// n=3, a=q, b=q^2, c=q^4.
+/// d = a*b*q^{1-n}/c = q*q^2*q^{-2}/q^4 = q^{-3}.
+/// So the series is: _3 phi_2 (q, q^2, q^{-3} ; q^4, q^{-3} ; q, q)
+///
+/// Result: (c/a;q)_n * (c/b;q)_n / [(c;q)_n * (c/(ab);q)_n]
+///       = (q^3;q)_3 * (q^2;q)_3 / [(q^4;q)_3 * (q;q)_3]
+#[test]
+fn summation_q_saalschutz() {
+    let q = q_var();
+    let trunc = 30;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(1), qm(2), qm(-3)],
+        lower: vec![qm(4), qm(-3)],
+        argument: qm(1),
+    };
+
+    match try_q_saalschutz(&series, q, trunc) {
+        SummationResult::ClosedForm(closed) => {
+            let eval = eval_phi(&series, q, trunc);
+            for k in 0..trunc {
+                assert_eq!(
+                    closed.coeff(k), eval.coeff(k),
+                    "q-Saalschutz: closed form vs eval_phi mismatch at q^{}", k
+                );
+            }
+        }
+        SummationResult::NotApplicable => {
+            panic!("try_q_saalschutz should return ClosedForm for this series");
+        }
+    }
+}
+
+// ===========================================================================
+// 14. Summation formula: q-Kummer (Bailey-Daum)
+// ===========================================================================
+
+/// q-Kummer (Bailey-Daum): _2 phi_1 (q^4, q^2 ; q^3 ; q, -q^{-1})
+///
+/// a=q^4, b=q^2, c=aq/b = q^3. z=-q/b = -q^{-1}.
+///
+/// RHS = (-q;q)_inf * (q^5;q^2)_inf * (q^2;q^2)_inf / [(-q^{-1};q)_inf * (q^3;q)_inf]
+///
+/// Since eval_phi cannot handle z with negative power, we verify the
+/// closed form against the expected product formula computed manually.
+#[test]
+fn summation_q_kummer() {
+    let q = q_var();
+    let trunc = 25;
+
+    // a=q^4, b=q^2, c=q^3, z=-q^{-1}
+    let series = HypergeometricSeries {
+        upper: vec![qm(4), qm(2)],
+        lower: vec![qm(3)],
+        argument: QMonomial::new(-QRat::one(), -1),
+    };
+
+    match try_q_kummer(&series, q, trunc) {
+        SummationResult::ClosedForm(closed) => {
+            // Manually compute the RHS:
+            // (-q;q)_inf * (aq;q^2)_inf * (aq^2/b^2;q^2)_inf / [(-q/b;q)_inf * (aq/b;q)_inf]
+            // a=q^4, b=q^2:
+            // (-q;q)_inf
+            let neg_q = QMonomial::new(-QRat::one(), 1);
+            let f1 = aqprod(&neg_q, q, PochhammerOrder::Infinite, trunc);
+
+            // (aq;q^2)_inf = (q^5;q^2)_inf = prod_{k>=0}(1-q^{5+2k})
+            // Use custom_step_product equivalent: manual loop
+            let mut f2 = FormalPowerSeries::one(q, trunc);
+            let mut exp = 5i64;
+            while exp < trunc {
+                let mut factor = FormalPowerSeries::one(q, trunc);
+                factor.set_coeff(exp, -QRat::one());
+                f2 = arithmetic::mul(&f2, &factor);
+                exp += 2;
+            }
+
+            // (aq^2/b^2;q^2)_inf = (q^4*q^2/(q^4);q^2)_inf = (q^2;q^2)_inf
+            // = prod_{k>=0}(1-q^{2+2k})
+            let mut f3 = FormalPowerSeries::one(q, trunc);
+            exp = 2;
+            while exp < trunc {
+                let mut factor = FormalPowerSeries::one(q, trunc);
+                factor.set_coeff(exp, -QRat::one());
+                f3 = arithmetic::mul(&f3, &factor);
+                exp += 2;
+            }
+
+            // (-q/b;q)_inf = (-q^{-1};q)_inf = (-q^{-1} has power -1)
+            // Since power is -1 < 0, the first factor is (1 - (-1)*q^{-1}) which has negative power.
+            // For FPS with non-negative support, this factor is approximated as (1-(-1)*0) = 1
+            // when power < 0. But the infinite product from offset -1 produces factors:
+            // k=0: (1+q^{-1}) -> 1 in FPS (negative power dropped)
+            // k=1: (1+q^0) = 2 at q^0
+            // k=2: (1+q^1) = 1+q
+            // etc.
+            // Actually aqprod handles this:
+            let neg_q_inv = QMonomial::new(-QRat::one(), -1);
+            let f4 = aqprod(&neg_q_inv, q, PochhammerOrder::Infinite, trunc);
+
+            // (aq/b;q)_inf = (q^3;q)_inf
+            let f5 = aqprod(&qm(3), q, PochhammerOrder::Infinite, trunc);
+
+            let numer = arithmetic::mul(&f1, &arithmetic::mul(&f2, &f3));
+            let denom = arithmetic::mul(&f4, &f5);
+            let expected = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+            for k in 0..trunc {
+                assert_eq!(
+                    closed.coeff(k), expected.coeff(k),
+                    "q-Kummer: closed form vs expected product at q^{}", k
+                );
+            }
+        }
+        SummationResult::NotApplicable => {
+            panic!("try_q_kummer should return ClosedForm for this series");
+        }
+    }
+}
+
+// ===========================================================================
+// 15. Summation formula: q-Dixon
+// ===========================================================================
+
+/// q-Dixon: _3 phi_2 (q^{-4}, q, q^2 ; q^{-4}, q^{-5} ; q, q^{-3})
+///
+/// n=2 (2n=4), b=q, c=q^2.
+/// Lower: q^{1-4}/q = q^{-4}, q^{1-4}/q^2 = q^{-5}.
+/// z = q^{2-2}/(q*q^2) = 1/q^3 = q^{-3}.
+///
+/// Since parameters involve negative powers, verify the closed form against
+/// the expected product formula directly.
+///
+/// Closed form: (b;q)_n * (c;q)_n * (q;q)_{2n} * (bc;q)_{2n}
+///            / [(q;q)_n * (bc;q)_n * (b;q)_{2n} * (c;q)_{2n}]
+/// with n=2, b=q, c=q^2, bc=q^3.
+#[test]
+fn summation_q_dixon() {
+    let q = q_var();
+    let trunc = 20;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(-4), qm(1), qm(2)],
+        lower: vec![qm(-4), qm(-5)],
+        argument: qm(-3),
+    };
+
+    match try_q_dixon(&series, q, trunc) {
+        SummationResult::ClosedForm(closed) => {
+            // Verify against manual product computation
+            let n = 2i64;
+            let two_n = 4i64;
+            let b = qm(1); // q
+            let c = qm(2); // q^2
+            let bc = qm(3); // q^3
+            let q_mon = qm(1); // q
+
+            // Numerator: (b;q)_n * (c;q)_n * (q;q)_{2n} * (bc;q)_{2n}
+            let bq_n = aqprod(&b, q, PochhammerOrder::Finite(n), trunc);
+            let cq_n = aqprod(&c, q, PochhammerOrder::Finite(n), trunc);
+            let qq_2n = aqprod(&q_mon, q, PochhammerOrder::Finite(two_n), trunc);
+            let bcq_2n = aqprod(&bc, q, PochhammerOrder::Finite(two_n), trunc);
+
+            // Denominator: (q;q)_n * (bc;q)_n * (b;q)_{2n} * (c;q)_{2n}
+            let qq_n = aqprod(&q_mon, q, PochhammerOrder::Finite(n), trunc);
+            let bcq_n = aqprod(&bc, q, PochhammerOrder::Finite(n), trunc);
+            let bq_2n = aqprod(&b, q, PochhammerOrder::Finite(two_n), trunc);
+            let cq_2n = aqprod(&c, q, PochhammerOrder::Finite(two_n), trunc);
+
+            let numer = arithmetic::mul(
+                &arithmetic::mul(&bq_n, &cq_n),
+                &arithmetic::mul(&qq_2n, &bcq_2n),
+            );
+            let denom = arithmetic::mul(
+                &arithmetic::mul(&qq_n, &bcq_n),
+                &arithmetic::mul(&bq_2n, &cq_2n),
+            );
+            let expected = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+            for k in 0..trunc {
+                assert_eq!(
+                    closed.coeff(k), expected.coeff(k),
+                    "q-Dixon: closed form vs expected product at q^{}", k
+                );
+            }
+        }
+        SummationResult::NotApplicable => {
+            panic!("try_q_dixon should return ClosedForm for this series");
+        }
+    }
+}
+
+// ===========================================================================
+// 16. try_all_summations: NotApplicable for generic series
+// ===========================================================================
+
+/// Generic 2phi1 that doesn't match any formula:
+/// _2 phi_1 (q, q^2 ; q^3 ; q, q^4)
+/// z=q^4, c/(ab) = q^3/(q*q^2) = q^0 = 1 != q^4. No q-Gauss match.
+/// Not terminating, not q-Kummer pattern. Should return NotApplicable.
+#[test]
+fn try_all_summations_not_applicable() {
+    let q = q_var();
+    let trunc = 20;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(1), qm(2)],
+        lower: vec![qm(3)],
+        argument: qm(4),
+    };
+
+    match try_all_summations(&series, q, trunc) {
+        SummationResult::NotApplicable => { /* expected */ }
+        SummationResult::ClosedForm(_) => {
+            panic!("try_all_summations should return NotApplicable for generic series");
+        }
+    }
+}
+
+// ===========================================================================
+// 17. try_all_summations: returns ClosedForm for q-Gauss case
+// ===========================================================================
+
+/// Reuse q-Gauss parameters. Assert try_all_summations returns ClosedForm
+/// and matches eval_phi.
+#[test]
+fn try_all_summations_q_gauss() {
+    let q = q_var();
+    let trunc = 30;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(1), qm(2)],
+        lower: vec![qm(5)],
+        argument: qm(2),
+    };
+
+    match try_all_summations(&series, q, trunc) {
+        SummationResult::ClosedForm(closed) => {
+            let eval = eval_phi(&series, q, trunc);
+            for k in 0..trunc {
+                assert_eq!(
+                    closed.coeff(k), eval.coeff(k),
+                    "try_all_summations q-Gauss: mismatch at q^{}", k
+                );
+            }
+        }
+        SummationResult::NotApplicable => {
+            panic!("try_all_summations should return ClosedForm for q-Gauss series");
+        }
+    }
 }
