@@ -6,6 +6,13 @@
 .vscode/
 *.swp
 
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyd
+*.egg-info/
+
 # OS
 .DS_Store
 Thumbs.db
