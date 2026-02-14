@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 5 of 8 (Python API)
-Plan: 1 of 4 in current phase (1 complete: 05-01)
+Plan: 2 of 4 in current phase (2 complete: 05-01, 05-02)
 Status: In progress
-Last activity: 2026-02-14 -- Completed 05-01-PLAN.md
+Last activity: 2026-02-14 -- Completed 05-02-PLAN.md
 
-Progress: [##############..] 68%
+Progress: [##############..] 72%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 7 min
-- Total execution time: 2.1 hours
+- Total execution time: 2.2 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [##############..] 68%
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
-| 5 - Python API | 1/4 | 4 min | 4 min |
+| 5 - Python API | 2/4 | 9 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 5 min, 4 min, 7 min, 4 min
-- Trend: variable ~5 min/plan
+- Last 5 plans: 5 min, 4 min, 7 min, 4 min, 5 min
+- Trend: stable ~5 min/plan
 
 *Updated after each plan completion*
 
@@ -105,6 +105,9 @@ Recent decisions affecting current work:
 - [05-01]: PyO3 0.23 with PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 for Python 3.14 support (0.23 max is 3.13)
 - [05-01]: maturin mixed layout: native module _qsymbolic, Python package qsymbolic/ with re-exports
 - [05-01]: use-system-libs GMP works correctly for cdylib linking on Windows/Cygwin (highest-risk item validated)
+- [05-02]: Used intern_rat() instead of direct rug::Rational to avoid rug dependency in qsym-python
+- [05-02]: Used std Hash trait on ExprRef for __hash__ since ExprRef.0 is pub(crate)
+- [05-02]: Auto-register MinGW DLL directory in __init__.py for Windows GMP shared library loading
 
 ### Pending Todos
 
@@ -123,5 +126,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 05-01-PLAN.md (qsym-python crate scaffold, cdylib+GMP+PyO3+maturin pipeline validated end-to-end)
-Resume file: .planning/phases/05-python-api/05-01-SUMMARY.md
+Stopped at: Completed 05-02-PLAN.md (QSession + QExpr API with operators, rendering, GC-safe Arc reference counting)
+Resume file: .planning/phases/05-python-api/05-02-SUMMARY.md
