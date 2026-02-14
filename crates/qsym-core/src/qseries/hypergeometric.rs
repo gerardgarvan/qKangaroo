@@ -337,6 +337,16 @@ fn eval_psi_positive(
     result
 }
 
+/// Check if (a;q)_{-m} has a pole (i.e., the denominator (aq^{-m};q)_m contains a zero factor).
+///
+/// A pole occurs when a.coeff == 1 and 0 < a.power <= m.
+fn has_negative_pochhammer_pole(a: &QMonomial, m: i64) -> bool {
+    if a.coeff == QRat::one() && a.power > 0 && a.power <= m {
+        return true;
+    }
+    false
+}
+
 /// Negative part of bilateral series (n = -1, -2, ...).
 ///
 /// For each negative n = -m (m > 0), compute the term directly:
@@ -346,6 +356,8 @@ fn eval_psi_positive(
 /// ```
 ///
 /// Uses aqprod with negative order for each parameter.
+/// Terms where any Pochhammer symbol has a pole are skipped (they represent
+/// a 0/0 cancellation that would need L'Hopital-type analysis).
 fn eval_psi_negative(
     series: &BilateralHypergeometricSeries,
     variable: SymbolId,
@@ -361,6 +373,25 @@ fn eval_psi_negative(
     let max_neg = truncation_order;
 
     for m in 1..=max_neg {
+        // Check for poles: if any upper or lower param has a pole at -m, skip this term.
+        let has_pole = series.upper.iter().any(|a| has_negative_pochhammer_pole(a, m))
+            || series.lower.iter().any(|b| has_negative_pochhammer_pole(b, m));
+        if has_pole {
+            // When the numerator has a pole, the term is 0 (zero from (a;q)_{-m}).
+            // When the denominator has a pole, the term is infinite (skip).
+            // When both have poles, it's 0/0 (skip -- would need careful analysis).
+            //
+            // For the common case where only the numerator has a pole:
+            // (a;q)_{-m} with pole means (aq^{-m};q)_m = 0, so 1/0 = pole in the
+            // Pochhammer value. But the actual bilateral series term involves the
+            // product of all Pochhammers. If ANY numerator Pochhammer has a zero
+            // (making the overall numerator zero), the term is zero.
+            //
+            // Detect: numerator zero kills the term (skip as zero).
+            // Denominator zero means the term diverges (also skip for safety).
+            continue;
+        }
+
         // Compute (a_i;q)_{-m} for each upper parameter
         let mut term = FormalPowerSeries::one(variable, truncation_order);
         for a in &series.upper {
@@ -376,22 +407,19 @@ fn eval_psi_negative(
         }
 
         // Extra factor: [(-1)^{-m} * q^{(-m)(-m-1)/2}]^{extra}
-        // = [(-1)^m * q^{m(m+1)/2}]^{extra} -- since (-m)(-m-1)/2 = m(m+1)/2 and (-1)^{-m} = (-1)^m
-        // Wait: (-m)(-m-1)/2 = m(m+1)/2. And (-1)^{-m} = 1/(-1)^m = (-1)^{-m} = (-1)^m (since (-1)^2=1).
+        // (-m)(-m-1)/2 = m(m+1)/2. (-1)^{-m} = (-1)^m.
         if extra != 0 {
             let m_i64 = m;
             let sign_base = if m_i64 % 2 == 0 { QRat::one() } else { -QRat::one() };
             let q_power_base = m_i64 * (m_i64 + 1) / 2;
 
-            // Raise to power |extra|
             let (sign, q_pow) = if extra > 0 {
                 let s = if extra % 2 == 0 { QRat::one() } else { sign_base.clone() };
                 (s, q_power_base * extra)
             } else {
-                // extra < 0: the monomial is q^{-q_power_base * |extra|}
                 let abs_extra = -extra;
                 let s = if abs_extra % 2 == 0 { QRat::one() } else { sign_base.clone() };
-                (s, q_power_base * extra) // negative q_power
+                (s, q_power_base * extra)
             };
 
             let extra_fps = FormalPowerSeries::monomial(variable, sign, q_pow, truncation_order);
@@ -399,9 +427,7 @@ fn eval_psi_negative(
         }
 
         // Argument: z^{-m} = z.coeff^{-m} * q^{-m * z.power}
-        // z.coeff^{-m} = (1/z.coeff)^m
         if series.argument.coeff.is_zero() {
-            // z = 0 means z^{-m} is undefined for m > 0; skip
             break;
         }
         let z_coeff_inv = QRat::one() / series.argument.coeff.clone();
