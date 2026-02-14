@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 4 of 8 (Series Analysis)
-Plan: 4 of 7 in current phase (4 complete, including 04-01, 04-02, 04-03)
+Plan: 5 of 7 in current phase (5 complete, including 04-01, 04-02, 04-03, 04-04)
 Status: In progress
-Last activity: 2026-02-14 -- Completed 04-02-PLAN.md
+Last activity: 2026-02-14 -- Completed 04-04-PLAN.md
 
-Progress: [########..] 48%
+Progress: [########..] 52%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 8 min
-- Total execution time: 1.6 hours
+- Total execution time: 1.7 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [########..] 48%
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
-| 4 - Series Analysis | 4/7 | 36 min | 9 min |
+| 4 - Series Analysis | 5/7 | 41 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 7 min, 4 min, 4 min, 10 min, 14 min
-- Trend: increasing slightly ~8 min/plan
+- Last 5 plans: 4 min, 4 min, 10 min, 14 min, 5 min
+- Trend: variable ~7 min/plan
 
 *Updated after each plan completion*
 
@@ -88,6 +88,9 @@ Recent decisions affecting current work:
 - [04-03]: Fermat's little theorem for modular inverse (a^{p-2} mod p) rather than extended Euclidean
 - [04-03]: i128 intermediates in mod_mul to prevent overflow in modular arithmetic
 - [04-03]: Null space basis uses free-variable-equals-1 convention (canonical form)
+- [04-04]: Mobius inversion for etamake: r_n = sum_{d|n} mu(n/d) * (-a_d) rather than iterative subtraction
+- [04-04]: QRat-to-i64 conversion in eta/qeta factors via to_f64() cast -- valid for integer exponents
+- [04-04]: Period search in jacprodmake tries all b from 1 to max_n, picking best coverage
 
 ### Pending Todos
 
@@ -95,7 +98,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Research]: Andrews' algorithm (prodmake) implemented in 04-01; etamake/jacprodmake post-processing pending in 04-04
+- [Resolved]: Andrews' algorithm (prodmake) + all 4 post-processing functions (etamake, jacprodmake, mprodmake, qetamake) now complete
 - [Research]: Identity proving (Phase 7) needs deep research on cusp theory and valence formula
 - [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
@@ -104,5 +107,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 04-02-PLAN.md (qfactor, sift, qdegree, lqdegree with 13 tests, 311 total passing)
-Resume file: .planning/phases/04-series-analysis/04-02-SUMMARY.md
+Stopped at: Completed 04-04-PLAN.md (etamake, jacprodmake, mprodmake, qetamake with 14 new tests, 23 total prodmake tests)
+Resume file: .planning/phases/04-series-analysis/04-04-SUMMARY.md
