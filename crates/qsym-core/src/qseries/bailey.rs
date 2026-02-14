@@ -147,7 +147,10 @@ fn unit_beta_term(
 /// Rogers-Ramanujan alpha_n:
 /// alpha_n = (a;q)_n * (1 - a*q^{2n}) * (-1)^n * q^{n(3n-1)/2} * a^n / [(q;q)_n * (1-a)]
 ///
-/// Special case: alpha_0 = 1 (all factors collapse).
+/// Special cases:
+/// - alpha_0 = 1 (all factors collapse).
+/// - a = 1 (removable singularity): use limit form
+///   alpha_n = (1+q^n) * (-1)^n * q^{n(3n-1)/2} for n >= 1.
 fn rr_alpha_term(
     n: i64,
     a: &QMonomial,
@@ -155,9 +158,21 @@ fn rr_alpha_term(
     truncation_order: i64,
 ) -> FormalPowerSeries {
     if n == 0 {
-        // alpha_0: (a;q)_0=1, (1-a*q^0)=(1-a), (-1)^0=1, q^0=1, a^0=1,
-        // (q;q)_0=1, (1-a)=cancel => alpha_0 = 1.
+        // alpha_0 = 1 for all a.
         return FormalPowerSeries::one(variable, truncation_order);
+    }
+
+    // Special case: a = 1 (coeff=1, power=0). The formula has a removable singularity.
+    // Limit form: alpha_n = (1+q^n) * (-1)^n * q^{n(3n-1)/2}
+    // Derivation: (a;q)_n/(1-a) -> (q;q)_{n-1} as a->1, and
+    // (1-q^{2n}) / (q;q)_n * (q;q)_{n-1} = (1-q^{2n})/(1-q^n) = (1+q^n).
+    if a.coeff == QRat::one() && a.power == 0 {
+        let sign: QRat = if n % 2 == 0 { QRat::one() } else { -QRat::one() };
+        let q_exp = n * (3 * n - 1) / 2;
+        // (1 + q^n) * sign * q^{q_exp}
+        let term1 = FormalPowerSeries::monomial(variable, sign.clone(), q_exp, truncation_order);
+        let term2 = FormalPowerSeries::monomial(variable, sign, q_exp + n, truncation_order);
+        return arithmetic::add(&term1, &term2);
     }
 
     // (a;q)_n
