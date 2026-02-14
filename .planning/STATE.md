@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 6 complete -- ready for Phase 7
+**Current focus:** Phase 7 in progress -- Identity Proving
 
 ## Current Position
 
-Phase: 6 of 8 (Hypergeometric Series)
-Plan: 4 of 4 in current phase (4 complete: 06-01, 06-02, 06-03, 06-04)
-Status: Phase 6 complete
-Last activity: 2026-02-14 -- Completed 06-04-PLAN.md
+Phase: 7 of 8 (Identity Proving)
+Plan: 1 of 4 in current phase (1 complete: 07-01)
+Status: Executing Phase 7
+Last activity: 2026-02-14 -- Completed 07-01-PLAN.md
 
-Progress: [####################] 96%
+Progress: [####################-] 97%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24
+- Total plans completed: 25
 - Average duration: 7 min
-- Total execution time: 2.9 hours
+- Total execution time: 3.0 hours
 
 **By Phase:**
 
@@ -33,9 +33,10 @@ Progress: [####################] 96%
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
 | 5 - Python API | 4/4 | 20 min | 5 min |
 | 6 - Hypergeometric Series | 4/4 | 35 min | 9 min |
+| 7 - Identity Proving | 1/4 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 7 min, 10 min, 8 min, 10 min
+- Last 5 plans: 7 min, 10 min, 8 min, 10 min, 4 min
 - Trend: stable ~8 min/plan
 
 *Updated after each plan completion*
@@ -132,6 +133,10 @@ Recent decisions affecting current work:
 - [06-04]: Bailey implemented as standalone function (not pattern-matching) because q^2 base requires different Pochhammer evaluation
 - [06-04]: Python phi/psi use (num,den,power) tuple lists for QMonomial params -- more Pythonic than raw constructor calls
 - [06-04]: Heine Python functions return (prefactor, combined_result) tuple where combined = prefactor * eval_phi(transformed)
+- [07-01]: fps_pow shared in identity/mod.rs as pub(crate) rather than duplicated in jac.rs and eta.rs
+- [07-01]: EtaExpression.from_etaquotient computes level as LCM of all deltas (EtaQuotient lacks level field)
+- [07-01]: Newman condition 3 uses rug::Integer for perfect square check on prod(delta^|r_delta|)
+- [07-01]: to_series panics on fractional q-shift (FPS only supports integer exponents)
 
 ### Pending Todos
 
@@ -150,5 +155,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 06-04-PLAN.md (Phase 6 complete: Watson/Bailey + Python API + integration test)
-Resume file: .planning/phases/06-hypergeometric-series/06-04-SUMMARY.md
+Stopped at: Completed 07-01-PLAN.md (JAC/ETA symbolic models with Newman modularity checks)
+Resume file: .planning/phases/07-identity-proving/07-01-SUMMARY.md
