@@ -4,6 +4,11 @@
 //! - [`findlincombo`]: find f as a linear combination of basis series
 //! - [`findhom`]: find homogeneous polynomial relations among series
 //! - [`findpoly`]: find a two-variable polynomial relation P(x,y) = 0
+//! - [`findlincombomodp`]: find linear combination mod a prime p
+//! - [`findhommodp`]: find homogeneous relations mod p
+//! - [`findhomcombomodp`]: express target as homogeneous combo mod p
+//! - [`findmaxind`]: find maximal linearly independent subset
+//! - [`findprod`]: search for linear combinations with nice product forms
 //!
 //! All functions follow the coefficient-matrix + null-space pattern:
 //! 1. Build candidate series (monomials in the input series)
@@ -13,7 +18,8 @@
 
 use crate::number::QRat;
 use crate::series::{FormalPowerSeries, arithmetic};
-use super::linalg::{build_coefficient_matrix, rational_null_space};
+use super::linalg::{build_coefficient_matrix, rational_null_space, modular_null_space};
+use super::prodmake::prodmake;
 use super::utilities::sift;
 
 /// A polynomial relation P(x, y) = 0 discovered by [`findpoly`].
@@ -735,4 +741,562 @@ pub fn findnonhomcombo(
     }
 
     None
+}
+
+// ===========================================================================
+// Modular arithmetic helpers for modp variants
+// ===========================================================================
+
+/// Compute modular inverse via Fermat's little theorem: a^{p-2} mod p.
+fn mod_inv_local(a: i64, p: i64) -> i64 {
+    let a = ((a % p) + p) % p;
+    assert!(a != 0, "Cannot invert zero modulo {}", p);
+    mod_pow_local(a, p - 2, p)
+}
+
+/// Fast modular exponentiation.
+fn mod_pow_local(mut base: i64, mut exp: i64, modulus: i64) -> i64 {
+    if modulus == 1 {
+        return 0;
+    }
+    let mut result: i64 = 1;
+    base = ((base % modulus) + modulus) % modulus;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            result = ((result as i128 * base as i128) % modulus as i128) as i64;
+        }
+        exp >>= 1;
+        base = ((base as i128 * base as i128) % modulus as i128) as i64;
+    }
+    result
+}
+
+/// Convert a QRat coefficient to i64 mod p.
+///
+/// For a/b, computes a * b^{-1} mod p. Returns None if b = 0 mod p.
+fn qrat_to_mod_p(c: &QRat, p: i64) -> Option<i64> {
+    use rug::Integer;
+
+    let p_int = Integer::from(p);
+
+    let numer = c.numer();
+    let denom = c.denom();
+
+    // Check if denominator is divisible by p
+    if denom.is_divisible(&p_int) {
+        return None;
+    }
+
+    // Convert numerator mod p
+    let n_mod = {
+        let r = Integer::from(numer % &p_int);
+        let val = r.to_i64().unwrap_or(0);
+        ((val % p) + p) % p
+    };
+
+    // Convert denominator mod p
+    let d_mod = {
+        let r = Integer::from(denom % &p_int);
+        let val = r.to_i64().unwrap_or(0);
+        ((val % p) + p) % p
+    };
+
+    // a * b^{-1} mod p
+    let d_inv = mod_inv_local(d_mod, p);
+    Some(((n_mod as i128 * d_inv as i128) % p as i128) as i64)
+}
+
+/// Build a coefficient matrix over Z/pZ from candidate formal power series.
+///
+/// Each column is a candidate series, each row a coefficient index.
+/// Coefficients are converted to Z/pZ via `qrat_to_mod_p`.
+/// Returns None if any coefficient has a denominator divisible by p.
+fn build_modp_coefficient_matrix(
+    candidates: &[&FormalPowerSeries],
+    start_order: i64,
+    num_rows: usize,
+    p: i64,
+) -> Option<Vec<Vec<i64>>> {
+    let mut matrix = Vec::with_capacity(num_rows);
+    for i in 0..num_rows {
+        let exp = start_order + i as i64;
+        let mut row = Vec::with_capacity(candidates.len());
+        for fps in candidates {
+            let c = fps.coeff(exp);
+            match qrat_to_mod_p(&c, p) {
+                Some(val) => row.push(val),
+                None => return None,
+            }
+        }
+        matrix.push(row);
+    }
+    Some(matrix)
+}
+
+// ===========================================================================
+// findlincombomodp
+// ===========================================================================
+
+/// Find a linear combination of basis series that equals f, working mod p.
+///
+/// Like [`findlincombo`] but all arithmetic is performed over Z/pZ.
+/// Returns coefficients mod p if f can be expressed as a linear combination
+/// of the basis series modulo p.
+///
+/// # Arguments
+///
+/// - `f`: the target series
+/// - `basis`: the basis series
+/// - `p`: a prime modulus
+/// - `topshift`: extra rows for overdetermination
+///
+/// # Returns
+///
+/// `Some(coefficients)` where `f = sum_i coefficients[i] * basis[i] (mod p)`,
+/// or `None` if no such combination exists mod p.
+pub fn findlincombomodp(
+    f: &FormalPowerSeries,
+    basis: &[&FormalPowerSeries],
+    p: i64,
+    topshift: i64,
+) -> Option<Vec<i64>> {
+    if basis.is_empty() {
+        if f.is_zero() {
+            return Some(Vec::new());
+        }
+        return None;
+    }
+
+    // Build candidates: [f, basis[0], ..., basis[k-1]]
+    let mut candidates: Vec<&FormalPowerSeries> = Vec::with_capacity(basis.len() + 1);
+    candidates.push(f);
+    candidates.extend_from_slice(basis);
+
+    let num_candidates = candidates.len();
+
+    let start_order = candidates
+        .iter()
+        .filter_map(|fps| fps.min_order())
+        .min()
+        .unwrap_or(0)
+        .min(0);
+
+    let max_trunc = candidates
+        .iter()
+        .map(|fps| fps.truncation_order())
+        .min()
+        .unwrap();
+
+    let available_rows = (max_trunc - start_order) as usize;
+    let desired_rows = num_candidates + topshift as usize;
+    let num_rows = desired_rows.min(available_rows);
+
+    if num_rows == 0 {
+        return None;
+    }
+
+    // Build modular coefficient matrix
+    let matrix = build_modp_coefficient_matrix(&candidates, start_order, num_rows, p)?;
+    let null_space = modular_null_space(&matrix, p);
+
+    // Look for a null space vector with nonzero first component
+    for v in &null_space {
+        if v[0] != 0 {
+            // Normalize so first component = 1
+            let inv = mod_inv_local(v[0], p);
+            // Coefficients are the negatives of the remaining components
+            let coefficients: Vec<i64> = v[1..]
+                .iter()
+                .map(|&c| ((-(c as i128 * inv as i128) % p as i128) + p as i128) as i64 % p)
+                .collect();
+            return Some(coefficients);
+        }
+    }
+
+    None
+}
+
+// ===========================================================================
+// findhommodp
+// ===========================================================================
+
+/// Find all homogeneous degree-d polynomial relations among series, working mod p.
+///
+/// Like [`findhom`] but all arithmetic is performed over Z/pZ.
+///
+/// # Arguments
+///
+/// - `series`: the series to find relations among
+/// - `p`: a prime modulus
+/// - `degree`: the total degree of the homogeneous polynomial
+/// - `topshift`: extra rows for overdetermination
+///
+/// # Returns
+///
+/// A vector of relation vectors over Z/pZ.
+pub fn findhommodp(
+    series: &[&FormalPowerSeries],
+    p: i64,
+    degree: i64,
+    topshift: i64,
+) -> Vec<Vec<i64>> {
+    let k = series.len();
+    if k == 0 || degree < 0 {
+        return Vec::new();
+    }
+
+    let monomials = generate_monomials(k, degree);
+    let num_monomials = monomials.len();
+
+    if num_monomials == 0 {
+        return Vec::new();
+    }
+
+    // Compute the FPS for each monomial
+    let monomial_series: Vec<FormalPowerSeries> = monomials
+        .iter()
+        .map(|exps| compute_monomial_series(series, exps))
+        .collect();
+
+    let candidates: Vec<&FormalPowerSeries> = monomial_series.iter().collect();
+
+    let start_order = candidates
+        .iter()
+        .filter_map(|fps| fps.min_order())
+        .min()
+        .unwrap_or(0)
+        .min(0);
+
+    let max_trunc = candidates
+        .iter()
+        .map(|fps| fps.truncation_order())
+        .min()
+        .unwrap();
+
+    let available_rows = (max_trunc - start_order) as usize;
+    let desired_rows = num_monomials + topshift as usize;
+    let num_rows = desired_rows.min(available_rows);
+
+    if num_rows == 0 {
+        return Vec::new();
+    }
+
+    match build_modp_coefficient_matrix(&candidates, start_order, num_rows, p) {
+        Some(matrix) => modular_null_space(&matrix, p),
+        None => Vec::new(),
+    }
+}
+
+// ===========================================================================
+// findhomcombomodp
+// ===========================================================================
+
+/// Express a target series as a homogeneous degree-d combination of basis series, mod p.
+///
+/// Like [`findhomcombo`] but all arithmetic is performed over Z/pZ.
+///
+/// # Arguments
+///
+/// - `f`: the target series to express
+/// - `basis`: the basis series
+/// - `p`: a prime modulus
+/// - `degree`: the total degree of the combination
+/// - `topshift`: extra rows for overdetermination
+///
+/// # Returns
+///
+/// `Some(coefficients)` mod p for the degree-d monomials, or `None`.
+pub fn findhomcombomodp(
+    f: &FormalPowerSeries,
+    basis: &[&FormalPowerSeries],
+    p: i64,
+    degree: i64,
+    topshift: i64,
+) -> Option<Vec<i64>> {
+    let k = basis.len();
+    if k == 0 || degree < 0 {
+        return None;
+    }
+
+    let monomials = generate_monomials(k, degree);
+    let num_monomials = monomials.len();
+
+    if num_monomials == 0 {
+        return None;
+    }
+
+    // Compute the FPS for each monomial
+    let monomial_series: Vec<FormalPowerSeries> = monomials
+        .iter()
+        .map(|exps| compute_monomial_series(basis, exps))
+        .collect();
+
+    // Build candidates: [f, monomial_0, monomial_1, ...]
+    let mut candidates: Vec<&FormalPowerSeries> = Vec::with_capacity(num_monomials + 1);
+    candidates.push(f);
+    for ms in &monomial_series {
+        candidates.push(ms);
+    }
+
+    let num_candidates = candidates.len();
+
+    let start_order = candidates
+        .iter()
+        .filter_map(|fps| fps.min_order())
+        .min()
+        .unwrap_or(0)
+        .min(0);
+
+    let max_trunc = candidates
+        .iter()
+        .map(|fps| fps.truncation_order())
+        .min()
+        .unwrap();
+
+    let available_rows = (max_trunc - start_order) as usize;
+    let desired_rows = num_candidates + topshift as usize;
+    let num_rows = desired_rows.min(available_rows);
+
+    if num_rows == 0 {
+        return None;
+    }
+
+    let matrix = build_modp_coefficient_matrix(&candidates, start_order, num_rows, p)?;
+    let null_space = modular_null_space(&matrix, p);
+
+    // Look for a null space vector with nonzero first component (for f)
+    for v in &null_space {
+        if v[0] != 0 {
+            let inv = mod_inv_local(v[0], p);
+            let coefficients: Vec<i64> = v[1..]
+                .iter()
+                .map(|&c| ((-(c as i128 * inv as i128) % p as i128) + p as i128) as i64 % p)
+                .collect();
+            return Some(coefficients);
+        }
+    }
+
+    None
+}
+
+// ===========================================================================
+// findmaxind
+// ===========================================================================
+
+/// Find the maximal linearly independent subset of the given series.
+///
+/// Builds a coefficient matrix with all series as columns, performs
+/// Gaussian elimination to find pivot columns, and returns the indices
+/// of the independent series.
+///
+/// # Arguments
+///
+/// - `series`: the series to analyze
+/// - `topshift`: extra rows for overdetermination
+///
+/// # Returns
+///
+/// Indices of the maximal linearly independent subset of `series`.
+pub fn findmaxind(
+    series: &[&FormalPowerSeries],
+    topshift: i64,
+) -> Vec<usize> {
+    let k = series.len();
+    if k == 0 {
+        return Vec::new();
+    }
+
+    let start_order = series
+        .iter()
+        .filter_map(|fps| fps.min_order())
+        .min()
+        .unwrap_or(0)
+        .min(0);
+
+    let max_trunc = series
+        .iter()
+        .map(|fps| fps.truncation_order())
+        .min()
+        .unwrap();
+
+    let available_rows = (max_trunc - start_order) as usize;
+    let desired_rows = k + topshift as usize;
+    let num_rows = desired_rows.min(available_rows);
+
+    if num_rows == 0 {
+        return Vec::new();
+    }
+
+    // Build coefficient matrix: each column is a series
+    let matrix = build_coefficient_matrix(&series.to_vec(), start_order, num_rows);
+
+    // Perform Gaussian elimination to find pivot columns
+    let m = matrix.len();
+    let n = matrix[0].len();
+
+    let mut a: Vec<Vec<QRat>> = matrix;
+    let mut pivot_cols: Vec<usize> = Vec::new();
+    let mut pivot_row = 0;
+
+    for col in 0..n {
+        if pivot_row >= m {
+            break;
+        }
+
+        // Find a row with nonzero entry in this column
+        let mut found = None;
+        for row in pivot_row..m {
+            if !a[row][col].is_zero() {
+                found = Some(row);
+                break;
+            }
+        }
+
+        let some_row = match found {
+            Some(r) => r,
+            None => continue,
+        };
+
+        if some_row != pivot_row {
+            a.swap(some_row, pivot_row);
+        }
+
+        // Scale pivot row
+        let pivot_val = a[pivot_row][col].clone();
+        for j in 0..n {
+            let val = a[pivot_row][j].clone();
+            a[pivot_row][j] = &val / &pivot_val;
+        }
+
+        // Eliminate other rows
+        for row in 0..m {
+            if row == pivot_row || a[row][col].is_zero() {
+                continue;
+            }
+            let factor = a[row][col].clone();
+            for j in 0..n {
+                let sub = &factor * &a[pivot_row][j];
+                let val = a[row][j].clone();
+                a[row][j] = val - sub;
+            }
+        }
+
+        pivot_cols.push(col);
+        pivot_row += 1;
+    }
+
+    // Pivot columns correspond to independent series
+    pivot_cols
+}
+
+// ===========================================================================
+// findprod
+// ===========================================================================
+
+/// Search for linear combinations of series that yield nice product forms.
+///
+/// For each integer linear combination (with coefficients bounded by `max_coeff`),
+/// computes the resulting series and uses [`prodmake`] to check if it has a
+/// "nice" infinite product form (integer exponents).
+///
+/// This is fundamentally a brute-force search bounded by `max_coeff` and
+/// `max_exp` parameters.
+///
+/// # Arguments
+///
+/// - `series`: the input series to combine
+/// - `max_coeff`: maximum absolute value of combination coefficients
+/// - `max_exp`: maximum exponent to check in prodmake
+///
+/// # Returns
+///
+/// A vector of coefficient vectors, where each inner vector gives the integer
+/// linear combination coefficients that produce a series with a nice product form.
+pub fn findprod(
+    series: &[&FormalPowerSeries],
+    max_coeff: i64,
+    max_exp: i64,
+) -> Vec<Vec<i64>> {
+    let k = series.len();
+    if k == 0 {
+        return Vec::new();
+    }
+
+    let mut results: Vec<Vec<i64>> = Vec::new();
+
+    // Generate all coefficient vectors with entries in [-max_coeff, max_coeff]
+    // Skip the all-zero vector
+    let mut coeffs = vec![-(max_coeff); k];
+
+    loop {
+        // Skip the all-zero vector
+        if coeffs.iter().any(|&c| c != 0) {
+            // Compute the linear combination
+            let combo = compute_linear_combination(series, &coeffs);
+
+            // Skip if the combination is zero
+            if !combo.is_zero() {
+                // Use prodmake to check if it has a nice product form
+                if has_nice_product_form(&combo, max_exp) {
+                    results.push(coeffs.clone());
+                }
+            }
+        }
+
+        // Increment coefficients (odometer-style)
+        if !increment_coeffs(&mut coeffs, max_coeff) {
+            break;
+        }
+    }
+
+    results
+}
+
+/// Compute a linear combination: sum_i coeffs[i] * series[i].
+fn compute_linear_combination(
+    series: &[&FormalPowerSeries],
+    coeffs: &[i64],
+) -> FormalPowerSeries {
+    assert_eq!(series.len(), coeffs.len());
+
+    let trunc = series.iter().map(|s| s.truncation_order()).min().unwrap();
+    let var = series[0].variable();
+    let mut result = FormalPowerSeries::zero(var, trunc);
+
+    for (s, &c) in series.iter().zip(coeffs.iter()) {
+        if c == 0 {
+            continue;
+        }
+        let scaled = arithmetic::scalar_mul(&QRat::from((c, 1i64)), s);
+        result = arithmetic::add(&result, &scaled);
+    }
+
+    result
+}
+
+/// Check if a series has a "nice" product form by running prodmake
+/// and verifying that all exponents are integers.
+fn has_nice_product_form(f: &FormalPowerSeries, max_exp: i64) -> bool {
+    let product = prodmake(f, max_exp);
+
+    if product.exponents.is_empty() {
+        return false;
+    }
+
+    // Check all exponents are integers (denominator = 1)
+    let one = rug::Integer::from(1);
+    product.exponents.values().all(|exp| exp.denom() == &one)
+}
+
+/// Increment coefficient vector in odometer fashion from [-max, ..., -max] to [max, ..., max].
+/// Returns false when overflow (all done).
+fn increment_coeffs(coeffs: &mut [i64], max_coeff: i64) -> bool {
+    for c in coeffs.iter_mut().rev() {
+        *c += 1;
+        if *c <= max_coeff {
+            return true;
+        }
+        *c = -max_coeff;
+    }
+    false
 }
