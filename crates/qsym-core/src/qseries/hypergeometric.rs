@@ -904,3 +904,249 @@ pub fn try_all_summations(
     }
     SummationResult::NotApplicable
 }
+
+// ---------------------------------------------------------------------------
+// Transformation formulas
+// ---------------------------------------------------------------------------
+
+/// Heine's first transformation (Gasper-Rahman 1.4.1).
+///
+/// ```text
+/// _2 phi_1 (a, b ; c ; q, z)
+///   = [(b;q)_inf * (az;q)_inf] / [(c;q)_inf * (z;q)_inf]
+///     * _2 phi_1 (c/b, z ; az ; q, b)
+/// ```
+///
+/// Returns `None` if the series is not a 2phi1.
+pub fn heine_transform_1(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> Option<TransformationResult> {
+    if series.r() != 2 || series.s() != 1 {
+        return None;
+    }
+
+    let a = &series.upper[0];
+    let b = &series.upper[1];
+    let c = &series.lower[0];
+    let z = &series.argument;
+
+    // Transformed parameters:
+    // new upper: [c/b, z]
+    // new lower: [az]
+    // new argument: b
+    let az = a.mul(z);
+    let c_over_b = c.div(b);
+
+    let transformed = HypergeometricSeries {
+        upper: vec![c_over_b, z.clone()],
+        lower: vec![az.clone()],
+        argument: b.clone(),
+    };
+
+    // Prefactor: (b;q)_inf * (az;q)_inf / [(c;q)_inf * (z;q)_inf]
+    let b_inf = aqprod(b, variable, PochhammerOrder::Infinite, truncation_order);
+    let az_inf = aqprod(&az, variable, PochhammerOrder::Infinite, truncation_order);
+    let c_inf = aqprod(c, variable, PochhammerOrder::Infinite, truncation_order);
+    let z_inf = aqprod(z, variable, PochhammerOrder::Infinite, truncation_order);
+
+    let numer = arithmetic::mul(&b_inf, &az_inf);
+    let denom = arithmetic::mul(&c_inf, &z_inf);
+    let prefactor = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+    Some(TransformationResult { prefactor, transformed })
+}
+
+/// Heine's second transformation (Gasper-Rahman 1.4.2).
+///
+/// ```text
+/// _2 phi_1 (a, b ; c ; q, z)
+///   = [(c/b;q)_inf * (bz;q)_inf] / [(c;q)_inf * (z;q)_inf]
+///     * _2 phi_1 (abz/c, b ; bz ; q, c/b)
+/// ```
+///
+/// Returns `None` if the series is not a 2phi1.
+pub fn heine_transform_2(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> Option<TransformationResult> {
+    if series.r() != 2 || series.s() != 1 {
+        return None;
+    }
+
+    let a = &series.upper[0];
+    let b = &series.upper[1];
+    let c = &series.lower[0];
+    let z = &series.argument;
+
+    // Transformed parameters:
+    // new upper: [abz/c, b]
+    // new lower: [bz]
+    // new argument: c/b
+    let bz = b.mul(z);
+    let abz_over_c = a.mul(b).mul(z).div(c);
+    let c_over_b = c.div(b);
+
+    let transformed = HypergeometricSeries {
+        upper: vec![abz_over_c, b.clone()],
+        lower: vec![bz.clone()],
+        argument: c_over_b.clone(),
+    };
+
+    // Prefactor: (c/b;q)_inf * (bz;q)_inf / [(c;q)_inf * (z;q)_inf]
+    let c_over_b_inf = aqprod(&c_over_b, variable, PochhammerOrder::Infinite, truncation_order);
+    let bz_inf = aqprod(&bz, variable, PochhammerOrder::Infinite, truncation_order);
+    let c_inf = aqprod(c, variable, PochhammerOrder::Infinite, truncation_order);
+    let z_inf = aqprod(z, variable, PochhammerOrder::Infinite, truncation_order);
+
+    let numer = arithmetic::mul(&c_over_b_inf, &bz_inf);
+    let denom = arithmetic::mul(&c_inf, &z_inf);
+    let prefactor = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+    Some(TransformationResult { prefactor, transformed })
+}
+
+/// Heine's third transformation (Gasper-Rahman 1.4.3).
+///
+/// ```text
+/// _2 phi_1 (a, b ; c ; q, z)
+///   = [(abz/c;q)_inf] / [(z;q)_inf]
+///     * _2 phi_1 (c/a, c/b ; c ; q, abz/c)
+/// ```
+///
+/// Returns `None` if the series is not a 2phi1.
+pub fn heine_transform_3(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> Option<TransformationResult> {
+    if series.r() != 2 || series.s() != 1 {
+        return None;
+    }
+
+    let a = &series.upper[0];
+    let b = &series.upper[1];
+    let c = &series.lower[0];
+    let z = &series.argument;
+
+    // Transformed parameters:
+    // new upper: [c/a, c/b]
+    // new lower: [c]
+    // new argument: abz/c
+    let c_over_a = c.div(a);
+    let c_over_b = c.div(b);
+    let abz_over_c = a.mul(b).mul(z).div(c);
+
+    let transformed = HypergeometricSeries {
+        upper: vec![c_over_a, c_over_b],
+        lower: vec![c.clone()],
+        argument: abz_over_c.clone(),
+    };
+
+    // Prefactor: (abz/c;q)_inf / (z;q)_inf
+    let abzc_inf = aqprod(&abz_over_c, variable, PochhammerOrder::Infinite, truncation_order);
+    let z_inf = aqprod(z, variable, PochhammerOrder::Infinite, truncation_order);
+    let prefactor = arithmetic::mul(&abzc_inf, &arithmetic::invert(&z_inf));
+
+    Some(TransformationResult { prefactor, transformed })
+}
+
+/// Sears' transformation for balanced terminating _4 phi_3 (Sears-Whipple).
+///
+/// ```text
+/// _4 phi_3 (q^{-n}, a, b, c ; d, e, f ; q, q) where def = abcq^{1-n}
+///   = [(e/a;q)_n * (f/a;q)_n] / [(e;q)_n * (f;q)_n]
+///     * _4 phi_3 (q^{-n}, a, d/b, d/c ; d, aq^{1-n}/e, aq^{1-n}/f ; q, q)
+/// ```
+///
+/// Conditions: r=4, s=3, z=q, one upper param is q^{-n}, balanced (def = abc*q^{1-n}).
+/// Returns `None` if conditions are not met.
+pub fn sears_transform(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> Option<TransformationResult> {
+    if series.r() != 4 || series.s() != 3 {
+        return None;
+    }
+
+    // Check z == q
+    if series.argument != QMonomial::q_power(1) {
+        return None;
+    }
+
+    // Find which upper param is q^{-n}
+    for term_idx in 0..4 {
+        let term_param = &series.upper[term_idx];
+        if let Some(n) = term_param.is_q_neg_power() {
+            if n == 0 {
+                // Trivial case: q^0 = 1, terminates immediately
+                let prefactor = FormalPowerSeries::one(variable, truncation_order);
+                let transformed = series.clone();
+                return Some(TransformationResult { prefactor, transformed });
+            }
+
+            // The other three upper params
+            let other_upper: Vec<usize> = (0..4).filter(|&i| i != term_idx).collect();
+
+            // Try each of the 3 non-q^{-n} params as "a" (distinguished param)
+            for &a_idx in &other_upper {
+                let a = &series.upper[a_idx];
+                // The remaining two are b, c
+                let bc_idxs: Vec<usize> = other_upper.iter().copied().filter(|&i| i != a_idx).collect();
+                let b = &series.upper[bc_idxs[0]];
+                let c = &series.upper[bc_idxs[1]];
+
+                // Try each of the 3 lower params as "d"
+                for d_idx in 0..3 {
+                    let d = &series.lower[d_idx];
+                    // The remaining two are e, f
+                    let ef_idxs: Vec<usize> = (0..3).filter(|&i| i != d_idx).collect();
+                    let e = &series.lower[ef_idxs[0]];
+                    let f = &series.lower[ef_idxs[1]];
+
+                    // Check balance: d*e*f == a*b*c*q^{1-n}
+                    let lhs_balance = d.mul(e).mul(f);
+                    let rhs_balance = a.mul(b).mul(c).mul(&QMonomial::q_power(1 - n));
+
+                    if lhs_balance != rhs_balance {
+                        continue;
+                    }
+
+                    // Match found! Compute transformed series and prefactor.
+                    let q_neg_n = QMonomial::q_power(-n);
+                    let d_over_b = d.div(b);
+                    let d_over_c = d.div(c);
+                    let aq_1_minus_n = a.mul(&QMonomial::q_power(1 - n));
+                    let aq_1_minus_n_over_e = aq_1_minus_n.div(e);
+                    let aq_1_minus_n_over_f = aq_1_minus_n.div(f);
+
+                    let transformed = HypergeometricSeries {
+                        upper: vec![q_neg_n, a.clone(), d_over_b, d_over_c],
+                        lower: vec![d.clone(), aq_1_minus_n_over_e, aq_1_minus_n_over_f],
+                        argument: QMonomial::q_power(1),
+                    };
+
+                    // Prefactor: (e/a;q)_n * (f/a;q)_n / [(e;q)_n * (f;q)_n]
+                    let e_over_a = e.div(a);
+                    let f_over_a = f.div(a);
+
+                    let ea_n = aqprod(&e_over_a, variable, PochhammerOrder::Finite(n), truncation_order);
+                    let fa_n = aqprod(&f_over_a, variable, PochhammerOrder::Finite(n), truncation_order);
+                    let e_n = aqprod(e, variable, PochhammerOrder::Finite(n), truncation_order);
+                    let f_n = aqprod(f, variable, PochhammerOrder::Finite(n), truncation_order);
+
+                    let numer = arithmetic::mul(&ea_n, &fa_n);
+                    let denom = arithmetic::mul(&e_n, &f_n);
+                    let prefactor = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+                    return Some(TransformationResult { prefactor, transformed });
+                }
+            }
+        }
+    }
+
+    None
+}
