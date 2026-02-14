@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 7 complete -- Identity Proving; ready for Phase 8
+**Current focus:** Phase 8 -- Mock Theta & Bailey Chains
 
 ## Current Position
 
-Phase: 7 of 8 (Identity Proving) -- COMPLETE
-Plan: 4 of 4 in current phase (4 complete: 07-01, 07-02, 07-03, 07-04)
-Status: Phase 7 complete; ready for Phase 8
-Last activity: 2026-02-14 -- Completed 07-04-PLAN.md
+Phase: 8 of 8 (Mock Theta & Bailey Chains) -- IN PROGRESS
+Plan: 3 of 4 in current phase (3 complete: 08-01, 08-02, 08-03)
+Status: Executing Phase 8; 08-03 (Bailey pairs) complete
+Last activity: 2026-02-14 -- Completed 08-03-PLAN.md
 
-Progress: [####################-] 99%
+Progress: [#####################] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28
+- Total plans completed: 31
 - Average duration: 7 min
-- Total execution time: 3.4 hours
+- Total execution time: 3.6 hours
 
 **By Phase:**
 
@@ -34,9 +34,10 @@ Progress: [####################-] 99%
 | 5 - Python API | 4/4 | 20 min | 5 min |
 | 6 - Hypergeometric Series | 4/4 | 35 min | 9 min |
 | 7 - Identity Proving | 4/4 | 25 min | 6 min |
+| 8 - Mock Theta & Bailey Chains | 3/4 | 24 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 10 min, 4 min, 11 min, 5 min, 5 min
+- Last 5 plans: 5 min, 5 min, 8 min, 8 min, 8 min
 - Trend: stable ~7 min/plan
 
 *Updated after each plan completion*
@@ -147,6 +148,11 @@ Recent decisions affecting current work:
 - [07-04]: Embedded default database via include_str! for Python search_identities (no file path dependency)
 - [07-04]: IdentitySide.factors uses BTreeMap<String, i64> for TOML key compatibility (delta parsed from string)
 - [07-04]: Case-insensitive search across tags, functions, and patterns for user convenience
+- [08-03]: Bailey pair alpha/beta terms return FPS (not QRat) since coefficients involve q-powers
+- [08-03]: Rogers-Ramanujan a=1 limit form: alpha_n = (1+q^n)*(-1)^n*q^{n(3n-1)/2} (removable singularity)
+- [08-03]: q-Binomial beta computed from defining relation (not closed form) for guaranteed correctness
+- [08-03]: Tabulated pair stores Vec<FPS> for lemma-derived terms
+- [08-03]: Bailey lemma params must avoid vanishing Pochhammer products (aq/b, aq/c not q^k for small k)
 
 ### Pending Todos
 
@@ -165,5 +171,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 07-04-PLAN.md (Identity database and Python API bindings)
-Resume file: .planning/phases/07-identity-proving/07-04-SUMMARY.md
+Stopped at: Completed 08-03-PLAN.md (Bailey pairs, lemma, chain, weak lemma)
+Resume file: .planning/phases/08-mock-theta-bailey-chains/08-03-SUMMARY.md
