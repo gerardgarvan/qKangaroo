@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 7 in progress -- Identity Proving
+**Current focus:** Phase 7 complete -- Identity Proving; ready for Phase 8
 
 ## Current Position
 
-Phase: 7 of 8 (Identity Proving)
-Plan: 3 of 4 in current phase (3 complete: 07-01, 07-02, 07-03)
-Status: Executing Phase 7
-Last activity: 2026-02-14 -- Completed 07-03-PLAN.md
+Phase: 7 of 8 (Identity Proving) -- COMPLETE
+Plan: 4 of 4 in current phase (4 complete: 07-01, 07-02, 07-03, 07-04)
+Status: Phase 7 complete; ready for Phase 8
+Last activity: 2026-02-14 -- Completed 07-04-PLAN.md
 
-Progress: [####################-] 98%
+Progress: [####################-] 99%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27
+- Total plans completed: 28
 - Average duration: 7 min
-- Total execution time: 3.3 hours
+- Total execution time: 3.4 hours
 
 **By Phase:**
 
@@ -33,11 +33,11 @@ Progress: [####################-] 98%
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
 | 5 - Python API | 4/4 | 20 min | 5 min |
 | 6 - Hypergeometric Series | 4/4 | 35 min | 9 min |
-| 7 - Identity Proving | 3/4 | 20 min | 7 min |
+| 7 - Identity Proving | 4/4 | 25 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 8 min, 10 min, 4 min, 11 min, 5 min
-- Trend: stable ~8 min/plan
+- Last 5 plans: 10 min, 4 min, 11 min, 5 min, 5 min
+- Trend: stable ~7 min/plan
 
 *Updated after each plan completion*
 
@@ -143,6 +143,10 @@ Recent decisions affecting current work:
 - [07-03]: Empty combined factors (LHS=RHS) short-circuit to Proved without q-expansion to avoid non-integer q-shift panics
 - [07-03]: Two-tier proving: structural valence formula for 2-term unit-coefficient identities, q-expansion fallback for all others
 - [07-03]: Sturm bound computed for general weight; weight-0 with non-negative cusp orders checks constant term + 5-term safety margin
+- [07-04]: toml 0.8 crate for TOML parsing (integrates with existing serde derive infrastructure)
+- [07-04]: Embedded default database via include_str! for Python search_identities (no file path dependency)
+- [07-04]: IdentitySide.factors uses BTreeMap<String, i64> for TOML key compatibility (delta parsed from string)
+- [07-04]: Case-insensitive search across tags, functions, and patterns for user convenience
 
 ### Pending Todos
 
@@ -152,7 +156,7 @@ None yet.
 
 - [Resolved]: Andrews' algorithm (prodmake) + all 4 post-processing functions (etamake, jacprodmake, mprodmake, qetamake) now complete
 - [Resolved]: Full QSER-19 relation discovery suite (12+ functions) now complete
-- [Research]: Identity proving (Phase 7) needs deep research on cusp theory and valence formula
+- [Resolved]: Identity proving (Phase 7) complete with cusps, orders, valence formula, TOML database, Python bindings
 - [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
 - [Build]: PyO3 builds require PYO3_PYTHON pointing to Python 3.14 and PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1. maturin develop needs virtualenv at crates/qsym-python/.venv
@@ -161,5 +165,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 07-03-PLAN.md (Proving engine via valence formula)
-Resume file: .planning/phases/07-identity-proving/07-03-SUMMARY.md
+Stopped at: Completed 07-04-PLAN.md (Identity database and Python API bindings)
+Resume file: .planning/phases/07-identity-proving/07-04-SUMMARY.md
