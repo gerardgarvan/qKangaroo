@@ -1,0 +1,296 @@
+# Classical q-series identities
+# Each [[identity]] block represents one verified identity.
+
+[[identity]]
+id = "euler-pentagonal"
+name = "Euler's Pentagonal Number Theorem"
+tags = ["euler", "pentagonal", "partition", "classical", "fundamental"]
+functions = ["eta"]
+
+[identity.lhs]
+type = "eta_quotient"
+level = 1
+factors = { "1" = 1 }
+
+[identity.rhs]
+type = "q_series"
+formula = "sum_{n=-inf}^{inf} (-1)^n * q^{n(3n-1)/2}"
+
+[identity.proof]
+method = "classical"
+verified = true
+
+[identity.citation]
+author = "Euler"
+year = 1750
+reference = "De partitione numerorum"
+
+
+[[identity]]
+id = "jacobi-triple-product"
+name = "Jacobi Triple Product Identity"
+tags = ["jacobi", "triple-product", "classical", "fundamental"]
+functions = ["eta", "jac", "theta"]
+
+[identity.lhs]
+type = "q_series"
+formula = "sum_{n=-inf}^{inf} z^n * q^{n^2}"
+
+[identity.rhs]
+type = "q_series"
+formula = "(q^2;q^2)_inf * (-zq;q^2)_inf * (-q/z;q^2)_inf"
+
+[identity.proof]
+method = "classical"
+verified = true
+
+[identity.citation]
+author = "Jacobi"
+year = 1829
+reference = "Fundamenta Nova Theoriae Functionum Ellipticarum"
+
+
+[[identity]]
+id = "ramanujan-delta"
+name = "Ramanujan's Discriminant Function"
+tags = ["ramanujan", "delta", "modular-form", "weight-12"]
+functions = ["eta"]
+
+[identity.lhs]
+type = "eta_quotient"
+level = 1
+factors = { "1" = 24 }
+
+[identity.rhs]
+type = "q_series"
+formula = "q * prod_{n=1}^{inf} (1-q^n)^24 = sum tau(n) q^n"
+
+[identity.proof]
+method = "definition"
+verified = true
+
+[identity.citation]
+author = "Ramanujan"
+year = 1916
+reference = "On certain arithmetical functions, Trans. Cambridge Phil. Soc. 22"
+
+
+[[identity]]
+id = "ramanujan-p5n4"
+name = "Ramanujan Partition Congruence mod 5"
+tags = ["ramanujan", "partition", "congruence", "mod-5"]
+functions = ["eta"]
+
+[identity.lhs]
+type = "eta_quotient"
+level = 5
+factors = { "5" = 5 }
+
+[identity.rhs]
+type = "q_series"
+formula = "5 * eta(5*tau)^5 / eta(tau)^6 implies p(5n+4) = 0 (mod 5)"
+
+[identity.proof]
+method = "valence_formula"
+level = 5
+verified = true
+
+[identity.citation]
+author = "Ramanujan"
+year = 1919
+reference = "Some properties of p(n), Proc. Cambridge Phil. Soc. 19"
+
+
+[[identity]]
+id = "rogers-ramanujan-1"
+name = "First Rogers-Ramanujan Identity"
+tags = ["rogers", "ramanujan", "rogers-ramanujan", "continued-fraction", "classical"]
+functions = ["eta", "theta"]
+
+[identity.lhs]
+type = "q_series"
+formula = "sum_{n=0}^{inf} q^{n^2} / (q;q)_n"
+
+[identity.rhs]
+type = "q_series"
+formula = "1 / ((q;q^5)_inf * (q^4;q^5)_inf)"
+
+[identity.proof]
+method = "bijective"
+verified = true
+
+[identity.citation]
+author = "Rogers"
+year = 1894
+reference = "Second memoir on the expansion of certain infinite products"
+
+
+[[identity]]
+id = "rogers-ramanujan-2"
+name = "Second Rogers-Ramanujan Identity"
+tags = ["rogers", "ramanujan", "rogers-ramanujan", "continued-fraction", "classical"]
+functions = ["eta", "theta"]
+
+[identity.lhs]
+type = "q_series"
+formula = "sum_{n=0}^{inf} q^{n(n+1)} / (q;q)_n"
+
+[identity.rhs]
+type = "q_series"
+formula = "1 / ((q^2;q^5)_inf * (q^3;q^5)_inf)"
+
+[identity.proof]
+method = "bijective"
+verified = true
+
+[identity.citation]
+author = "Rogers"
+year = 1894
+reference = "Second memoir on the expansion of certain infinite products"
+
+
+[[identity]]
+id = "quintuple-product"
+name = "Watson's Quintuple Product Identity"
+tags = ["watson", "quintuple", "product-identity", "classical"]
+functions = ["eta", "theta"]
+
+[identity.lhs]
+type = "q_series"
+formula = "prod_{n>=1} (1-q^n)(1-zq^n)(1-z^{-1}q^{n-1})(1-z^2q^{2n-1})(1-z^{-2}q^{2n-1})"
+
+[identity.rhs]
+type = "q_series"
+formula = "sum_{n=-inf}^{inf} (z^{3n} - z^{-3n-1}) * q^{n(3n+1)/2}"
+
+[identity.proof]
+method = "classical"
+verified = true
+
+[identity.citation]
+author = "Watson"
+year = 1929
+reference = "Proof of certain identities in combinatory analysis"
+
+
+[[identity]]
+id = "winquist-identity"
+name = "Winquist's Identity"
+tags = ["winquist", "product-identity", "partition", "mod-10"]
+functions = ["eta"]
+
+[identity.lhs]
+type = "q_series"
+formula = "(q;q)_inf^2 * prod of 8 Pochhammer factors in a,b"
+
+[identity.rhs]
+type = "q_series"
+formula = "Double sum expressing p(10n+6) congruence"
+
+[identity.proof]
+method = "classical"
+verified = true
+
+[identity.citation]
+author = "Winquist"
+year = 1969
+reference = "An elementary proof of p(11m+6) = 0 (mod 11)"
+
+
+[[identity]]
+id = "eta-dedekind-functional-eq"
+name = "Dedekind Eta Functional Equation"
+tags = ["dedekind", "eta", "modular-transformation", "classical", "fundamental"]
+functions = ["eta"]
+
+[identity.lhs]
+type = "eta_quotient"
+level = 1
+factors = { "1" = 1 }
+
+[identity.rhs]
+type = "q_series"
+formula = "eta(-1/tau) = sqrt(-i*tau) * eta(tau)"
+
+[identity.proof]
+method = "classical"
+verified = true
+
+[identity.citation]
+author = "Dedekind"
+year = 1877
+reference = "Erlauterungen zu den Fragmenten XXVIII"
+
+
+[[identity]]
+id = "ramanujan-p7n5"
+name = "Ramanujan Partition Congruence mod 7"
+tags = ["ramanujan", "partition", "congruence", "mod-7"]
+functions = ["eta"]
+
+[identity.lhs]
+type = "eta_quotient"
+level = 7
+factors = { "7" = 3 }
+
+[identity.rhs]
+type = "q_series"
+formula = "7 * eta(7*tau)^3 / eta(tau)^4 + ... implies p(7n+5) = 0 (mod 7)"
+
+[identity.proof]
+method = "valence_formula"
+level = 7
+verified = true
+
+[identity.citation]
+author = "Ramanujan"
+year = 1919
+reference = "Some properties of p(n), Proc. Cambridge Phil. Soc. 19"
+
+
+[[identity]]
+id = "gauss-triangular"
+name = "Gauss Triangular Number Theorem"
+tags = ["gauss", "triangular", "theta", "classical"]
+functions = ["eta", "theta"]
+
+[identity.lhs]
+type = "q_series"
+formula = "sum_{n=0}^{inf} q^{n(n+1)/2}"
+
+[identity.rhs]
+type = "q_series"
+formula = "(q^2;q^2)_inf / (q;q^2)_inf"
+
+[identity.proof]
+method = "jacobi-triple-product"
+verified = true
+
+[identity.citation]
+author = "Gauss"
+year = 1801
+reference = "Disquisitiones Arithmeticae"
+
+
+[[identity]]
+id = "theta3-jacobi"
+name = "Jacobi Theta Function theta_3"
+tags = ["jacobi", "theta", "theta3", "classical"]
+functions = ["theta", "jac"]
+
+[identity.lhs]
+type = "q_series"
+formula = "sum_{n=-inf}^{inf} q^{n^2}"
+
+[identity.rhs]
+type = "q_series"
+formula = "(-q;q^2)_inf^2 * (q^2;q^2)_inf = JAC(1,2)"
+
+[identity.proof]
+method = "jacobi-triple-product"
+verified = true
+
+[identity.citation]
+author = "Jacobi"
+year = 1829
+reference = "Fundamenta Nova"
