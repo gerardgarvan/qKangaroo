@@ -1,357 +1,424 @@
 # Stack Research
 
-**Domain:** Symbolic computation engine for q-series (Rust core + Python API)
-**Researched:** 2026-02-13
-**Confidence:** MEDIUM-HIGH (core libraries well-verified; some integration patterns rely on training data)
-
----
+**Domain:** PyPI packaging, documentation, CI/CD, and UX for Rust+PyO3 q-series computation library
+**Researched:** 2026-02-14
+**Confidence:** HIGH
 
 ## Recommended Stack
 
-### Core Language & Toolchain
+### Core Technologies
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Rust (stable) | 1.85+ | Core computation engine | Required by `rug` 1.28; memory safety without GC is critical for long-running symbolic computations; zero-cost abstractions for expression tree traversal |
-| Python | 3.11-3.14 | User-facing API, Jupyter integration | Widest scientific computing ecosystem; python-flint 0.8.0 supports 3.11-3.14; free-threaded Python (3.13t+) enables true parallelism with PyO3 0.28 |
+| **maturin** | 1.12.0 | Build & publish PyO3 wheels to PyPI | Industry standard for PyO3 projects. Minimal config, automatic wheel naming, built-in cross-compilation support. Updated Feb 14, 2026 with Python 3.14 support. |
+| **PyO3** | 0.28.1 | Rust-Python bindings | Already in use (0.23). v0.28.1 adds PEP 489 multi-phase init, free-threaded Python support, MSRV 1.83. Stable ABI3 for forward compatibility. |
+| **mdBook** | 0.5.2 | Static documentation site | Rust-native documentation generator. Standard for Rust ecosystem. Fast, lightweight, sensible defaults. Preferred over MkDocs for Rust projects. |
+| **pytest** | 8.x | Python testing framework | Accepted standard for Python testing in 2026, replacing unittest. Easy syntax, strong features, excellent CI/CD integration. |
+| **GitHub Actions** | N/A (SaaS) | CI/CD pipeline | Native GitHub integration. Matrix builds for Rust+Python+multi-platform. Free for public repos. |
 
-### Arbitrary Precision Arithmetic (PRIMARY -- Rust side)
+### Supporting Libraries
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `rug` | 1.28.1 | Primary BigInt/BigRational/BigFloat via GMP/MPFR/MPC bindings | Fastest arbitrary precision in Rust. Wraps GMP 6.3.0, MPFR 4.2.2, MPC 1.3.1. Benchmarks show rug outperforms malachite and num-bigint on most operations (especially multiplication, GCD, division). For a CAS replacing Maple, GMP-level performance is non-negotiable. Requires Rust 1.85+. **Confidence: HIGH** |
-| `gmp-mpfr-sys` | ~1.6 | Low-level FFI to GMP/MPFR/MPC | Underlying dependency of `rug`. Provides raw C bindings when you need direct GMP access for performance-critical mock theta computations. Ships GMP 6.3.0 source and can compile from source or use system libs. Supports MSVC on Windows. **Confidence: HIGH** |
-| `num-bigint` | 0.4.6 | Fallback pure-Rust BigInt for no-GMP environments | Keep as optional feature flag for users who cannot install GMP (e.g., WASM targets). 2-10x slower than rug for large numbers but zero C dependencies. Requires rustc 1.60+. **Confidence: HIGH** |
-| `num-rational` | 0.4.x | Pure-Rust BigRational (pairs with num-bigint) | Same fallback rationale. Use `Ratio<BigInt>` type. **Confidence: HIGH** |
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| **pytest-cov** | 7.0.0+ | Coverage reporting | Always. Generates HTML/XML/terminal reports. Supports branch coverage, xdist parallelization. Integrate into CI for automated thresholds. |
+| **maturin-action** | v3.x | GitHub Action for maturin | Always for CI. Handles cross-compilation, automatic platform detection, PyPI upload with trusted publishing. |
+| **peaceiris/actions-mdbook** | v2.x | GitHub Action for mdBook | Always for docs CI. Installs mdBook on Linux/macOS/Windows runners. |
+| **peaceiris/actions-gh-pages** | v4.x | Deploy to GitHub Pages | Always for docs deployment. Handles static file upload, CNAME, custom domains. |
+| **mdbook-mermaid** | 0.14.0+ | Diagram support for mdBook | Optional. Adds mermaid.js diagrams to documentation. Useful for architecture diagrams. |
+| **mdbook-katex** | 0.10.0+ | Math rendering for mdBook | Optional but recommended. Renders LaTeX math in docs. Critical for q-series formulas. |
 
-**Architecture decision:** Use `rug` as the default arithmetic backend behind a trait abstraction (`QNumber` trait). Implement for both `rug::Integer`/`rug::Rational` and `num::BigInt`/`num::BigRational`. Feature-flag the GMP backend (`default = ["gmp"]`). This lets users without C toolchains still build the library, while production use gets GMP speed.
+### Development Tools
 
-### Expression Representation (Rust side)
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| **cargo audit** | Rust dependency security scanning | Run in CI. Checks against RustSec Advisory Database. 2026 best practice: scan deployed binaries, not just Cargo.lock. |
+| **cargo deny** | License/dependency policy enforcement | Optional but recommended. Gates duplicate dependencies, enforces license policy, blocks unwanted sources. |
+| **uv** | Fast Python package installer/publisher | Maturin docs recommend `uv publish` for PyPI upload (faster than twine). |
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `hashconsing` | latest (0.5.x) | Hash-consed expression DAG with structural sharing | Implements Filiatre-Conchon hash consing. Guarantees structural identity via UID comparison (O(1) equality). Based on `Arc` with weak-reference deduplication tables. Critical for q-series where subexpression sharing (e.g., `(q; q)_inf` appearing in many terms) dominates. Recent arxiv paper (2509.20534) confirms 3-100x downstream speedups from hash consing in symbolic computation. **Confidence: MEDIUM** (library is maintained but low download count; may need custom fork or from-scratch implementation using same principles) |
-| `bumpalo` | 3.19.0 | Arena allocator for temporary expression trees during rewriting | Phase-oriented allocation for rewrite passes. Allocate all intermediate expressions in a bump arena, extract result, then drop entire arena. Avoids per-node allocation overhead during saturation. Well-maintained, 130M+ downloads. **Confidence: HIGH** |
-| Custom `ExprPool` | N/A | Index-based expression storage (arena + hash table) | Build a custom expression pool where nodes are stored in a `Vec<ExprNode>` and referenced by `ExprId` (a `u32` index). Combine with hash-consing: before inserting a new node, check a `HashMap<ExprNode, ExprId>` for structural duplicates. This is the pattern used by egg internally and by Symbolica. Avoids Rust borrow-checker pain with recursive tree structures. **Confidence: HIGH** (well-established pattern in Rust CAS implementations) |
+## Installation
 
-### Rewrite / Simplification Engine (Rust side)
+```bash
+# Maturin (for local development)
+pip install maturin==1.12.0
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `egg` | 0.11.0 | E-graph equality saturation for expression simplification | The standard Rust library for equality saturation. `define_language!` macro for custom expression types, `rewrite!` macro for pattern-based rules, `Runner` for saturation, `Extractor` with custom cost functions. 30x faster than traditional approaches. Well-documented with tutorials. Used by Herbie (numerical accuracy), Cranelift (compiler), and research projects. **Confidence: HIGH** |
-| `egglog` | 2.0.0 | Next-gen equality saturation with Datalog integration | Successor to `egg`. Faster and more general. Adds Datalog-style rules, incremental execution, lattice-based reasoning. Better for complex multi-step rewriting where you need relational queries over the e-graph (e.g., "find all eta-quotients equivalent to this q-series modulo some modular relation"). However, API is less stable and documentation is thinner than `egg`. **Confidence: MEDIUM** |
+# Python dev dependencies (pyproject.toml)
+pip install pytest pytest-cov
 
-**Architecture decision:** Start with `egg` 0.11.0 for the rewrite engine. It is battle-tested, well-documented, and the `define_language!` + `rewrite!` macros make it straightforward to encode q-series identities as rewrite rules. Plan migration path to `egglog` once the core identity set is established -- egglog's Datalog integration will be valuable for modular form relations that are naturally expressed as relational queries. Wrap the e-graph behind a `Simplifier` trait so the backend can be swapped.
+# mdBook (for local docs builds)
+cargo install mdbook --version 0.5.2
 
-### Python Bindings
+# mdBook plugins (optional)
+cargo install mdbook-mermaid mdbook-katex
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `pyo3` | 0.28.0 | Rust-to-Python FFI bindings | The only serious option for Rust/Python interop. Supports CPython 3.7+, PyPy 7.3+, GraalPy 24.0+. v0.28 adds PEP 489 multi-phase module init, free-threaded Python support (opt-out), `#[pyclass]` improvements. Requires Rust 1.83+. **Confidence: HIGH** |
-| `maturin` | 1.11.5 | Build tool for PyO3 packages | Builds and publishes Rust+PyO3 crates as Python wheels. Handles cross-platform wheel building, sdist generation, PyPI upload. `maturin develop` for rapid iteration. Use with `uv` for fast venv management. **Confidence: HIGH** |
-
-### Python-Side Libraries
-
-| Library | Version | Purpose | Why Recommended |
-|---------|---------|---------|-----------------|
-| `sympy` | 1.14.x | Symbolic math interop, LaTeX printing, series expansion verification | SymPy is the Python symbolic math standard. Use for: (1) `sympy.printing.latex()` to generate LaTeX from expressions, (2) verification/testing against SymPy's own simplification, (3) interop with existing mathematical software. Do NOT use as computation backend -- too slow for production q-series. **Confidence: HIGH** |
-| `python-flint` | 0.8.0 | Fast polynomial/number-theory operations from Python | Wraps FLINT 3.3.1 + MPFR 4.2.2. Provides `fmpz`, `fmpq`, `fmpz_poly`, `arb`, `acb` types from Python. Use for: (1) cross-validation of Rust results, (2) users who want FLINT-speed polynomial ops without going through our Rust core, (3) potential integration as alternative backend for specific operations. Ships binary wheels for CPython 3.11-3.14. **Confidence: HIGH** |
-| `IPython.display` | (bundled) | LaTeX rendering in Jupyter | Built into IPython/Jupyter. `display(Math(latex_string))` renders via MathJax. Zero additional dependencies for Jupyter users. Our Python objects should implement `_repr_latex_()` for automatic rendering. **Confidence: HIGH** |
-| `numpy` | 2.x | Numerical evaluation of formal power series | Standard numerical array library. Use for vectorized coefficient extraction, numerical evaluation of truncated series. Interop with PyO3 via `numpy` crate or `pyo3-numpy`. **Confidence: HIGH** |
-
-### Development & Testing Tools
-
-| Tool | Version | Purpose | Notes |
-|------|---------|---------|-------|
-| `cargo-nextest` | latest | Fast Rust test runner | Parallel test execution, better output than `cargo test` |
-| `criterion` | 0.5.x | Rust benchmarking | Statistically rigorous benchmarks for arithmetic and rewriting performance |
-| `proptest` / `quickcheck` | latest | Property-based testing | Critical for CAS correctness: generate random expressions, verify identities hold |
-| `pytest` | 8.x | Python test runner | For Python API tests |
-| `hypothesis` | latest | Python property-based testing | Generate random q-series expressions, verify Rust/Python agreement |
-| `rayon` | 1.11.0 | Data parallelism in Rust | `par_iter()` for parallel rewrite rule application, parallel coefficient computation |
-| `serde` + `serde_json` | 1.0.x | Serialization of expressions | Serialize expression trees for caching, debugging, IPC. All expression types should derive `Serialize`/`Deserialize`. |
-| `tracing` | 0.1.x | Structured logging | Instrument rewrite engine, track simplification steps, profile performance |
-
-### FLINT Integration (Rust side -- for polynomial arithmetic)
-
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `flint3-sys` | 3.3.1 | Raw FFI bindings to FLINT C library | Provides access to FLINT's world-class polynomial arithmetic (`fmpz_poly`, `fmpq_poly`), modular arithmetic (`nmod_poly`), and number theory functions. Since FLINT 3 merged Arb, also gives access to ball arithmetic (`arb`, `acb`) for rigorous error-bounded computation. Compiles FLINT from source (best performance). **Confidence: MEDIUM** (crate is maintained but thin Rust wrapper; you will write safe Rust wrappers on top) |
-
-**Architecture decision:** Do NOT try to reimplement polynomial arithmetic from scratch. FLINT is the gold standard for number-theory polynomials and is used by SageMath, SymPy (as optional backend), and Mathematica. Use `flint3-sys` for raw bindings and build safe Rust wrappers for the specific FLINT functions needed: `fmpz_poly` (integer polynomials), `fmpq_poly` (rational polynomials), `arb_poly` (ball arithmetic polynomials for rigorous power series truncation).
-
----
+# Rust security tools (optional)
+cargo install cargo-audit cargo-deny
+```
 
 ## Alternatives Considered
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Arbitrary precision | `rug` (GMP bindings) | `malachite` 0.9.1 (pure Rust) | Malachite is impressive pure Rust but 1.5-3x slower than rug/GMP for most operations due to lack of inline assembly. For a CAS replacing Maple, we need GMP-level speed. Malachite also LGPL-licensed which may complicate downstream use. |
-| Arbitrary precision | `rug` (GMP bindings) | `dashu` 0.4.x (pure Rust, no_std) | Similar to malachite: pure Rust is nice but slower. `no_std` support irrelevant for our use case. Less mature than malachite. |
-| Arbitrary precision | `rug` (GMP bindings) | `num-bigint` 0.4.6 (pure Rust) | Significantly slower (5-10x for large numbers). Only use as fallback for no-GMP environments. Algorithms are simpler (e.g., O(n^1.5) string conversion vs malachite's O(n log^2 n)). |
-| E-graphs | `egg` 0.11.0 | `egglog` 2.0.0 | egglog is the future but API less stable, documentation thinner. Start with egg, migrate later. |
-| E-graphs | `egg` | Custom rewrite engine | Rolling your own is tempting but equality saturation is hard to get right. egg has years of research behind it. |
-| Expression trees | Custom `ExprPool` | `hashconsing` crate alone | hashconsing provides the interning but not the full expression pool. Combine hashconsing principles with index-based arena for best of both worlds. |
-| Python bindings | `pyo3` 0.28 | `cpython` crate | cpython crate is effectively abandoned. PyO3 is the only maintained option. |
-| Python bindings | `pyo3` 0.28 | `cffi` via maturin | cffi is C-level FFI, loses all the ergonomic #[pyclass]/#[pymethods] benefits. Only use if targeting non-CPython interpreters that lack PyO3 support. |
-| Build tool | `maturin` | `setuptools-rust` | setuptools-rust works but maturin is simpler, faster, and purpose-built for PyO3. |
-| CAS foundation | Build custom engine | Use Symbolica as foundation | Symbolica is source-available, NOT open source. Commercial license required for academic/professional use ($6,600/year institutional). Cannot fork or redistribute. Defeats the "open source replacement for Garvan's Maple packages" goal. |
-| CAS foundation | Build custom engine | Wrap SymPy from Rust | SymPy is pure Python and orders of magnitude too slow for production q-series computation. Good for verification, not for the engine. |
-| CAS foundation | Build custom engine | Use SageMath | SageMath is monolithic, GPL-licensed, and hard to embed. Good as external verification tool but wrong architecture for a library. |
-| Polynomial arithmetic | `flint3-sys` (FLINT bindings) | Reimplement in pure Rust | FLINT has 20+ years of optimized polynomial algorithms. Reimplementing even basic polynomial multiplication competitively would take months. Use FLINT via FFI. |
-| Polynomial arithmetic | `flint3-sys` | `rug` polynomial support | GMP does not have polynomial types. MPFR is floating-point only. FLINT is purpose-built for exact polynomial/number-theory computation. |
-
----
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| **maturin** | setuptools-rust | Never for new PyO3 projects. Maturin has better defaults, less config, native PyO3 support. |
+| **mdBook** | MkDocs (Python) | If team is Python-only and needs extensive customization. MkDocs has larger plugin ecosystem but requires Python dependency. For Rust projects, mdBook is the no-brainer choice. |
+| **mdBook** | Sphinx (Python) | If you need API doc generation from docstrings. Sphinx excels at reference docs. mdBook is better for narrative documentation. |
+| **GitHub Actions** | Travis CI / CircleCI | If you need specialized hardware (GPUs, ARM servers). GitHub Actions covers 95% of use cases and has better GitHub integration. |
+| **pytest** | unittest | Never for new projects. pytest is the 2026 standard. unittest is legacy. |
+| **pytest-cov** | coverage.py (direct) | Never when using pytest. pytest-cov provides better integration, automatic .coverage handling, default reporting. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Symbolica as foundation | Source-available, not open source. Commercial license required for any non-hobbyist use. Cannot redistribute. Fundamentally incompatible with open-source project goals. | Build custom engine using egg + rug + flint3-sys. Study Symbolica's architecture (it's readable on GitHub) for design inspiration only. |
-| SymPy as computation engine | 100-1000x slower than FLINT for polynomial operations. Python overhead makes it unsuitable as a computation backend. | Use SymPy for LaTeX printing, verification, and as user-facing interop layer only. Core computation in Rust. |
-| `num-bigint` as primary arithmetic | 5-10x slower than GMP for large integers. O(n^2) algorithms for operations that GMP does in O(n log n). | Use `rug` (GMP) as primary, `num-bigint` as optional pure-Rust fallback behind feature flag. |
-| `cpython` crate | Effectively abandoned. Last meaningful update years ago. | `pyo3` 0.28.0 -- actively maintained, large community. |
-| Rolling custom e-graph implementation | Equality saturation is a research-grade algorithm. Getting congruence closure, rebuilding, and extraction right is months of work. | `egg` 0.11.0 -- battle-tested, used in production compilers and research. |
-| Maple/proprietary CAS as dependency | Defeats the entire purpose of the project (replacing proprietary Maple dependency). | Build equivalent functionality in Rust, verify against Maple results during testing. |
-| `f64` for any exact computation | IEEE 754 floating-point cannot represent exact rational coefficients. Silent precision loss will produce wrong mathematical results. | `rug::Rational` for exact arithmetic. Only use floats for numerical evaluation (clearly labeled approximate). |
-
----
+| **setuptools-rust** | Opinionated but manual config. Maturin is PyO3-optimized. | **maturin** — designed for PyO3, minimal config |
+| **twine** (for upload) | Slower than modern tools. | **uv publish** — recommended by maturin docs |
+| **Gitbook** | Deprecated/commercial pivot. | **mdBook** — active, open-source, Rust-native |
+| **unittest** | Legacy Python testing. Verbose syntax. | **pytest** — modern standard, better DX |
+| **Manual wheel builds** | Error-prone, no auditwheel/delocate automation. | **maturin + maturin-action** — handles platform tags, manylinux compliance |
 
 ## Stack Patterns by Variant
 
-**If targeting maximum performance (production research use):**
-- Enable `gmp` feature (default): uses `rug` + `gmp-mpfr-sys` + `flint3-sys`
-- Requires C compiler and GMP/MPFR/FLINT installed (or compiled from source by build scripts)
-- This is the expected configuration for researchers replacing Garvan's Maple packages
+**For PyPI wheel building (Linux):**
+- Use `maturin-action` with `manylinux: auto` or explicit version (e.g., `2014`, `2_28`)
+- Set `--compatibility pypi` flag to enforce PyPI pre-upload checks
+- Use Docker containers for manylinux compliance (automatic via maturin-action)
+- Install GMP: `apt-get update && apt-get install -y libgmp-dev` in workflow
 
-**If targeting easy installation / WASM / no C toolchain:**
-- Disable `gmp` feature: falls back to `num-bigint` + `num-rational`
-- No FLINT integration (polynomial operations will be slower, pure-Rust fallback)
-- Suitable for teaching, lightweight exploration, web demos
+**For PyPI wheel building (Windows):**
+- Use `maturin-action` on `windows-latest` runner
+- Install GMP via MSYS2: `msys2/setup-msys2@v2` with `mingw-w64-ucrt-x86_64-gmp` package
+- Target: `x86_64-pc-windows-gnu` (matches existing build)
+- UCRT64 is 2026 MSYS2 default (replaces MINGW64)
 
-**If targeting Jupyter notebook users:**
-- Python package via `maturin` + `pyo3`
-- `_repr_latex_()` on all Python expression objects for automatic MathJax rendering
-- Integration with SymPy's pretty-printing for familiar output
+**For PyPI wheel building (macOS — deferred):**
+- Use `maturin-action` on `macos-latest` runner
+- GMP: `brew install gmp`
+- Target: `x86_64-apple-darwin` (Intel) and `aarch64-apple-darwin` (Apple Silicon)
+- Deferred until Phase 9+
 
-**If targeting SageMath integration:**
-- Expose as standard Python package installable in SageMath's Python environment
-- Provide conversion functions between our types and SageMath's power series / modular form types
-- This is a Phase 3+ concern, not MVP
+**For documentation:**
+- Use mdBook with mdbook-katex (critical for LaTeX math)
+- Optional: mdbook-mermaid for architecture diagrams
+- Deploy to GitHub Pages via peaceiris actions
+- Build in CI, deploy on push to main
 
----
+**For CI matrix:**
+- Rust: `stable` (MSRV 1.83 from PyO3 0.28)
+- Python: `3.9, 3.10, 3.11, 3.12, 3.13, 3.14` (ABI3 means single wheel supports all)
+- Platforms: `ubuntu-latest` (Linux), `windows-latest` (Windows)
+- Don't test all Python versions on all platforms (use ABI3 wheel + single test per platform)
 
-## Version Compatibility Matrix
+**For Jupyter integration:**
+- Implement `_repr_html_()` and `_repr_latex_()` methods on QExpr/QSeries
+- Return strings (HTML or LaTeX markup)
+- No return value (None) is treated as method doesn't exist
+- Use existing LaTeX rendering from Phase 1-8
 
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| `rug` 1.28.1 | `gmp-mpfr-sys` ~1.6, Rust 1.85+ | rug pins gmp-mpfr-sys minor version |
-| `gmp-mpfr-sys` 1.6.x | GMP 6.3.0, MPFR 4.2.2, MPC 1.3.1 | Compiles from bundled source by default |
-| `flint3-sys` 3.3.1 | FLINT 3.3.x, GMP (system or compiled) | Always compiles FLINT from source; can share GMP with gmp-mpfr-sys via system libs |
-| `pyo3` 0.28.0 | Rust 1.83+, Python 3.7+, PyPy 7.3+ | MSRV bumped to 1.83 in v0.28 |
-| `maturin` 1.11.5 | `pyo3` 0.28.x, Python 3.8+ | Handles wheel building for all platforms |
-| `egg` 0.11.0 | Rust stable (1.70+ estimated) | No known incompatibilities |
-| `python-flint` 0.8.0 | FLINT 3.0-3.3, CPython 3.11-3.14 | Binary wheels available; no build from source needed on Python side |
-| `sympy` 1.14.x | Python 3.9+ | Pure Python, no compatibility issues |
-| `numpy` 2.x | Python 3.10+ | NumPy 2.0 has breaking C API changes; use `pyo3-numpy` compatible version |
+**For error handling (Python exceptions from Rust):**
+- Use `PyResult<T>` (alias for `Result<T, PyErr>`)
+- Implement `From<CustomError> for PyErr` for custom Rust errors
+- PyO3 auto-converts via `?` operator
+- Map to appropriate Python exception types (ValueError, TypeError, RuntimeError)
+- Use `pyo3::exceptions` module for standard exceptions
 
-**Minimum Rust version for full stack: 1.85.0** (driven by `rug` 1.28.1)
-**Minimum Python version for full stack: 3.11** (driven by `python-flint` 0.8.0 wheel availability)
+## Version Compatibility
 
----
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| **PyO3 0.28.1** | maturin 1.12.0+ | maturin 1.12.0 updated max Python to 3.14 (matches PyO3 0.28) |
+| **PyO3 0.28.1** | Rust 1.83+ | MSRV bumped from 1.63 (PyO3 0.23) to 1.83 (PyO3 0.28) |
+| **PyO3 ABI3** | Python 3.9-3.14 | Use `abi3-py09` feature for minimum Python 3.9 support |
+| **maturin 1.12.0** | Python 3.7+ | Tool requirement (not extension minimum) |
+| **pytest 8.x** | Python 3.8+ | Drop Python 3.7 support |
+| **mdBook 0.5.2** | Rust 1.74+ | MSRV for mdBook itself |
+| **GitHub Actions ubuntu-latest** | Currently Ubuntu 22.04 LTS | libgmp-dev available via apt |
+| **GitHub Actions windows-latest** | Currently Windows Server 2022 | MSYS2 provides GMP via mingw-w64 packages |
 
-## Installation
+## Configuration Details
 
-### Rust Dependencies (Cargo.toml)
-
-```toml
-[dependencies]
-# Arbitrary precision arithmetic (GMP backend -- default)
-rug = { version = "1.28", optional = true, features = ["rational", "float", "serde"] }
-gmp-mpfr-sys = { version = "~1.6", optional = true }
-
-# Arbitrary precision arithmetic (pure Rust fallback)
-num-bigint = { version = "0.4", optional = true }
-num-rational = { version = "0.4", optional = true }
-num-traits = "0.2"
-
-# Expression rewriting (e-graphs)
-egg = "0.11"
-
-# Hash consing for expression deduplication
-hashconsing = "0.5"
-
-# FLINT bindings for polynomial arithmetic
-flint3-sys = { version = "3.3", optional = true }
-
-# Python bindings
-pyo3 = { version = "0.28", features = ["extension-module"], optional = true }
-
-# Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-
-# Parallelism
-rayon = "1.11"
-
-# Logging / tracing
-tracing = "0.1"
-
-# Arena allocation
-bumpalo = { version = "3.19", features = ["collections"] }
-
-[features]
-default = ["gmp", "flint"]
-gmp = ["dep:rug", "dep:gmp-mpfr-sys"]
-flint = ["dep:flint3-sys"]
-pure-rust = ["dep:num-bigint", "dep:num-rational"]
-python = ["dep:pyo3"]
-
-[dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-proptest = "1.0"
-```
-
-### Python Dependencies (pyproject.toml)
+### pyproject.toml (maturin)
 
 ```toml
 [build-system]
-requires = ["maturin>=1.11,<2.0"]
+requires = ["maturin>=1.12,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "qsymbolic"
-requires-python = ">=3.11"
-dependencies = [
-    "sympy>=1.13",
-    "numpy>=1.26",
+name = "q-kangaroo"
+# Metadata merged from Cargo.toml, pyproject.toml takes precedence
+dependencies = []  # Runtime dependencies (none for pure Rust lib)
+requires-python = ">=3.9"  # Matches abi3-py09
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
-[project.optional-dependencies]
-flint = ["python-flint>=0.8.0"]
-dev = [
-    "pytest>=8.0",
-    "hypothesis>=6.0",
-    "jupyter>=1.0",
-    "ipython>=8.0",
-]
+[project.urls]
+Homepage = "https://github.com/<user>/Kangaroo"
+Documentation = "https://<user>.github.io/Kangaroo"
+Repository = "https://github.com/<user>/Kangaroo"
+"Bug Tracker" = "https://github.com/<user>/Kangaroo/issues"
 
 [tool.maturin]
-features = ["python"]
+python-source = "python"  # If Python code in python/ dir
+features = ["pyo3/abi3-py09"]  # Enable ABI3 with Python 3.9 minimum
+compatibility = "linux"  # Or "manylinux2014", set per-platform in CI
+strip = true  # Strip debug symbols from release builds
 ```
 
-### Build Commands
+### Cargo.toml (PyO3 + ABI3)
 
-```bash
-# Rust library (with GMP + FLINT)
-cargo build --release
+```toml
+[dependencies]
+pyo3 = { version = "0.28.1", features = ["abi3-py09"] }
 
-# Rust library (pure Rust, no C deps)
-cargo build --release --no-default-features --features pure-rust
-
-# Python package (development)
-maturin develop --release
-
-# Python package (wheel for distribution)
-maturin build --release
-
-# Run tests
-cargo nextest run
-pytest tests/
-
-# Run benchmarks
-cargo bench
+# For forward compatibility with unreleased Python versions
+# Set environment variable: PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
 ```
 
----
+### book.toml (mdBook + plugins)
 
-## Existing CAS Landscape: Leverage vs Build
+```toml
+[book]
+title = "q-Kangaroo Documentation"
+authors = ["<author>"]
+language = "en"
+src = "docs/src"
+build-dir = "docs/book"
 
-### What to LEVERAGE (use as dependencies or for interop)
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
 
-| System | How to Leverage | Why |
-|--------|----------------|-----|
-| **GMP** (via `rug`) | Primary integer/rational arithmetic backend | 30+ years of optimization, inline assembly, fastest arbitrary precision on every platform |
-| **FLINT** (via `flint3-sys`) | Polynomial arithmetic, number theory functions | Gold standard for exact polynomial computation. Used by SageMath and SymPy internally. Since FLINT 3, includes Arb for ball arithmetic. |
-| **egg** | Equality saturation engine | Research-grade rewrite engine. Encode q-series identities as rewrite rules. |
-| **SymPy** (Python side) | LaTeX generation, verification, user-familiar API patterns | SymPy's `latex()` printer is excellent. Users know SymPy's API conventions. |
-| **python-flint** (Python side) | Cross-validation, alternative polynomial backend | Provides direct FLINT access from Python for users who want it |
+[preprocessor.katex]
+# LaTeX math rendering (critical for q-series formulas)
 
-### What to BUILD from scratch
+[output.html]
+mathjax-support = false  # Use KaTeX instead (faster)
+git-repository-url = "https://github.com/<user>/Kangaroo"
+edit-url-template = "https://github.com/<user>/Kangaroo/edit/main/{path}"
+```
 
-| Component | Why Build It | Complexity |
-|-----------|-------------|------------|
-| **Expression type system** | q-series has domain-specific node types (q-Pochhammer symbols, eta functions, theta functions, mock theta functions) that no existing CAS represents natively | Medium |
-| **Hash-consed expression pool** | Needs tight integration with our specific expression types and the e-graph rewrite engine | Medium |
-| **q-series identity database** | Domain-specific: Garvan's identities, Ramanujan's 40 identities, modular equation catalog | High (mathematical, not engineering) |
-| **Formal power series engine** | Lazy truncated power series with exact rational coefficients. Existing Rust implementations don't exist; SymPy's is too slow; SageMath's can't be extracted. | High |
-| **Modular form arithmetic** | Eta-quotient manipulation, modular equation solving, valence formula implementation | High (mathematical) |
-| **Python API layer** | PyO3 bindings with Pythonic API design, `_repr_latex_()`, operator overloading | Medium |
-| **Safe Rust wrappers for FLINT** | `flint3-sys` gives raw C bindings; we need safe, ergonomic Rust types on top | Medium |
+### GitHub Actions (.github/workflows/ci.yml)
 
-### What to IGNORE (do not build or integrate)
+```yaml
+name: CI
 
-| System | Why Ignore |
-|--------|-----------|
-| **Symbolica** | Source-available, not open source. Commercial license. Study for design inspiration only. |
-| **Wolfram/Mathematica** | Proprietary. Cannot integrate. Use for manual verification only. |
-| **Maple** | The thing we are replacing. Use Garvan's published identities (papers), not the Maple implementation. |
-| **Maxima/FriCAS** | Lisp-based, hard to call from Rust, and their q-series support is minimal. |
-| **SageMath** | Monolithic GPL system. Cannot embed. Use as external verification. SageMath's power series use PARI/FLINT internally -- we integrate FLINT directly instead. |
+on:
+  push:
+    branches: [main]
+  pull_request:
 
----
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.9', '3.14']  # Min and max for quick check
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
 
-## Rust Ecosystem Maturity Assessment for Symbolic Math
+      - name: Install GMP (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgmp-dev
 
-| Area | Maturity | Assessment |
-|------|----------|------------|
-| Arbitrary precision integers | **Mature** | rug/GMP is production-grade. malachite and num provide pure-Rust alternatives. |
-| Arbitrary precision rationals | **Mature** | rug::Rational wraps GMP's mpq. Fully functional. |
-| Polynomial arithmetic | **Immature in Rust, mature via FFI** | No good pure-Rust polynomial library for exact computation. FLINT via `flint3-sys` fills the gap. |
-| Expression trees / DAGs | **Patterns exist, no dominant library** | Use index-based arena pattern (well-documented). `hashconsing` crate exists but is niche. Build custom. |
-| E-graph rewriting | **Mature** | egg 0.11 is best-in-class. egglog 2.0 is the future. Rust leads the e-graph ecosystem. |
-| Pattern matching on expressions | **Mature via egg** | egg's `Pattern` and `Searcher`/`Applier` traits handle this. |
-| Formal power series | **Does not exist** | Must build from scratch. No Rust library for lazy formal power series with exact coefficients. |
-| Python bindings | **Mature** | PyO3 0.28 + maturin 1.11 is the gold standard. |
-| Serialization | **Mature** | serde is the Rust standard. Expression trees serialize naturally. |
-| Parallelism | **Mature** | rayon provides effortless data parallelism. |
+      - name: Install GMP (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gmp
 
-**Overall assessment:** The Rust ecosystem provides excellent foundations (arithmetic, e-graphs, Python bindings, parallelism) but has significant gaps in domain-specific symbolic math (formal power series, polynomial algebra, expression tree libraries). The strategy is: leverage mature Rust crates where they exist, use FFI to C libraries (GMP, FLINT) for number-theory-specific operations, and build domain-specific components (expression types, power series, q-series identities) from scratch.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
----
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install test dependencies
+        run: pip install pytest pytest-cov maturin
+
+      - name: Build extension
+        run: maturin develop --release
+
+      - name: Run Rust tests
+        run: cargo test --all-features
+
+      - name: Run Python tests
+        run: pytest tests/ --cov=q_kangaroo --cov-report=xml --cov-report=html
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4  # Optional: requires Codecov account
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+
+  build-wheels:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            manylinux: auto
+          - target: x86_64-pc-windows-gnu
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --locked --compatibility pypi
+          sccache: true  # Cache Rust compilation
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.target }}
+          path: target/wheels/*.whl
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [test, build-wheels]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # For PyPI trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        # Uses OIDC trusted publishing (no API token needed)
+```
+
+### GitHub Actions (.github/workflows/docs.yml)
+
+```yaml
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # For GitHub Pages deployment
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: '0.5.2'
+
+      - name: Install mdBook plugins
+        run: |
+          cargo install mdbook-mermaid mdbook-katex
+
+      - name: Build book
+        run: mdbook build
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/book
+          cname: docs.example.com  # Optional: custom domain
+```
+
+## Jupyter Integration Pattern
+
+```python
+# In crates/qsym-python/src/expr.rs (PyO3)
+
+#[pymethods]
+impl QExpr {
+    fn _repr_html_(&self) -> PyResult<String> {
+        // Use existing to_html() or similar
+        Ok(format!("<div class='qexpr'>{}</div>", self.to_latex()?))
+    }
+
+    fn _repr_latex_(&self) -> PyResult<String> {
+        // Use existing to_latex() from Phase 1-8
+        Ok(format!("${}$", self.to_latex()?))
+    }
+}
+```
+
+## Error Handling Pattern
+
+```rust
+// In crates/qsym-core/src/error.rs
+
+use pyo3::PyErr;
+use pyo3::exceptions::{PyValueError, PyRuntimeError};
+
+#[derive(Debug)]
+pub enum QSymError {
+    DivisionByZero,
+    InvalidSeries(String),
+    // ... other errors
+}
+
+impl std::fmt::Display for QSymError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            QSymError::DivisionByZero => write!(f, "Division by zero"),
+            QSymError::InvalidSeries(msg) => write!(f, "Invalid series: {}", msg),
+        }
+    }
+}
+
+impl From<QSymError> for PyErr {
+    fn from(err: QSymError) -> PyErr {
+        match err {
+            QSymError::DivisionByZero => PyValueError::new_err(err.to_string()),
+            QSymError::InvalidSeries(_) => PyValueError::new_err(err.to_string()),
+        }
+    }
+}
+
+// Usage in PyO3 functions:
+#[pyfunction]
+fn some_function() -> PyResult<f64> {
+    let result = compute()?;  // QSymError auto-converts to PyErr via From trait
+    Ok(result)
+}
+```
 
 ## Sources
 
-### Verified (HIGH confidence)
-- [rug 1.28.1 docs](https://docs.rs/rug/latest/rug/) -- version, GMP dependency, features
-- [egg 0.11.0 docs](https://docs.rs/egg/latest/egg/) -- version, API, tutorials
-- [egglog 2.0.0 docs](https://docs.rs/egglog/latest/egglog/) -- version, successor to egg
-- [PyO3 0.28.0 docs](https://docs.rs/pyo3/latest/pyo3/) -- version, Python/Rust version requirements
-- [maturin 1.11.5 on PyPI](https://pypi.org/project/maturin/) -- version, release date
-- [python-flint 0.8.0 on PyPI](https://pypi.org/project/python-flint/) -- version, FLINT 3.3.1, CPython 3.11-3.14
-- [num-bigint 0.4.6 docs](https://docs.rs/num-bigint/latest/num_bigint/) -- version, features
-- [bumpalo 3.19.0 docs](https://docs.rs/crate/bumpalo/latest) -- version, features
-- [flint3-sys 3.3.1 docs](https://docs.rs/flint3-sys/latest/flint3_sys/) -- version, FLINT types exposed
-- [gmp-mpfr-sys docs](https://docs.rs/gmp-mpfr-sys) -- GMP 6.3.0, MPFR 4.2.2, MPC 1.3.1
-- [malachite 0.9.1 docs](https://docs.rs/malachite/latest/malachite/) -- version, LGPL license, sub-crates
+**HIGH CONFIDENCE:**
+- [maturin 1.12.0 on PyPI](https://pypi.org/project/maturin/) — version, release date (Feb 14, 2026)
+- [Maturin Distribution Guide](https://www.maturin.rs/distribution.html) — PyPI publishing, cross-compilation, manylinux
+- [maturin-action README](https://github.com/PyO3/maturin-action) — CI configuration, platform support
+- [PyO3 0.28.0 Building & Distribution](https://pyo3.rs/v0.28.0/building-and-distribution) — ABI3, maturin config
+- [PyO3 Error Handling](https://pyo3.rs/v0.22.5/function/error-handling) — PyResult, exception mapping
+- [IPython Integration Guide](https://ipython.readthedocs.io/en/stable/config/integrating.html) — _repr_html_, _repr_latex_
+- [pytest Best Practices](https://docs.pytest.org/en/stable/explanation/goodpractices.html) — project structure, fixtures
+- [mdBook Documentation](https://rust-lang.github.io/mdBook/) — installation, configuration
+- [MSYS2 CI Setup](https://www.msys2.org/docs/ci/) — GitHub Actions integration
+- [Python Packaging Guide: pyproject.toml](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) — classifiers, metadata
 
-### Verified (MEDIUM confidence)
-- [Malachite performance page](https://www.malachite.rs/performance/) -- benchmarks vs rug, num
-- [hashconsing crate docs](https://docs.rs/hashconsing) -- Filiatre-Conchon implementation
-- [Symbolica pricing/license](https://symbolica.io/license/) -- source-available, commercial license required
-- [Symbolica 1.0 release post](https://symbolica.io/posts/stable_release/) -- Numerica/Graphica MIT crates
-- [E-Graphs in Rust (Stephen Diehl)](https://www.stephendiehl.com/posts/egraphs/) -- architecture patterns
-- [Hash consing for symbolic computation (arxiv 2509.20534)](https://arxiv.org/html/2509.20534v2) -- performance data, architecture
-
-### Research references
-- [Garvan q-series Maple package tutorial](https://qseries.org/fgarvan/papers/qmaple.pdf)
-- [Garvan ETA package manual](https://qseries.org/fgarvan/qmaple/ETA/tutorial/maple-eta-manual.pdf)
-- [Garvan thetaids package](https://qseries.org/fgarvan/qmaple/thetaids/)
-- [SymPy formal power series docs](https://docs.sympy.org/latest/modules/series/formal.html)
-- [SageMath power series docs](https://doc.sagemath.org/html/en/reference/power_series/sage/rings/power_series_ring_element.html)
-- [FLINT documentation](https://flintlib.org/doc/introduction_calcium.html)
-- [SymPy + FLINT integration plans (Oscar Benjamin)](https://oscarbenjamin.github.io/blog/czi/post1.html)
+**MEDIUM CONFIDENCE:**
+- [PyO3 Releases](https://github.com/pyo3/pyo3/releases) — 0.28.1 version (inferred from search results)
+- [mdBook Releases](https://github.com/rust-lang/mdbook/releases) — 0.5.2 version
+- [pytest-cov Documentation](https://pytest-cov.readthedocs.io/en/latest/reporting.html) — coverage features
+- [cargo audit on RustSec](https://rustsec.org/) — security scanning
+- [Rust Security Guide 2026](https://sherlock.xyz/post/rust-security-auditing-guide-2026) — 2026 best practices
 
 ---
-*Stack research for: Q-Symbolic (q-series symbolic computation engine)*
-*Researched: 2026-02-13*
+*Stack research for: PyPI packaging + docs + CI for Rust+PyO3 q-series library*
+*Researched: 2026-02-14*

@@ -1,347 +1,220 @@
 # Project Research Summary
 
-**Project:** Q-Symbolic (q-Series Symbolic Computation Engine)
-**Domain:** Symbolic mathematics - q-series, basic hypergeometric functions, partition theory, modular forms
-**Researched:** 2026-02-13
-**Confidence:** MEDIUM-HIGH
+**Project:** q-Kangaroo v1.1 (PyPI Release & Documentation)
+**Domain:** PyPI packaging, CI/CD, and documentation for Rust+PyO3 symbolic computation library
+**Researched:** 2026-02-14
+**Confidence:** HIGH
 
 ## Executive Summary
 
-Q-Symbolic is a Rust-core, Python-API symbolic computation engine replacing Frank Garvan's proprietary Maple packages for q-series research. The research confirms that building a focused, domain-specific tool is more viable than extending general CAS systems. The recommended architecture uses hash-consed expression DAGs (Maple-style), equality saturation for rewriting (egg library), and GMP-backed arbitrary precision arithmetic (rug crate), exposed to Python via PyO3 opaque handles.
+The q-Kangaroo project is an established Rust-based symbolic computation engine with 8 completed phases (578+ tests) that now needs professional release infrastructure to reach its target audience—mathematics researchers transitioning from Frank Garvan's Maple-based tools. The recommended approach follows the modern PyO3/maturin stack with GitHub Actions CI/CD, Sphinx documentation on GitHub Pages, and PyPI trusted publishing.
 
-The critical insight from research is that **representation strategy determines feasibility**. q-series identities require multiple equivalent forms (infinite products, truncated series, eta-quotients, theta functions) and naive canonicalization destroys essential structure. The architecture must support lazy, multi-representation expressions where conversion between forms is explicit and on-demand, not automatic. This differs from general CAS design and is project-critical.
+The path forward requires: (1) renaming the Python package from "qsymbolic" to "q-kangaroo" to align with branding, (2) building manylinux-compatible wheels for Linux and native MinGW wheels for Windows with proper GMP dependency handling, (3) establishing comprehensive documentation infrastructure with NumPy-style docstrings and Sphinx autodoc, and (4) implementing multi-platform CI with proper build caching and testing matrices.
 
-The roadmap should follow strict functional parity with Garvan's qseries package v1.3 (41 functions) before adding extensions. Three key risks: (1) expression swell during series arithmetic (mitigate with truncated multiplication), (2) rewrite engine non-termination (mitigate with phased simplification and strict rule ordering), and (3) scope creep into general CAS territory (mitigate with function-by-function validation against Maple output). The Rust ecosystem provides strong foundations for arithmetic and rewriting but has no existing formal power series library - this is a from-scratch build.
+Key risks center on GMP bundling for Windows wheels (no automatic solution exists), module renaming pitfalls (triple-name coordination required), and ensuring ABI3 forward compatibility for Python 3.9-3.14+. Mitigation strategies include explicit DLL bundling documentation for Windows, systematic verification of all rename touchpoints, and proper PyO3 feature flags with forward compatibility environment variables.
 
 ## Key Findings
 
 ### Recommended Stack
 
-**Rationale:** Rust core provides 10-100x performance over Maple while maintaining exact arithmetic; Python bindings via PyO3 enable Jupyter integration for the target research audience.
+Research confirmed that the PyO3/maturin ecosystem has matured into the industry standard for Rust-Python libraries as of 2026. The stack prioritizes minimal configuration, broad compatibility, and proven tooling.
 
 **Core technologies:**
+- **maturin 1.12.0**: PyO3-optimized build and publish tool with automatic wheel naming, manylinux support, and built-in cross-compilation — updated Feb 2026 with Python 3.14 support
+- **PyO3 0.28.1**: Rust-Python bindings with abi3-py09 for cross-version wheels (single wheel supports Python 3.9-3.14+) — current project uses 0.23, upgrade path clear
+- **Sphinx + ReadTheDocs**: Standard documentation stack for scientific Python (sympy, mpmath pattern) with autodoc for API reference, math rendering for formulas, and versioned hosting
+- **pytest**: Testing standard for Python (replacing unittest) with pytest-cov for coverage reporting
+- **GitHub Actions**: Native CI/CD with maturin-action for wheel builds, platform matrix support (Linux/macOS/Windows), and free tier sufficient for academic projects
 
-- **Rust 1.85+ stable** - Memory safety without GC is critical for long-running symbolic computations; required by rug 1.28
-- **rug 1.28 (GMP/MPFR/MPC bindings)** - Fastest arbitrary precision arithmetic (2-10x faster than pure Rust alternatives); non-negotiable for CAS performance
-- **egg 0.11 (equality saturation)** - Battle-tested e-graph library for rewrite engine; 30x faster than traditional approaches; used by Herbie and Cranelift
-- **PyO3 0.28 + maturin 1.11** - Rust-Python FFI; enables first-class Jupyter integration; supports free-threaded Python 3.13+
-- **flint3-sys 3.3** - World-class polynomial arithmetic via FLINT C library; 20+ years of optimization cannot be replicated in pure Rust
-- **Custom ExprArena + hash consing** - Hash-consed DAG representation for O(1) equality and structural sharing; the hashconsing crate exists but requires custom integration
-
-**Critical dependencies:**
-- GMP 6.3.0, MPFR 4.2.2, MPC 1.3.1 (bundled via gmp-mpfr-sys)
-- FLINT 3.3.1 (compiled from source via flint3-sys)
-- Minimum Rust 1.85, minimum Python 3.11
-
-**What NOT to use:**
-- Symbolica (source-available, not open source; commercial license incompatible with open-source mission)
-- SymPy as computation engine (100-1000x too slow; use only for LaTeX printing and verification)
-- num-bigint as primary arithmetic (5-10x slower than GMP; use only as pure-Rust fallback behind feature flag)
+**Critical configuration patterns:**
+- ABI3 with explicit minimum version: `pyo3 = { version = "0.28", features = ["abi3-py09"] }` produces single wheel per platform
+- Maturin mixed layout: Rust cdylib (`_q_kangaroo`) + Python package (`q_kangaroo/`) for natural import ergonomics
+- Trusted publishing via OIDC: Token-less PyPI upload from GitHub Actions (superior security to API tokens)
+- sccache over target/ caching: 50% faster CI builds with concurrent cache fetch vs multi-GB target/ blobs
 
 ### Expected Features
 
-**Table stakes (Garvan qseries v1.3 parity - 41 functions):**
+Analysis of scientific Python libraries (SymPy, mpmath) and PyPI packaging standards reveals clear feature tiers.
 
-- q-Pochhammer symbol (aqprod), q-binomial (qbin), finite/infinite products
-- Named products: etaq, jacprod, tripleprod, quinprod, winquist
-- Theta functions: theta, theta2, theta3, theta4
-- **Series-to-product conversion** (the core differentiator): prodmake, etamake, jacprodmake, mprodmake, qetamake, qfactor
-- Algebraic relation discovery: findlincombo, findhom, findpoly, findcong (full suite of 12 functions)
-- Series utilities: sift, qdegree, coefficient extraction
-- Python bindings with LaTeX output for Jupyter
+**Must have (table stakes):**
+- PyPI package with sdist + manylinux wheel — researchers expect `pip install q-kangaroo` to just work
+- Complete pyproject.toml metadata with classifiers for discoverability (Topic :: Scientific/Engineering :: Mathematics)
+- NumPy-style docstrings for all 73 DSL functions — scientific Python standard, enables Sphinx autodoc
+- Type hints via .pyi stubs — modern Python expectation, enables IDE autocomplete in Jupyter/VSCode
+- README with installation verification and 5-line quickstart example
+- Jupyter LaTeX rendering via `_repr_latex_()` — already implemented, non-negotiable for math libraries
+- API reference documentation (Sphinx) — users need to discover what functions exist
 
-**Competitive differentiators (extensions beyond Garvan):**
+**Should have (competitive):**
+- CITATION.cff + Zenodo DOI — academic users need proper attribution, GitHub displays citation automatically
+- Multi-version abi3 wheels — single wheel for Python 3.9-3.14+ reduces PyPI footprint and download size
+- CI badges (build status, coverage) — visual proof of project health
+- Example gallery with Sphinx-Gallery — researchers learn by example (partition congruences, theta identities)
+- Versioned documentation on ReadTheDocs — users reference docs matching their installed version
+- Mathematical notation in docstrings — LaTeX formulas in API docs match paper notation
 
-- Basic hypergeometric series engine (_r phi _s evaluation) - Garvan lacks this; Mathematica has QHypergeometricPFQ
-- Classical summation formulas (q-Gauss, q-Vandermonde, q-Saalschutz) - automated application, not manual
-- Performance via Rust core - parallel series multiplication, 10-100x faster than Maple for systematic searches
-- Mock theta functions (Ramanujan's 17 + Zwegers framework) - no existing CAS has dedicated support
-- Bailey chain machinery - automated iteration for identity generation
-
-**Defer to v2+:**
-
-- Identity proving (thetaids + ETA packages) - requires full modular forms theory infrastructure
-- Partition rank/crank packages - combinatorial extensions beyond core series engine
-- WZ method (q-Zeilberger, creative telescoping) - algorithmically complex, deferred until core is validated
-- Full modular forms spaces (M_k(Gamma_0(N)), Hecke operators) - SageMath already covers this well
+**Defer (v2+):**
+- Interactive Binder links (try without installing) — requires example gallery first
+- Performance comparison docs vs Maple — high value but needs benchmarking infrastructure
+- Rich error context in Jupyter (LaTeX-rendered errors) — polish feature, wait for user feedback
+- Static GMP linking on Windows — technically complex, defer until Windows users hit pain threshold
 
 ### Architecture Approach
 
-**Multi-representation expressions with lazy conversion.** The IR must store expressions in their "natural" form (product, series, eta-quotient) with explicit, on-demand conversion between forms. Hash-consed arena storage (u32 index-based ExprRef, not Arc pointers) provides O(1) equality and structural sharing. Phased simplification engine (6 phases: arithmetic normalization -> q-Pochhammer algebra -> hypergeometric recognition -> identity lookup -> series expansion -> e-graph saturation) with equality saturation reserved for hard cases, not routine simplification.
+The recommended architecture follows proven PyO3/maturin patterns with careful handling of GMP native dependencies and multi-platform wheel distribution.
 
 **Major components:**
+1. **Package Structure**: Maturin mixed layout with `python-source = "python"`, Rust module `_q_kangaroo` (private), Python package `q_kangaroo` (public), PyPI name `q-kangaroo` (hyphenated per PEP 423)
+2. **CI/CD Pipeline**: Separate workflows for testing (CI.yml), documentation (docs.yml), and release (release.yml) with independent triggers — tests on all pushes, docs on main only, publish on version tags
+3. **Build Matrix**: GitHub Actions matrix with platform-specific GMP installation (apt on Linux, brew on macOS, MSYS2 on Windows), maturin-action with sccache for 50% build speedup, parallel wheel builds with artifact upload/download pattern
+4. **Documentation**: Sphinx at workspace root with autodoc extracting from built extension, myst-parser for markdown support, peaceiris actions for GitHub Pages deployment, NumPy-style docstrings as single source of truth
+5. **Wheel Distribution**: manylinux2014+ for Linux (glibc 2.17+ required by Rust 1.64+), x86_64-pc-windows-gnu native build for Windows (matches existing MinGW setup), PyPI trusted publishing via OIDC (no long-lived tokens)
 
-1. **ExprArena** - Hash-consing interner with Vec<Expr> storage and HashMap dedup table; owns all expression memory; every component that creates expressions takes &mut ExprArena
-2. **Expr enum** - N-ary Add/Mul with sorted children, domain-specific nodes (QPochhammer, JacobiTheta, DedekindEta, BasicHypergeometric), opaque FPSRef for bulk series data
-3. **SimplificationEngine** - Phased rule application with bottom-up traversal; rules provided by domain modules; optional e-graph backend for phase 6
-4. **FormalPowerSeries** - Sparse BTreeMap<i64, BigRat> representation with lazy generators for infinite products; truncation order tracked explicitly
-5. **Domain modules** - Trait-based modules (qpoch, hypergeo, theta, partitions, mock_theta, bailey, wz) registered statically via inventory crate; each provides rules + operations + identities
-6. **PyO3 boundary** - Opaque QExpr handles wrapping ExprRef; Arc<Mutex<Session>> owns arena; all computation in Rust with GIL released; Python is orchestration/display layer only
-
-**Critical architectural decisions (must be made in Phase 1):**
-
-- ExprRef size (u32 vs u64 vs pointer) - affects every file in codebase
-- Canonical ordering strategy for Add/Mul children - correctness of hash consing depends on this
-- n-ary vs binary operators - affects every pattern match
-- Session/arena ownership model - determines Python FFI ergonomics
+**Key patterns:**
+- **Job dependencies with artifacts**: Build jobs run in parallel per platform, publish job downloads merged artifacts and uploads to PyPI sequentially — minimizes OIDC token exposure
+- **Maturin mixed layout**: Enables pure Python convenience wrappers around Rust core, natural import ergonomics (`from q_kangaroo import aqprod`)
+- **Sphinx autodoc for PyO3**: Requires building extension before doc generation (`maturin develop`), extracts docstrings via introspection, no separate Rust API docs needed for Python-only library
+- **Platform-specific GMP handling**: Linux uses apt libgmp-dev with automatic wheel repair, Windows uses MSYS2 mingw-w64 packages with documented DLL directory setup, macOS deferred to future phases
 
 ### Critical Pitfalls
 
-1. **Choosing wrong expression normalization strategy (PROJECT-KILLER)** - Auto-expanding to canonical form destroys product structure needed for pattern matching. Mitigation: Multi-representation IR where conversions are explicit user/algorithm operations, not automatic. Use separate types for different representations (product form vs series form vs symbolic form).
+Research identified 8 high-impact pitfalls with proven mitigation strategies from PyO3/maturin community.
 
-2. **Infinite loops in rewriting (PROJECT-KILLER)** - Bidirectional rules cause non-termination; even terminating TRS can cause e-graph blowup. Mitigation: Separate directed simplification rules (guaranteed terminating via complexity measure) from transformation rules (user-invoked, iteration-bounded). Use depth-bounded equality saturation, not unlimited.
+1. **Module Name Triple-Mismatch** — Renaming requires coordinating `[lib] name` in Cargo.toml, `module-name` in pyproject.toml, and `#[pymodule]` decorator. Mismatch causes "ImportError: dynamic module does not define module export function" with no obvious indication which piece is wrong. Prevention: Systematic grep verification plus test matrix (develop install, wheel install, pytest).
 
-3. **Expression swell (PROJECT-KILLER)** - Multiplying two O(q^N) series creates O(q^2N) intermediate before truncation; p(1000) expansion generates millions of terms. Mitigation: Truncated arithmetic everywhere (truncate during multiplication, not after); sparse representation; lazy series with generators; recurrence relations for partition functions, not generating function expansion.
+2. **ABI3 Feature Without Minimum Version** — Bare `abi3` feature creates version-specific wheels (cp314-cp314) instead of cross-version (cp09-abi3). Prevention: Always use `abi3-py09` not bare `abi3`, verify wheel filename pattern.
 
-4. **Hash consing memory leaks in Rust (CRITICAL)** - Strong references in intern table cause monotonic memory growth. Mitigation: Arena-based allocation (drop entire arena after computation) instead of global hash consing. Two-tier system: short-lived computation arenas + long-lived knowledge base with explicit insertion.
+3. **GMP Bundling Failures on Windows** — Maturin cannot automatically bundle GMP DLLs into Windows wheels (no patchelf equivalent). Users get "DLL load failed" errors. Prevention: Short-term document GMP requirement with install instructions, long-term include DLLs directly in wheel via manual packaging.
 
-5. **q-Pochhammer edge cases (CRITICAL)** - Negative n, n=0, n=infinity, multi-parameter products all have specific formulas easy to get wrong. Mitigation: Comprehensive test suite against Maple/Mathematica for n in {-5,-1,0,1,2,5,inf} and a in {0,1,q,q^2,generic}; test every function before moving to next.
+4. **Auditwheel Repair with Read-Only Libraries** — Docker images with read-only GMP cause patchelf permission errors during wheel repair. Prevention: Use maturin 0.13+ (includes fix) or add `chmod -R u+w target/` before build.
 
-6. **PyO3 GIL memory accumulation (CRITICAL)** - GIL Refs API causes memory leaks; Python objects stay alive until GILPool exits. Mitigation: Use ONLY Bound<T> API (not deprecated GIL Refs); minimize Python object creation in Rust; zero-copy for bulk data (NumPy array views); profile memory under realistic usage.
+5. **Python 3.13+ Maximum Version Error** — PyO3 rejects Python 3.13+ unless `PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1` environment variable is set. Prevention: Set in CI workflows and document for local development.
 
 ## Implications for Roadmap
 
-Based on combined research, the roadmap should follow a strict **foundation -> core parity -> extensions** sequence. The critical path is ExprArena + Expr enum + SimplificationEngine + q-Pochhammer module, as everything depends on these. Parallel research threads are not recommended in Phase 1-2 due to tight architectural coupling.
+Based on research findings, the milestone naturally divides into 4 sequential phases with clear dependencies and deliverables.
 
-### Phase 1: Foundation (Expression IR + Arithmetic)
-
-**Rationale:** Every component depends on how expressions are represented and how arithmetic works. Getting this wrong requires a full rewrite. Must be architecturally correct before any domain functions.
-
-**Delivers:**
-- ExprArena with hash-consing (u32 ExprRef, Vec<Expr> storage, HashMap dedup)
-- Expr enum (atoms, arithmetic, q-specific nodes, FPS placeholder)
-- Canonical ordering for Add/Mul children
-- BigInt/BigRat via rug (with num-bigint fallback behind feature flag)
-- Pattern matcher (structural patterns with wildcards)
-- LaTeX + pretty-print rendering
-
-**Addresses:** Pitfall 1 (normalization), Pitfall 4 (hash consing memory), Pitfall 9 (over-engineering)
-
-**Critical decision point:** ExprRef size, canonical ordering, n-ary vs binary operators - these cannot change later
-
-**Duration estimate:** 3-4 weeks
-
-**Research flag:** STANDARD PATTERNS - hash-consed arenas are well-documented in rustc-dev-guide; no additional research needed
-
-### Phase 2: Simplification Engine + Formal Power Series
-
-**Rationale:** q-Pochhammer expansion requires series arithmetic; series multiplication requires simplification to avoid blowup. These are co-dependent.
+### Phase 1: Package Rename & Structure
+**Rationale:** Renaming is a breaking change that affects all subsequent work. Must complete first to avoid cascading updates across CI configs, documentation, and metadata.
 
 **Delivers:**
-- SimplificationEngine with phased rule application (6 phases)
-- Bottom-up traversal with iteration limits
-- FormalPowerSeries (sparse BTreeMap, truncation tracking, lazy generators)
-- Series arithmetic (add, mul, truncate, coefficient extraction)
-- RewriteRule + Pattern infrastructure for domain modules
+- `q-kangaroo` PyPI package name (hyphenated)
+- `q_kangaroo` Python module (underscored)
+- `_q_kangaroo` Rust cdylib (prefixed)
+- Verified import in all contexts (develop, wheel, pytest)
 
-**Addresses:** Pitfall 2 (rewrite loops), Pitfall 3 (expression swell), Pitfall 8 (testing strategy)
+**Addresses:** Pitfall #1 (triple-mismatch), establishes foundation for packaging work
 
-**Uses:** ExprArena from Phase 1, rug arithmetic, egg 0.11 (integration planned, not implemented yet)
+**Avoids:** Late-stage rename requiring changes across CI workflows, documentation, and published wheels
 
-**Duration estimate:** 3-4 weeks
-
-**Research flag:** STANDARD PATTERNS - phased rewriting is textbook TRS; FPS algorithms in academic literature
-
-### Phase 3: Core q-Series Functions (qseries Package Parity)
-
-**Rationale:** Function-by-function validation against Garvan's Maple output. This is the MVP - researchers cannot adopt without these 41 functions.
+### Phase 2: PyPI Packaging & Metadata
+**Rationale:** Package metadata and wheel configuration must be correct before any test uploads. ABI3 configuration enables forward compatibility testing in subsequent phases.
 
 **Delivers:**
-- q-Pochhammer module: aqprod, qbin, finite/infinite products
-- Named products: etaq, jacprod, tripleprod, quinprod, winquist
-- Theta functions: theta, theta2, theta3, theta4
-- Series-to-product conversion: prodmake, etamake, jacprodmake (Andrews' algorithm)
-- Factoring: qfactor, zqfactor
-- Series utilities: sift, qdegree, lqdegree, coefficient extraction
-- Algebraic relation discovery: findlincombo, findhom, findpoly suite (12 functions)
+- Complete pyproject.toml with classifiers, keywords, URLs
+- ABI3 wheels (single wheel per platform for Python 3.9-3.14+)
+- LICENSE file verified in sdist
+- Platform-specific GMP handling strategy documented
 
-**Addresses:** Pitfall 5 (q-Pochhammer edge cases), Pitfall 7 (scope creep), Pitfall 8 (single-oracle testing)
+**Uses:** maturin 1.12.0 (STACK.md), PyO3 abi3-py09 feature
 
-**Testing strategy:** Three-oracle (Maple, Mathematica, mathematical identities); property-based tests for q-Pochhammer algebra; coefficient-level comparison
+**Implements:** Maturin mixed layout pattern (ARCHITECTURE.md)
 
-**Duration estimate:** 6-8 weeks (41 functions, each requires testing before moving to next)
+**Addresses:** Pitfalls #2 (ABI3 feature), #3 (GMP bundling), Feature requirements (pyproject.toml metadata, type hints)
 
-**Research flag:** NEEDS PHASE RESEARCH for prodmake/etamake/jacprodmake - Andrews' algorithm is documented but implementation details sparse
-
-### Phase 4: Python Bindings (Jupyter Integration)
-
-**Rationale:** Once core functions work in Rust, researchers need Python access. This validates the API design before adding more functions.
+### Phase 3: Multi-Platform CI/CD
+**Rationale:** CI infrastructure must validate wheels work on target platforms before writing extensive documentation. Build caching optimizations prevent CI from becoming bottleneck.
 
 **Delivers:**
-- PyO3 bindings (qsym-python crate)
-- QExpr opaque handles wrapping ExprRef
-- QSession managing Arc<Mutex<Session>>
-- Python DSL (symbols(), qpoch(), hyper_q(), etc.)
-- _repr_latex_() for Jupyter rendering
-- NumPy integration for coefficient arrays
+- GitHub Actions workflows (CI, docs, release)
+- Linux wheel builds (manylinux2014, auditwheel verified)
+- Windows wheel builds (MinGW, GMP dependency tested)
+- sccache configuration for 50% build speedup
+- Trusted publishing to PyPI Test configured
 
-**Addresses:** Pitfall 6 (PyO3 memory), Pitfall 13 (lifetime/FFI conflict), UX pitfalls (display, progress)
+**Implements:** Job dependencies with artifacts pattern, platform matrix builds
 
-**Uses:** Bound<T> API only (not deprecated GIL Refs); py.allow_threads() for all non-trivial work
+**Addresses:** Pitfalls #4 (auditwheel), #5 (Python 3.13+), #8 (cache bloat), Feature requirements (CI badges)
 
-**Duration estimate:** 2-3 weeks
+**Avoids:** Manual wheel building, credential exposure, non-reproducible releases
 
-**Research flag:** STANDARD PATTERNS - PyO3 + maturin are well-documented
-
-### Phase 5: Differentiators (Beyond Garvan)
-
-**Rationale:** With core parity established and API validated, add features that make Q-Symbolic competitive with Mathematica.
+### Phase 4: Documentation & Examples
+**Rationale:** Documentation requires built extension (maturin develop) and finalized API. NumPy-style docstrings enable both Sphinx autodoc and IDE autocomplete.
 
 **Delivers:**
-- Basic hypergeometric series module (_r phi _s evaluation)
-- Classical summation formulas (q-Gauss, q-Vandermonde, q-Saalschutz, q-Dougall)
-- Transformation formulas (Heine, Sears, Watson)
-- Performance optimizations (parallel series multiplication via rayon)
-- Batch computation mode (CLI for systematic searches)
+- NumPy-style docstrings for all 73 DSL functions
+- Sphinx documentation with autodoc and math rendering
+- GitHub Pages deployment via docs workflow
+- README with installation, quickstart, and verification
+- Example gallery with 5-10 narrative .py files
+- CITATION.cff + Zenodo DOI setup
 
-**Addresses:** Feature gap vs Mathematica; performance claims (10-100x faster than Maple)
+**Implements:** Sphinx autodoc for PyO3 pattern (ARCHITECTURE.md)
 
-**Duration estimate:** 4-5 weeks
-
-**Research flag:** NEEDS PHASE RESEARCH for transformation formulas - Gasper-Rahman book has formulas, but verification logic unclear
-
-### Phase 6: Identity Proving (thetaids + ETA Packages)
-
-**Rationale:** Full Garvan parity requires identity proving, but this is algorithmically complex and depends on all prior phases.
-
-**Delivers:**
-- JAC/ETA symbolic representation model
-- Cusp and order computation (cuspmake1, getacuspord suite)
-- provemodfuncid (automatic identity proving via valence formula)
-- ETA package identity pipeline
-- Identity database (TOML files loaded at session init)
-
-**Addresses:** Remaining Garvan functions (~55 from thetaids, ~20 from ETA)
-
-**Duration estimate:** 6-8 weeks (modular forms theory is mathematically complex)
-
-**Research flag:** NEEDS DEEP RESEARCH - cusp theory, valence formula, Ligozat/Martin conditions require domain expertise; consider expert consultation
-
-### Phase 7: Partitions + Extensions
-
-**Rationale:** After core and identity proving, add combinatorial and advanced features.
-
-**Delivers:**
-- Rank/Crank/SPT-Crank packages (partition statistics)
-- Mock theta functions (Ramanujan's 17 + Zwegers framework)
-- Bailey chain machinery (pair database, lemma application, chain iteration)
-- T-Core package
-
-**Duration estimate:** 5-6 weeks
-
-**Research flag:** NEEDS PHASE RESEARCH for mock theta and Bailey chains - academic literature exists but implementation sparse
+**Addresses:** Feature requirements (API docs, examples, citation), UX pitfalls (generic import errors, missing version info)
 
 ### Phase Ordering Rationale
 
-- **Phases 1-2 are tightly coupled** - expression representation and simplification must be co-designed; splitting risks architectural mismatch
-- **Phase 3 before Phase 4** - Python bindings expose Rust API; API must be stable before exposure
-- **Phase 5 before Phase 6** - differentiators provide user value while identity proving infrastructure is built
-- **Linear dependency chain** - each phase uses outputs from all prior phases; parallel development risks integration hell
-
-**Critical path:** Phase 1 -> Phase 2 -> Phase 3. If any of these fail or require rework, later phases cannot proceed.
-
-**Validation gates:**
-- After Phase 2: 10,000-term series multiplication completes in <1 second with <100MB memory
-- After Phase 3: All 41 qseries functions match Maple output for standard test cases
-- After Phase 4: Jupyter notebook can replicate Garvan's tutorial examples
-- After Phase 5: Systematic search over parameter space runs 10x faster than Maple
+- **Rename before packaging**: Avoids updating package metadata twice, prevents confusion with multiple package names in flight
+- **Packaging before CI**: CI needs correct pyproject.toml and ABI3 config to build proper wheels, testing bad configuration wastes CI time
+- **CI before documentation**: Documentation workflow depends on build infrastructure (maturin develop, dependencies), want stable CI before investing in docs
+- **Documentation last**: Docstrings are user-facing polish, deferrable until package is installable and tested on target platforms
 
 ### Research Flags
 
-**Phases needing deeper research during planning:**
-- **Phase 3 (prodmake/etamake/jacprodmake)** - Andrews' algorithm for series-to-product conversion is documented in papers but needs implementation strategy research
-- **Phase 5 (transformation formulas)** - Gasper-Rahman provides formulas but verification/application logic unclear
-- **Phase 6 (identity proving)** - Modular forms theory (cusp computation, valence formula, Ligozat/Martin conditions) is mathematically dense; may need expert consultation
-- **Phase 7 (mock theta, Bailey chains)** - Academic literature exists but no packaged implementations found; algorithm extraction needed
+**Phases likely needing deeper research during planning:**
+- **Phase 2 (Packaging):** Windows GMP DLL bundling strategy needs technical validation — research manual DLL inclusion vs static linking vs conda-forge fallback
+- **Phase 4 (Documentation):** pyo3-stub-gen workflow for type hints needs testing — verify Sphinx can read generated .pyi files, IDE autocomplete works
 
 **Phases with standard patterns (skip research-phase):**
-- **Phase 1** - Hash-consed arenas are well-documented in rustc, SymPy, Maple literature
-- **Phase 2** - Phased rewriting is textbook TRS; FPS algorithms in academic CS literature
-- **Phase 4** - PyO3 + maturin have comprehensive official documentation
+- **Phase 1 (Rename):** Straightforward find-replace with verification checklist, no novel patterns
+- **Phase 3 (CI):** Well-documented GitHub Actions patterns, maturin-action handles complexity
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | rug, egg, PyO3, maturin all verified against official docs; version compatibility confirmed |
-| Features | HIGH | Garvan function inventory verified against qseries.org; competitor analysis from official Wolfram/SageMath docs |
-| Architecture | MEDIUM-HIGH | Hash-consed DAGs are proven (Maple, JuliaSymbolics); phased rewriting is textbook; specific Rust integration patterns (arena + egg + PyO3) require validation during implementation |
-| Pitfalls | MEDIUM-HIGH | Expression swell, rewrite loops, hash consing memory are well-documented CAS issues; q-Pochhammer edge cases from domain literature; PyO3 memory issues from official docs; some claims (10-100x speedup, specific precision thresholds) from training data need benchmarking validation |
+| Stack | HIGH | Official maturin/PyO3 docs, recent version updates (maturin 1.12.0 Feb 2026), verified community adoption |
+| Features | HIGH | Direct analysis of SymPy/mpmath (established scientific Python libraries), PyPI packaging guide (official), NumPy-style docstring standard |
+| Architecture | HIGH | Proven maturin-action patterns, trusted publishing documented by PyPI/GitHub, Sphinx widely deployed for Rust-Python projects |
+| Pitfalls | HIGH | All 8 pitfalls sourced from official PyO3/maturin GitHub issues with verified solutions, community blog posts with benchmarks |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-**Architectural gaps:**
-- **FormalPowerSeries lazy generator ownership** - Rust's ownership model makes closures-over-mutable-state tricky; may need Rc<RefCell<>> or channel-based design. Resolve in Phase 2 prototyping.
-- **egg vs egglog decision** - egg 0.11 is stable but egglog 2.0 is the future. Start with egg, plan migration path. Defer decision until Phase 3 (when rule set is established).
-- **C GMP escape hatch necessity** - Unknown if rug's abstraction overhead matters for mock theta hot paths. Profile in Phase 7; implement qsym-gmp crate only if profiling shows need.
+- **Windows GMP bundling**: Research identified the problem (no automatic bundling) and short-term workaround (documentation), but long-term solution (static linking vs manual DLL inclusion) needs technical validation during Phase 2 planning. Defer decision until testing shows user pain level.
 
-**Mathematical gaps:**
-- **Andrews' algorithm implementation details** - Papers describe the algorithm but not data structures or termination conditions. Needs Phase 3 research or Garvan source code study.
-- **Modular forms infrastructure scope** - Unclear if full thetaids parity requires implementing M_k(Gamma_0(N)) spaces or if cusp/order computation suffices. Needs Phase 6 scoping research.
-- **Mock theta convergence conditions** - Unclear if symbolic mock theta computation has edge cases analogous to q-Pochhammer. Needs Phase 7 literature review.
+- **PyO3 0.23 → 0.28.1 upgrade path**: Current project uses PyO3 0.23, research recommends 0.28.1 (adds PEP 489 multi-phase init, free-threaded Python support, MSRV 1.83). Verify no breaking changes for existing Session/Expr/Series APIs during Phase 2. Stack research shows feature flags are compatible.
 
-**Ecosystem gaps:**
-- **No Rust FPS library** - Must build from scratch. SageMath and Axiom provide design patterns but not code. Plan for 2-3 weeks in Phase 2.
-- **flint3-sys Rust wrappers** - flint3-sys provides raw C bindings; need safe Rust wrappers for fmpz_poly, fmpq_poly. Budget 1 week in Phase 2 or defer to Phase 5 if polynomial operations not on critical path.
-
-**Validation gaps:**
-- **Performance claims** - "10-100x faster than Maple" is plausible based on Rust vs interpreted Maple but needs benchmarking. Add benchmark suite in Phase 3 with Maple baseline comparison.
-- **Numerical precision thresholds** - Claim that |q| in [0.1, 0.5] is "sweet spot" for convergence is domain knowledge, not verified. Validate empirically in Phase 2-3 testing.
+- **macOS wheel builds**: Architecture research includes macOS patterns (brew install gmp, x86_64/aarch64 targets) but deferred to post-v1.1 per project scope. Gap acknowledged, not blocking for initial PyPI release targeting Linux/Windows users.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-
-**Stack:**
-- [rug 1.28.1 docs](https://docs.rs/rug/latest/rug/) - version, GMP dependency, features
-- [egg 0.11.0 docs](https://docs.rs/egg/latest/egg/) - version, API, tutorials
-- [PyO3 0.28.0 docs](https://docs.rs/pyo3/latest/pyo3/) - version, memory management, Bound API
-- [maturin 1.11.5 on PyPI](https://pypi.org/project/maturin/) - version, project layout
-- [python-flint 0.8.0 on PyPI](https://pypi.org/project/python-flint/) - FLINT bindings for Python
-- [flint3-sys 3.3.1 docs](https://docs.rs/flint3-sys/latest/flint3_sys/) - FLINT C bindings
-
-**Features:**
-- [Garvan qseries v1.3 function list](https://qseries.org/fgarvan/qmaple/qseries/functions/) - official function documentation
-- [Garvan thetaids v1.0 function list](https://qseries.org/fgarvan/qmaple/thetaids/functions-v1p0.html) - official function documentation
-- [Wolfram Language q Functions guide](https://reference.wolfram.com/language/guide/QFunctions.html) - Mathematica capabilities
-- [mpmath q-functions documentation](https://mpmath.org/doc/current/functions/qfunctions.html) - Python q-functions
-- [SageMath EtaProducts documentation](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/etaproducts.html) - SageMath eta-products
-
-**Architecture:**
-- [Efficient Symbolic Computation via Hash Consing (arxiv:2509.20534)](https://arxiv.org/html/2509.20534) - JuliaSymbolics hash-consing, 3.2x speedup, 2x memory reduction
-- [Maple Programming Guide Appendix](https://www.maplesoft.com/support/help/Maple/view.aspx?path=ProgrammingGuide/Appendix1) - DAG + simplification table
-- [Symbolica Expressions](https://symbolica.io/docs/expressions.html) - linear compressed representation
-- [SymPy Core System Architecture](https://deepwiki.com/sympy/sympy/2-core-system) - immutable tree model
-- [rustc memory management](https://rustc-dev-guide.rust-lang.org/memory.html) - arena + interning patterns
-
-**Pitfalls:**
-- [PyO3 Memory Management Guide](https://pyo3.rs/v0.22.5/memory) - GIL Refs deprecation, Bound API
-- [SymPy Gotchas and Pitfalls](https://docs.sympy.org/latest/explanation/gotchas.html) - expression representation, equality
-- [egg: Equality Saturation Library](https://egraphs-good.github.io/) - e-graph design, rewrite termination
-- [Term Rewriting (Berkeley CS294-260)](https://inst.eecs.berkeley.edu/~cs294-260/sp24/2024-01-22-term-rewriting) - termination, confluence
+- [Maturin 1.12.0 on PyPI](https://pypi.org/project/maturin/) — version verification, release date Feb 14 2026
+- [Maturin Distribution Guide](https://www.maturin.rs/distribution.html) — PyPI publishing, manylinux, wheel repair, cross-compilation
+- [PyO3 Building & Distribution](https://pyo3.rs/v0.28.0/building-and-distribution.html) — ABI3 configuration, maturin integration, feature flags
+- [PyO3 Error Handling](https://pyo3.rs/v0.22.5/function/error-handling) — PyResult, exception mapping patterns
+- [Python Packaging Guide - pyproject.toml](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) — classifiers, metadata specification
+- [PyPI Trusted Publishers](https://docs.pypi.org/trusted-publishers/) — OIDC configuration, GitHub Actions workflow setup
+- [Sphinx Documentation](https://www.sphinx-doc.org/) — configuration, autodoc extension, math rendering
+- [NumPy-Style Docstrings](https://numpydoc.readthedocs.io/en/latest/format.html) — scientific Python documentation standard
+- [GitHub Actions - Building Rust](https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-rust) — CI patterns, matrix builds, caching
 
 ### Secondary (MEDIUM confidence)
+- [PyO3/maturin #1960](https://github.com/PyO3/maturin/issues/1960) — Python 3.13 forward compatibility issue
+- [PyO3/maturin #2909](https://github.com/PyO3/maturin/issues/2909) — editable install .so missing after upgrade
+- [PyO3/maturin #1292](https://github.com/PyO3/maturin/pull/1292) — auditwheel repair fix for read-only libraries
+- [sccache in GitHub Actions](https://depot.dev/blog/sccache-in-github-actions) — performance comparison vs cargo cache
+- [SymPy on PyPI](https://pypi.org/project/sympy/) — metadata analysis for scientific library patterns
+- [mpmath on PyPI](https://pypi.org/project/mpmath/) — packaging patterns for math libraries
+- [Sphinx-Gallery](https://sphinx-gallery.github.io/) — example gallery generation from .py files
 
-- [Garvan q-product tutorial (arxiv:math/9812092)](https://arxiv.org/abs/math/9812092) - Andrews' algorithm description
-- [Garvan ETA tutorial (arxiv:1907.09130)](https://arxiv.org/abs/1907.09130) - ETA package methodology
-- [Garvan auto-theta paper (arxiv:1807.08051)](https://arxiv.org/abs/1807.08051) - thetaids/ramarobinsids
-- [Things I Would Like to See in a CAS - Fredrik Johansson](https://fredrikj.net/blog/2022/04/things-i-would-like-to-see-in-a-computer-algebra-system/) - CAS design critique
-- [Ensuring Termination of EqSat over a Terminating TRS](https://effect.systems/blog/ta-completion.html) - non-termination in equality saturation
-- [Malachite performance page](https://www.malachite.rs/performance/) - benchmarks vs rug, num
-- [hashconsing crate docs](https://docs.rs/hashconsing) - Filiatre-Conchon implementation
-- [E-Graphs in Rust (Stephen Diehl)](https://www.stephendiehl.com/posts/egraphs/) - architecture patterns
-
-### Tertiary (LOW confidence - needs validation)
-
-- q-Pochhammer convergence thresholds (|q| in [0.1, 0.5]) - domain knowledge from training data, not verified source
-- 10-100x Rust vs Maple performance claim - plausible based on interpreted vs compiled, needs benchmarking
-- Mock theta function implementation complexity - inferred from literature, not implementation experience
-- Bailey chain algorithm details - academic papers describe theory, not implementation
+### Tertiary (LOW confidence, needs validation)
+- [pyo3-stub-gen](https://github.com/Jij-Inc/pyo3-stub-gen) — automated .pyi generation from PyO3, community tool not official PyO3
+- Static GMP linking on Windows — mentioned in community discussions but no authoritative guide found, needs experimentation
 
 ---
-
-**Research completed:** 2026-02-13
-**Ready for roadmap:** Yes
-**Next step:** Roadmap creation using phase structure and research flags from this summary
+*Research completed: 2026-02-14*
+*Ready for roadmap: yes*
