@@ -55,6 +55,14 @@ pub use rank_crank::{rank_gf, crank_gf};
 pub use theta::{theta2, theta3, theta4};
 pub use utilities::{sift, qdegree, lqdegree};
 pub use identity::{JacFactor, JacExpression, EtaExpression, ModularityResult, Cusp, cuspmake, cuspmake1, num_cusps_gamma0, eta_order_at_cusp, cusp_width, total_order, ProofResult, EtaIdentity, prove_eta_identity, IdentityEntry, IdentityDatabase};
+pub use mock_theta::{
+    mock_theta_f3, mock_theta_phi3, mock_theta_psi3, mock_theta_chi3,
+    mock_theta_omega3, mock_theta_nu3, mock_theta_rho3,
+    mock_theta_f0_5, mock_theta_f1_5, mock_theta_cap_f0_5, mock_theta_cap_f1_5,
+    mock_theta_phi0_5, mock_theta_phi1_5, mock_theta_psi0_5, mock_theta_psi1_5,
+    mock_theta_chi0_5, mock_theta_chi1_5,
+    mock_theta_cap_f0_7, mock_theta_cap_f1_7, mock_theta_cap_f2_7,
+};
 pub use appell_lerch::{appell_lerch_m, universal_mock_theta_g2, universal_mock_theta_g3, ZwegersCompletion};
 pub use bailey::{BaileyPair, BaileyPairType, BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair};
 
