@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 5 of 8 (Python API)
-Plan: 2 of 4 in current phase (2 complete: 05-01, 05-02)
+Plan: 3 of 4 in current phase (3 complete: 05-01, 05-02, 05-03)
 Status: In progress
-Last activity: 2026-02-14 -- Completed 05-02-PLAN.md
+Last activity: 2026-02-14 -- Completed 05-03-PLAN.md
 
-Progress: [##############..] 72%
+Progress: [###############.] 76%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
+- Total plans completed: 19
 - Average duration: 7 min
-- Total execution time: 2.2 hours
+- Total execution time: 2.3 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [##############..] 72%
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
-| 5 - Python API | 2/4 | 9 min | 5 min |
+| 5 - Python API | 3/4 | 16 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 4 min, 7 min, 4 min, 5 min
+- Last 5 plans: 4 min, 7 min, 4 min, 5 min, 7 min
 - Trend: stable ~5 min/plan
 
 *Updated after each plan completion*
@@ -108,6 +108,10 @@ Recent decisions affecting current work:
 - [05-02]: Used intern_rat() instead of direct rug::Rational to avoid rug dependency in qsym-python
 - [05-02]: Used std Hash trait on ExprRef for __hash__ since ExprRef.0 is pub(crate)
 - [05-02]: Auto-register MinGW DLL directory in __init__.py for Windows GMP shared library loading
+- [05-03]: QSeries owns FPS directly (not Arc<Mutex>) -- FPS is standalone computation result, not arena expression
+- [05-03]: partition_count extracts QRat numerator as QInt for Python int conversion
+- [05-03]: sift DSL named sift_fn in Rust, registered as 'sift' in Python via pyo3(name) attribute
+- [05-03]: extract_fps_refs uses explicit lifetime 'a on both &'a [PyRef<'a, QSeries>] and return Vec<&'a FPS>
 
 ### Pending Todos
 
@@ -126,5 +130,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 05-02-PLAN.md (QSession + QExpr API with operators, rendering, GC-safe Arc reference counting)
-Resume file: .planning/phases/05-python-api/05-02-SUMMARY.md
+Stopped at: Completed 05-03-PLAN.md (QSeries + 38 DSL functions wrapping all Phase 3-4 q-series operations)
+Resume file: .planning/phases/05-python-api/05-03-SUMMARY.md
