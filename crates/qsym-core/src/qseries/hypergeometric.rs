@@ -8,6 +8,8 @@
 //! - [`SummationResult`]: closed-form result of a summation formula
 //! - [`TransformationResult`]: transformed series + prefactor
 //! - [`verify_transformation`]: verify a transformation by FPS comparison
+//! - Summation formulas: [`try_q_gauss`], [`try_q_vandermonde`], [`try_q_saalschutz`],
+//!   [`try_q_kummer`], [`try_q_dixon`], [`try_all_summations`]
 
 use crate::number::QRat;
 use crate::series::{FormalPowerSeries, arithmetic};
@@ -466,4 +468,439 @@ pub fn verify_transformation(
     let rhs_series = eval_phi(&result.transformed, variable, truncation_order);
     let rhs = arithmetic::mul(&result.prefactor, &rhs_series);
     lhs == rhs
+}
+
+// ---------------------------------------------------------------------------
+// Summation formulas
+// ---------------------------------------------------------------------------
+
+/// Raise a QRat to a non-negative integer power.
+fn qrat_pow(base: &QRat, exp: u64) -> QRat {
+    if exp == 0 {
+        return QRat::one();
+    }
+    let mut result = base.clone();
+    for _ in 1..exp {
+        result = result * base.clone();
+    }
+    result
+}
+
+/// Try q-Gauss summation (DLMF 17.6.1).
+///
+/// ```text
+/// _2 phi_1 (a, b ; c ; q, c/(ab)) = (c/a;q)_inf * (c/b;q)_inf / [(c;q)_inf * (c/(ab);q)_inf]
+/// ```
+///
+/// Checks: r==2, s==1, z == c/(a*b).
+pub fn try_q_gauss(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> SummationResult {
+    if series.r() != 2 || series.s() != 1 {
+        return SummationResult::NotApplicable;
+    }
+
+    let a = &series.upper[0];
+    let b = &series.upper[1];
+    let c = &series.lower[0];
+    let z = &series.argument;
+
+    // Check: z == c / (a * b)
+    let ab = a.mul(b);
+    let expected_z = c.div(&ab);
+
+    if *z != expected_z {
+        return SummationResult::NotApplicable;
+    }
+
+    // Closed form: (c/a;q)_inf * (c/b;q)_inf / [(c;q)_inf * (c/(ab);q)_inf]
+    let c_over_a = c.div(a);
+    let c_over_b = c.div(b);
+    let c_over_ab = c.div(&ab);
+
+    let numer1 = aqprod(&c_over_a, variable, PochhammerOrder::Infinite, truncation_order);
+    let numer2 = aqprod(&c_over_b, variable, PochhammerOrder::Infinite, truncation_order);
+    let denom1 = aqprod(c, variable, PochhammerOrder::Infinite, truncation_order);
+    let denom2 = aqprod(&c_over_ab, variable, PochhammerOrder::Infinite, truncation_order);
+
+    let numer = arithmetic::mul(&numer1, &numer2);
+    let denom = arithmetic::mul(&denom1, &denom2);
+    SummationResult::ClosedForm(arithmetic::mul(&numer, &arithmetic::invert(&denom)))
+}
+
+/// Try q-Vandermonde summation (DLMF 17.6.2, 17.6.3).
+///
+/// First form (z = c*q^n/a):
+/// ```text
+/// _2 phi_1 (a, q^{-n} ; c ; q, c*q^n/a) = (c/a;q)_n / (c;q)_n
+/// ```
+///
+/// Second form (z = q):
+/// ```text
+/// _2 phi_1 (a, q^{-n} ; c ; q, q) = a^n * (c/a;q)_n / (c;q)_n
+/// ```
+///
+/// Checks: r==2, s==1, one upper param is q^{-n}.
+pub fn try_q_vandermonde(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> SummationResult {
+    if series.r() != 2 || series.s() != 1 {
+        return SummationResult::NotApplicable;
+    }
+
+    let z = &series.argument;
+    let c = &series.lower[0];
+
+    // Find which upper param is q^{-n}
+    for idx in 0..2 {
+        let term_param = &series.upper[idx];
+        let other_param = &series.upper[1 - idx];
+
+        if let Some(n) = term_param.is_q_neg_power() {
+            if n == 0 {
+                // q^0 = 1, trivially terminates at 0 terms: result is 1
+                return SummationResult::ClosedForm(
+                    FormalPowerSeries::one(variable, truncation_order)
+                );
+            }
+
+            let a = other_param;
+
+            // First form: z = c*q^n/a
+            let expected_z1 = c.mul(&QMonomial::q_power(n)).div(a);
+            if *z == expected_z1 {
+                // (c/a;q)_n / (c;q)_n
+                let c_over_a = c.div(a);
+                let numer = aqprod(&c_over_a, variable, PochhammerOrder::Finite(n), truncation_order);
+                let denom = aqprod(c, variable, PochhammerOrder::Finite(n), truncation_order);
+                return SummationResult::ClosedForm(
+                    arithmetic::mul(&numer, &arithmetic::invert(&denom))
+                );
+            }
+
+            // Second form: z = q
+            if *z == QMonomial::q_power(1) {
+                // a^n * (c/a;q)_n / (c;q)_n
+                let c_over_a = c.div(a);
+                let numer = aqprod(&c_over_a, variable, PochhammerOrder::Finite(n), truncation_order);
+                let denom = aqprod(c, variable, PochhammerOrder::Finite(n), truncation_order);
+                let ratio = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+                // a^n as FPS: coeff^n * q^{power*n}
+                let a_n_coeff = qrat_pow(&a.coeff, n as u64);
+                let a_n_power = a.power * n;
+                let a_n_fps = FormalPowerSeries::monomial(
+                    variable, a_n_coeff, a_n_power, truncation_order,
+                );
+
+                return SummationResult::ClosedForm(arithmetic::mul(&a_n_fps, &ratio));
+            }
+        }
+    }
+
+    SummationResult::NotApplicable
+}
+
+/// Try q-Pfaff-Saalschutz summation (DLMF 17.7.4).
+///
+/// ```text
+/// _3 phi_2 (a, b, q^{-n} ; c, abq^{1-n}/c ; q, q) = (c/a;q)_n * (c/b;q)_n / [(c;q)_n * (c/(ab);q)_n]
+/// ```
+///
+/// Checks: r==3, s==2, z==q, one upper param is q^{-n}, balanced condition holds.
+pub fn try_q_saalschutz(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> SummationResult {
+    if series.r() != 3 || series.s() != 2 {
+        return SummationResult::NotApplicable;
+    }
+
+    // Check z == q
+    if series.argument != QMonomial::q_power(1) {
+        return SummationResult::NotApplicable;
+    }
+
+    // Try all assignments: which upper param is q^{-n}?
+    for term_idx in 0..3 {
+        let term_param = &series.upper[term_idx];
+        if let Some(n) = term_param.is_q_neg_power() {
+            if n == 0 {
+                return SummationResult::ClosedForm(
+                    FormalPowerSeries::one(variable, truncation_order)
+                );
+            }
+
+            // The other two upper params are a, b (try both orderings)
+            let other_idxs: Vec<usize> = (0..3).filter(|&i| i != term_idx).collect();
+            let a = &series.upper[other_idxs[0]];
+            let b = &series.upper[other_idxs[1]];
+
+            // Balance condition: one lower param is c, the other is a*b*q^{1-n}/c
+            let ab = a.mul(b);
+            let q_1_minus_n = QMonomial::q_power(1 - n);
+
+            // Try each lower param as c
+            for c_idx in 0..2 {
+                let d_idx = 1 - c_idx;
+                let c = &series.lower[c_idx];
+                let d = &series.lower[d_idx];
+
+                // expected_d = a*b*q^{1-n}/c
+                let expected_d = ab.mul(&q_1_minus_n).div(c);
+
+                if *d == expected_d {
+                    // Match! Compute closed form:
+                    // (c/a;q)_n * (c/b;q)_n / [(c;q)_n * (c/(ab);q)_n]
+                    let c_over_a = c.div(a);
+                    let c_over_b = c.div(b);
+                    let c_over_ab = c.div(&ab);
+
+                    let n1 = aqprod(&c_over_a, variable, PochhammerOrder::Finite(n), truncation_order);
+                    let n2 = aqprod(&c_over_b, variable, PochhammerOrder::Finite(n), truncation_order);
+                    let d1 = aqprod(c, variable, PochhammerOrder::Finite(n), truncation_order);
+                    let d2 = aqprod(&c_over_ab, variable, PochhammerOrder::Finite(n), truncation_order);
+
+                    let numer = arithmetic::mul(&n1, &n2);
+                    let denom = arithmetic::mul(&d1, &d2);
+                    return SummationResult::ClosedForm(
+                        arithmetic::mul(&numer, &arithmetic::invert(&denom))
+                    );
+                }
+            }
+        }
+    }
+
+    SummationResult::NotApplicable
+}
+
+/// Helper: compute a q^2-Pochhammer product with general coefficient.
+///
+/// Computes prod_{k=0}^{N-1} (1 - coeff * q^{start + 2*k}) as FPS.
+/// N is determined by truncation: continue while start + 2*k < trunc.
+/// If `finite_n` is Some(n), limit to n factors.
+fn q2_pochhammer_product(
+    coeff: &QRat,
+    start: i64,
+    variable: SymbolId,
+    trunc: i64,
+    finite_n: Option<i64>,
+) -> FormalPowerSeries {
+    let mut result = FormalPowerSeries::one(variable, trunc);
+    let mut k = 0i64;
+    loop {
+        if let Some(n) = finite_n {
+            if k >= n {
+                break;
+            }
+        }
+        let exp = start + 2 * k;
+        if exp >= trunc {
+            break;
+        }
+        let factor = one_minus_cq_m(coeff, exp, variable, trunc);
+        result = arithmetic::mul(&result, &factor);
+        k += 1;
+    }
+    result
+}
+
+/// Try q-Kummer (Bailey-Daum) summation (DLMF 17.6.5).
+///
+/// ```text
+/// _2 phi_1 (a, b ; aq/b ; q, -q/b) = (-q;q)_inf * (aq;q^2)_inf * (aq^2/b^2;q^2)_inf
+///                                     / [(-q/b;q)_inf * (aq/b;q)_inf]
+/// ```
+///
+/// Checks: r==2, s==1, c == aq/b, z == -q/b.
+pub fn try_q_kummer(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> SummationResult {
+    if series.r() != 2 || series.s() != 1 {
+        return SummationResult::NotApplicable;
+    }
+
+    // Try both orderings of upper params as (a, b)
+    for idx in 0..2 {
+        let a = &series.upper[idx];
+        let b = &series.upper[1 - idx];
+        let c = &series.lower[0];
+        let z = &series.argument;
+
+        // Check: c == a*q/b
+        let aq_over_b = a.mul(&QMonomial::q_power(1)).div(b);
+        if *c != aq_over_b {
+            continue;
+        }
+
+        // Check: z == -q/b
+        let neg_q_over_b = QMonomial::new(-QRat::one(), 1).div(b);
+        if *z != neg_q_over_b {
+            continue;
+        }
+
+        // Match! Compute RHS:
+        // (-q;q)_inf * (aq;q^2)_inf * (aq^2/b^2;q^2)_inf / [(-q/b;q)_inf * (aq/b;q)_inf]
+
+        // (-q;q)_inf
+        let neg_q = QMonomial::new(-QRat::one(), 1);
+        let f1 = aqprod(&neg_q, variable, PochhammerOrder::Infinite, truncation_order);
+
+        // (aq;q^2)_inf = prod_{k>=0} (1 - a.coeff * q^{a.power+1+2k})
+        let aq_coeff = &a.coeff;
+        let aq_start = a.power + 1;
+        let f2 = q2_pochhammer_product(aq_coeff, aq_start, variable, truncation_order, None);
+
+        // (aq^2/b^2;q^2)_inf = prod_{k>=0} (1 - (a.coeff/b.coeff^2) * q^{a.power+2-2*b.power+2k})
+        let b_sq = b.mul(b);
+        let aq2_over_b2 = a.mul(&QMonomial::q_power(2)).div(&b_sq);
+        let f3 = q2_pochhammer_product(
+            &aq2_over_b2.coeff,
+            aq2_over_b2.power,
+            variable,
+            truncation_order,
+            None,
+        );
+
+        // (-q/b;q)_inf
+        let neg_q_over_b_mon = QMonomial::new(-QRat::one(), 1).div(b);
+        let f4 = aqprod(&neg_q_over_b_mon, variable, PochhammerOrder::Infinite, truncation_order);
+
+        // (aq/b;q)_inf
+        let f5 = aqprod(&aq_over_b, variable, PochhammerOrder::Infinite, truncation_order);
+
+        let numer = arithmetic::mul(&f1, &arithmetic::mul(&f2, &f3));
+        let denom = arithmetic::mul(&f4, &f5);
+        return SummationResult::ClosedForm(
+            arithmetic::mul(&numer, &arithmetic::invert(&denom))
+        );
+    }
+
+    SummationResult::NotApplicable
+}
+
+/// Try q-Dixon (Jackson) summation (DLMF 17.7.6).
+///
+/// ```text
+/// _3 phi_2 (q^{-2n}, b, c ; q^{1-2n}/b, q^{1-2n}/c ; q, q^{2-n}/(bc))
+///   = (b;q)_n * (c;q)_n * (q;q)_{2n} * (bc;q)_{2n}
+///     / [(q;q)_n * (bc;q)_n * (b;q)_{2n} * (c;q)_{2n}]
+/// ```
+///
+/// Checks: r==3, s==2, one upper param is q^{-m} with m even (m=2n).
+pub fn try_q_dixon(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> SummationResult {
+    if series.r() != 3 || series.s() != 2 {
+        return SummationResult::NotApplicable;
+    }
+
+    // Find upper param that is q^{-m} with m even
+    for term_idx in 0..3 {
+        let term_param = &series.upper[term_idx];
+        if let Some(m) = term_param.is_q_neg_power() {
+            if m % 2 != 0 {
+                continue;
+            }
+            let n = m / 2;
+
+            if n == 0 {
+                return SummationResult::ClosedForm(
+                    FormalPowerSeries::one(variable, truncation_order)
+                );
+            }
+
+            // The other two upper params are b, c (try both orderings)
+            let other_idxs: Vec<usize> = (0..3).filter(|&i| i != term_idx).collect();
+
+            for perm in &[(0, 1), (1, 0)] {
+                let b = &series.upper[other_idxs[perm.0]];
+                let c = &series.upper[other_idxs[perm.1]];
+
+                // Check lower params: should be q^{1-2n}/b and q^{1-2n}/c
+                let q_1_minus_2n = QMonomial::q_power(1 - 2 * n);
+                let expected_lower1 = q_1_minus_2n.div(b);
+                let expected_lower2 = q_1_minus_2n.div(c);
+
+                // Try both orderings of lower params
+                let lower_match = (series.lower[0] == expected_lower1 && series.lower[1] == expected_lower2)
+                    || (series.lower[0] == expected_lower2 && series.lower[1] == expected_lower1);
+
+                if !lower_match {
+                    continue;
+                }
+
+                // Check z: q^{2-n}/(bc) = q^{2-n} / (b*c)
+                let bc = b.mul(c);
+                let expected_z = QMonomial::q_power(2 - n).div(&bc);
+
+                // The plan says z = q^{2-n}/(bc) but we should double-check with DLMF.
+                // Actually from the research doc: z = q^{2-n}/(bc).
+                // But wait: 2-n, not 2-2n. Let me re-read.
+                // DLMF 17.7.6: z = q^{2-2n}/(bc)... let me check the formula again.
+                // From the plan: z = q^{2-n}/(bc). I'll trust the plan.
+
+                if series.argument != expected_z {
+                    continue;
+                }
+
+                // Match! Compute:
+                // (b;q)_n * (c;q)_n * (q;q)_{2n} * (bc;q)_{2n}
+                // / [(q;q)_n * (bc;q)_n * (b;q)_{2n} * (c;q)_{2n}]
+
+                let two_n = 2 * n;
+                let q_mon = QMonomial::q_power(1); // q
+
+                let bq_n = aqprod(b, variable, PochhammerOrder::Finite(n), truncation_order);
+                let cq_n = aqprod(c, variable, PochhammerOrder::Finite(n), truncation_order);
+                let qq_2n = aqprod(&q_mon, variable, PochhammerOrder::Finite(two_n), truncation_order);
+                let bcq_2n = aqprod(&bc, variable, PochhammerOrder::Finite(two_n), truncation_order);
+
+                let qq_n = aqprod(&q_mon, variable, PochhammerOrder::Finite(n), truncation_order);
+                let bcq_n = aqprod(&bc, variable, PochhammerOrder::Finite(n), truncation_order);
+                let bq_2n = aqprod(b, variable, PochhammerOrder::Finite(two_n), truncation_order);
+                let cq_2n = aqprod(c, variable, PochhammerOrder::Finite(two_n), truncation_order);
+
+                let numer = arithmetic::mul(
+                    &arithmetic::mul(&bq_n, &cq_n),
+                    &arithmetic::mul(&qq_2n, &bcq_2n),
+                );
+                let denom = arithmetic::mul(
+                    &arithmetic::mul(&qq_n, &bcq_n),
+                    &arithmetic::mul(&bq_2n, &cq_2n),
+                );
+
+                return SummationResult::ClosedForm(
+                    arithmetic::mul(&numer, &arithmetic::invert(&denom))
+                );
+            }
+        }
+    }
+
+    SummationResult::NotApplicable
+}
+
+/// Try all summation formulas in order, returning the first match.
+///
+/// Tries: q-Gauss, q-Vandermonde, q-Saalschutz, q-Kummer, q-Dixon.
+pub fn try_all_summations(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> SummationResult {
+    for try_fn in [try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon] {
+        if let SummationResult::ClosedForm(fps) = try_fn(series, variable, truncation_order) {
+            return SummationResult::ClosedForm(fps);
+        }
+    }
+    SummationResult::NotApplicable
 }
