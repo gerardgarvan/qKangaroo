@@ -124,12 +124,13 @@ Plans:
   3. q-Kummer and q-Dixon summation formulas produce correct results matching published tables
   4. Heine's transformation (all 3 forms), Sears' 4-phi-3, Watson's, and Bailey's transformations correctly convert between hypergeometric representations, verified by expanding both sides to O(q^50)
   5. Researchers can verify a hypergeometric identity by constructing both sides and confirming series agreement to arbitrary precision
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
-- [ ] 06-03: TBD
+- [ ] 06-01-PLAN.md -- HypergeometricSeries struct, QMonomial arithmetic, eval_phi and eval_psi evaluation
+- [ ] 06-02-PLAN.md -- Summation formulas: q-Gauss, q-Vandermonde, q-Saalschutz, q-Kummer, q-Dixon
+- [ ] 06-03-PLAN.md -- Heine's transformation (3 forms) and Sears' 4phi3 transformation
+- [ ] 06-04-PLAN.md -- Watson's and Bailey's transformations, Python API bindings
 
 ### Phase 7: Identity Proving
 **Goal**: Researchers can prove q-series identities automatically using the valence formula method, matching thetaids and ETA package capabilities
@@ -178,6 +179,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 3. Core q-Series & Partitions | 4/4 | Complete | 2026-02-13 |
 | 4. Series Analysis | 7/7 | Complete | 2026-02-13 |
 | 5. Python API | 4/4 | Complete | 2026-02-13 |
-| 6. Hypergeometric Series | 0/TBD | Not started | - |
+| 6. Hypergeometric Series | 0/4 | Not started | - |
 | 7. Identity Proving | 0/TBD | Not started | - |
 | 8. Mock Theta & Bailey Chains | 0/TBD | Not started | - |
