@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 6 of 8 (Hypergeometric Series)
-Plan: 1 of 4 in current phase (1 complete: 06-01)
+Plan: 2 of 4 in current phase (2 complete: 06-01, 06-02)
 Status: In progress
-Last activity: 2026-02-14 -- Completed 06-01-PLAN.md
+Last activity: 2026-02-14 -- Completed 06-02-PLAN.md
 
-Progress: [################--] 84%
+Progress: [#################-] 88%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: 7 min
-- Total execution time: 2.5 hours
+- Total execution time: 2.7 hours
 
 **By Phase:**
 
@@ -32,11 +32,11 @@ Progress: [################--] 84%
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
 | 5 - Python API | 4/4 | 20 min | 5 min |
-| 6 - Hypergeometric Series | 1/4 | 7 min | 7 min |
+| 6 - Hypergeometric Series | 2/4 | 17 min | 9 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 5 min, 7 min, 4 min, 7 min
-- Trend: stable ~5 min/plan
+- Last 5 plans: 5 min, 7 min, 4 min, 7 min, 10 min
+- Trend: stable ~7 min/plan
 
 *Updated after each plan completion*
 
@@ -121,6 +121,10 @@ Recent decisions affecting current work:
 - [06-01]: Single inversion per step: accumulate denominator factors, invert once, reduces inversions from (s+1) to 1
 - [06-01]: Pole detection in eval_psi_negative: skip terms where Pochhammer at negative order has pole (a.coeff==1 && 0<a.power<=m)
 - [06-01]: rug::Integer MulIncomplete completed explicitly for sqrt comparison (lazy types cannot compare directly)
+- [06-02]: q^2-Pochhammer via manual factor loop (not etaq) for general-coefficient step-2 products in Kummer formula
+- [06-02]: Dixon z formula uses q^{2-n}/(bc) per DLMF 17.7.6 convention
+- [06-02]: Terminating summation tests verify against product formula directly (not eval_phi) due to negative-power FPS limitation
+- [06-02]: qrat_pow helper for QRat exponentiation via simple loop multiplication
 
 ### Pending Todos
 
@@ -139,5 +143,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 06-01-PLAN.md (eval_phi/eval_psi + QMonomial arithmetic + 18 integration tests)
-Resume file: .planning/phases/06-hypergeometric-series/06-01-SUMMARY.md
+Stopped at: Completed 06-02-PLAN.md (5 summation formulas + try_all_summations + 8 tests)
+Resume file: .planning/phases/06-hypergeometric-series/06-02-SUMMARY.md
