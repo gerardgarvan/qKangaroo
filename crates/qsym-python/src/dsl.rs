@@ -7,10 +7,12 @@
 //! get a SymbolId (NOT `arena.intern_symbol("q")` which returns ExprRef).
 
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
 use qsym_core::number::QRat;
 use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
 
+use crate::convert::{qint_to_python, qrat_to_python};
 use crate::series::QSeries;
 use crate::session::QSession;
 
@@ -184,4 +186,219 @@ pub fn theta4(session: &QSession, order: i64) -> QSeries {
     let sym_q = inner.get_or_create_symbol_id("q");
     let fps = qseries::theta4(sym_q, order);
     QSeries { fps }
+}
+
+// ===========================================================================
+// GROUP 4: Partition Functions
+// ===========================================================================
+
+/// Compute p(n), the number of partitions of n.
+///
+/// Returns a Python int (not Fraction) since partition counts are always integers.
+/// No session needed -- pure computation on an integer.
+///
+/// ```python
+/// print(partition_count(5))   # 7
+/// print(partition_count(100)) # 190569292536040
+/// ```
+#[pyfunction]
+pub fn partition_count(py: Python<'_>, n: i64) -> PyResult<PyObject> {
+    let result = qseries::partition_count(n);
+    // partition_count always returns an integer; extract numerator as QInt
+    let numer = qsym_core::number::QInt(result.numer().clone());
+    let obj = qint_to_python(py, &numer)?;
+    Ok(obj.into())
+}
+
+/// Compute the partition generating function: sum_{n>=0} p(n) q^n = 1/(q;q)_inf.
+#[pyfunction]
+pub fn partition_gf(session: &QSession, order: i64) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let fps = qseries::partition_gf(sym_q, order);
+    QSeries { fps }
+}
+
+/// Generating function for partitions into distinct parts: prod_{n>=1}(1+q^n).
+#[pyfunction]
+pub fn distinct_parts_gf(session: &QSession, order: i64) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let fps = qseries::distinct_parts_gf(sym_q, order);
+    QSeries { fps }
+}
+
+/// Generating function for partitions into odd parts: prod_{k>=0} 1/(1-q^{2k+1}).
+#[pyfunction]
+pub fn odd_parts_gf(session: &QSession, order: i64) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let fps = qseries::odd_parts_gf(sym_q, order);
+    QSeries { fps }
+}
+
+/// Generating function for partitions with at most max_part parts.
+#[pyfunction]
+pub fn bounded_parts_gf(session: &QSession, max_part: i64, order: i64) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let fps = qseries::bounded_parts_gf(max_part, sym_q, order);
+    QSeries { fps }
+}
+
+/// Compute the rank generating function R(z, q).
+///
+/// z is specified as z_num/z_den. At z=1, returns the partition generating function.
+#[pyfunction]
+pub fn rank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let z = QRat::from((z_num, z_den));
+    let fps = qseries::rank_gf(&z, sym_q, order);
+    QSeries { fps }
+}
+
+/// Compute the crank generating function C(z, q).
+///
+/// z is specified as z_num/z_den. At z=1, returns the partition generating function.
+#[pyfunction]
+pub fn crank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let z = QRat::from((z_num, z_den));
+    let fps = qseries::crank_gf(&z, sym_q, order);
+    QSeries { fps }
+}
+
+// ===========================================================================
+// GROUP 5: Factoring, Utilities, and Prodmake/Post-processing
+// ===========================================================================
+
+/// Factor a q-polynomial into (1-q^i) components.
+///
+/// Returns a dict: {"scalar": Fraction, "factors": {i: multiplicity, ...}, "is_exact": bool}
+#[pyfunction]
+pub fn qfactor(py: Python<'_>, series: &QSeries) -> PyResult<PyObject> {
+    let result = qseries::qfactor(&series.fps);
+    let dict = PyDict::new(py);
+    dict.set_item("scalar", qrat_to_python(py, &result.scalar)?)?;
+
+    let factors_dict = PyDict::new(py);
+    for (&i, &mult) in &result.factors {
+        factors_dict.set_item(i, mult)?;
+    }
+    dict.set_item("factors", factors_dict)?;
+    dict.set_item("is_exact", result.is_exact)?;
+
+    Ok(dict.into())
+}
+
+/// Extract arithmetic subsequence: g[i] = series[m*i + j].
+///
+/// Named `sift` in Python (registered as "sift" to avoid name conflict with
+/// QSeries.sift() method, since Python sees them differently).
+#[pyfunction]
+#[pyo3(name = "sift")]
+pub fn sift_fn(series: &QSeries, m: i64, j: i64) -> QSeries {
+    QSeries {
+        fps: qseries::sift(&series.fps, m, j),
+    }
+}
+
+/// Highest nonzero exponent (degree) of a series.
+#[pyfunction]
+pub fn qdegree(series: &QSeries) -> Option<i64> {
+    qseries::qdegree(&series.fps)
+}
+
+/// Lowest nonzero exponent (low degree / valuation) of a series.
+#[pyfunction]
+pub fn lqdegree(series: &QSeries) -> Option<i64> {
+    qseries::lqdegree(&series.fps)
+}
+
+/// Andrews' algorithm: recover infinite product exponents from series coefficients.
+///
+/// Returns a dict: {"factors": {n: Fraction(exponent), ...}, "terms_used": int}
+#[pyfunction]
+pub fn prodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
+    let result = qseries::prodmake(&series.fps, max_n);
+    let dict = PyDict::new(py);
+
+    let factors_dict = PyDict::new(py);
+    for (&n, exp) in &result.exponents {
+        factors_dict.set_item(n, qrat_to_python(py, exp)?)?;
+    }
+    dict.set_item("factors", factors_dict)?;
+    dict.set_item("terms_used", result.terms_used)?;
+
+    Ok(dict.into())
+}
+
+/// Express a series as an eta-quotient: prod eta(d*tau)^{r_d}.
+///
+/// Returns a dict: {"factors": {d: int, ...}, "q_shift": Fraction}
+#[pyfunction]
+pub fn etamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
+    let result = qseries::etamake(&series.fps, max_n);
+    let dict = PyDict::new(py);
+
+    let factors_dict = PyDict::new(py);
+    for (&d, &r_d) in &result.factors {
+        factors_dict.set_item(d, r_d)?;
+    }
+    dict.set_item("factors", factors_dict)?;
+    dict.set_item("q_shift", qrat_to_python(py, &result.q_shift)?)?;
+
+    Ok(dict.into())
+}
+
+/// Express a series as a Jacobi product form: prod JAC(a,b)^exp.
+///
+/// Returns a dict: {"factors": {(a,b): int, ...}, "scalar": Fraction, "is_exact": bool}
+#[pyfunction]
+pub fn jacprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
+    let result = qseries::jacprodmake(&series.fps, max_n);
+    let dict = PyDict::new(py);
+
+    let factors_dict = PyDict::new(py);
+    for (&(a, b), &exp) in &result.factors {
+        factors_dict.set_item((a, b), exp)?;
+    }
+    dict.set_item("factors", factors_dict)?;
+    dict.set_item("scalar", qrat_to_python(py, &result.scalar)?)?;
+    dict.set_item("is_exact", result.is_exact)?;
+
+    Ok(dict.into())
+}
+
+/// Express a series as a product of (1+q^n) factors.
+///
+/// Returns a dict: {n: int, ...}
+#[pyfunction]
+pub fn mprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
+    let result = qseries::mprodmake(&series.fps, max_n);
+    let dict = PyDict::new(py);
+    for (&n, &m_n) in &result {
+        dict.set_item(n, m_n)?;
+    }
+    Ok(dict.into())
+}
+
+/// Express a series in (q^d;q^d)_inf notation.
+///
+/// Returns a dict: {"factors": {d: int, ...}, "q_shift": Fraction}
+#[pyfunction]
+pub fn qetamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
+    let result = qseries::qetamake(&series.fps, max_n);
+    let dict = PyDict::new(py);
+
+    let factors_dict = PyDict::new(py);
+    for (&d, &r_d) in &result.factors {
+        factors_dict.set_item(d, r_d)?;
+    }
+    dict.set_item("factors", factors_dict)?;
+    dict.set_item("q_shift", qrat_to_python(py, &result.q_shift)?)?;
+
+    Ok(dict.into())
 }

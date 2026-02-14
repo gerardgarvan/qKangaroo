@@ -41,5 +41,25 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dsl::theta3, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::theta4, m)?)?;
 
+    // Group 4: Partition Functions
+    m.add_function(wrap_pyfunction!(dsl::partition_count, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::partition_gf, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::distinct_parts_gf, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::odd_parts_gf, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::bounded_parts_gf, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::rank_gf, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::crank_gf, m)?)?;
+
+    // Group 5: Factoring, Utilities, and Prodmake
+    m.add_function(wrap_pyfunction!(dsl::qfactor, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::sift_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::qdegree, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::lqdegree, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::prodmake, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::etamake, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::jacprodmake, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mprodmake, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::qetamake, m)?)?;
+
     Ok(())
 }
