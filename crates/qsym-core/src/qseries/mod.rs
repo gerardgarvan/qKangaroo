@@ -11,20 +11,32 @@
 //! - Partition functions: [`partition_count`], [`partition_gf`], [`distinct_parts_gf`],
 //!   [`odd_parts_gf`], [`bounded_parts_gf`]
 //! - Rank/crank: [`rank_gf`], [`crank_gf`]
+//! - Series analysis: [`prodmake`] (Andrews' algorithm for series-to-product conversion)
+//! - Factoring: [`qfactor`], [`QFactorization`] -- decompose polynomials into (1-q^i) factors
+//! - Utilities: [`sift`], [`qdegree`], [`lqdegree`] -- subsequence extraction and degree bounds
+//! - Linear algebra: [`rational_null_space`], [`build_coefficient_matrix`], [`modular_null_space`]
 
+pub mod factoring;
+pub mod linalg;
 pub mod partitions;
 pub mod pochhammer;
+pub mod prodmake;
 pub mod products;
 pub mod qbinomial;
 pub mod rank_crank;
 pub mod theta;
+pub mod utilities;
 
+pub use factoring::{qfactor, QFactorization};
+pub use linalg::{rational_null_space, build_coefficient_matrix, modular_null_space};
 pub use partitions::{partition_count, partition_gf, distinct_parts_gf, odd_parts_gf, bounded_parts_gf};
 pub use pochhammer::aqprod;
+pub use prodmake::{prodmake, InfiniteProductForm};
 pub use products::{etaq, jacprod, tripleprod, quinprod, winquist};
 pub use qbinomial::qbin;
 pub use rank_crank::{rank_gf, crank_gf};
 pub use theta::{theta2, theta3, theta4};
+pub use utilities::{sift, qdegree, lqdegree};
 
 use crate::number::QRat;
 
