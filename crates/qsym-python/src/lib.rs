@@ -24,5 +24,22 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<session::QSession>()?;
     m.add_class::<expr::QExpr>()?;
     m.add_class::<series::QSeries>()?;
+
+    // Group 1: Pochhammer and q-Binomial
+    m.add_function(wrap_pyfunction!(dsl::aqprod, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::qbin, m)?)?;
+
+    // Group 2: Named Products
+    m.add_function(wrap_pyfunction!(dsl::etaq, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::jacprod, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::tripleprod, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::quinprod, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::winquist, m)?)?;
+
+    // Group 3: Theta Functions
+    m.add_function(wrap_pyfunction!(dsl::theta2, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::theta3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::theta4, m)?)?;
+
     Ok(())
 }
