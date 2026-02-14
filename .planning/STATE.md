@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 6 -- Hypergeometric Series
+**Current focus:** Phase 6 complete -- ready for Phase 7
 
 ## Current Position
 
 Phase: 6 of 8 (Hypergeometric Series)
-Plan: 3 of 4 in current phase (3 complete: 06-01, 06-02, 06-03)
-Status: In progress
-Last activity: 2026-02-14 -- Completed 06-03-PLAN.md
+Plan: 4 of 4 in current phase (4 complete: 06-01, 06-02, 06-03, 06-04)
+Status: Phase 6 complete
+Last activity: 2026-02-14 -- Completed 06-04-PLAN.md
 
-Progress: [##################] 92%
+Progress: [####################] 96%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: 7 min
-- Total execution time: 2.8 hours
+- Total execution time: 2.9 hours
 
 **By Phase:**
 
@@ -32,11 +32,11 @@ Progress: [##################] 92%
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
 | 5 - Python API | 4/4 | 20 min | 5 min |
-| 6 - Hypergeometric Series | 3/4 | 25 min | 8 min |
+| 6 - Hypergeometric Series | 4/4 | 35 min | 9 min |
 
 **Recent Trend:**
-- Last 5 plans: 7 min, 4 min, 7 min, 10 min, 8 min
-- Trend: stable ~7 min/plan
+- Last 5 plans: 4 min, 7 min, 10 min, 8 min, 10 min
+- Trend: stable ~8 min/plan
 
 *Updated after each plan completion*
 
@@ -128,6 +128,10 @@ Recent decisions affecting current work:
 - [06-03]: Sears permutation search: try 3*3=9 (a,d) role assignments to find balanced configuration automatically
 - [06-03]: Sears test uses structural + prefactor verification (not eval_phi) due to FPS negative-power limitation on terminating series
 - [06-03]: Heine tests use eval_phi expansion comparison directly since non-terminating 2phi1 with positive-power params is exact in FPS
+- [06-04]: Watson test uses structural + prefactor verification (not eval_phi) due to FPS negative-power limitation on def/a parameter
+- [06-04]: Bailey implemented as standalone function (not pattern-matching) because q^2 base requires different Pochhammer evaluation
+- [06-04]: Python phi/psi use (num,den,power) tuple lists for QMonomial params -- more Pythonic than raw constructor calls
+- [06-04]: Heine Python functions return (prefactor, combined_result) tuple where combined = prefactor * eval_phi(transformed)
 
 ### Pending Todos
 
@@ -146,5 +150,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 06-03-PLAN.md (4 transformation functions + 8 tests)
-Resume file: .planning/phases/06-hypergeometric-series/06-03-SUMMARY.md
+Stopped at: Completed 06-04-PLAN.md (Phase 6 complete: Watson/Bailey + Python API + integration test)
+Resume file: .planning/phases/06-hypergeometric-series/06-04-SUMMARY.md
