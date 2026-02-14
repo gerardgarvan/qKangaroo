@@ -75,34 +75,42 @@ pub fn qfactor(f: &FormalPowerSeries) -> QFactorization {
 
     let mut factors = BTreeMap::new();
 
-    // Try dividing by (1-q^i) for i = 1, 2, ...
-    // The maximum meaningful i is the degree of the current polynomial.
-    loop {
-        let deg = match poly_degree(&current) {
-            Some(d) => d,
-            None => break, // current is just a constant
-        };
-        if deg == 0 {
-            break;
+    // Get the initial degree of the normalized polynomial
+    let initial_deg = match poly_degree(&current) {
+        Some(d) if d > 0 => d,
+        _ => {
+            // Already a constant -- nothing to factor
+            return QFactorization {
+                factors,
+                scalar,
+                is_exact: current.coeff(0) == QRat::one(),
+            };
         }
+    };
 
-        // Find the smallest i that divides current
-        let mut found_any = false;
-        for i in 1..=deg {
-            loop {
-                match try_divide_by_1_minus_q_i(&current, i) {
-                    Some(quotient) => {
-                        *factors.entry(i).or_insert(0) += 1;
-                        current = quotient;
-                        found_any = true;
-                    }
-                    None => break,
+    // Try dividing by (1-q^i) for i from largest down to smallest.
+    // This ensures that we extract (1-q^3) before (1-q), preventing
+    // the smaller factors from "stealing" divisibility that belongs
+    // to larger cyclotomic factors (e.g., (1-q^2) = (1-q)(1+q)).
+    //
+    // We re-check the degree after each extraction since it may shrink.
+    let mut i = initial_deg;
+    while i >= 1 {
+        match try_divide_by_1_minus_q_i(&current, i) {
+            Some(quotient) => {
+                *factors.entry(i).or_insert(0) += 1;
+                current = quotient;
+                // After extraction, reset i to the new degree (or stay at current i)
+                // to check if (1-q^i) divides again.
+                let new_deg = poly_degree(&current).unwrap_or(0);
+                if new_deg < i {
+                    i = new_deg;
                 }
+                // Otherwise stay at same i to try extracting again
             }
-        }
-
-        if !found_any {
-            break;
+            None => {
+                i -= 1;
+            }
         }
     }
 
@@ -119,13 +127,33 @@ pub fn qfactor(f: &FormalPowerSeries) -> QFactorization {
 
 /// Try to divide polynomial `f` by `(1 - q^i)` using iterative extraction.
 ///
+/// This performs POLYNOMIAL division, not series division. The quotient must
+/// be a polynomial (finite number of terms, all within the original degree bounds).
+///
 /// Algorithm: process terms from lowest to highest. For each term c*q^k,
-/// set quotient[k] += c, then subtract c*q^k*(1-q^i) from remainder,
-/// which means: remainder[k] -= c, remainder[k+i] += c.
+/// set quotient[k] += c, then "carry" c to remainder[k+i]. If the carry
+/// would exceed the polynomial degree bound, the division is not exact and
+/// we return None.
 ///
 /// If after all terms the remainder is zero, return Some(quotient).
 /// Otherwise return None.
 fn try_divide_by_1_minus_q_i(f: &FormalPowerSeries, i: i64) -> Option<FormalPowerSeries> {
+    // For polynomial division by (1-q^i), the quotient degree should be
+    // at most deg(f) - i. If deg(f) < i, division cannot be exact (unless f=1 and i irrelevant).
+    let f_deg = match f.iter().last() {
+        Some((&k, _)) => k,
+        None => return None, // zero polynomial
+    };
+
+    // If the polynomial degree is less than i, (1-q^i) cannot divide it
+    // (unless f is a constant, but a nonzero constant is not divisible by (1-q^i))
+    if f_deg < i {
+        return None;
+    }
+
+    // The maximum degree the quotient can have
+    let max_quotient_deg = f_deg - i;
+
     // Work with a mutable copy of coefficients as a BTreeMap
     let mut remainder: BTreeMap<i64, QRat> = f.coefficients.clone();
     let mut quotient: BTreeMap<i64, QRat> = BTreeMap::new();
@@ -133,7 +161,6 @@ fn try_divide_by_1_minus_q_i(f: &FormalPowerSeries, i: i64) -> Option<FormalPowe
     let variable = f.variable();
 
     // Process terms in ascending order
-    // We iterate by pulling the smallest key repeatedly
     loop {
         // Find the smallest nonzero term in remainder
         let entry = {
@@ -152,14 +179,18 @@ fn try_divide_by_1_minus_q_i(f: &FormalPowerSeries, i: i64) -> Option<FormalPowe
             None => break, // remainder is zero -- success
         };
 
-        // Set quotient[k] += c
-        let qentry = quotient.entry(k).or_insert_with(QRat::zero);
-        *qentry = qentry.clone() + c.clone();
+        // If this term would put us beyond the polynomial quotient degree, fail
+        if k > max_quotient_deg {
+            return None;
+        }
 
-        // remainder[k] -= c (should become zero)
+        // Set quotient[k] = c
+        quotient.insert(k, c.clone());
+
+        // remainder[k] -= c (becomes zero, remove it)
         remainder.remove(&k);
 
-        // remainder[k+i] += c
+        // remainder[k+i] += c  (the "carry")
         let ki = k + i;
         if ki < trunc {
             let rentry = remainder.entry(ki).or_insert_with(QRat::zero);
@@ -168,15 +199,12 @@ fn try_divide_by_1_minus_q_i(f: &FormalPowerSeries, i: i64) -> Option<FormalPowe
                 remainder.remove(&ki);
             }
         }
-        // If ki >= trunc, we're dividing a polynomial that extends beyond truncation.
-        // For a true polynomial (all terms < trunc), this shouldn't happen if division is exact.
-        // But if it does, the division may still work -- we just lose the high-order term.
     }
 
     // Clean up zero entries from quotient
     quotient.retain(|_, v| !v.is_zero());
 
-    // Clean up remainder: any residual zeros
+    // Clean up remainder
     remainder.retain(|_, v| !v.is_zero());
 
     if remainder.is_empty() {
