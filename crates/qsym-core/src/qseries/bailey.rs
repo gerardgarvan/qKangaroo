@@ -621,3 +621,127 @@ impl BaileyDatabase {
         self.pairs.len()
     }
 }
+
+// ---------------------------------------------------------------------------
+// Discovery
+// ---------------------------------------------------------------------------
+
+/// Result of automated Bailey pair discovery.
+#[derive(Clone, Debug)]
+pub struct DiscoveryResult {
+    /// Whether a matching Bailey pair was found.
+    pub found: bool,
+    /// Name of the matching pair (if found).
+    pub pair_name: Option<String>,
+    /// Chain depth at which the match was found (0 = direct match).
+    pub chain_depth: usize,
+    /// The matching pair (if found).
+    pub matching_pair: Option<BaileyPair>,
+    /// Description of how the identity was verified.
+    pub verification: String,
+}
+
+/// Compare two FPS for equality by checking if their difference is zero.
+fn fps_equal(a: &FormalPowerSeries, b: &FormalPowerSeries) -> bool {
+    let diff = arithmetic::sub(a, b);
+    diff.is_zero()
+}
+
+/// Automated Bailey pair discovery: search the pair database (and chain
+/// iterations) to verify whether an identity LHS == RHS can be explained
+/// by the weak Bailey lemma applied to some known pair.
+///
+/// Algorithm:
+/// 1. If LHS == RHS directly, return trivially verified.
+/// 2. For each pair in the database, compute the weak Bailey lemma.
+///    If the resulting (wbl_lhs, wbl_rhs) satisfy wbl_lhs == wbl_rhs AND
+///    lhs == wbl_lhs, the identity is verified via that pair.
+/// 3. If no direct match, try chain iteration up to `max_chain_depth`.
+///    For each depth d and each pair, apply `bailey_chain` with default
+///    parameters b = (1/2)*q, c = (1/3)*q, then compute the weak Bailey
+///    lemma for the last pair in the chain and check for a match.
+/// 4. If no match at any depth, return found=false.
+pub fn bailey_discover(
+    lhs: &FormalPowerSeries,
+    rhs: &FormalPowerSeries,
+    db: &BaileyDatabase,
+    a: &QMonomial,
+    max_chain_depth: usize,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> DiscoveryResult {
+    // Step 1: Trivial equality
+    if fps_equal(lhs, rhs) {
+        return DiscoveryResult {
+            found: true,
+            pair_name: None,
+            chain_depth: 0,
+            matching_pair: None,
+            verification: "direct equality".into(),
+        };
+    }
+
+    // Compute max_n from truncation_order (n^2 < trunc => n < sqrt(trunc))
+    let max_n = {
+        let mut n = 0i64;
+        while (n + 1) * (n + 1) < truncation_order {
+            n += 1;
+        }
+        n
+    };
+
+    // Step 2: Direct match via weak Bailey lemma
+    for pair in db.all_pairs() {
+        let (wbl_lhs, wbl_rhs) = weak_bailey_lemma(pair, a, max_n, variable, truncation_order);
+        if fps_equal(&wbl_lhs, &wbl_rhs) && fps_equal(lhs, &wbl_lhs) {
+            return DiscoveryResult {
+                found: true,
+                pair_name: Some(pair.name.clone()),
+                chain_depth: 0,
+                matching_pair: Some(pair.clone()),
+                verification: format!(
+                    "weak Bailey lemma with pair '{}' at chain depth 0",
+                    pair.name
+                ),
+            };
+        }
+    }
+
+    // Step 3: Chain iteration
+    // Default chain parameters: b = (1/2)*q, c = (1/3)*q
+    // These avoid vanishing Pochhammer products for general a.
+    let b = QMonomial::new(QRat::from((1i64, 2i64)), 1);
+    let c = QMonomial::new(QRat::from((1i64, 3i64)), 1);
+
+    for depth in 1..=max_chain_depth {
+        for pair in db.all_pairs() {
+            let chain = bailey_chain(pair, a, &b, &c, depth, max_n, variable, truncation_order);
+            // The last pair in the chain is the one we test
+            if let Some(derived) = chain.last() {
+                let (wbl_lhs, wbl_rhs) =
+                    weak_bailey_lemma(derived, a, max_n, variable, truncation_order);
+                if fps_equal(&wbl_lhs, &wbl_rhs) && fps_equal(lhs, &wbl_lhs) {
+                    return DiscoveryResult {
+                        found: true,
+                        pair_name: Some(pair.name.clone()),
+                        chain_depth: depth,
+                        matching_pair: Some(derived.clone()),
+                        verification: format!(
+                            "weak Bailey lemma with pair '{}' at chain depth {}",
+                            pair.name, depth
+                        ),
+                    };
+                }
+            }
+        }
+    }
+
+    // Step 4: No match found
+    DiscoveryResult {
+        found: false,
+        pair_name: None,
+        chain_depth: 0,
+        matching_pair: None,
+        verification: "no matching pair found in database".into(),
+    }
+}

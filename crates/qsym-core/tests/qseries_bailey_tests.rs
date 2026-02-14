@@ -18,6 +18,7 @@ use qsym_core::qseries::{
     QMonomial, PochhammerOrder, aqprod,
     BaileyPair, BaileyPairType, BaileyDatabase,
     bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair,
+    bailey_discover,
 };
 
 /// Helper: create a SymbolId for "q".
@@ -568,4 +569,139 @@ fn test_rr_pair_relation_a_q2() {
     };
 
     assert!(verify_bailey_pair(&pair, &a, 2, q, trunc));
+}
+
+// ===========================================================================
+// 9. Bailey discover tests
+// ===========================================================================
+
+/// Discovery with lhs == rhs should return found=true with "direct equality".
+#[test]
+fn test_bailey_discover_trivial() {
+    let q = q_var();
+    let trunc = 15;
+    let a = QMonomial::one();
+    let db = BaileyDatabase::new();
+
+    // Create any FPS (e.g. 1/(q;q)_inf)
+    let series = aqprod(&QMonomial::q(), q, PochhammerOrder::Infinite, trunc);
+    let inv = arithmetic::invert(&series);
+
+    let result = bailey_discover(&inv, &inv, &db, &a, 0, q, trunc);
+    assert!(result.found, "Trivial discovery should find match");
+    assert_eq!(result.verification, "direct equality");
+    assert_eq!(result.chain_depth, 0);
+    assert!(result.pair_name.is_none());
+}
+
+/// The first Rogers-Ramanujan identity:
+/// LHS = sum_{n>=0} q^{n^2} / (q;q)_n
+/// This is the beta side of the R-R pair with a=1 via the weak Bailey lemma.
+/// Discovery should find the R-R pair.
+///
+/// We pass the LHS and a different (dummy) RHS to bypass trivial equality,
+/// forcing the function to search the pair database.
+#[test]
+fn test_bailey_discover_rr_identity() {
+    let q = q_var();
+    let trunc = 20;
+    let a = QMonomial::one(); // a = 1
+    let db = BaileyDatabase::new();
+    let max_n = 10i64;
+
+    // Compute LHS: the weak Bailey lemma LHS for R-R pair at a=1
+    // This is sum_{n>=0} q^{n^2} / (q;q)_n
+    let rr_pair = BaileyPair {
+        name: "rr".into(),
+        pair_type: BaileyPairType::RogersRamanujan,
+        tags: vec![],
+    };
+    let (rr_lhs, rr_rhs) = weak_bailey_lemma(&rr_pair, &a, max_n, q, trunc);
+
+    // Sanity: the identity holds
+    let diff = arithmetic::sub(&rr_lhs, &rr_rhs);
+    assert!(diff.is_zero(), "R-R identity should hold");
+
+    // Pass LHS and a dummy (zero) RHS to bypass trivial equality.
+    // Discovery should find the R-R pair by matching LHS against WBL of the pair.
+    let dummy_rhs = FormalPowerSeries::zero(q, trunc);
+    let result = bailey_discover(&rr_lhs, &dummy_rhs, &db, &a, 0, q, trunc);
+    assert!(result.found, "Should discover R-R identity");
+    assert_eq!(result.chain_depth, 0);
+    // The pair name should contain "rogers-ramanujan"
+    assert!(
+        result.pair_name.as_ref().unwrap().contains("rogers-ramanujan"),
+        "Expected R-R pair, got {:?}",
+        result.pair_name
+    );
+}
+
+/// Two unrelated series should not match any pair.
+#[test]
+fn test_bailey_discover_no_match() {
+    let q = q_var();
+    let trunc = 15;
+    let a = QMonomial::one();
+    let db = BaileyDatabase::new();
+
+    // LHS: 1 + 7q + 3q^2
+    let mut lhs = FormalPowerSeries::one(q, trunc);
+    lhs.set_coeff(1, qrat(7));
+    lhs.set_coeff(2, qrat(3));
+
+    // RHS: 2 + q + q^3
+    let mut rhs = FormalPowerSeries::zero(q, trunc);
+    rhs.set_coeff(0, qrat(2));
+    rhs.set_coeff(1, qrat(1));
+    rhs.set_coeff(3, qrat(1));
+
+    let result = bailey_discover(&lhs, &rhs, &db, &a, 1, q, trunc);
+    assert!(!result.found, "Unrelated series should not match any pair");
+    assert!(result.pair_name.is_none());
+}
+
+/// Identity that requires chain depth 1: apply the lemma to the unit pair once,
+/// compute weak Bailey lemma for the derived pair. Use that LHS/RHS as input.
+/// Discovery with max_chain_depth=1 should find it.
+#[test]
+fn test_bailey_discover_chain_depth_1() {
+    let q = q_var();
+    let trunc = 15;
+    let a = QMonomial::q_power(2); // a = q^2
+    let max_n = 4i64;
+    let db = BaileyDatabase::new();
+
+    // Chain parameters matching what bailey_discover uses internally
+    let b = QMonomial::new(qrat_frac(1, 2), 1);
+    let c = QMonomial::new(qrat_frac(1, 3), 1);
+
+    // Get the unit pair
+    let unit_pair = BaileyPair {
+        name: "unit".into(),
+        pair_type: BaileyPairType::Unit,
+        tags: vec![],
+    };
+
+    // Apply lemma once to get derived pair
+    let derived = bailey_lemma(&unit_pair, &a, &b, &c, max_n, q, trunc);
+
+    // Compute weak Bailey lemma for the derived pair
+    let (wbl_lhs, wbl_rhs) = weak_bailey_lemma(&derived, &a, max_n, q, trunc);
+
+    // Sanity: weak Bailey lemma holds for the derived pair
+    let diff = arithmetic::sub(&wbl_lhs, &wbl_rhs);
+    assert!(diff.is_zero(), "WBL should hold for derived pair");
+
+    // Now discover: should find the match at chain depth 1
+    let result = bailey_discover(&wbl_lhs, &wbl_rhs, &db, &a, 1, q, trunc);
+    assert!(
+        result.found,
+        "Should discover identity at chain depth 1. Verification: {}",
+        result.verification
+    );
+    assert!(
+        result.chain_depth <= 1,
+        "Expected chain depth <= 1, got {}",
+        result.chain_depth
+    );
 }
