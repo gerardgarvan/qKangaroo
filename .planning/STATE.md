@@ -153,6 +153,11 @@ Recent decisions affecting current work:
 - [08-03]: q-Binomial beta computed from defining relation (not closed form) for guaranteed correctness
 - [08-03]: Tabulated pair stores Vec<FPS> for lemma-derived terms
 - [08-03]: Bailey lemma params must avoid vanishing Pochhammer products (aq/b, aq/c not q^k for small k)
+- [08-01]: Incremental denominator products for O(N^2) per mock theta function (not O(N^3) from full aqprod recomputation)
+- [08-01]: Seventh-order uses per-term aqprod (shifted base prevents incremental reuse), still O(N^2) total
+- [08-01]: chi0/chi1 composed from defining relations (chi0 = 2*F0 - phi0(-q), chi1 = 2*F1 + q^{-1}*phi1(-q))
+- [08-01]: negate_variable maps coeff[k] -> coeff[k]*(-1)^k for formal q -> -q substitution
+- [08-01]: Non-Pochhammer factors (chi3 cyclotomic3, rho3 1+q^m+q^{2m}) as explicit 3-term polynomial FPS
 
 ### Pending Todos
 
@@ -171,5 +176,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-03-PLAN.md (Bailey pairs, lemma, chain, weak lemma)
-Resume file: .planning/phases/08-mock-theta-bailey-chains/08-03-SUMMARY.md
+Stopped at: Completed 08-01-PLAN.md (20 classical mock theta functions with OEIS verification)
+Resume file: .planning/phases/08-mock-theta-bailey-chains/08-01-SUMMARY.md
