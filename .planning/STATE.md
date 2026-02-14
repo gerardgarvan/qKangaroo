@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 Phase: 8 of 8 (Mock Theta & Bailey Chains) -- IN PROGRESS
 Plan: 3 of 4 in current phase (3 complete: 08-01, 08-02, 08-03)
-Status: Executing Phase 8; 08-03 (Bailey pairs) complete
-Last activity: 2026-02-14 -- Completed 08-03-PLAN.md
+Status: Executing Phase 8; 08-02 (Appell-Lerch sums) complete
+Last activity: 2026-02-14 -- Completed 08-02-PLAN.md
 
 Progress: [#####################] 100%
 
@@ -158,6 +158,10 @@ Recent decisions affecting current work:
 - [08-01]: chi0/chi1 composed from defining relations (chi0 = 2*F0 - phi0(-q), chi1 = 2*F1 + q^{-1}*phi1(-q))
 - [08-01]: negate_variable maps coeff[k] -> coeff[k]*(-1)^k for formal q -> -q substitution
 - [08-01]: Non-Pochhammer factors (chi3 cyclotomic3, rho3 1+q^m+q^{2m}) as explicit 3-term polynomial FPS
+- [08-02]: Raw bilateral sum (not normalized by j(z;q)) since j(q^b;q)=0 for all integer b
+- [08-02]: Algebraic identity rewrites (q^{1-a};q)_{n+1} = (-1)^{n+1}*q^{-S}*prod(1-q^{a-1-k}) for positive-exponent FPS
+- [08-02]: g3/g2 summation truncated at max_valid_n = a-2 for integer a_pow >= 2
+- [08-02]: Extended truncation (trunc - q_exp) for bilateral sum terms with negative q_exp
 
 ### Pending Todos
 
@@ -176,5 +180,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-01-PLAN.md (20 classical mock theta functions with OEIS verification)
-Resume file: .planning/phases/08-mock-theta-bailey-chains/08-01-SUMMARY.md
+Stopped at: Completed 08-02-PLAN.md (Appell-Lerch sums, g2/g3, Zwegers completion)
+Resume file: .planning/phases/08-mock-theta-bailey-chains/08-02-SUMMARY.md
