@@ -1,4 +1,19 @@
-"""Q-Symbolic: Symbolic computation for q-series."""
+"""Q-Symbolic: Symbolic computation for q-series.
+
+QSession provides two modes for generating q-series:
+
+1. Individual DSL functions (e.g., etaq, partition_gf, aqprod, ...) for one-off
+   computation of specific series.
+
+2. QSession.batch_generate() / QSession.generate() for systematic parameter scans.
+   These support GENERATOR functions only:
+     aqprod, etaq, jacprod, tripleprod, quinprod, theta2, theta3, theta4,
+     partition_gf, distinct_parts_gf, odd_parts_gf, bounded_parts_gf,
+     rank_gf, crank_gf, qbin
+
+   For analysis (prodmake, qfactor) and relation discovery (findlincombo, etc.),
+   use the individual DSL functions directly.
+"""
 
 import os
 import sys
