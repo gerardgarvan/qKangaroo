@@ -47,7 +47,7 @@ pub use qbinomial::qbin;
 pub use rank_crank::{rank_gf, crank_gf};
 pub use theta::{theta2, theta3, theta4};
 pub use utilities::{sift, qdegree, lqdegree};
-pub use identity::{JacFactor, JacExpression, EtaExpression, ModularityResult, Cusp, cuspmake, cuspmake1, num_cusps_gamma0, eta_order_at_cusp, cusp_width, total_order};
+pub use identity::{JacFactor, JacExpression, EtaExpression, ModularityResult, Cusp, cuspmake, cuspmake1, num_cusps_gamma0, eta_order_at_cusp, cusp_width, total_order, ProofResult, EtaIdentity, prove_eta_identity};
 
 use crate::number::QRat;
 

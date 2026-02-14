@@ -5,16 +5,19 @@
 //! - [`eta`]: Eta quotient symbolic representation with Newman modularity checks
 //! - [`cusps`]: Cusp computation for congruence subgroups Gamma_0(N) and Gamma_1(N)
 //! - [`orders`]: Order of vanishing at cusps for eta quotients (Ligozat formula)
+//! - [`prove`]: Identity proving engine via the valence formula
 
 pub mod jac;
 pub mod eta;
 pub mod cusps;
 pub mod orders;
+pub mod prove;
 
 pub use jac::{JacFactor, JacExpression};
 pub use eta::{EtaExpression, ModularityResult};
 pub use cusps::{Cusp, cuspmake, cuspmake1, num_cusps_gamma0};
 pub use orders::{eta_order_at_cusp, cusp_width, total_order};
+pub use prove::{ProofResult, EtaIdentity, prove_eta_identity};
 
 use crate::series::{FormalPowerSeries, arithmetic};
 
