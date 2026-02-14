@@ -10,6 +10,9 @@
 //! - [`verify_transformation`]: verify a transformation by FPS comparison
 //! - Summation formulas: [`try_q_gauss`], [`try_q_vandermonde`], [`try_q_saalschutz`],
 //!   [`try_q_kummer`], [`try_q_dixon`], [`try_all_summations`]
+//! - Transformation formulas: [`heine_transform_1`], [`heine_transform_2`], [`heine_transform_3`],
+//!   [`sears_transform`], [`watson_transform`]
+//! - Bailey's identity: [`bailey_4phi3_q2`] (standalone closed-form for DLMF 17.7.12)
 
 use crate::number::QRat;
 use crate::series::{FormalPowerSeries, arithmetic};
@@ -1149,4 +1152,232 @@ pub fn sears_transform(
     }
 
     None
+}
+
+// ---------------------------------------------------------------------------
+// Watson's transformation (HYPR-09)
+// ---------------------------------------------------------------------------
+
+/// Watson's transformation for very-well-poised _8 phi_7.
+///
+/// ```text
+/// _8 phi_7 (a, q*sqrt(a), -q*sqrt(a), b, c, d, e, f ;
+///           sqrt(a), -sqrt(a), aq/b, aq/c, aq/d, aq/e, aq/f ;
+///           q, a^2*q^2/(bcdef))
+///   = [(aq;q)_inf * (aq/(de);q)_inf * (aq/(df);q)_inf * (aq/(ef);q)_inf]
+///     / [(aq/d;q)_inf * (aq/e;q)_inf * (aq/f;q)_inf * (aq/(def);q)_inf]
+///     * _4 phi_3 (aq/(bc), d, e, f ; aq/b, aq/c, def/a ; q, q)
+/// ```
+///
+/// Detection: checks r=8, s=7, identifies the very-well-poised structure by
+/// finding `a` such that `sqrt(a)` exists, and `q*sqrt(a)`, `-q*sqrt(a)` are
+/// among the upper parameters. Then identifies b, c, d, e, f and verifies
+/// the lower parameters and argument match.
+///
+/// Returns `None` if the series is not a very-well-poised 8phi7.
+pub fn watson_transform(
+    series: &HypergeometricSeries,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> Option<TransformationResult> {
+    if series.r() != 8 || series.s() != 7 {
+        return None;
+    }
+
+    let q_mon = QMonomial::q_power(1);
+
+    // Try each upper param as the base parameter "a"
+    for a_idx in 0..8 {
+        let a = &series.upper[a_idx];
+
+        // Compute sqrt(a)
+        let sqrt_a = match a.try_sqrt() {
+            Some(s) => s,
+            None => continue,
+        };
+
+        // Check that q*sqrt(a) and -q*sqrt(a) are among the remaining upper params
+        let q_sqrt_a = q_mon.mul(&sqrt_a);
+        let neg_q_sqrt_a = q_sqrt_a.neg();
+
+        let remaining_upper: Vec<usize> = (0..8).filter(|&i| i != a_idx).collect();
+
+        // Find indices for q*sqrt(a) and -q*sqrt(a)
+        let q_sqrt_a_idx = remaining_upper.iter().find(|&&i| series.upper[i] == q_sqrt_a);
+        let q_sqrt_a_idx = match q_sqrt_a_idx {
+            Some(&idx) => idx,
+            None => continue,
+        };
+
+        let neg_q_sqrt_a_idx = remaining_upper.iter().find(|&&i| series.upper[i] == neg_q_sqrt_a);
+        let neg_q_sqrt_a_idx = match neg_q_sqrt_a_idx {
+            Some(&idx) => idx,
+            None => continue,
+        };
+
+        // Check that sqrt(a) and -sqrt(a) are among the lower params
+        let neg_sqrt_a = sqrt_a.neg();
+        let sqrt_a_lower_idx = (0..7).find(|&i| series.lower[i] == sqrt_a);
+        let sqrt_a_lower_idx = match sqrt_a_lower_idx {
+            Some(idx) => idx,
+            None => continue,
+        };
+        let neg_sqrt_a_lower_idx = (0..7).find(|&i| i != sqrt_a_lower_idx && series.lower[i] == neg_sqrt_a);
+        let neg_sqrt_a_lower_idx = match neg_sqrt_a_lower_idx {
+            Some(idx) => idx,
+            None => continue,
+        };
+
+        // The remaining 5 upper params are the candidates for b, c, d, e, f
+        let special_upper = [a_idx, q_sqrt_a_idx, neg_q_sqrt_a_idx];
+        let bcdef_idxs: Vec<usize> = (0..8).filter(|i| !special_upper.contains(i)).collect();
+        assert_eq!(bcdef_idxs.len(), 5);
+
+        // The remaining 5 lower params (excluding sqrt(a) and -sqrt(a))
+        let special_lower = [sqrt_a_lower_idx, neg_sqrt_a_lower_idx];
+        let remaining_lower_idxs: Vec<usize> = (0..7).filter(|i| !special_lower.contains(i)).collect();
+        assert_eq!(remaining_lower_idxs.len(), 5);
+
+        // For each of the 5 remaining upper params, check that aq/x is in the remaining lower
+        let aq = a.mul(&q_mon);
+        let mut all_lower_match = true;
+        let mut used_lower: Vec<bool> = vec![false; 5];
+        for &ui in &bcdef_idxs {
+            let expected_lower = aq.div(&series.upper[ui]);
+            let found = remaining_lower_idxs.iter().enumerate().find(|(j, li)| {
+                !used_lower[*j] && series.lower[**li] == expected_lower
+            });
+            match found {
+                Some((j, _)) => { used_lower[j] = true; },
+                None => { all_lower_match = false; break; },
+            }
+        }
+        if !all_lower_match {
+            continue;
+        }
+
+        // Now try all (5 choose 3) = 10 ways to pick d, e, f from the 5 params
+        let bcdef: Vec<&QMonomial> = bcdef_idxs.iter().map(|&i| &series.upper[i]).collect();
+
+        for d_i in 0..5 {
+            for e_i in (d_i+1)..5 {
+                for f_i in (e_i+1)..5 {
+                    let d = bcdef[d_i];
+                    let e = bcdef[e_i];
+                    let f = bcdef[f_i];
+
+                    // b, c are the complement
+                    let bc_idxs: Vec<usize> = (0..5).filter(|&i| i != d_i && i != e_i && i != f_i).collect();
+                    let b = bcdef[bc_idxs[0]];
+                    let c = bcdef[bc_idxs[1]];
+
+                    // Check z = a^2*q^2/(bcdef)
+                    let bcdef_prod = b.mul(c).mul(d).mul(e).mul(f);
+                    let expected_z = a.mul(a).mul(&QMonomial::q_power(2)).div(&bcdef_prod);
+
+                    if series.argument != expected_z {
+                        continue;
+                    }
+
+                    // Match found! Construct 4phi3 and prefactor.
+                    let bc = b.mul(c);
+                    let aq_over_bc = aq.div(&bc);
+                    let aq_over_b = aq.div(b);
+                    let aq_over_c = aq.div(c);
+                    let def_over_a = d.mul(e).mul(f).div(a);
+
+                    let transformed = HypergeometricSeries {
+                        upper: vec![aq_over_bc, d.clone(), e.clone(), f.clone()],
+                        lower: vec![aq_over_b, aq_over_c, def_over_a],
+                        argument: QMonomial::q_power(1),
+                    };
+
+                    // Prefactor: (aq;q)_inf * (aq/(de);q)_inf * (aq/(df);q)_inf * (aq/(ef);q)_inf
+                    //          / [(aq/d;q)_inf * (aq/e;q)_inf * (aq/f;q)_inf * (aq/(def);q)_inf]
+                    let de = d.mul(e);
+                    let df = d.mul(f);
+                    let ef = e.mul(f);
+                    let def = de.mul(f);
+
+                    let aq_inf = aqprod(&aq, variable, PochhammerOrder::Infinite, truncation_order);
+                    let aq_de_inf = aqprod(&aq.div(&de), variable, PochhammerOrder::Infinite, truncation_order);
+                    let aq_df_inf = aqprod(&aq.div(&df), variable, PochhammerOrder::Infinite, truncation_order);
+                    let aq_ef_inf = aqprod(&aq.div(&ef), variable, PochhammerOrder::Infinite, truncation_order);
+
+                    let aq_d_inf = aqprod(&aq.div(d), variable, PochhammerOrder::Infinite, truncation_order);
+                    let aq_e_inf = aqprod(&aq.div(e), variable, PochhammerOrder::Infinite, truncation_order);
+                    let aq_f_inf = aqprod(&aq.div(f), variable, PochhammerOrder::Infinite, truncation_order);
+                    let aq_def_inf = aqprod(&aq.div(&def), variable, PochhammerOrder::Infinite, truncation_order);
+
+                    let numer = arithmetic::mul(
+                        &arithmetic::mul(&aq_inf, &aq_de_inf),
+                        &arithmetic::mul(&aq_df_inf, &aq_ef_inf),
+                    );
+                    let denom = arithmetic::mul(
+                        &arithmetic::mul(&aq_d_inf, &aq_e_inf),
+                        &arithmetic::mul(&aq_f_inf, &aq_def_inf),
+                    );
+                    let prefactor = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+                    return Some(TransformationResult { prefactor, transformed });
+                }
+            }
+        }
+    }
+
+    None
+}
+
+// ---------------------------------------------------------------------------
+// Bailey's identity (HYPR-10, DLMF 17.7.12)
+// ---------------------------------------------------------------------------
+
+/// Bailey's identity (DLMF 17.7.12) for a specific _4 phi_3 with q^2 base.
+///
+/// ```text
+/// _4 phi_3 (a, aq, b^2*q^{2n}, q^{-2n} ; b, bq, a^2*q^2 ; q^2, q^2)
+///   = a^n * (-q;q)_n * (b/a;q)_n / [(-aq;q)_n * (b;q)_n]
+/// ```
+///
+/// This is a standalone function (not pattern-matching) that directly computes
+/// the closed form given parameters `a`, `b`, and `n`. The user calls this when
+/// they know their series matches Bailey's identity.
+///
+/// The q^2 base means the LHS is actually a 4phi3 where Pochhammer symbols
+/// use step 2: (x;q^2)_k = prod_{j=0}^{k-1} (1 - x*q^{2j}).
+pub fn bailey_4phi3_q2(
+    a: &QMonomial,
+    b: &QMonomial,
+    n: i64,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> FormalPowerSeries {
+    if n == 0 {
+        return FormalPowerSeries::one(variable, truncation_order);
+    }
+
+    // Compute a^n as FPS monomial
+    let a_n_coeff = qrat_pow(&a.coeff, n as u64);
+    let a_n_power = a.power * n;
+    let a_n_fps = FormalPowerSeries::monomial(variable, a_n_coeff, a_n_power, truncation_order);
+
+    // (-q;q)_n: finite product of n factors (1 - (-1)*q^{1+k}) for k=0..n-1
+    let neg_q = QMonomial::new(-QRat::one(), 1);
+    let neg_q_n = aqprod(&neg_q, variable, PochhammerOrder::Finite(n), truncation_order);
+
+    // (b/a;q)_n
+    let b_over_a = b.div(a);
+    let ba_n = aqprod(&b_over_a, variable, PochhammerOrder::Finite(n), truncation_order);
+
+    // (-aq;q)_n = ((-a.coeff)*q^{a.power+1};q)_n
+    let neg_aq = QMonomial::new(-a.coeff.clone(), a.power + 1);
+    let neg_aq_n = aqprod(&neg_aq, variable, PochhammerOrder::Finite(n), truncation_order);
+
+    // (b;q)_n
+    let b_n = aqprod(b, variable, PochhammerOrder::Finite(n), truncation_order);
+
+    // Result: a^n * (-q;q)_n * (b/a;q)_n / [(-aq;q)_n * (b;q)_n]
+    let numer = arithmetic::mul(&a_n_fps, &arithmetic::mul(&neg_q_n, &ba_n));
+    let denom = arithmetic::mul(&neg_aq_n, &b_n);
+    arithmetic::mul(&numer, &arithmetic::invert(&denom))
 }

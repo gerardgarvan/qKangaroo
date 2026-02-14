@@ -21,6 +21,7 @@ use qsym_core::qseries::{
     try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon,
     try_all_summations,
     heine_transform_1, heine_transform_2, heine_transform_3, sears_transform,
+    watson_transform, bailey_4phi3_q2,
 };
 
 /// Helper: create a SymbolId for "q".
@@ -1119,4 +1120,274 @@ fn sears_returns_none_for_non_4phi3() {
     };
 
     assert!(sears_transform(&series, q, trunc).is_none());
+}
+
+// ===========================================================================
+// 26. Watson's transformation
+// ===========================================================================
+
+/// Watson's transformation for a very-well-poised _8 phi_7.
+///
+/// Use a = q^4 (sqrt = q^2), b = q^6, c = q^7, d = q^8, e = q^9, f = q^{10}.
+/// All positive powers with d,e,f large enough that def/a > 0.
+///
+/// z = a^2*q^2/(bcdef) = q^{10}/q^{40} = q^{-30}. That has negative power.
+///
+/// Actually, for Watson's test we use structural verification (like Sears)
+/// since finding parameters where ALL lower/argument powers are positive
+/// is difficult (the 4phi3 argument is always q, but def/a can be negative).
+///
+/// Parameters: a = q^4, b = q^6, c = q^7, d = q^8, e = q^9, f = q^{10}.
+/// We verify: (1) detection returns Some, (2) transformed has correct structure,
+/// (3) prefactor is computed correctly.
+///
+/// For a simpler expansion-comparison test, we also test with parameters where
+/// the 4phi3 lower params all have positive powers. This requires def/a > 0
+/// in q-power terms AND z positive. We pick d, e, f with powers > a.power/3.
+///
+/// Actually: use a=q^4, and small b,c with large d,e,f.
+/// b=q, c=q, d=q^3, e=q^4, f=q^5.
+/// Wait, b and c are the same -- that's allowed.
+/// Actually no, upper params should be distinct for the formula to be well-defined.
+///
+/// SIMPLIFICATION: Verify Watson structurally + verify prefactor, similar to Sears.
+#[test]
+fn watson_transform_verification() {
+    let q = q_var();
+    let trunc = 30;
+
+    // Build the very-well-poised 8phi7
+    // a=q^{16}, sqrt(a)=q^8, b=q^2, c=q^3, d=q^4, e=q^5, f=q^6
+    let upper = vec![
+        qm(16),  // a
+        qm(9),   // q*sqrt(a) = q*q^8 = q^9
+        QMonomial::new(-QRat::one(), 9),  // -q*sqrt(a) = -q^9
+        qm(2),   // b
+        qm(3),   // c
+        qm(4),   // d
+        qm(5),   // e
+        qm(6),   // f
+    ];
+    let lower = vec![
+        qm(8),   // sqrt(a)
+        QMonomial::new(-QRat::one(), 8),  // -sqrt(a)
+        qm(15),  // aq/b = q^{17}/q^2 = q^{15}
+        qm(14),  // aq/c = q^{17}/q^3 = q^{14}
+        qm(13),  // aq/d = q^{17}/q^4 = q^{13}
+        qm(12),  // aq/e = q^{17}/q^5 = q^{12}
+        qm(11),  // aq/f = q^{17}/q^6 = q^{11}
+    ];
+    // z = a^2*q^2/(bcdef) = q^{34}/q^{20} = q^{14}
+
+    let series = HypergeometricSeries {
+        upper,
+        lower,
+        argument: qm(14),
+    };
+
+    let result = watson_transform(&series, q, trunc);
+    assert!(result.is_some(), "watson_transform should detect the very-well-poised 8phi7");
+    let result = result.unwrap();
+
+    // Structural verification:
+    // The transformed series should be a 4phi3 with argument q.
+    assert_eq!(result.transformed.r(), 4, "Transformed should be 4phi3 (r=4)");
+    assert_eq!(result.transformed.s(), 3, "Transformed should be 4phi3 (s=3)");
+    assert_eq!(result.transformed.argument, qm(1), "Transformed argument should be q");
+
+    // The 4phi3 upper should contain: aq/(bc), d, e, f.
+    // With assignment d=q^2, e=q^3, f=q^4 (first (5 choose 3) that matches z),
+    // b=q^5, c=q^6, then:
+    // aq/(bc) = q^{17}/(q^{11}) = q^6
+    // OR with d=q^4, e=q^5, f=q^6, b=q^2, c=q^3:
+    // aq/(bc) = q^{17}/(q^5) = q^{12}
+    // We don't know which assignment is chosen, but the result must have 4 upper params.
+    assert!(result.transformed.upper.len() == 4, "Should have 4 upper params");
+
+    // Verify the prefactor independently for the detected assignment.
+    // The prefactor depends on which d,e,f the algorithm chose.
+    // Since the algorithm tries d_i < e_i < f_i in order, the first valid combo is:
+    // d_i=0(q^2), e_i=1(q^3), f_i=2(q^4), b=q^5, c=q^6.
+    // (All combos give the same z, so the first is always chosen.)
+    //
+    // Prefactor: (aq;q)_inf * (aq/(de);q)_inf * (aq/(df);q)_inf * (aq/(ef);q)_inf
+    //          / [(aq/d;q)_inf * (aq/e;q)_inf * (aq/f;q)_inf * (aq/(def);q)_inf]
+    //
+    // d=q^2, e=q^3, f=q^4, a=q^{16}, aq=q^{17}
+    // Numerator: (q^{17};q)_inf * (q^{17}/(q^5);q)_inf * (q^{17}/(q^6);q)_inf * (q^{17}/(q^7);q)_inf
+    //          = (q^{17};q)_inf * (q^{12};q)_inf * (q^{11};q)_inf * (q^{10};q)_inf
+    // Denominator: (q^{15};q)_inf * (q^{14};q)_inf * (q^{13};q)_inf * (q^{17}/(q^9);q)_inf
+    //            = (q^{15};q)_inf * (q^{14};q)_inf * (q^{13};q)_inf * (q^8;q)_inf
+
+    let n1 = aqprod(&qm(17), q, PochhammerOrder::Infinite, trunc);
+    let n2 = aqprod(&qm(12), q, PochhammerOrder::Infinite, trunc);
+    let n3 = aqprod(&qm(11), q, PochhammerOrder::Infinite, trunc);
+    let n4 = aqprod(&qm(10), q, PochhammerOrder::Infinite, trunc);
+
+    let d1 = aqprod(&qm(15), q, PochhammerOrder::Infinite, trunc);
+    let d2 = aqprod(&qm(14), q, PochhammerOrder::Infinite, trunc);
+    let d3 = aqprod(&qm(13), q, PochhammerOrder::Infinite, trunc);
+    let d4 = aqprod(&qm(8), q, PochhammerOrder::Infinite, trunc);
+
+    let numer = arithmetic::mul(
+        &arithmetic::mul(&n1, &n2),
+        &arithmetic::mul(&n3, &n4),
+    );
+    let denom = arithmetic::mul(
+        &arithmetic::mul(&d1, &d2),
+        &arithmetic::mul(&d3, &d4),
+    );
+    let expected_prefactor = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+    for k in 0..trunc {
+        assert_eq!(
+            result.prefactor.coeff(k), expected_prefactor.coeff(k),
+            "Watson prefactor: mismatch at q^{}", k
+        );
+    }
+}
+
+// ===========================================================================
+// 27. Watson returns None for non-8phi7
+// ===========================================================================
+
+/// A 4phi3 should not be detected as Watson's 8phi7.
+#[test]
+fn watson_returns_none_for_non_8phi7() {
+    let q = q_var();
+    let trunc = 20;
+
+    let series = HypergeometricSeries {
+        upper: vec![qm(-2), qm(2), qm(3), qm(4)],
+        lower: vec![qm(2), qm(3), qm(3)],
+        argument: qm(1),
+    };
+
+    assert!(watson_transform(&series, q, trunc).is_none());
+}
+
+// ===========================================================================
+// 28. Bailey's identity (DLMF 17.7.12) closed form
+// ===========================================================================
+
+/// Bailey's identity (DLMF 17.7.12) closed form.
+///
+/// Test 1: a = 1 (QMonomial::one()), b = q^2, n = 1.
+/// RHS = 1^1 * (-q;q)_1 * (q^2/1;q)_1 / [(-1*q;q)_1 * (q^2;q)_1]
+///     = 1 * (1+q) * (1-q^2) / [(1+q) * (1-q^2)] = 1.
+///
+/// For the LHS 4phi3: upper = [1, q, q^4, q^{-2}], lower = [q^2, q^3, q^2]
+/// base q^2. The k=0 term is 1, k=1 term has (1;q^2)_1 = (1-1) = 0, so sum = 1.
+/// Closed form should be FPS::one(). Verified independently.
+///
+/// Test 2: a = q^2, b = q^4, n = 1.
+/// RHS = q^2 * (-q;q)_1 * (q^2;q)_1 / [(-q^3;q)_1 * (q^4;q)_1]
+///     = q^2 * (1+q) * (1-q^2) / [(1+q^3) * (1-q^4)]
+///
+/// Verify by independently computing each Pochhammer product as FPS.
+#[test]
+fn bailey_4phi3_q2_verification() {
+    let q = q_var();
+    let trunc = 30;
+
+    // Test 1: a=1, b=q^2, n=1 -> result should be 1
+    {
+        let a = QMonomial::one();
+        let b = qm(2);
+        let result = bailey_4phi3_q2(&a, &b, 1, q, trunc);
+        assert_eq!(result.coeff(0), qrat(1), "Bailey a=1,b=q^2,n=1: constant term should be 1");
+        for k in 1..trunc {
+            assert_eq!(result.coeff(k), QRat::zero(),
+                "Bailey a=1,b=q^2,n=1: coefficient at q^{} should be 0", k);
+        }
+    }
+
+    // Test 2: a=q^2, b=q^4, n=1
+    // RHS = q^2 * (1+q) * (1-q^2) / [(1+q^3)(1-q^4)]
+    {
+        let a = qm(2);
+        let b = qm(4);
+        let closed = bailey_4phi3_q2(&a, &b, 1, q, trunc);
+
+        // Compute independently:
+        // a^n = q^2
+        let a_n = FormalPowerSeries::monomial(q, QRat::one(), 2, trunc);
+
+        // (-q;q)_1 = (1+q)
+        let neg_q = QMonomial::new(-QRat::one(), 1);
+        let neg_q_1 = aqprod(&neg_q, q, PochhammerOrder::Finite(1), trunc);
+
+        // (b/a;q)_1 = (q^2;q)_1 = (1-q^2)
+        let ba = qm(2);
+        let ba_1 = aqprod(&ba, q, PochhammerOrder::Finite(1), trunc);
+
+        // (-aq;q)_1 = (-q^3;q)_1 = (1+q^3)
+        let neg_aq = QMonomial::new(-QRat::one(), 3);
+        let neg_aq_1 = aqprod(&neg_aq, q, PochhammerOrder::Finite(1), trunc);
+
+        // (b;q)_1 = (q^4;q)_1 = (1-q^4)
+        let b_1 = aqprod(&b, q, PochhammerOrder::Finite(1), trunc);
+
+        let numer = arithmetic::mul(&a_n, &arithmetic::mul(&neg_q_1, &ba_1));
+        let denom = arithmetic::mul(&neg_aq_1, &b_1);
+        let expected = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+        for k in 0..trunc {
+            assert_eq!(
+                closed.coeff(k), expected.coeff(k),
+                "Bailey a=q^2,b=q^4,n=1: mismatch at q^{}", k
+            );
+        }
+    }
+
+    // Test 3: a=q, b=q^3, n=2
+    // a^2 * (-q;q)_2 * (q^2;q)_2 / [(-q^2;q)_2 * (q^3;q)_2]
+    {
+        let a = qm(1);
+        let b = qm(3);
+        let closed = bailey_4phi3_q2(&a, &b, 2, q, trunc);
+
+        let a_n = FormalPowerSeries::monomial(q, QRat::one(), 2, trunc);
+
+        let neg_q = QMonomial::new(-QRat::one(), 1);
+        let neg_q_2 = aqprod(&neg_q, q, PochhammerOrder::Finite(2), trunc);
+
+        let ba = qm(2); // b/a = q^2
+        let ba_2 = aqprod(&ba, q, PochhammerOrder::Finite(2), trunc);
+
+        let neg_aq = QMonomial::new(-QRat::one(), 2); // -aq = -q^2
+        let neg_aq_2 = aqprod(&neg_aq, q, PochhammerOrder::Finite(2), trunc);
+
+        let b_2 = aqprod(&b, q, PochhammerOrder::Finite(2), trunc);
+
+        let numer = arithmetic::mul(&a_n, &arithmetic::mul(&neg_q_2, &ba_2));
+        let denom = arithmetic::mul(&neg_aq_2, &b_2);
+        let expected = arithmetic::mul(&numer, &arithmetic::invert(&denom));
+
+        for k in 0..trunc {
+            assert_eq!(
+                closed.coeff(k), expected.coeff(k),
+                "Bailey a=q,b=q^3,n=2: mismatch at q^{}", k
+            );
+        }
+    }
+}
+
+// ===========================================================================
+// 29. Bailey with n=0 returns 1
+// ===========================================================================
+
+#[test]
+fn bailey_4phi3_q2_n_zero() {
+    let q = q_var();
+    let trunc = 20;
+
+    let a = qm(2);
+    let b = qm(3);
+    let result = bailey_4phi3_q2(&a, &b, 0, q, trunc);
+
+    assert_eq!(result.coeff(0), qrat(1), "Bailey n=0 should return 1");
+    for k in 1..trunc {
+        assert_eq!(result.coeff(k), QRat::zero(), "Bailey n=0: all higher coefficients should be 0");
+    }
 }
