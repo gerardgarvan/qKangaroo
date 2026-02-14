@@ -194,6 +194,22 @@ pub fn prove_eta_identity(identity: &EtaIdentity) -> ProofResult {
 fn prove_single_eta_quotient(combined: &EtaExpression, identity: &EtaIdentity) -> ProofResult {
     let level = identity.level;
 
+    // Trivial case: combined factors are empty, meaning LHS = RHS exactly.
+    // The ratio is the constant 1, so the identity is trivially true.
+    if combined.factors.is_empty() {
+        let cusps = cuspmake(level);
+        let cusp_orders: Vec<(Cusp, QRat)> = cusps
+            .iter()
+            .map(|c| (c.clone(), QRat::zero()))
+            .collect();
+        return ProofResult::Proved {
+            level,
+            cusp_orders,
+            sturm_bound: 0,
+            verification_terms: 0,
+        };
+    }
+
     // Step 1: Check Newman's modularity conditions
     let modularity = combined.check_modularity();
     match &modularity {
