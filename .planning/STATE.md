@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 5 -- Python API (Complete)
+**Current focus:** Phase 6 -- Hypergeometric Series
 
 ## Current Position
 
-Phase: 5 of 8 (Python API)
-Plan: 4 of 4 in current phase (4 complete: 05-01, 05-02, 05-03, 05-04)
-Status: Phase 5 complete
-Last activity: 2026-02-14 -- Completed 05-04-PLAN.md
+Phase: 6 of 8 (Hypergeometric Series)
+Plan: 1 of 4 in current phase (1 complete: 06-01)
+Status: In progress
+Last activity: 2026-02-14 -- Completed 06-01-PLAN.md
 
-Progress: [################] 80%
+Progress: [################--] 84%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
+- Total plans completed: 21
 - Average duration: 7 min
-- Total execution time: 2.4 hours
+- Total execution time: 2.5 hours
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: [################] 80%
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
 | 5 - Python API | 4/4 | 20 min | 5 min |
+| 6 - Hypergeometric Series | 1/4 | 7 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 7 min, 4 min, 5 min, 7 min, 4 min
+- Last 5 plans: 4 min, 5 min, 7 min, 4 min, 7 min
 - Trend: stable ~5 min/plan
 
 *Updated after each plan completion*
@@ -116,6 +117,10 @@ Recent decisions affecting current work:
 - [05-04]: batch_generate holds session lock once for entire batch, not per iteration
 - [05-04]: n=-1 sentinel for PochhammerOrder::Infinite in batch params (Vec<Vec<i64>> has no Option)
 - [05-04]: Generator-only restriction enforced with descriptive PyValueError listing all 15 supported functions
+- [06-01]: FPS-based term accumulation (not direct coefficient) for eval_phi: handles general QMonomial parameters correctly
+- [06-01]: Single inversion per step: accumulate denominator factors, invert once, reduces inversions from (s+1) to 1
+- [06-01]: Pole detection in eval_psi_negative: skip terms where Pochhammer at negative order has pole (a.coeff==1 && 0<a.power<=m)
+- [06-01]: rug::Integer MulIncomplete completed explicitly for sqrt comparison (lazy types cannot compare directly)
 
 ### Pending Todos
 
@@ -134,5 +139,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 05-04-PLAN.md (batch_generate + integration tests; Phase 5 Python API complete)
-Resume file: .planning/phases/05-python-api/05-04-SUMMARY.md
+Stopped at: Completed 06-01-PLAN.md (eval_phi/eval_psi + QMonomial arithmetic + 18 integration tests)
+Resume file: .planning/phases/06-hypergeometric-series/06-01-SUMMARY.md
