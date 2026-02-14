@@ -47,6 +47,19 @@ from qsymbolic._qsymbolic import (
     findhomcombo, findnonhomcombo,
     # Group 7: Relation Discovery (modular and structural)
     findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod,
+    # Group 8: Hypergeometric Series
+    phi, psi, try_summation, heine1, heine2, heine3,
+    # Group 9: Identity Proving
+    prove_eta_id, search_identities,
+    # Group 10: Mock Theta, Appell-Lerch, Bailey
+    mock_theta_f3, mock_theta_phi3, mock_theta_psi3, mock_theta_chi3,
+    mock_theta_omega3, mock_theta_nu3, mock_theta_rho3,
+    mock_theta_f0_5, mock_theta_f1_5, mock_theta_cap_f0_5, mock_theta_cap_f1_5,
+    mock_theta_phi0_5, mock_theta_phi1_5, mock_theta_psi0_5, mock_theta_psi1_5,
+    mock_theta_chi0_5, mock_theta_chi1_5,
+    mock_theta_cap_f0_7, mock_theta_cap_f1_7, mock_theta_cap_f2_7,
+    appell_lerch_m, universal_mock_theta_g2, universal_mock_theta_g3,
+    bailey_weak_lemma, bailey_apply_lemma, bailey_chain, bailey_discover,
 )
 
 __version__ = version()
@@ -94,4 +107,17 @@ __all__ = [
     "findhomcombo", "findnonhomcombo",
     # Group 7: Relation Discovery (modular and structural)
     "findlincombomodp", "findhommodp", "findhomcombomodp", "findmaxind", "findprod",
+    # Group 8: Hypergeometric Series
+    "phi", "psi", "try_summation", "heine1", "heine2", "heine3",
+    # Group 9: Identity Proving
+    "prove_eta_id", "search_identities",
+    # Group 10: Mock Theta, Appell-Lerch, Bailey
+    "mock_theta_f3", "mock_theta_phi3", "mock_theta_psi3", "mock_theta_chi3",
+    "mock_theta_omega3", "mock_theta_nu3", "mock_theta_rho3",
+    "mock_theta_f0_5", "mock_theta_f1_5", "mock_theta_cap_f0_5", "mock_theta_cap_f1_5",
+    "mock_theta_phi0_5", "mock_theta_phi1_5", "mock_theta_psi0_5", "mock_theta_psi1_5",
+    "mock_theta_chi0_5", "mock_theta_chi1_5",
+    "mock_theta_cap_f0_7", "mock_theta_cap_f1_7", "mock_theta_cap_f2_7",
+    "appell_lerch_m", "universal_mock_theta_g2", "universal_mock_theta_g3",
+    "bailey_weak_lemma", "bailey_apply_lemma", "bailey_chain_fn", "bailey_discover_fn",
 ]
