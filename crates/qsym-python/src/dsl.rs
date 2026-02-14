@@ -10,8 +10,8 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
 use qsym_core::number::QRat;
-use qsym_core::series::FormalPowerSeries;
-use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
+use qsym_core::series::{FormalPowerSeries, arithmetic};
+use qsym_core::qseries::{self, QMonomial, PochhammerOrder, HypergeometricSeries, SummationResult};
 
 use crate::convert::{qint_to_python, qrat_to_python};
 use crate::series::QSeries;
@@ -645,4 +645,218 @@ pub fn findprod(
 ) -> Vec<Vec<i64>> {
     let fps_refs = extract_fps_refs(&series_list);
     qseries::findprod(&fps_refs, max_coeff, max_exp)
+}
+
+// ===========================================================================
+// GROUP 8: Hypergeometric Series
+// ===========================================================================
+
+/// Helper: parse a list of (num, den, power) tuples into Vec<QMonomial>.
+fn parse_qmonomials(params: Vec<(i64, i64, i64)>) -> Vec<QMonomial> {
+    params.iter()
+        .map(|(n, d, p)| QMonomial::new(QRat::from((*n, *d)), *p))
+        .collect()
+}
+
+/// Evaluate a basic hypergeometric series _r phi_s to O(q^order) as a formal power series.
+///
+/// Upper and lower parameters are lists of (num, den, power) tuples,
+/// where each tuple (n, d, p) represents the QMonomial (n/d) * q^p.
+/// The argument z is similarly (z_num/z_den) * q^z_pow.
+///
+/// ```python
+/// s = QSession()
+/// # _1phi0(q^2; -; q, q) = (q^3;q)_inf / (q;q)_inf
+/// result = phi(s, [(1,1,2)], [], 1, 1, 1, 20)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
+pub fn phi(
+    session: &QSession,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    order: i64,
+) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    let fps = qseries::eval_phi(&series, sym_q, order);
+    QSeries { fps }
+}
+
+/// Evaluate a bilateral hypergeometric series _r psi_s to O(q^order).
+///
+/// ```python
+/// s = QSession()
+/// result = psi(s, [(1,1,2)], [(1,1,5)], 1, 1, 1, 20)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
+pub fn psi(
+    session: &QSession,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    order: i64,
+) -> QSeries {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let bilateral = qseries::BilateralHypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    let fps = qseries::eval_psi(&bilateral, sym_q, order);
+    QSeries { fps }
+}
+
+/// Try all summation formulas on a hypergeometric series.
+///
+/// Returns Some(QSeries) if a summation formula applies (q-Gauss, q-Vandermonde,
+/// q-Saalschutz, q-Kummer, q-Dixon), or None if no formula matches.
+///
+/// ```python
+/// s = QSession()
+/// # q-Gauss: _2phi1(q, q^2; q^5; q, q^2)
+/// closed = try_summation(s, [(1,1,1),(1,1,2)], [(1,1,5)], 1, 1, 2, 30)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
+pub fn try_summation(
+    session: &QSession,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    order: i64,
+) -> Option<QSeries> {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    match qseries::try_all_summations(&series, sym_q, order) {
+        SummationResult::ClosedForm(fps) => Some(QSeries { fps }),
+        SummationResult::NotApplicable => None,
+    }
+}
+
+/// Apply Heine's first transformation to a 2phi1 series.
+///
+/// Returns a tuple (prefactor: QSeries, transformed: QSeries) where
+/// transformed = prefactor * eval_phi(transformed_series).
+/// Raises ValueError if the series is not a 2phi1.
+///
+/// ```python
+/// s = QSession()
+/// prefactor, result = heine1(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
+pub fn heine1(
+    session: &QSession,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    order: i64,
+) -> PyResult<(QSeries, QSeries)> {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    match qseries::heine_transform_1(&series, sym_q, order) {
+        Some(result) => {
+            let transformed_eval = qseries::eval_phi(&result.transformed, sym_q, order);
+            let combined = arithmetic::mul(&result.prefactor, &transformed_eval);
+            Ok((QSeries { fps: result.prefactor }, QSeries { fps: combined }))
+        }
+        None => Err(pyo3::exceptions::PyValueError::new_err(
+            "heine1 requires a 2phi1 series (r=2, s=1)"
+        )),
+    }
+}
+
+/// Apply Heine's second transformation to a 2phi1 series.
+///
+/// Returns (prefactor: QSeries, transformed_evaluation: QSeries).
+/// Raises ValueError if the series is not a 2phi1.
+#[pyfunction]
+#[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
+pub fn heine2(
+    session: &QSession,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    order: i64,
+) -> PyResult<(QSeries, QSeries)> {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    match qseries::heine_transform_2(&series, sym_q, order) {
+        Some(result) => {
+            let transformed_eval = qseries::eval_phi(&result.transformed, sym_q, order);
+            let combined = arithmetic::mul(&result.prefactor, &transformed_eval);
+            Ok((QSeries { fps: result.prefactor }, QSeries { fps: combined }))
+        }
+        None => Err(pyo3::exceptions::PyValueError::new_err(
+            "heine2 requires a 2phi1 series (r=2, s=1)"
+        )),
+    }
+}
+
+/// Apply Heine's third transformation to a 2phi1 series.
+///
+/// Returns (prefactor: QSeries, transformed_evaluation: QSeries).
+/// Raises ValueError if the series is not a 2phi1.
+#[pyfunction]
+#[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
+pub fn heine3(
+    session: &QSession,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    order: i64,
+) -> PyResult<(QSeries, QSeries)> {
+    let mut inner = session.inner.lock().unwrap();
+    let sym_q = inner.get_or_create_symbol_id("q");
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    match qseries::heine_transform_3(&series, sym_q, order) {
+        Some(result) => {
+            let transformed_eval = qseries::eval_phi(&result.transformed, sym_q, order);
+            let combined = arithmetic::mul(&result.prefactor, &transformed_eval);
+            Ok((QSeries { fps: result.prefactor }, QSeries { fps: combined }))
+        }
+        None => Err(pyo3::exceptions::PyValueError::new_err(
+            "heine3 requires a 2phi1 series (r=2, s=1)"
+        )),
+    }
 }

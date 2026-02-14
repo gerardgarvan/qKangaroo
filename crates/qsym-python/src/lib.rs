@@ -77,5 +77,13 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dsl::findmaxind, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::findprod, m)?)?;
 
+    // Group 8: Hypergeometric Series
+    m.add_function(wrap_pyfunction!(dsl::phi, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::psi, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::try_summation, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::heine1, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::heine2, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::heine3, m)?)?;
+
     Ok(())
 }
