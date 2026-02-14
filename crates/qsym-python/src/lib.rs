@@ -1,7 +1,9 @@
 use pyo3::prelude::*;
 
 mod convert;
+mod dsl;
 mod expr;
+mod series;
 mod session;
 
 /// Return the version string, exercising GMP linkage by creating and
@@ -21,5 +23,6 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_class::<session::QSession>()?;
     m.add_class::<expr::QExpr>()?;
+    m.add_class::<series::QSeries>()?;
     Ok(())
 }
