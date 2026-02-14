@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 8 -- Mock Theta & Bailey Chains
+**Current focus:** Phase 8 -- Mock Theta & Bailey Chains -- COMPLETE
 
 ## Current Position
 
-Phase: 8 of 8 (Mock Theta & Bailey Chains) -- IN PROGRESS
-Plan: 3 of 4 in current phase (3 complete: 08-01, 08-02, 08-03)
-Status: Executing Phase 8; 08-02 (Appell-Lerch sums) complete
-Last activity: 2026-02-14 -- Completed 08-02-PLAN.md
+Phase: 8 of 8 (Mock Theta & Bailey Chains) -- COMPLETE
+Plan: 4 of 4 in current phase (4 complete: 08-01, 08-02, 08-03, 08-04)
+Status: ALL PHASES COMPLETE -- Project feature-complete through Phase 8
+Last activity: 2026-02-14 -- Completed 08-04-PLAN.md
 
-Progress: [#####################] 100%
+Progress: [#####################] 100% (32/32 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31
+- Total plans completed: 32
 - Average duration: 7 min
-- Total execution time: 3.6 hours
+- Total execution time: 3.7 hours
 
 **By Phase:**
 
@@ -34,10 +34,10 @@ Progress: [#####################] 100%
 | 5 - Python API | 4/4 | 20 min | 5 min |
 | 6 - Hypergeometric Series | 4/4 | 35 min | 9 min |
 | 7 - Identity Proving | 4/4 | 25 min | 6 min |
-| 8 - Mock Theta & Bailey Chains | 3/4 | 24 min | 8 min |
+| 8 - Mock Theta & Bailey Chains | 4/4 | 32 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 5 min, 8 min, 8 min, 8 min
+- Last 5 plans: 5 min, 8 min, 8 min, 8 min, 8 min
 - Trend: stable ~7 min/plan
 
 *Updated after each plan completion*
@@ -162,6 +162,10 @@ Recent decisions affecting current work:
 - [08-02]: Algebraic identity rewrites (q^{1-a};q)_{n+1} = (-1)^{n+1}*q^{-S}*prod(1-q^{a-1-k}) for positive-exponent FPS
 - [08-02]: g3/g2 summation truncated at max_valid_n = a-2 for integer a_pow >= 2
 - [08-02]: Extended truncation (trunc - q_exp) for bilateral sum terms with negative q_exp
+- [08-04]: Discovery checks trivial equality first, then weak Bailey lemma matching, then chain iteration
+- [08-04]: Default chain parameters b=(1/2)q, c=(1/3)q avoid vanishing Pochhammer products for general a
+- [08-04]: Mock theta Python wrappers use lock-drop pattern (lock session, get symbol, drop, compute)
+- [08-04]: Fresh BaileyDatabase per Python call (lightweight 3-pair default, avoids lifetime complexity)
 
 ### Pending Todos
 
@@ -172,7 +176,7 @@ None yet.
 - [Resolved]: Andrews' algorithm (prodmake) + all 4 post-processing functions (etamake, jacprodmake, mprodmake, qetamake) now complete
 - [Resolved]: Full QSER-19 relation discovery suite (12+ functions) now complete
 - [Resolved]: Identity proving (Phase 7) complete with cusps, orders, valence formula, TOML database, Python bindings
-- [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
+- [Resolved]: Mock theta and Bailey chains (Phase 8) complete -- 20 mock theta, Appell-Lerch, Bailey pairs/lemma/chain/discovery, Python API
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
 - [Build]: PyO3 builds require PYO3_PYTHON pointing to Python 3.14 and PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1. maturin develop needs virtualenv at crates/qsym-python/.venv
 - [03-02]: qpochhammer_inf_generator had exp==0 bug (now fixed); any pre-existing code using offset=0 with non-unity coefficient was affected
@@ -180,5 +184,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-02-PLAN.md (Appell-Lerch sums, g2/g3, Zwegers completion)
-Resume file: .planning/phases/08-mock-theta-bailey-chains/08-02-SUMMARY.md
+Stopped at: Completed 08-04-PLAN.md (Bailey discovery + Phase 8 Python API -- ALL PHASES COMPLETE)
+Resume file: .planning/phases/08-mock-theta-bailey-chains/08-04-SUMMARY.md
