@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 4 -- Series analysis (COMPLETE)
+**Current focus:** Phase 5 -- Python API (In Progress)
 
 ## Current Position
 
-Phase: 4 of 8 (Series Analysis)
-Plan: 7 of 7 in current phase (7 complete, including 04-01, 04-02, 04-03, 04-04, 04-05, 04-06, 04-07)
-Status: Phase complete
-Last activity: 2026-02-14 -- Completed 04-07-PLAN.md
+Phase: 5 of 8 (Python API)
+Plan: 1 of 4 in current phase (1 complete: 05-01)
+Status: In progress
+Last activity: 2026-02-14 -- Completed 05-01-PLAN.md
 
-Progress: [############] 64%
+Progress: [##############..] 68%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 7 min
-- Total execution time: 2.0 hours
+- Total execution time: 2.1 hours
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: [############] 64%
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
+| 5 - Python API | 1/4 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 14 min, 5 min, 5 min, 4 min, 7 min
-- Trend: variable ~7 min/plan
+- Last 5 plans: 5 min, 5 min, 4 min, 7 min, 4 min
+- Trend: variable ~5 min/plan
 
 *Updated after each plan completion*
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [04-07]: QRat-to-modp conversion via rug Integer::is_divisible check + Fermat inverse, returns None if denominator divisible by p
 - [04-07]: findmaxind uses inline Gaussian elimination to directly extract pivot columns rather than full null space
 - [04-07]: findprod uses brute-force odometer iteration over [-max_coeff, max_coeff]^k with prodmake integer-exponent check
+- [05-01]: PyO3 0.23 with PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 for Python 3.14 support (0.23 max is 3.13)
+- [05-01]: maturin mixed layout: native module _qsymbolic, Python package qsymbolic/ with re-exports
+- [05-01]: use-system-libs GMP works correctly for cdylib linking on Windows/Cygwin (highest-risk item validated)
 
 ### Pending Todos
 
@@ -113,10 +117,11 @@ None yet.
 - [Research]: Identity proving (Phase 7) needs deep research on cusp theory and valence formula
 - [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
+- [Build]: PyO3 builds require PYO3_PYTHON pointing to Python 3.14 and PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1. maturin develop needs virtualenv at crates/qsym-python/.venv
 - [03-02]: qpochhammer_inf_generator had exp==0 bug (now fixed); any pre-existing code using offset=0 with non-unity coefficient was affected
 
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 04-07-PLAN.md (findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod with 7 new tests, 379 total passing). Phase 4 complete.
-Resume file: .planning/phases/04-series-analysis/04-07-SUMMARY.md
+Stopped at: Completed 05-01-PLAN.md (qsym-python crate scaffold, cdylib+GMP+PyO3+maturin pipeline validated end-to-end)
+Resume file: .planning/phases/05-python-api/05-01-SUMMARY.md
