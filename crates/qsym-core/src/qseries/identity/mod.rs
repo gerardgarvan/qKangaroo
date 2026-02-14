@@ -12,12 +12,14 @@ pub mod eta;
 pub mod cusps;
 pub mod orders;
 pub mod prove;
+pub mod database;
 
 pub use jac::{JacFactor, JacExpression};
 pub use eta::{EtaExpression, ModularityResult};
 pub use cusps::{Cusp, cuspmake, cuspmake1, num_cusps_gamma0};
 pub use orders::{eta_order_at_cusp, cusp_width, total_order};
 pub use prove::{ProofResult, EtaIdentity, prove_eta_identity};
+pub use database::{IdentityEntry, IdentityDatabase};
 
 use crate::series::{FormalPowerSeries, arithmetic};
 
