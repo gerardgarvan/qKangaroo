@@ -89,5 +89,37 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dsl::prove_eta_id, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::search_identities, m)?)?;
 
+    // Group 10: Mock Theta, Appell-Lerch & Bailey
+    // 10a: Mock theta functions (20)
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_f3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_phi3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_psi3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_chi3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_omega3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_nu3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_rho3, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_f0_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_f1_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_cap_f0_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_cap_f1_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_phi0_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_phi1_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_psi0_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_psi1_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_chi0_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_chi1_5, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_cap_f0_7, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_cap_f1_7, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::mock_theta_cap_f2_7, m)?)?;
+    // 10b: Appell-Lerch & universal mock theta (3)
+    m.add_function(wrap_pyfunction!(dsl::appell_lerch_m, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::universal_mock_theta_g2, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::universal_mock_theta_g3, m)?)?;
+    // 10c: Bailey machinery (4)
+    m.add_function(wrap_pyfunction!(dsl::bailey_weak_lemma, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::bailey_apply_lemma, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::bailey_chain_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::bailey_discover_fn, m)?)?;
+
     Ok(())
 }

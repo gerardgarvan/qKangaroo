@@ -11,7 +11,10 @@ use pyo3::types::{PyDict, PyList};
 
 use qsym_core::number::QRat;
 use qsym_core::series::{FormalPowerSeries, arithmetic};
-use qsym_core::qseries::{self, QMonomial, PochhammerOrder, HypergeometricSeries, SummationResult};
+use qsym_core::qseries::{
+    self, QMonomial, PochhammerOrder, HypergeometricSeries, SummationResult,
+    BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, bailey_discover,
+};
 
 use crate::convert::{qint_to_python, qrat_to_python};
 use crate::series::QSeries;
@@ -978,4 +981,447 @@ pub fn search_identities(
     }).collect();
 
     Ok(PyList::new(py, &py_results)?.into())
+}
+
+// ===========================================================================
+// GROUP 10: Mock Theta Functions, Appell-Lerch Sums & Bailey Machinery
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 10a. Mock theta function DSL (20 functions)
+// ---------------------------------------------------------------------------
+
+/// Helper: construct a QMonomial from (num, den, power) triple.
+fn qmonomial_from_tuple(num: i64, den: i64, pow: i64) -> QMonomial {
+    let coeff = QRat::from((num, den));
+    QMonomial::new(coeff, pow)
+}
+
+/// Third-order mock theta function f(q) (Ramanujan).
+#[pyfunction]
+pub fn mock_theta_f3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_f3(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Third-order mock theta function phi(q).
+#[pyfunction]
+pub fn mock_theta_phi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_phi3(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Third-order mock theta function psi(q).
+#[pyfunction]
+pub fn mock_theta_psi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_psi3(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Third-order mock theta function chi(q).
+#[pyfunction]
+pub fn mock_theta_chi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_chi3(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Third-order mock theta function omega(q).
+#[pyfunction]
+pub fn mock_theta_omega3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_omega3(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Third-order mock theta function nu(q).
+#[pyfunction]
+pub fn mock_theta_nu3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_nu3(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Third-order mock theta function rho(q).
+#[pyfunction]
+pub fn mock_theta_rho3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_rho3(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function f0(q).
+#[pyfunction]
+pub fn mock_theta_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_f0_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function f1(q).
+#[pyfunction]
+pub fn mock_theta_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_f1_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function F0(q).
+#[pyfunction]
+pub fn mock_theta_cap_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_cap_f0_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function F1(q).
+#[pyfunction]
+pub fn mock_theta_cap_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_cap_f1_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function phi0(q).
+#[pyfunction]
+pub fn mock_theta_phi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_phi0_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function phi1(q).
+#[pyfunction]
+pub fn mock_theta_phi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_phi1_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function psi0(q).
+#[pyfunction]
+pub fn mock_theta_psi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_psi0_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function psi1(q).
+#[pyfunction]
+pub fn mock_theta_psi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_psi1_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function chi0(q).
+#[pyfunction]
+pub fn mock_theta_chi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_chi0_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Fifth-order mock theta function chi1(q).
+#[pyfunction]
+pub fn mock_theta_chi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_chi1_5(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Seventh-order mock theta function F0(q).
+#[pyfunction]
+pub fn mock_theta_cap_f0_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_cap_f0_7(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Seventh-order mock theta function F1(q).
+#[pyfunction]
+pub fn mock_theta_cap_f1_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_cap_f1_7(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Seventh-order mock theta function F2(q).
+#[pyfunction]
+pub fn mock_theta_cap_f2_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::mock_theta_cap_f2_7(var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+// ---------------------------------------------------------------------------
+// 10b. Appell-Lerch sums and universal mock theta functions (3 functions)
+// ---------------------------------------------------------------------------
+
+/// Compute the Appell-Lerch bilateral sum m(q^a, q, q^z) as a formal power series.
+///
+/// Returns the raw bilateral sum (not normalized by j(z;q), which vanishes for integer parameters).
+///
+/// ```python
+/// s = QSession()
+/// result = appell_lerch_m(s, 3, 2, 20)  # m(q^3, q, q^2) to O(q^20)
+/// ```
+#[pyfunction]
+pub fn appell_lerch_m(session: &QSession, a_pow: i64, z_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::appell_lerch_m(a_pow, z_pow, var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Compute the universal mock theta function g2(q^a, q) as a formal power series.
+///
+/// Requires a_pow >= 2 for nontrivial result.
+///
+/// ```python
+/// s = QSession()
+/// result = universal_mock_theta_g2(s, 3, 20)  # g2(q^3, q) to O(q^20)
+/// ```
+#[pyfunction]
+pub fn universal_mock_theta_g2(session: &QSession, a_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::universal_mock_theta_g2(a_pow, var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+/// Compute the universal mock theta function g3(q^a, q) as a formal power series.
+///
+/// Requires a_pow >= 2 for nontrivial result.
+///
+/// ```python
+/// s = QSession()
+/// result = universal_mock_theta_g3(s, 3, 20)  # g3(q^3, q) to O(q^20)
+/// ```
+#[pyfunction]
+pub fn universal_mock_theta_g3(session: &QSession, a_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+    let fps = qseries::universal_mock_theta_g3(a_pow, var, truncation_order);
+    Ok(QSeries { fps })
+}
+
+// ---------------------------------------------------------------------------
+// 10c. Bailey machinery DSL (4 functions)
+// ---------------------------------------------------------------------------
+
+/// Compute both sides of the weak Bailey lemma for a named pair from the database.
+///
+/// The parameter `a` is specified as (num, den, power) giving a = (num/den)*q^power.
+/// Returns (lhs, rhs) where LHS = sum q^{n^2}*a^n*beta_n, RHS = [1/(aq;q)_inf] * sum q^{n^2}*a^n*alpha_n.
+///
+/// ```python
+/// s = QSession()
+/// lhs, rhs = bailey_weak_lemma(s, "rogers-ramanujan", 1, 1, 0, 10, 20)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (session, pair_name, a_num, a_den, a_pow, max_n, truncation_order))]
+pub fn bailey_weak_lemma(
+    session: &QSession,
+    pair_name: &str,
+    a_num: i64,
+    a_den: i64,
+    a_pow: i64,
+    max_n: i64,
+    truncation_order: i64,
+) -> PyResult<(QSeries, QSeries)> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+
+    let db = BaileyDatabase::new();
+    let pairs = db.search_by_name(pair_name);
+    let pair = pairs.first().ok_or_else(|| {
+        pyo3::exceptions::PyValueError::new_err(format!("Bailey pair '{}' not found in database", pair_name))
+    })?;
+
+    let a = qmonomial_from_tuple(a_num, a_den, a_pow);
+    let (lhs, rhs) = weak_bailey_lemma(pair, &a, max_n, var, truncation_order);
+    Ok((QSeries { fps: lhs }, QSeries { fps: rhs }))
+}
+
+/// Apply the Bailey lemma to transform a named pair with parameters b, c.
+///
+/// Parameters a, b, c are each (num, den, power) tuples.
+/// Returns a dict with the derived pair info: {"name": str, "pair_type": "tabulated", "num_terms": int}.
+///
+/// ```python
+/// s = QSession()
+/// result = bailey_apply_lemma(s, "unit", (1,1,2), (1,2,1), (1,3,1), 4, 15)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (session, pair_name, a, b, c, max_n, truncation_order))]
+pub fn bailey_apply_lemma(
+    py: Python<'_>,
+    session: &QSession,
+    pair_name: &str,
+    a: (i64, i64, i64),
+    b: (i64, i64, i64),
+    c: (i64, i64, i64),
+    max_n: i64,
+    truncation_order: i64,
+) -> PyResult<PyObject> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+
+    let db = BaileyDatabase::new();
+    let pairs = db.search_by_name(pair_name);
+    let pair = pairs.first().ok_or_else(|| {
+        pyo3::exceptions::PyValueError::new_err(format!("Bailey pair '{}' not found in database", pair_name))
+    })?;
+
+    let a_mon = qmonomial_from_tuple(a.0, a.1, a.2);
+    let b_mon = qmonomial_from_tuple(b.0, b.1, b.2);
+    let c_mon = qmonomial_from_tuple(c.0, c.1, c.2);
+
+    let derived = bailey_lemma(pair, &a_mon, &b_mon, &c_mon, max_n, var, truncation_order);
+
+    let dict = PyDict::new(py);
+    dict.set_item("name", &derived.name)?;
+    dict.set_item("pair_type", "tabulated")?;
+    dict.set_item("num_terms", max_n + 1)?;
+    Ok(dict.into())
+}
+
+/// Apply the Bailey lemma iteratively (Bailey chain) to a named pair.
+///
+/// Returns a list of dicts, each with pair info: [{"name": str, "pair_type": str, "index": int}, ...].
+/// The chain has length depth+1 (original + depth derived pairs).
+///
+/// ```python
+/// s = QSession()
+/// chain = bailey_chain(s, "unit", (1,1,2), (1,2,1), (1,3,1), 2, 4, 15)
+/// print(len(chain))  # 3
+/// ```
+#[pyfunction]
+#[pyo3(name = "bailey_chain", signature = (session, pair_name, a, b, c, depth, max_n, truncation_order))]
+pub fn bailey_chain_fn(
+    py: Python<'_>,
+    session: &QSession,
+    pair_name: &str,
+    a: (i64, i64, i64),
+    b: (i64, i64, i64),
+    c: (i64, i64, i64),
+    depth: usize,
+    max_n: i64,
+    truncation_order: i64,
+) -> PyResult<PyObject> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+
+    let db = BaileyDatabase::new();
+    let pairs = db.search_by_name(pair_name);
+    let pair = pairs.first().ok_or_else(|| {
+        pyo3::exceptions::PyValueError::new_err(format!("Bailey pair '{}' not found in database", pair_name))
+    })?;
+
+    let a_mon = qmonomial_from_tuple(a.0, a.1, a.2);
+    let b_mon = qmonomial_from_tuple(b.0, b.1, b.2);
+    let c_mon = qmonomial_from_tuple(c.0, c.1, c.2);
+
+    let chain = bailey_chain(pair, &a_mon, &b_mon, &c_mon, depth, max_n, var, truncation_order);
+
+    let items: Vec<PyObject> = chain.iter().enumerate().map(|(i, p)| {
+        let dict = PyDict::new(py);
+        dict.set_item("name", &p.name).unwrap();
+        dict.set_item("pair_type", format!("{:?}", p.pair_type).split('{').next().unwrap_or("unknown").trim()).unwrap();
+        dict.set_item("index", i).unwrap();
+        dict.into()
+    }).collect();
+
+    Ok(PyList::new(py, &items)?.into())
+}
+
+/// Automated Bailey pair discovery: search the database for a pair that explains LHS.
+///
+/// Returns a dict: {"found": bool, "pair_name": str|None, "chain_depth": int, "verification": str}.
+///
+/// ```python
+/// s = QSession()
+/// result = bailey_discover(s, lhs_series, rhs_series, (1,1,0), 2, 20)
+/// print(result["found"])       # True/False
+/// print(result["pair_name"])   # "rogers-ramanujan" or None
+/// ```
+#[pyfunction]
+#[pyo3(name = "bailey_discover", signature = (session, lhs, rhs, a, max_chain_depth, truncation_order))]
+pub fn bailey_discover_fn(
+    py: Python<'_>,
+    session: &QSession,
+    lhs: &QSeries,
+    rhs: &QSeries,
+    a: (i64, i64, i64),
+    max_chain_depth: usize,
+    truncation_order: i64,
+) -> PyResult<PyObject> {
+    let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    let var = inner.get_or_create_symbol_id("q");
+    drop(inner);
+
+    let a_mon = qmonomial_from_tuple(a.0, a.1, a.2);
+    let db = BaileyDatabase::new();
+
+    let result = bailey_discover(&lhs.fps, &rhs.fps, &db, &a_mon, max_chain_depth, var, truncation_order);
+
+    let dict = PyDict::new(py);
+    dict.set_item("found", result.found)?;
+    match &result.pair_name {
+        Some(name) => dict.set_item("pair_name", name)?,
+        None => dict.set_item("pair_name", py.None())?,
+    };
+    dict.set_item("chain_depth", result.chain_depth)?;
+    dict.set_item("verification", &result.verification)?;
+    Ok(dict.into())
 }
