@@ -161,12 +161,13 @@ Plans:
   4. The Bailey pair database stores known pairs by type, and the Bailey lemma produces correct new pairs from existing ones via chain iteration
   5. Automated Bailey pair discovery, given a conjectured identity, can verify or refute it by searching the pair database and applying the lemma
 
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
-- [ ] 08-03: TBD
+- [ ] 08-01-PLAN.md -- All 20 classical mock theta functions (third, fifth, seventh order) with OEIS verification
+- [ ] 08-02-PLAN.md -- Appell-Lerch sums m(x,q,z), universal mock theta g2/g3, Zwegers completion
+- [ ] 08-03-PLAN.md -- Bailey pair database, lemma, chain iteration, and weak Bailey lemma
+- [ ] 08-04-PLAN.md -- Automated Bailey pair discovery and Python API bindings (Group 10)
 
 ## Progress
 
@@ -182,4 +183,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 5. Python API | 4/4 | Complete | 2026-02-13 |
 | 6. Hypergeometric Series | 4/4 | Complete | 2026-02-14 |
 | 7. Identity Proving | 4/4 | Complete | 2026-02-14 |
-| 8. Mock Theta & Bailey Chains | 0/TBD | Not started | - |
+| 8. Mock Theta & Bailey Chains | 0/4 | Not started | - |
