@@ -142,12 +142,13 @@ Plans:
   3. provemodfuncid correctly proves known modular function identities via the valence formula, returning a proof certificate or an explicit counterexample
   4. The ETA identity pipeline verifies eta-quotient identities end-to-end, matching results from Garvan's ETA package examples
   5. The identity database contains searchable verified identities (TOML format) that can be looked up by tags, involved functions, and structural patterns
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
-- [ ] 07-03: TBD
+- [ ] 07-01-PLAN.md -- JAC and ETA symbolic models with conversion
+- [ ] 07-02-PLAN.md -- Cusp computation and order-at-cusp formulas
+- [ ] 07-03-PLAN.md -- Proving engine: provemodfuncid via valence formula
+- [ ] 07-04-PLAN.md -- Identity database (TOML) and Python API bindings
 
 ### Phase 8: Mock Theta & Bailey Chains
 **Goal**: Researchers can work with mock theta functions, Zwegers completions, Appell-Lerch sums, and systematically generate new identities via Bailey chain machinery
@@ -180,5 +181,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 4. Series Analysis | 7/7 | Complete | 2026-02-13 |
 | 5. Python API | 4/4 | Complete | 2026-02-13 |
 | 6. Hypergeometric Series | 4/4 | Complete | 2026-02-14 |
-| 7. Identity Proving | 0/TBD | Not started | - |
+| 7. Identity Proving | 0/4 | Planned | - |
 | 8. Mock Theta & Bailey Chains | 0/TBD | Not started | - |
