@@ -1,18 +1,33 @@
 //! Appell-Lerch sums, universal mock theta functions, and Zwegers completions.
 //!
 //! This module provides:
-//! - [`appell_lerch_m`]: The Appell-Lerch sum m(q^a, q, q^b) following Hickerson-Mortenson notation
-//! - [`universal_mock_theta_g2`]: Universal mock theta function g2(q^a, q)
+//! - [`appell_lerch_m`]: The Appell-Lerch bilateral sum m(q^a, q, q^b)
+//! - [`appell_lerch_bilateral`]: The raw bilateral sum (without j(z;q) normalization)
 //! - [`universal_mock_theta_g3`]: Universal mock theta function g3(q^a, q)
-//! - [`ZwegersCompletion`]: Symbolic representation of Zwegers completions for mock theta functions
+//! - [`universal_mock_theta_g2`]: Universal mock theta function g2(q^a, q)
+//! - [`ZwegersCompletion`]: Symbolic representation of Zwegers completions
 //!
-//! The Appell-Lerch sum m(x,q,z) is the canonical building block for all classical mock theta
-//! functions. The universal mock theta functions g2 and g3 (Gordon-McIntosh) provide another
-//! unified representation: even-order mock theta functions are specializations of g2, and
-//! odd-order mock theta functions are specializations of g3.
+//! # Mathematical Background
 //!
-//! Zwegers completions are represented symbolically since the non-holomorphic correction involves
-//! the complementary error function (erfc), which cannot be computed in exact rational arithmetic.
+//! The Appell-Lerch sum m(x,q,z) following Hickerson-Mortenson:
+//! ```text
+//! m(x, q, z) = (1/j(z;q)) * sum_{r in Z} (-1)^r * q^{r(r-1)/2} * z^r / (1 - x*q^r*z)
+//! ```
+//! where j(z;q) = (z;q)_inf * (q/z;q)_inf * (q;q)_inf is the Jacobi theta function.
+//!
+//! When x and z are specialized to powers of q (x = q^a, z = q^b with integer a, b),
+//! the Jacobi theta j(q^b;q) vanishes for all integer b (since one of the infinite
+//! products always has a factor (1-q^0) = 0). Therefore, the full normalized m(x,q,z)
+//! is not directly computable for integer parameters via FPS. Instead, we provide:
+//!
+//! 1. [`appell_lerch_bilateral`]: The bilateral sum WITHOUT j(z;q) normalization
+//! 2. [`appell_lerch_m`]: Wrapper that computes the bilateral sum (useful for verifying
+//!    identities where the j(z;q) factor cancels from both sides)
+//!
+//! The universal mock theta functions g2 and g3 (Gordon-McIntosh) have similar
+//! denominator degeneracies for integer parameters. For x = q^a with integer a >= 2,
+//! the Pochhammer product (q/x;q)_{n+1} = (q^{1-a};q)_{n+1} vanishes for n >= a-1.
+//! We sum only the non-degenerate terms (n = 0 to max_n where denominators are nonzero).
 
 use crate::number::QRat;
 use crate::series::{FormalPowerSeries, arithmetic};
@@ -44,7 +59,7 @@ fn geometric_series_q_power(
     } else {
         // k < 0, let ak = |k|
         // 1/(1 - q^k) = 1/(1 - q^{-ak})
-        // Multiply num and denom by q^{ak}: = q^{ak} / (q^{ak} - 1) = -q^{ak} / (1 - q^{ak})
+        // = q^{ak} / (q^{ak} - 1) = -q^{ak} / (1 - q^{ak})
         // = -q^{ak} * sum_{m>=0} q^{m*ak}
         let ak = -k;
         let mut result = FormalPowerSeries::zero(variable, truncation_order);
@@ -57,80 +72,65 @@ fn geometric_series_q_power(
     }
 }
 
-/// Compute the Jacobi theta function j(q^z_pow; q) as an FPS.
+/// Compute the raw bilateral sum of the Appell-Lerch function (without j(z;q) normalization).
 ///
-/// j(z; q) = (z;q)_inf * (q/z;q)_inf * (q;q)_inf
-///
-/// For z = q^z_pow:
-/// j(q^b; q) = (q^b;q)_inf * (q^{1-b};q)_inf * (q;q)_inf
-fn jacobi_theta_j(
-    z_pow: i64,
-    variable: SymbolId,
-    truncation_order: i64,
-) -> FormalPowerSeries {
-    let z_mono = QMonomial::q_power(z_pow);
-    let qz_inv = QMonomial::q_power(1 - z_pow);
-    let q_mono = QMonomial::q_power(1);
-
-    let part1 = aqprod(&z_mono, variable, PochhammerOrder::Infinite, truncation_order);
-    let part2 = aqprod(&qz_inv, variable, PochhammerOrder::Infinite, truncation_order);
-    let part3 = aqprod(&q_mono, variable, PochhammerOrder::Infinite, truncation_order);
-
-    arithmetic::mul(&arithmetic::mul(&part1, &part2), &part3)
-}
-
-/// Compute the Appell-Lerch sum m(q^{a_pow}, q, q^{z_pow}) as a formal power series.
-///
-/// Following Hickerson-Mortenson notation:
 /// ```text
-/// m(x, q, z) = (1/j(z;q)) * sum_{r in Z} (-1)^r * q^{r(r-1)/2} * z^r / (1 - x*q^r*z)
+/// S(q^a, q, q^b) = sum_{r in Z} (-1)^r * q^{r(r-1)/2 + b*r} / (1 - q^{a+r+b})
 /// ```
 ///
-/// Specializing x = q^{a_pow}, z = q^{z_pow}:
-/// ```text
-/// m(q^a, q, q^b) = (1/j(q^b;q)) * sum_{r in Z} (-1)^r * q^{r(r-1)/2 + b*r} / (1 - q^{a+r+b})
-/// ```
+/// This is the bilateral sum appearing in the Appell-Lerch definition:
+/// m(x, q, z) = S(x, q, z) / j(z; q)
 ///
-/// # Restrictions
-///
-/// The parameter z_pow must be such that j(q^{z_pow}; q) is nonzero, which means z_pow should
-/// not be 0 or 1 (and more generally not a non-negative integer <= 0 in the relevant sense).
-/// In practice, j(q^b; q) = 0 when b is a non-positive integer or when 1-b is a non-positive
-/// integer, because one of the infinite products has a vanishing first factor.
+/// For integer parameters, j(z;q) = 0 and the full m is not directly computable,
+/// but the bilateral sum S is well-defined (skipping r values where a+r+b = 0).
 ///
 /// # Arguments
 ///
 /// * `a_pow` - Integer such that x = q^{a_pow}
-/// * `z_pow` - Integer such that z = q^{z_pow} (must yield nonzero j(z;q))
+/// * `z_pow` - Integer such that z = q^{z_pow}
 /// * `variable` - The SymbolId for the series variable q
 /// * `truncation_order` - Compute to O(q^truncation_order)
-pub fn appell_lerch_m(
+pub fn appell_lerch_bilateral(
     a_pow: i64,
     z_pow: i64,
     variable: SymbolId,
     truncation_order: i64,
 ) -> FormalPowerSeries {
-    // Compute j(z;q) and its inverse
-    let j_z = jacobi_theta_j(z_pow, variable, truncation_order);
-    assert!(
-        !j_z.is_zero(),
-        "appell_lerch_m: j(q^{};q) is zero -- z_pow={} gives degenerate Appell-Lerch sum",
-        z_pow,
-        z_pow
-    );
-    let j_z_inv = arithmetic::invert(&j_z);
-
-    // Bilateral sum: positive part (r >= 0) + negative part (r < 0)
     let mut bilateral_sum = FormalPowerSeries::zero(variable, truncation_order);
+
+    // Helper: compute a term (-1)^r * q^{q_exp} / (1 - q^{denom_pow}) and add to sum.
+    // When q_exp < 0, the geometric series needs extended truncation to ensure
+    // all contributions to coefficients [0, truncation_order) are captured.
+    let add_term = |bilateral: &mut FormalPowerSeries, q_exp: i64, denom_pow: i64, sign: QRat| {
+        // The product q^{q_exp} * geometric_series needs the geometric series
+        // to cover exponents up to (truncation_order - q_exp) so that the
+        // product covers [0, truncation_order) after shifting by q_exp.
+        let effective_trunc = if q_exp < 0 {
+            truncation_order - q_exp  // extend to compensate for negative shift
+        } else {
+            truncation_order
+        };
+
+        let geom = geometric_series_q_power(denom_pow, variable, effective_trunc);
+        let numer = FormalPowerSeries::monomial(variable, sign, q_exp, effective_trunc);
+        let term = arithmetic::mul(&numer, &geom);
+
+        // Truncate the term back to the target truncation_order
+        let mut truncated_term = FormalPowerSeries::zero(variable, truncation_order);
+        for (&k, v) in term.iter() {
+            if k < truncation_order {
+                truncated_term.set_coeff(k, v.clone());
+            }
+        }
+        *bilateral = arithmetic::add(bilateral, &truncated_term);
+    };
 
     // Positive direction: r = 0, 1, 2, ...
     for r in 0i64.. {
         let q_exp = r * (r - 1) / 2 + z_pow * r;
-        // Break if the minimum contribution exceeds truncation (for r > 0)
         if q_exp >= truncation_order && r > 0 {
             break;
         }
-        // Skip if q_exp is already beyond truncation for r=0 (shouldn't happen since q_exp=0)
         if q_exp >= truncation_order {
             break;
         }
@@ -139,32 +139,19 @@ pub fn appell_lerch_m(
 
         let denom_pow = a_pow + r + z_pow;
         if denom_pow == 0 {
-            // Pole in geometric series -- skip this r
-            // In the full Appell-Lerch sum, these poles cancel with j(z;q)
             continue;
         }
 
-        let geom = geometric_series_q_power(denom_pow, variable, truncation_order);
-        let numer = FormalPowerSeries::monomial(variable, sign, q_exp, truncation_order);
-        let term = arithmetic::mul(&numer, &geom);
-        bilateral_sum = arithmetic::add(&bilateral_sum, &term);
+        add_term(&mut bilateral_sum, q_exp, denom_pow, sign);
     }
 
     // Negative direction: r = -1, -2, -3, ...
     for r_abs in 1i64.. {
         let r = -r_abs;
         let q_exp = r * (r - 1) / 2 + z_pow * r;
-        // r*(r-1)/2 for negative r:
-        // r=-1: (-1)(-2)/2 = 1
-        // r=-2: (-2)(-3)/2 = 3
-        // r=-3: (-3)(-4)/2 = 6
-        // So q_exp = r_abs*(r_abs+1)/2 - z_pow*r_abs
-        // This grows quadratically, so will eventually exceed truncation_order
         if q_exp >= truncation_order {
             break;
         }
-        // For negative q_exp, the monomial constructor handles it (sets coeff if < trunc)
-        // But we also need the geometric series terms to overlap with the valid range
 
         let sign: QRat = if r_abs % 2 == 0 { QRat::one() } else { -QRat::one() };
 
@@ -173,13 +160,36 @@ pub fn appell_lerch_m(
             continue;
         }
 
-        let geom = geometric_series_q_power(denom_pow, variable, truncation_order);
-        let numer = FormalPowerSeries::monomial(variable, sign, q_exp, truncation_order);
-        let term = arithmetic::mul(&numer, &geom);
-        bilateral_sum = arithmetic::add(&bilateral_sum, &term);
+        add_term(&mut bilateral_sum, q_exp, denom_pow, sign);
     }
 
-    arithmetic::mul(&bilateral_sum, &j_z_inv)
+    bilateral_sum
+}
+
+/// Compute the Appell-Lerch sum m(q^{a_pow}, q, q^{z_pow}) as a formal power series.
+///
+/// For integer specializations (z = q^{z_pow}), the Jacobi theta j(z;q) vanishes,
+/// so the full normalized m(x,q,z) is not directly available. This function returns
+/// the raw bilateral sum, which is the numerator of the Appell-Lerch expression.
+///
+/// This is equivalent to [`appell_lerch_bilateral`] and is useful for:
+/// - Verifying identities where j(z;q) factors cancel from both sides
+/// - Cross-checking mock theta function representations
+/// - Computing structural relations between Appell-Lerch sums
+///
+/// # Arguments
+///
+/// * `a_pow` - Integer such that x = q^{a_pow}
+/// * `z_pow` - Integer such that z = q^{z_pow}
+/// * `variable` - The SymbolId for the series variable q
+/// * `truncation_order` - Compute to O(q^truncation_order)
+pub fn appell_lerch_m(
+    a_pow: i64,
+    z_pow: i64,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> FormalPowerSeries {
+    appell_lerch_bilateral(a_pow, z_pow, variable, truncation_order)
 }
 
 /// Compute the universal mock theta function g3(q^{a_pow}, q) as a formal power series.
@@ -188,17 +198,17 @@ pub fn appell_lerch_m(
 /// g3(x, q) = sum_{n>=0} q^{n(n+1)/2} / [(x;q)_{n+1} * (q/x;q)_{n+1}]
 /// ```
 ///
-/// For x = q^{a_pow}:
+/// For x = q^{a_pow} with integer a_pow >= 2, the denominator (q^{1-a};q)_{n+1}
+/// has negative-exponent factors that we handle algebraically:
 /// ```text
-/// g3(q^a, q) = sum_{n>=0} q^{n(n+1)/2} / [(q^a;q)_{n+1} * (q^{1-a};q)_{n+1}]
+/// (q^{1-a};q)_{n+1} = (-1)^{n+1} * q^{-S} * prod_{k=0}^n (1 - q^{a-1-k})
 /// ```
-///
-/// Gordon and McIntosh showed that all odd-order mock theta functions are
-/// specializations of g3.
+/// where S = (n+1)(a-1) - n(n+1)/2. The sum includes only terms where the
+/// denominator is non-degenerate (n < a-1).
 ///
 /// # Arguments
 ///
-/// * `a_pow` - Integer such that x = q^{a_pow}
+/// * `a_pow` - Integer such that x = q^{a_pow} (must be >= 2 for nontrivial result)
 /// * `variable` - The SymbolId for the series variable q
 /// * `truncation_order` - Compute to O(q^truncation_order)
 pub fn universal_mock_theta_g3(
@@ -208,53 +218,138 @@ pub fn universal_mock_theta_g3(
 ) -> FormalPowerSeries {
     let mut result = FormalPowerSeries::zero(variable, truncation_order);
 
-    // Running denominator products, maintained incrementally:
-    // denom1 = (q^a; q)_{n+1}, starting from (q^a; q)_1 = (1 - q^a)
-    // denom2 = (q^{1-a}; q)_{n+1}, starting from (q^{1-a}; q)_1 = (1 - q^{1-a})
-    //
-    // Initialize for n=0: we need (q^a;q)_1 and (q^{1-a};q)_1
-    let a_mono = QMonomial::q_power(a_pow);
-    let qa_inv_mono = QMonomial::q_power(1 - a_pow);
+    let max_valid_n = compute_max_valid_n(a_pow);
 
-    let mut denom1 = aqprod(&a_mono, variable, PochhammerOrder::Finite(1), truncation_order);
-    let mut denom2 = aqprod(&qa_inv_mono, variable, PochhammerOrder::Finite(1), truncation_order);
+    // For a_pow >= 2: use the algebraic identity to avoid negative-exponent FPS.
+    // For each valid n (0..=max_n):
+    //   term = (-1)^{n+1} * q^{(n+1)(a-1)} / [(q^a;q)_{n+1} * prod_{k=0}^n (1-q^{a-1-k})]
+    //
+    // We maintain running products incrementally:
+    //   denom1 = (q^a;q)_{n+1}: factors (1-q^a), (1-q^{a+1}), ... all positive exponents
+    //   denom2_pos = prod_{k=0}^n (1-q^{a-1-k}): factors (1-q^{a-1}), (1-q^{a-2}), ...
+
+    if a_pow <= 1 {
+        // For a_pow <= 1, no valid terms exist (max_valid_n <= -1)
+        return result;
+    }
+
+    // Initialize for n=0:
+    // denom1 = (q^a;q)_1 = (1 - q^a)
+    // denom2_pos = (1 - q^{a-1})
+    let mut denom1 = {
+        let mut f = FormalPowerSeries::one(variable, truncation_order);
+        f.set_coeff(a_pow, -QRat::one());
+        f
+    };
+    let mut denom2_pos = {
+        let mut f = FormalPowerSeries::one(variable, truncation_order);
+        if a_pow - 1 > 0 && a_pow - 1 < truncation_order {
+            f.set_coeff(a_pow - 1, -QRat::one());
+        }
+        f
+    };
 
     for n in 0i64.. {
-        let q_exp = n * (n + 1) / 2;
+        // Check valid range
+        if let Some(max_n) = max_valid_n {
+            if n > max_n {
+                break;
+            }
+        }
+
+        // Numerator power: (n+1)*(a-1)
+        let q_exp = (n + 1) * (a_pow - 1);
         if q_exp >= truncation_order {
             break;
         }
 
-        // term = q^{n(n+1)/2} / (denom1 * denom2)
-        let denom = arithmetic::mul(&denom1, &denom2);
+        // Sign: (-1)^{n+1}
+        let sign: QRat = if (n + 1) % 2 == 0 { QRat::one() } else { -QRat::one() };
+
+        // Denominator = denom1 * denom2_pos (all positive-exponent FPS)
+        let denom = arithmetic::mul(&denom1, &denom2_pos);
+        if denom.is_zero() || denom.coeff(0).is_zero() {
+            break;
+        }
+
         let denom_inv = arithmetic::invert(&denom);
-        let numer = FormalPowerSeries::monomial(variable, QRat::one(), q_exp, truncation_order);
+        let numer = FormalPowerSeries::monomial(variable, sign, q_exp, truncation_order);
         let term = arithmetic::mul(&numer, &denom_inv);
         result = arithmetic::add(&result, &term);
 
-        // Update denominators for next iteration:
-        // (q^a;q)_{n+2} = (q^a;q)_{n+1} * (1 - q^{a+n+1})
-        // (q^{1-a};q)_{n+2} = (q^{1-a};q)_{n+1} * (1 - q^{1-a+n+1})
-        let factor1_exp = a_pow + n + 1;
-        let mut f1 = FormalPowerSeries::one(variable, truncation_order);
-        if factor1_exp == 0 {
-            f1.set_coeff(0, QRat::zero());
-        } else if factor1_exp < truncation_order {
-            f1.set_coeff(factor1_exp, -QRat::one());
+        // Update for next iteration (n -> n+1):
+        // denom1: (q^a;q)_{n+2} = denom1 * (1 - q^{a+n+1})
+        let f1_exp = a_pow + n + 1;
+        if f1_exp > 0 && f1_exp < truncation_order {
+            let mut f1 = FormalPowerSeries::one(variable, truncation_order);
+            f1.set_coeff(f1_exp, -QRat::one());
+            denom1 = arithmetic::mul(&denom1, &f1);
         }
-        denom1 = arithmetic::mul(&denom1, &f1);
 
-        let factor2_exp = (1 - a_pow) + n + 1;
-        let mut f2 = FormalPowerSeries::one(variable, truncation_order);
-        if factor2_exp == 0 {
-            f2.set_coeff(0, QRat::zero());
-        } else if factor2_exp < truncation_order {
-            f2.set_coeff(factor2_exp, -QRat::one());
+        // denom2_pos: multiply by (1 - q^{a-2-n})
+        // At n, the next factor index is k=n+1, giving exponent a-1-(n+1) = a-2-n.
+        let f2_exp = a_pow - 2 - n;
+        if f2_exp > 0 && f2_exp < truncation_order {
+            let mut f2 = FormalPowerSeries::one(variable, truncation_order);
+            f2.set_coeff(f2_exp, -QRat::one());
+            denom2_pos = arithmetic::mul(&denom2_pos, &f2);
+        } else if f2_exp == 0 {
+            // Factor is (1-1) = 0 -- this means next n is invalid, but we break via max_valid_n
+            break;
         }
-        denom2 = arithmetic::mul(&denom2, &f2);
+        // If f2_exp < 0, we've exhausted valid factors (shouldn't happen with max_valid_n)
     }
 
     result
+}
+
+/// Compute the maximum valid n for g3/g2 denominator products.
+///
+/// Returns None if no restriction (all n valid), or Some(max_n) if
+/// the denominator vanishes for n > max_n.
+fn compute_max_valid_n(a_pow: i64) -> Option<i64> {
+    // (q^a;q)_{n+1} has factor (1-q^{a+k}) for k=0..n
+    // Vanishes when a + k = 0, i.e., k = -a. Need 0 <= k <= n, so n >= -a.
+    // This applies when a <= 0: vanishes for n >= -a, so max_n = -a - 1.
+    //
+    // (q^{1-a};q)_{n+1} has factor (1-q^{1-a+k}) for k=0..n
+    // Vanishes when 1-a+k = 0, i.e., k = a-1. Need 0 <= k <= n, so n >= a-1.
+    // This applies when a >= 2: vanishes for n >= a-1, so max_n = a - 2.
+    //
+    // For a = 1: both restrictions give k = -1 (not in range) and k = 0.
+    // (q;q)_{n+1}: a=1, factor (1-q^{1+k}), never zero for k >= 0. Fine.
+    // (1;q)_{n+1}: 1-a=0, factor (1-q^{0+k}). k=0: (1-1)=0. So n >= 0 causes vanishing.
+    // Actually that's the initial factor! (q^0;q)_1 = (1-1) = 0.
+    // So for a = 1, max_n = -1 (no valid terms). But we handle this via the zero-product check.
+    //
+    // For a = 0: (q^0;q)_{n+1} = 0 for all n >= 0. No valid terms.
+
+    let limit1 = if a_pow <= 0 {
+        Some(-a_pow - 1) // from first Pochhammer
+    } else {
+        None
+    };
+    let limit2 = if a_pow >= 2 {
+        Some(a_pow - 2) // from second Pochhammer
+    } else if a_pow == 1 {
+        Some(-1i64) // special: (q^0;q)_1 = 0, no valid terms
+    } else {
+        None
+    };
+
+    match (limit1, limit2) {
+        (None, None) => None,
+        (Some(l), None) => {
+            if l < 0 { Some(-1) } else { Some(l) }
+        }
+        (None, Some(l)) => {
+            if l < 0 { Some(-1) } else { Some(l) }
+        }
+        (Some(l1), Some(l2)) => {
+            let l = l1.min(l2);
+            if l < 0 { Some(-1) } else { Some(l) }
+        }
+    }
 }
 
 /// Compute the universal mock theta function g2(q^{a_pow}, q) as a formal power series.
@@ -263,24 +358,12 @@ pub fn universal_mock_theta_g3(
 /// g2(x, q) = x^{-1} * (-q;q)_inf * sum_{n>=0} q^{n(n+1)/2} * (-q;q)_n / [(x;q)_{n+1} * (q/x;q)_{n+1}]
 /// ```
 ///
-/// For x = q^{a_pow}:
-/// ```text
-/// g2(q^a, q) = q^{-a} * (-q;q)_inf * sum_{n>=0} q^{n(n+1)/2} * (-q;q)_n / [(q^a;q)_{n+1} * (q^{1-a};q)_{n+1}]
-/// ```
-///
-/// Gordon and McIntosh showed that all even-order mock theta functions are
-/// specializations of g2.
-///
-/// # Note on the q^{-a} prefactor
-///
-/// Since FPS cannot represent negative powers, the result is shifted: if a_pow > 0,
-/// the inner sum is computed first, then coefficients are shifted down by a_pow.
-/// This means the result represents g2(q^a, q) * q^{a_pow} at the FPS level when
-/// the shift would produce negative exponents. For a_pow = 0, q^{-a} = 1 (no shift).
+/// Like g3, uses the algebraic identity for negative-exponent Pochhammer factors.
+/// The q^{-a} prefactor is applied as a shift in the FPS.
 ///
 /// # Arguments
 ///
-/// * `a_pow` - Integer such that x = q^{a_pow} (should be >= 0 for FPS representability)
+/// * `a_pow` - Integer such that x = q^{a_pow} (must be >= 2 for nontrivial result)
 /// * `variable` - The SymbolId for the series variable q
 /// * `truncation_order` - Compute to O(q^truncation_order)
 pub fn universal_mock_theta_g2(
@@ -288,34 +371,57 @@ pub fn universal_mock_theta_g2(
     variable: SymbolId,
     truncation_order: i64,
 ) -> FormalPowerSeries {
+    if a_pow <= 1 {
+        return FormalPowerSeries::zero(variable, truncation_order);
+    }
+
     // Compute (-q;q)_inf
     let neg_q = QMonomial::new(-QRat::one(), 1);
     let neg_q_inf = aqprod(&neg_q, variable, PochhammerOrder::Infinite, truncation_order);
 
-    // Running products for denominator and numerator Pochhammer
-    let a_mono = QMonomial::q_power(a_pow);
-    let qa_inv_mono = QMonomial::q_power(1 - a_pow);
+    let max_valid_n = compute_max_valid_n(a_pow);
 
-    // denom1 = (q^a;q)_{n+1}, denom2 = (q^{1-a};q)_{n+1}
-    let mut denom1 = aqprod(&a_mono, variable, PochhammerOrder::Finite(1), truncation_order);
-    let mut denom2 = aqprod(&qa_inv_mono, variable, PochhammerOrder::Finite(1), truncation_order);
+    // Same positive-exponent approach as g3 for the denominator.
+    // For each valid n:
+    //   inner_term = (-1)^{n+1} * q^{(n+1)(a-1)} * (-q;q)_n / [denom1 * denom2_pos]
 
-    // numer_poch = (-q;q)_n, starting at n=0: (-q;q)_0 = 1
+    let mut denom1 = {
+        let mut f = FormalPowerSeries::one(variable, truncation_order);
+        f.set_coeff(a_pow, -QRat::one());
+        f
+    };
+    let mut denom2_pos = {
+        let mut f = FormalPowerSeries::one(variable, truncation_order);
+        if a_pow - 1 > 0 && a_pow - 1 < truncation_order {
+            f.set_coeff(a_pow - 1, -QRat::one());
+        }
+        f
+    };
+
     let mut numer_poch = FormalPowerSeries::one(variable, truncation_order);
-
-    // Inner sum: sum_{n>=0} q^{n(n+1)/2} * (-q;q)_n / [(q^a;q)_{n+1} * (q^{1-a};q)_{n+1}]
     let mut inner_sum = FormalPowerSeries::zero(variable, truncation_order);
 
     for n in 0i64.. {
-        let q_exp = n * (n + 1) / 2;
+        if let Some(max_n) = max_valid_n {
+            if n > max_n {
+                break;
+            }
+        }
+
+        let q_exp = (n + 1) * (a_pow - 1);
         if q_exp >= truncation_order {
             break;
         }
 
-        // term = q^{n(n+1)/2} * numer_poch / (denom1 * denom2)
-        let denom = arithmetic::mul(&denom1, &denom2);
+        let sign: QRat = if (n + 1) % 2 == 0 { QRat::one() } else { -QRat::one() };
+
+        let denom = arithmetic::mul(&denom1, &denom2_pos);
+        if denom.is_zero() || denom.coeff(0).is_zero() {
+            break;
+        }
+
         let denom_inv = arithmetic::invert(&denom);
-        let numer = FormalPowerSeries::monomial(variable, QRat::one(), q_exp, truncation_order);
+        let numer = FormalPowerSeries::monomial(variable, sign, q_exp, truncation_order);
         let term = arithmetic::mul(&arithmetic::mul(&numer, &numer_poch), &denom_inv);
         inner_sum = arithmetic::add(&inner_sum, &term);
 
@@ -323,39 +429,34 @@ pub fn universal_mock_theta_g2(
         let m = n + 1;
         let mut npf = FormalPowerSeries::one(variable, truncation_order);
         if m < truncation_order {
-            npf.set_coeff(m, QRat::one()); // 1 + q^m
+            npf.set_coeff(m, QRat::one());
         }
         numer_poch = arithmetic::mul(&numer_poch, &npf);
 
-        // Update denominators
-        let factor1_exp = a_pow + n + 1;
-        let mut f1 = FormalPowerSeries::one(variable, truncation_order);
-        if factor1_exp == 0 {
-            f1.set_coeff(0, QRat::zero());
-        } else if factor1_exp < truncation_order {
-            f1.set_coeff(factor1_exp, -QRat::one());
+        // Update denom1
+        let f1_exp = a_pow + n + 1;
+        if f1_exp > 0 && f1_exp < truncation_order {
+            let mut f1 = FormalPowerSeries::one(variable, truncation_order);
+            f1.set_coeff(f1_exp, -QRat::one());
+            denom1 = arithmetic::mul(&denom1, &f1);
         }
-        denom1 = arithmetic::mul(&denom1, &f1);
 
-        let factor2_exp = (1 - a_pow) + n + 1;
-        let mut f2 = FormalPowerSeries::one(variable, truncation_order);
-        if factor2_exp == 0 {
-            f2.set_coeff(0, QRat::zero());
-        } else if factor2_exp < truncation_order {
-            f2.set_coeff(factor2_exp, -QRat::one());
+        // Update denom2_pos
+        let f2_exp = a_pow - 2 - n;
+        if f2_exp > 0 && f2_exp < truncation_order {
+            let mut f2 = FormalPowerSeries::one(variable, truncation_order);
+            f2.set_coeff(f2_exp, -QRat::one());
+            denom2_pos = arithmetic::mul(&denom2_pos, &f2);
+        } else if f2_exp <= 0 {
+            break;
         }
-        denom2 = arithmetic::mul(&denom2, &f2);
     }
 
     // Multiply by (-q;q)_inf
     let mut result = arithmetic::mul(&neg_q_inf, &inner_sum);
 
-    // Apply q^{-a_pow} shift: shift coefficients down by a_pow
-    // This means coeff[k] of result becomes coeff[k - a_pow] of final
-    if a_pow > 0 {
-        result = arithmetic::shift(&result, -a_pow);
-    } else if a_pow < 0 {
-        // q^{-a_pow} = q^{|a_pow|}, shift up
+    // Apply q^{-a_pow} shift
+    if a_pow != 0 {
         result = arithmetic::shift(&result, -a_pow);
     }
 
@@ -393,9 +494,9 @@ pub struct ZwegersCompletion {
 impl ZwegersCompletion {
     /// Create a completion for a third-order mock theta function.
     ///
-    /// Third-order mock theta completions have weight 1/2 and level
-    /// determined by the specific function. The non-holomorphic part
-    /// involves a period integral of a weight-3/2 unary theta function.
+    /// Third-order mock theta completions have weight 1/2 and level 2.
+    /// The non-holomorphic part involves a period integral of a weight-3/2
+    /// unary theta function.
     pub fn third_order(name: &str, holomorphic: FormalPowerSeries) -> Self {
         Self {
             mock_theta_name: name.to_string(),
@@ -407,14 +508,13 @@ impl ZwegersCompletion {
                 name
             ),
             weight: (1, 2), // weight 1/2
-            level: 2,       // third-order mock theta functions have level 2 or divisors
+            level: 2,
         }
     }
 
     /// Create a completion for a fifth-order mock theta function.
     ///
-    /// Fifth-order mock theta completions also have weight 1/2 but with
-    /// different level and correction structure.
+    /// Fifth-order mock theta completions have weight 1/2 with level 5.
     pub fn fifth_order(name: &str, holomorphic: FormalPowerSeries) -> Self {
         Self {
             mock_theta_name: name.to_string(),
@@ -449,9 +549,8 @@ impl ZwegersCompletion {
     /// Verify that two completions have compatible holomorphic parts
     /// by checking a linear relation between them as FPS.
     ///
-    /// Given coefficients (c1, c2) for each pair, verifies that
-    /// c1 * self.holomorphic_part + c2 * other.holomorphic_part
-    /// matches a target FPS (e.g., a theta function quotient) to the given order.
+    /// Verifies that c1 * self.holomorphic_part + c2 * other.holomorphic_part
+    /// matches a target FPS to the minimum truncation order.
     ///
     /// Returns true if the linear combination matches the target.
     pub fn verify_linear_relation(
@@ -465,13 +564,11 @@ impl ZwegersCompletion {
         let part2 = arithmetic::scalar_mul(c2, &other.holomorphic_part);
         let combo = arithmetic::add(&part1, &part2);
 
-        // Check that combo - target = 0 to the minimum truncation order
         let diff = arithmetic::sub(&combo, target);
         diff.is_zero()
     }
 
-    /// Check that this completion's holomorphic part is nonzero and has
-    /// the expected structure (nontrivial series).
+    /// Check that this completion's holomorphic part is nonzero.
     pub fn is_nontrivial(&self) -> bool {
         !self.holomorphic_part.is_zero()
     }

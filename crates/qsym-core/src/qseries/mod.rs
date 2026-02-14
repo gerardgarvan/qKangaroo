@@ -63,7 +63,7 @@ pub use mock_theta::{
     mock_theta_chi0_5, mock_theta_chi1_5,
     mock_theta_cap_f0_7, mock_theta_cap_f1_7, mock_theta_cap_f2_7,
 };
-pub use appell_lerch::{appell_lerch_m, universal_mock_theta_g2, universal_mock_theta_g3, ZwegersCompletion};
+pub use appell_lerch::{appell_lerch_m, appell_lerch_bilateral, universal_mock_theta_g2, universal_mock_theta_g3, ZwegersCompletion};
 pub use bailey::{BaileyPair, BaileyPairType, BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair};
 
 use crate::number::QRat;
