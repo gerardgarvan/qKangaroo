@@ -85,5 +85,9 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dsl::heine2, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::heine3, m)?)?;
 
+    // Group 9: Identity Proving
+    m.add_function(wrap_pyfunction!(dsl::prove_eta_id, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::search_identities, m)?)?;
+
     Ok(())
 }

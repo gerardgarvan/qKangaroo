@@ -860,3 +860,122 @@ pub fn heine3(
         )),
     }
 }
+
+// ===========================================================================
+// GROUP 9: Identity Proving and Database
+// ===========================================================================
+
+/// Prove an eta-quotient identity via the valence formula.
+///
+/// Takes two sides as lists of (delta, r_delta) pairs and a level N.
+/// Returns a dict with proof result.
+///
+/// ```python
+/// s = QSession()
+/// result = prove_eta_id(s, [(5, 6)], [(1, 6)], 5)
+/// print(result["status"])  # "proved", "not_modular", "negative_order", "counterexample"
+/// ```
+#[pyfunction]
+#[pyo3(signature = (session, lhs_factors, rhs_factors, level))]
+pub fn prove_eta_id(
+    session: &QSession,
+    lhs_factors: Vec<(i64, i64)>,
+    rhs_factors: Vec<(i64, i64)>,
+    level: i64,
+) -> PyResult<PyObject> {
+    let _ = session; // Session not needed for proving, but keeps API consistent
+
+    use qsym_core::qseries::identity::{EtaExpression, EtaIdentity, prove_eta_identity, ProofResult};
+
+    let lhs = EtaExpression::from_factors(&lhs_factors, level);
+    let rhs = EtaExpression::from_factors(&rhs_factors, level);
+    let identity = EtaIdentity::two_sided(lhs, rhs, level);
+    let result = prove_eta_identity(&identity);
+
+    Python::with_gil(|py| {
+        let dict = PyDict::new(py);
+        match &result {
+            ProofResult::Proved { level, cusp_orders, sturm_bound, verification_terms } => {
+                dict.set_item("status", "proved")?;
+                dict.set_item("level", *level)?;
+                dict.set_item("sturm_bound", *sturm_bound)?;
+                dict.set_item("verification_terms", *verification_terms)?;
+                let cusps_list: Vec<(String, String)> = cusp_orders.iter()
+                    .map(|(c, o)| (format!("{}", c), format!("{}", o)))
+                    .collect();
+                dict.set_item("cusp_orders", cusps_list)?;
+            }
+            ProofResult::NotModular { failed_conditions } => {
+                dict.set_item("status", "not_modular")?;
+                dict.set_item("failed_conditions", failed_conditions.clone())?;
+            }
+            ProofResult::NegativeOrder { cusp, order } => {
+                dict.set_item("status", "negative_order")?;
+                dict.set_item("cusp", format!("{}", cusp))?;
+                dict.set_item("order", format!("{}", order))?;
+            }
+            ProofResult::CounterExample { coefficient_index, expected, actual } => {
+                dict.set_item("status", "counterexample")?;
+                dict.set_item("coefficient_index", *coefficient_index)?;
+                dict.set_item("expected", format!("{}", expected))?;
+                dict.set_item("actual", format!("{}", actual))?;
+            }
+        }
+        Ok(dict.into())
+    })
+}
+
+/// Search the identity database by tag, function, or pattern.
+///
+/// ```python
+/// results = search_identities("classical", search_type="tag")
+/// results = search_identities("eta", search_type="function")
+/// results = search_identities("partition", search_type="pattern")
+/// ```
+#[pyfunction]
+#[pyo3(signature = (query, search_type = "pattern", db_path = None))]
+pub fn search_identities(
+    py: Python<'_>,
+    query: &str,
+    search_type: &str,
+    db_path: Option<&str>,
+) -> PyResult<PyObject> {
+    use qsym_core::qseries::identity::IdentityDatabase;
+
+    // Load from specified path or use embedded default database
+    let toml_content = if let Some(path) = db_path {
+        std::fs::read_to_string(path)
+            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Cannot read {}: {}", path, e)))?
+    } else {
+        // Use embedded default database
+        include_str!("../../../data/identities/classical_identities.toml").to_string()
+    };
+
+    let db = IdentityDatabase::load_from_toml(&toml_content)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+
+    let results: Vec<&qsym_core::qseries::identity::IdentityEntry> = match search_type {
+        "tag" => db.search_by_tag(query),
+        "function" => db.search_by_function(query),
+        "pattern" | _ => db.search_by_pattern(query),
+    };
+
+    let py_results: Vec<PyObject> = results.iter().map(|entry| {
+        let dict = PyDict::new(py);
+        dict.set_item("id", &entry.id).unwrap();
+        dict.set_item("name", &entry.name).unwrap();
+        dict.set_item("tags", &entry.tags).unwrap();
+        dict.set_item("functions", &entry.functions).unwrap();
+        if let Some(ref citation) = entry.citation {
+            if let Some(ref author) = citation.author {
+                dict.set_item("author", author).unwrap();
+            }
+            if let Some(year) = citation.year {
+                dict.set_item("year", year).unwrap();
+            }
+        }
+        dict.into()
+    }).collect();
+
+    Ok(PyList::new(py, &py_results)?.into())
+}
