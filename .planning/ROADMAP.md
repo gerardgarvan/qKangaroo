@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Python API** - PyO3 bindings, session management, DSL, and batch computation
 - [x] **Phase 6: Hypergeometric Series** - Basic hypergeometric representation, summation formulas, and transformations
 - [x] **Phase 7: Identity Proving** - JAC/ETA models, cusp computation, automatic proving, and identity database
-- [ ] **Phase 8: Mock Theta & Bailey Chains** - Mock theta functions, Zwegers completions, Appell-Lerch sums, Bailey machinery
+- [x] **Phase 8: Mock Theta & Bailey Chains** - Mock theta functions, Zwegers completions, Appell-Lerch sums, Bailey machinery
 
 ## Phase Details
 
@@ -164,10 +164,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- All 20 classical mock theta functions (third, fifth, seventh order) with OEIS verification
-- [ ] 08-02-PLAN.md -- Appell-Lerch sums m(x,q,z), universal mock theta g2/g3, Zwegers completion
-- [ ] 08-03-PLAN.md -- Bailey pair database, lemma, chain iteration, and weak Bailey lemma
-- [ ] 08-04-PLAN.md -- Automated Bailey pair discovery and Python API bindings (Group 10)
+- [x] 08-01-PLAN.md -- All 20 classical mock theta functions (third, fifth, seventh order) with OEIS verification
+- [x] 08-02-PLAN.md -- Appell-Lerch sums m(x,q,z), universal mock theta g2/g3, Zwegers completion
+- [x] 08-03-PLAN.md -- Bailey pair database, lemma, chain iteration, and weak Bailey lemma
+- [x] 08-04-PLAN.md -- Automated Bailey pair discovery and Python API bindings (Group 10)
 
 ## Progress
 
@@ -183,4 +183,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 5. Python API | 4/4 | Complete | 2026-02-13 |
 | 6. Hypergeometric Series | 4/4 | Complete | 2026-02-14 |
 | 7. Identity Proving | 4/4 | Complete | 2026-02-14 |
-| 8. Mock Theta & Bailey Chains | 0/4 | Not started | - |
+| 8. Mock Theta & Bailey Chains | 4/4 | Complete | 2026-02-14 |
