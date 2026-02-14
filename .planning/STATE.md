@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 3 -- Core q-series and partitions (complete, ready for Phase 4)
+**Current focus:** Phase 4 -- Series analysis (in progress)
 
 ## Current Position
 
-Phase: 3 of 8 (Core q-Series & Partitions)
-Plan: 4 of 4 in current phase (4 complete)
-Status: Phase complete
-Last activity: 2026-02-13 -- Completed 03-04-PLAN.md
+Phase: 4 of 8 (Series Analysis)
+Plan: 3 of 7 in current phase (3 complete)
+Status: In progress
+Last activity: 2026-02-14 -- Completed 04-03-PLAN.md
 
-Progress: [########..] 40%
+Progress: [########..] 44%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 8 min
-- Total execution time: 1.1 hours
+- Total plans completed: 11
+- Average duration: 7 min
+- Total execution time: 1.3 hours
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [########..] 40%
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
+| 4 - Series Analysis | 3/7 | 12 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 5 min, 5 min, 4 min, 7 min
+- Last 5 plans: 5 min, 4 min, 7 min, 4 min, 4 min
 - Trend: stable ~5 min/plan
 
 *Updated after each plan completion*
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [03-03]: Shared q2_q2_inf helper extracted for (q^2;q^2)_inf factor common to theta3 and theta4
 - [03-04]: rank_gf and crank_gf return partition_gf directly at z=1 to handle removable singularity
 - [03-04]: odd_parts_gf uses explicit factor loop with inversion rather than qpochhammer_inf_generator with step parameter
+- [04-03]: Fermat's little theorem for modular inverse (a^{p-2} mod p) rather than extended Euclidean
+- [04-03]: i128 intermediates in mod_mul to prevent overflow in modular arithmetic
+- [04-03]: Null space basis uses free-variable-equals-1 convention (canonical form)
 
 ### Pending Todos
 
@@ -93,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-13
-Stopped at: Phase 3 COMPLETE -- All 4 plans executed, 298 tests passing, verification PASSED (5/5 criteria)
-Resume file: .planning/phases/03-core-qseries-partitions/03-VERIFICATION.md
+Last session: 2026-02-14
+Stopped at: Completed 04-03-PLAN.md (rational/modular linear algebra for relation discovery)
+Resume file: .planning/phases/04-series-analysis/04-03-SUMMARY.md
