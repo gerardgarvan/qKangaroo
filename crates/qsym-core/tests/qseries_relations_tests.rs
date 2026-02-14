@@ -8,7 +8,10 @@
 //! - PolynomialRelation has correct degree fields
 
 use qsym_core::number::QRat;
-use qsym_core::qseries::{findlincombo, findhom, findpoly, theta3, theta4};
+use qsym_core::qseries::{
+    findlincombo, findhom, findpoly, theta3, theta4,
+    findcong, findnonhom, findhomcombo, findnonhomcombo, partition_gf,
+};
 use qsym_core::series::{FormalPowerSeries, arithmetic};
 use qsym_core::series::generator::InfiniteProductGenerator;
 use qsym_core::symbol::SymbolId;
@@ -393,4 +396,168 @@ fn test_findpoly_no_relation() {
     // No degree-1 polynomial relation should exist with overdetermined system
     let result = findpoly(&x, &y, 1, 1, 20);
     assert!(result.is_none(), "Should not find a linear relation between algebraically independent series");
+}
+
+// ===========================================================================
+// findcong tests
+// ===========================================================================
+
+#[test]
+fn test_findcong_ramanujan_mod5() {
+    // Ramanujan's congruence: p(5n+4) = 0 (mod 5)
+    let q = q_var();
+    let pgf = partition_gf(q, 200);
+    let congs = findcong(&pgf, &[5]);
+
+    // Should discover at minimum the congruence for residue 4, divisor 5
+    let has_mod5 = congs.iter().any(|c| {
+        c.modulus_m == 5 && c.residue_b == 4 && c.divisor_r == 5
+    });
+    assert!(
+        has_mod5,
+        "Should discover Ramanujan's congruence p(5n+4) = 0 mod 5. Found: {:?}",
+        congs
+    );
+}
+
+#[test]
+fn test_findcong_ramanujan_mod7() {
+    // Ramanujan's congruence: p(7n+5) = 0 (mod 7)
+    let q = q_var();
+    let pgf = partition_gf(q, 200);
+    let congs = findcong(&pgf, &[7]);
+
+    let has_mod7 = congs.iter().any(|c| {
+        c.modulus_m == 7 && c.residue_b == 5 && c.divisor_r == 7
+    });
+    assert!(
+        has_mod7,
+        "Should discover Ramanujan's congruence p(7n+5) = 0 mod 7. Found: {:?}",
+        congs
+    );
+}
+
+#[test]
+fn test_findcong_ramanujan_mod11() {
+    // Ramanujan's congruence: p(11n+6) = 0 (mod 11)
+    let q = q_var();
+    let pgf = partition_gf(q, 200);
+    let congs = findcong(&pgf, &[11]);
+
+    let has_mod11 = congs.iter().any(|c| {
+        c.modulus_m == 11 && c.residue_b == 6 && c.divisor_r == 11
+    });
+    assert!(
+        has_mod11,
+        "Should discover Ramanujan's congruence p(11n+6) = 0 mod 11. Found: {:?}",
+        congs
+    );
+}
+
+// ===========================================================================
+// findnonhom tests
+// ===========================================================================
+
+#[test]
+fn test_findnonhom_affine_relation() {
+    // Create f, g where g = 2*f + 3 (affine, not homogeneous)
+    // findnonhom([f, g], 1, 0) should find the relation.
+    let q = q_var();
+    let trunc = 50;
+
+    let f = fps_from_pairs(q, &[(0, 1), (1, 2), (2, 3), (3, 5), (4, 7)], trunc);
+    let three = FormalPowerSeries::monomial(q, qi(3), 0, trunc); // constant 3
+    let g = arithmetic::add(&arithmetic::scalar_mul(&qi(2), &f), &three);
+
+    // findnonhom should discover the relation g - 2*f - 3 = 0
+    let relations = findnonhom(&[&f, &g], 1, 0);
+    assert!(
+        !relations.is_empty(),
+        "Should find a non-homogeneous affine relation"
+    );
+
+    // Verify: the relation involves f, g, and the constant term
+    // Degree-0 and degree-1 monomials for 2 variables:
+    // degree 0: [(0,0)] -> constant 1
+    // degree 1: [(0,1), (1,0)] -> g, f
+    // So columns are: [const, g, f]
+    // Relation: 3*const + (-1)*g + 2*f = 0 (since g = 2f + 3)
+    // Null space vector should be proportional to [3, -1, 2]
+    let v = &relations[0];
+    assert_eq!(v.len(), 3, "Should have 3 components (const, g, f)");
+
+    // Verify: v[0]*1 + v[1]*g + v[2]*f = 0
+    let check = arithmetic::add(
+        &arithmetic::add(
+            &FormalPowerSeries::monomial(q, v[0].clone(), 0, trunc),
+            &arithmetic::scalar_mul(&v[1], &g),
+        ),
+        &arithmetic::scalar_mul(&v[2], &f),
+    );
+    assert!(check.is_zero(), "Affine relation should hold: v[0]*1 + v[1]*g + v[2]*f = 0");
+}
+
+// ===========================================================================
+// findhomcombo tests
+// ===========================================================================
+
+#[test]
+fn test_findhomcombo_quadratic() {
+    // Create f = g1^2 + g2^2
+    // findhomcombo(f, [g1, g2], 2, 0) should recover coefficients for g1^2, g1*g2, g2^2
+    // i.e., [1, 0, 1]
+    let q = q_var();
+    let trunc = 50;
+
+    let g1 = fps_from_pairs(q, &[(0, 1), (1, 2), (2, 3), (3, 1), (4, 2)], trunc);
+    let g2 = fps_from_pairs(q, &[(0, 1), (1, 1), (2, 4), (3, 2), (4, 3)], trunc);
+
+    let g1_sq = arithmetic::mul(&g1, &g1);
+    let g2_sq = arithmetic::mul(&g2, &g2);
+    let f = arithmetic::add(&g1_sq, &g2_sq);
+
+    let result = findhomcombo(&f, &[&g1, &g2], 2, 0);
+    assert!(result.is_some(), "Should express f as homogeneous degree-2 combination");
+
+    let coeffs = result.unwrap();
+    // Degree-2 monomials in 2 variables from generate_monomials(2, 2):
+    // [(0,2), (1,1), (2,0)] -> g2^2, g1*g2, g1^2
+    assert_eq!(coeffs.len(), 3, "Should have 3 monomial coefficients");
+
+    // f = 1*g1^2 + 0*g1*g2 + 1*g2^2
+    // Monomials: [g2^2, g1*g2, g1^2] -> coefficients should be [1, 0, 1]
+    assert_eq!(coeffs[0], qi(1), "Coefficient of g2^2 should be 1");
+    assert_eq!(coeffs[1], qi(0), "Coefficient of g1*g2 should be 0");
+    assert_eq!(coeffs[2], qi(1), "Coefficient of g1^2 should be 1");
+}
+
+// ===========================================================================
+// findnonhomcombo tests
+// ===========================================================================
+
+#[test]
+fn test_findnonhomcombo_affine() {
+    // Create f = g1 + g2 + 5 (affine combination, not homogeneous)
+    // findnonhomcombo(f, [g1, g2], 1, 0) should discover it
+    let q = q_var();
+    let trunc = 50;
+
+    let g1 = fps_from_pairs(q, &[(0, 1), (1, 3), (2, 7), (3, 2), (4, 5)], trunc);
+    let g2 = fps_from_pairs(q, &[(0, 2), (1, 1), (2, 4), (3, 6), (4, 1)], trunc);
+
+    let five = FormalPowerSeries::monomial(q, qi(5), 0, trunc);
+    let f = arithmetic::add(&arithmetic::add(&g1, &g2), &five);
+
+    let result = findnonhomcombo(&f, &[&g1, &g2], 1, 0);
+    assert!(result.is_some(), "Should express f as non-homogeneous degree-1 combination");
+
+    let coeffs = result.unwrap();
+    // Degree 0..=1 monomials in 2 variables:
+    // degree 0: [(0,0)] -> constant 1
+    // degree 1: [(0,1), (1,0)] -> g2, g1
+    // So: [const=1, g2, g1] -> coefficients [5, 1, 1]
+    assert_eq!(coeffs.len(), 3, "Should have 3 monomial coefficients (const, g2, g1)");
+    assert_eq!(coeffs[0], qi(5), "Constant coefficient should be 5");
+    assert_eq!(coeffs[1], qi(1), "Coefficient of g2 should be 1");
+    assert_eq!(coeffs[2], qi(1), "Coefficient of g1 should be 1");
 }
