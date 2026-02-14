@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Simplification & Series Engine** - Phased rewrite engine and formal power series with sparse representation
 - [x] **Phase 3: Core q-Series & Partitions** - q-Pochhammer, named products, theta functions, and partition functions
 - [x] **Phase 4: Series Analysis** - Series-to-product conversion, factoring, utilities, and relation discovery
-- [ ] **Phase 5: Python API** - PyO3 bindings, session management, DSL, and batch computation
+- [x] **Phase 5: Python API** - PyO3 bindings, session management, DSL, and batch computation
 - [ ] **Phase 6: Hypergeometric Series** - Basic hypergeometric representation, summation formulas, and transformations
 - [ ] **Phase 7: Identity Proving** - JAC/ETA models, cusp computation, automatic proving, and identity database
 - [ ] **Phase 8: Mock Theta & Bailey Chains** - Mock theta functions, Zwegers completions, Appell-Lerch sums, Bailey machinery
@@ -109,10 +109,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 05-01-PLAN.md -- Scaffold qsym-python crate, validate cdylib+GMP build, Python import test
-- [ ] 05-02-PLAN.md -- Core QSession + QExpr with operators, rendering, and GC safety
-- [ ] 05-03-PLAN.md -- QSeries wrapper and DSL functions for all Phase 3-4 functions (30+)
-- [ ] 05-04-PLAN.md -- Batch computation mode and Garvan tutorial integration test
+- [x] 05-01-PLAN.md -- Scaffold qsym-python crate, validate cdylib+GMP build, Python import test
+- [x] 05-02-PLAN.md -- Core QSession + QExpr with operators, rendering, and GC safety
+- [x] 05-03-PLAN.md -- QSeries wrapper and DSL functions for all Phase 3-4 functions (30+)
+- [x] 05-04-PLAN.md -- Batch computation mode and Garvan tutorial integration test
 
 ### Phase 6: Hypergeometric Series
 **Goal**: Researchers can construct, evaluate, and transform basic hypergeometric series using classical summation and transformation formulas
@@ -177,7 +177,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 2. Simplification & Series Engine | 3/3 | Complete | 2026-02-13 |
 | 3. Core q-Series & Partitions | 4/4 | Complete | 2026-02-13 |
 | 4. Series Analysis | 7/7 | Complete | 2026-02-13 |
-| 5. Python API | 0/4 | Not started | - |
+| 5. Python API | 4/4 | Complete | 2026-02-13 |
 | 6. Hypergeometric Series | 0/TBD | Not started | - |
 | 7. Identity Proving | 0/TBD | Not started | - |
 | 8. Mock Theta & Bailey Chains | 0/TBD | Not started | - |
