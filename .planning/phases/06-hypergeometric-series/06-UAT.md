@@ -49,7 +49,12 @@ skipped: 0
   reason: "User reported: doesn't work, phi not importable from qsymbolic"
   severity: major
   test: 5
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "__init__.py only exports Groups 1-7 (Phase 3-4 functions). Phase 6 hypergeometric functions (phi, psi, try_summation, heine1/2/3) exist in Rust dsl.rs and are registered in lib.rs PyO3 module, but __init__.py was never updated to re-export them. Same gap affects Phase 7 (prove_eta_id, search_identities) and Phase 8 (20 mock theta + 3 Appell-Lerch + 4 Bailey functions)."
+  artifacts:
+    - path: "crates/qsym-python/python/qsymbolic/__init__.py"
+      issue: "Missing Group 8 (hypergeometric), Group 9 (identity proving), Group 10 (mock theta/Bailey) re-exports"
+  missing:
+    - "Add phi, psi, try_summation, heine1, heine2, heine3 to __init__.py imports and __all__"
+    - "Add prove_eta_id, search_identities to __init__.py imports and __all__"
+    - "Add 20 mock_theta_*, 3 appell_lerch/universal_mock_theta_*, 4 bailey_* to __init__.py imports and __all__"
   debug_session: ""
