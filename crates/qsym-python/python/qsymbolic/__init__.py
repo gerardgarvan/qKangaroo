@@ -10,7 +10,29 @@ if sys.platform == "win32":
     if os.path.isdir(_mingw_dir):
         os.add_dll_directory(_mingw_dir)
 
-from qsymbolic._qsymbolic import QSession, QExpr, version
+from qsymbolic._qsymbolic import QSession, QExpr, QSeries, version
+
+# DSL functions: q-Pochhammer, q-binomial, named products, theta, partitions,
+# rank/crank, factoring, utilities, prodmake, and relation discovery.
+from qsymbolic._qsymbolic import (
+    # Group 1: Pochhammer and q-Binomial
+    aqprod, qbin,
+    # Group 2: Named Products
+    etaq, jacprod, tripleprod, quinprod, winquist,
+    # Group 3: Theta Functions
+    theta2, theta3, theta4,
+    # Group 4: Partition Functions
+    partition_count, partition_gf, distinct_parts_gf, odd_parts_gf,
+    bounded_parts_gf, rank_gf, crank_gf,
+    # Group 5: Factoring, Utilities, Prodmake
+    qfactor, sift, qdegree, lqdegree,
+    prodmake, etamake, jacprodmake, mprodmake, qetamake,
+    # Group 6: Relation Discovery (exact rational)
+    findlincombo, findhom, findpoly, findcong, findnonhom,
+    findhomcombo, findnonhomcombo,
+    # Group 7: Relation Discovery (modular and structural)
+    findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod,
+)
 
 __version__ = version()
 
@@ -33,4 +55,28 @@ def symbols(names: str, session=None):
     return tuple(result)
 
 
-__all__ = ["QSession", "QExpr", "symbols", "__version__"]
+__all__ = [
+    # Classes
+    "QSession", "QExpr", "QSeries",
+    # Helper
+    "symbols",
+    # Version
+    "__version__",
+    # Group 1: Pochhammer and q-Binomial
+    "aqprod", "qbin",
+    # Group 2: Named Products
+    "etaq", "jacprod", "tripleprod", "quinprod", "winquist",
+    # Group 3: Theta Functions
+    "theta2", "theta3", "theta4",
+    # Group 4: Partition Functions
+    "partition_count", "partition_gf", "distinct_parts_gf", "odd_parts_gf",
+    "bounded_parts_gf", "rank_gf", "crank_gf",
+    # Group 5: Factoring, Utilities, Prodmake
+    "qfactor", "sift", "qdegree", "lqdegree",
+    "prodmake", "etamake", "jacprodmake", "mprodmake", "qetamake",
+    # Group 6: Relation Discovery (exact rational)
+    "findlincombo", "findhom", "findpoly", "findcong", "findnonhom",
+    "findhomcombo", "findnonhomcombo",
+    # Group 7: Relation Discovery (modular and structural)
+    "findlincombomodp", "findhommodp", "findhomcombomodp", "findmaxind", "findprod",
+]

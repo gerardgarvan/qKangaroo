@@ -61,5 +61,21 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dsl::mprodmake, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::qetamake, m)?)?;
 
+    // Group 6: Relation Discovery (exact rational)
+    m.add_function(wrap_pyfunction!(dsl::findlincombo, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findhom, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findpoly, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findcong, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findnonhom, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findhomcombo, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findnonhomcombo, m)?)?;
+
+    // Group 7: Relation Discovery (modular and structural)
+    m.add_function(wrap_pyfunction!(dsl::findlincombomodp, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findhommodp, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findhomcombomodp, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findmaxind, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::findprod, m)?)?;
+
     Ok(())
 }

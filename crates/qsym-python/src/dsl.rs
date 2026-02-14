@@ -7,14 +7,38 @@
 //! get a SymbolId (NOT `arena.intern_symbol("q")` which returns ExprRef).
 
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyList};
 
 use qsym_core::number::QRat;
+use qsym_core::series::FormalPowerSeries;
 use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
 
 use crate::convert::{qint_to_python, qrat_to_python};
 use crate::series::QSeries;
 use crate::session::QSession;
+
+/// Helper: extract a slice of FPS references from a Vec of PyRef<QSeries>.
+fn extract_fps_refs<'a>(series_list: &'a [PyRef<'a, QSeries>]) -> Vec<&'a FormalPowerSeries> {
+    series_list.iter().map(|s| &s.fps).collect()
+}
+
+/// Helper: convert a Vec<QRat> to a Python list of Fractions.
+fn qrat_vec_to_pylist<'py>(py: Python<'py>, v: &[QRat]) -> PyResult<Bound<'py, PyList>> {
+    let items: Vec<PyObject> = v
+        .iter()
+        .map(|c| qrat_to_python(py, c).map(|obj| obj.into()))
+        .collect::<PyResult<_>>()?;
+    Ok(PyList::new(py, &items)?)
+}
+
+/// Helper: convert a Vec<Vec<QRat>> to a Python list of lists of Fractions.
+fn qrat_matrix_to_pylist<'py>(py: Python<'py>, m: &[Vec<QRat>]) -> PyResult<Bound<'py, PyList>> {
+    let rows: Vec<PyObject> = m
+        .iter()
+        .map(|row| qrat_vec_to_pylist(py, row).map(|list| list.into()))
+        .collect::<PyResult<_>>()?;
+    Ok(PyList::new(py, &rows)?)
+}
 
 // ===========================================================================
 // GROUP 1: Pochhammer and q-Binomial
@@ -401,4 +425,224 @@ pub fn qetamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObje
     dict.set_item("q_shift", qrat_to_python(py, &result.q_shift)?)?;
 
     Ok(dict.into())
+}
+
+// ===========================================================================
+// GROUP 6: Relation Discovery (exact rational)
+// ===========================================================================
+
+/// Find f as a linear combination of basis series: f = sum_i c_i * basis[i].
+///
+/// Returns None if no combination exists, or list[Fraction] of coefficients.
+#[pyfunction]
+pub fn findlincombo(
+    py: Python<'_>,
+    target: &QSeries,
+    candidates: Vec<PyRef<'_, QSeries>>,
+    topshift: i64,
+) -> PyResult<Option<PyObject>> {
+    let fps_refs = extract_fps_refs(&candidates);
+    match qseries::findlincombo(&target.fps, &fps_refs, topshift) {
+        None => Ok(None),
+        Some(coeffs) => {
+            let list = qrat_vec_to_pylist(py, &coeffs)?;
+            Ok(Some(list.into()))
+        }
+    }
+}
+
+/// Find all homogeneous degree-d polynomial relations among series.
+///
+/// Returns list[list[Fraction]] -- each inner list is a relation vector.
+#[pyfunction]
+pub fn findhom(
+    py: Python<'_>,
+    series_list: Vec<PyRef<'_, QSeries>>,
+    degree: i64,
+    topshift: i64,
+) -> PyResult<PyObject> {
+    let fps_refs = extract_fps_refs(&series_list);
+    let result = qseries::findhom(&fps_refs, degree, topshift);
+    let list = qrat_matrix_to_pylist(py, &result)?;
+    Ok(list.into())
+}
+
+/// Find a polynomial relation P(x, y) = 0 between two series.
+///
+/// Returns None if no relation, or dict with coefficients grid, deg_x, deg_y.
+#[pyfunction]
+pub fn findpoly(
+    py: Python<'_>,
+    x: &QSeries,
+    y: &QSeries,
+    deg_x: i64,
+    deg_y: i64,
+    topshift: i64,
+) -> PyResult<Option<PyObject>> {
+    match qseries::findpoly(&x.fps, &y.fps, deg_x, deg_y, topshift) {
+        None => Ok(None),
+        Some(rel) => {
+            let dict = PyDict::new(py);
+            let coeffs = qrat_matrix_to_pylist(py, &rel.coefficients)?;
+            dict.set_item("coefficients", coeffs)?;
+            dict.set_item("deg_x", rel.deg_x)?;
+            dict.set_item("deg_y", rel.deg_y)?;
+            Ok(Some(dict.into()))
+        }
+    }
+}
+
+/// Discover congruences among the coefficients of a series.
+///
+/// NOTE: findcong does NOT take topshift.
+///
+/// Returns list of dicts: [{"modulus": int, "residue": int, "divisor": int}, ...]
+#[pyfunction]
+pub fn findcong(py: Python<'_>, series: &QSeries, moduli: Vec<i64>) -> PyResult<PyObject> {
+    let result = qseries::findcong(&series.fps, &moduli);
+    let items: Vec<PyObject> = result
+        .iter()
+        .map(|c| {
+            let dict = PyDict::new(py);
+            dict.set_item("modulus", c.modulus_m).unwrap();
+            dict.set_item("residue", c.residue_b).unwrap();
+            dict.set_item("divisor", c.divisor_r).unwrap();
+            dict.into()
+        })
+        .collect();
+    let list = PyList::new(py, &items)?;
+    Ok(list.into())
+}
+
+/// Find all non-homogeneous polynomial relations of degree <= d among series.
+///
+/// Returns list[list[Fraction]] -- relation vectors covering all degrees 0..=d.
+#[pyfunction]
+pub fn findnonhom(
+    py: Python<'_>,
+    series_list: Vec<PyRef<'_, QSeries>>,
+    degree: i64,
+    topshift: i64,
+) -> PyResult<PyObject> {
+    let fps_refs = extract_fps_refs(&series_list);
+    let result = qseries::findnonhom(&fps_refs, degree, topshift);
+    let list = qrat_matrix_to_pylist(py, &result)?;
+    Ok(list.into())
+}
+
+/// Express target as a homogeneous degree-d combination of basis series.
+///
+/// Returns None or list[Fraction] of monomial coefficients.
+#[pyfunction]
+pub fn findhomcombo(
+    py: Python<'_>,
+    target: &QSeries,
+    candidates: Vec<PyRef<'_, QSeries>>,
+    degree: i64,
+    topshift: i64,
+) -> PyResult<Option<PyObject>> {
+    let fps_refs = extract_fps_refs(&candidates);
+    match qseries::findhomcombo(&target.fps, &fps_refs, degree, topshift) {
+        None => Ok(None),
+        Some(coeffs) => {
+            let list = qrat_vec_to_pylist(py, &coeffs)?;
+            Ok(Some(list.into()))
+        }
+    }
+}
+
+/// Express target as a non-homogeneous degree <= d combination of basis series.
+///
+/// Returns None or list[Fraction] of monomial coefficients.
+#[pyfunction]
+pub fn findnonhomcombo(
+    py: Python<'_>,
+    target: &QSeries,
+    candidates: Vec<PyRef<'_, QSeries>>,
+    degree: i64,
+    topshift: i64,
+) -> PyResult<Option<PyObject>> {
+    let fps_refs = extract_fps_refs(&candidates);
+    match qseries::findnonhomcombo(&target.fps, &fps_refs, degree, topshift) {
+        None => Ok(None),
+        Some(coeffs) => {
+            let list = qrat_vec_to_pylist(py, &coeffs)?;
+            Ok(Some(list.into()))
+        }
+    }
+}
+
+// ===========================================================================
+// GROUP 7: Relation Discovery (modular and structural)
+// ===========================================================================
+
+/// Find a linear combination mod p: f = sum_i c_i * basis[i] (mod p).
+///
+/// Returns None or list[int] (coefficients mod p, not Fraction).
+#[pyfunction]
+pub fn findlincombomodp(
+    _py: Python<'_>,
+    target: &QSeries,
+    candidates: Vec<PyRef<'_, QSeries>>,
+    p: i64,
+    topshift: i64,
+) -> Option<Vec<i64>> {
+    let fps_refs = extract_fps_refs(&candidates);
+    qseries::findlincombomodp(&target.fps, &fps_refs, p, topshift)
+}
+
+/// Find homogeneous degree-d relations mod p.
+///
+/// Returns list[list[int]] -- coefficients are i64 mod p.
+#[pyfunction]
+pub fn findhommodp(
+    _py: Python<'_>,
+    series_list: Vec<PyRef<'_, QSeries>>,
+    p: i64,
+    degree: i64,
+    topshift: i64,
+) -> Vec<Vec<i64>> {
+    let fps_refs = extract_fps_refs(&series_list);
+    qseries::findhommodp(&fps_refs, p, degree, topshift)
+}
+
+/// Express target as a homogeneous degree-d combination mod p.
+///
+/// Returns None or list[int] (coefficients mod p).
+#[pyfunction]
+pub fn findhomcombomodp(
+    _py: Python<'_>,
+    target: &QSeries,
+    candidates: Vec<PyRef<'_, QSeries>>,
+    p: i64,
+    degree: i64,
+    topshift: i64,
+) -> Option<Vec<i64>> {
+    let fps_refs = extract_fps_refs(&candidates);
+    qseries::findhomcombomodp(&target.fps, &fps_refs, p, degree, topshift)
+}
+
+/// Find the maximal linearly independent subset of the given series.
+///
+/// Returns list[int] of indices.
+#[pyfunction]
+pub fn findmaxind(series_list: Vec<PyRef<'_, QSeries>>, topshift: i64) -> Vec<usize> {
+    let fps_refs = extract_fps_refs(&series_list);
+    qseries::findmaxind(&fps_refs, topshift)
+}
+
+/// Search for linear combinations of series with nice product forms.
+///
+/// NOTE: findprod does NOT take topshift. It takes max_coeff and max_exp.
+///
+/// Returns list[list[int]] -- coefficient vectors for combinations with nice products.
+#[pyfunction]
+pub fn findprod(
+    _py: Python<'_>,
+    series_list: Vec<PyRef<'_, QSeries>>,
+    max_coeff: i64,
+    max_exp: i64,
+) -> Vec<Vec<i64>> {
+    let fps_refs = extract_fps_refs(&series_list);
+    qseries::findprod(&fps_refs, max_coeff, max_exp)
 }
