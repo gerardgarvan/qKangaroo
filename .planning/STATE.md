@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 4 of 8 (Series Analysis)
-Plan: 3 of 7 in current phase (3 complete)
+Plan: 3 of 7 in current phase (3 complete, including 04-01)
 Status: In progress
-Last activity: 2026-02-14 -- Completed 04-03-PLAN.md
+Last activity: 2026-02-14 -- Completed 04-01-PLAN.md
 
 Progress: [########..] 44%
 
@@ -21,7 +21,7 @@ Progress: [########..] 44%
 **Velocity:**
 - Total plans completed: 11
 - Average duration: 7 min
-- Total execution time: 1.3 hours
+- Total execution time: 1.4 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [########..] 44%
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
-| 4 - Series Analysis | 3/7 | 12 min | 4 min |
+| 4 - Series Analysis | 3/7 | 22 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 4 min, 7 min, 4 min, 4 min
-- Trend: stable ~5 min/plan
+- Last 5 plans: 4 min, 7 min, 4 min, 4 min, 10 min
+- Trend: stable ~6 min/plan
 
 *Updated after each plan completion*
 
@@ -79,6 +79,9 @@ Recent decisions affecting current work:
 - [03-03]: Shared q2_q2_inf helper extracted for (q^2;q^2)_inf factor common to theta3 and theta4
 - [03-04]: rank_gf and crank_gf return partition_gf directly at z=1 to handle removable singularity
 - [03-04]: odd_parts_gf uses explicit factor loop with inversion rather than qpochhammer_inf_generator with step parameter
+- [04-01]: Automatic normalization in prodmake: strips min_order shift and scalar prefactor before Andrews' algorithm
+- [04-01]: QRat exponents in InfiniteProductForm (not i64) to support fractional exponents in eta-quotients
+- [04-01]: mobius/divisors as module-private helpers with co-located unit tests
 - [04-03]: Fermat's little theorem for modular inverse (a^{p-2} mod p) rather than extended Euclidean
 - [04-03]: i128 intermediates in mod_mul to prevent overflow in modular arithmetic
 - [04-03]: Null space basis uses free-variable-equals-1 convention (canonical form)
@@ -89,7 +92,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Research]: Andrews' algorithm (prodmake/etamake/jacprodmake) needs implementation strategy research in Phase 4
+- [Research]: Andrews' algorithm (prodmake) implemented in 04-01; etamake/jacprodmake post-processing pending in 04-04
 - [Research]: Identity proving (Phase 7) needs deep research on cusp theory and valence formula
 - [Research]: Mock theta and Bailey chains (Phase 8) need algorithm extraction from academic literature
 - [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars. Must use `export PATH="/c/mingw64-gcc/mingw64/bin:/c/cygwin64/bin:/c/Users/Owner/.cargo/bin:$PATH"` before cargo commands.
@@ -98,5 +101,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 04-03-PLAN.md (rational/modular linear algebra for relation discovery)
-Resume file: .planning/phases/04-series-analysis/04-03-SUMMARY.md
+Stopped at: Completed 04-01-PLAN.md (Andrews' algorithm prodmake with 9 tests)
+Resume file: .planning/phases/04-series-analysis/04-01-SUMMARY.md
