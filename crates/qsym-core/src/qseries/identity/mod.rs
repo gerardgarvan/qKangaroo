@@ -3,12 +3,18 @@
 //! This module provides:
 //! - [`jac`]: Jacobi triple product symbolic representation
 //! - [`eta`]: Eta quotient symbolic representation with Newman modularity checks
+//! - [`cusps`]: Cusp computation for congruence subgroups Gamma_0(N) and Gamma_1(N)
+//! - [`orders`]: Order of vanishing at cusps for eta quotients (Ligozat formula)
 
 pub mod jac;
 pub mod eta;
+pub mod cusps;
+pub mod orders;
 
 pub use jac::{JacFactor, JacExpression};
 pub use eta::{EtaExpression, ModularityResult};
+pub use cusps::{Cusp, cuspmake, cuspmake1, num_cusps_gamma0};
+pub use orders::{eta_order_at_cusp, cusp_width, total_order};
 
 use crate::series::{FormalPowerSeries, arithmetic};
 
