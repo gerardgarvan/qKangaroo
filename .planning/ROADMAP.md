@@ -85,7 +85,7 @@ Plans:
   3. qfactor correctly factors q-series polynomials, and sift(f, q, m, j) correctly extracts arithmetic subsequences
   4. findlincombo, findhom, and findpoly discover known relations (e.g., Rogers-Ramanujan as linear combination) when given sufficient terms
   5. The full relation discovery suite (findcong and all 12 functions) runs without error and produces results matching Garvan's examples from the qseries documentation
-**Plans**: 6 plans
+**Plans**: 7 plans
 
 Plans:
 - [ ] 04-01-PLAN.md -- Andrews' algorithm (prodmake) with number theory helpers (mobius, divisors)
@@ -93,7 +93,8 @@ Plans:
 - [ ] 04-03-PLAN.md -- Rational linear algebra (Gaussian elimination, null space over QRat and Z/pZ)
 - [ ] 04-04-PLAN.md -- Series-to-product post-processing (etamake, jacprodmake, mprodmake, qetamake)
 - [ ] 04-05-PLAN.md -- Core relation discovery (findlincombo, findhom, findpoly)
-- [ ] 04-06-PLAN.md -- Full relation discovery suite (findcong + 8 functions, modp variants)
+- [ ] 04-06-PLAN.md -- Congruence discovery and combo variants (findcong, findnonhom, findhomcombo, findnonhomcombo)
+- [ ] 04-07-PLAN.md -- Modular relation discovery and search (findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod)
 
 ### Phase 5: Python API
 **Goal**: Researchers can use Q-Symbolic from Python with natural syntax, LaTeX display, and batch computation for systematic searches
@@ -173,7 +174,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 1. Expression Foundation | 3/3 | Complete | 2026-02-13 |
 | 2. Simplification & Series Engine | 3/3 | Complete | 2026-02-13 |
 | 3. Core q-Series & Partitions | 4/4 | Complete | 2026-02-13 |
-| 4. Series Analysis | 0/6 | Not started | - |
+| 4. Series Analysis | 0/7 | Not started | - |
 | 5. Python API | 0/TBD | Not started | - |
 | 6. Hypergeometric Series | 0/TBD | Not started | - |
 | 7. Identity Proving | 0/TBD | Not started | - |
