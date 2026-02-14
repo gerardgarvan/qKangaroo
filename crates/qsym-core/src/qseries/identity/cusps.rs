@@ -117,16 +117,17 @@ pub fn num_cusps_gamma0(n: i64) -> i64 {
 
 /// Enumerate inequivalent cusps of Gamma_0(N).
 ///
-/// Algorithm (Garvan's ETA package):
-/// 1. Start with {infinity} (= 1/0)
-/// 2. For each divisor c of N with c > 1:
+/// Algorithm (based on Garvan's ETA package):
+/// 1. Start with {infinity} (= 1/0), which represents the cusp class
+///    for denominator c = N.
+/// 2. For each divisor c of N with 1 <= c < N:
 ///    a. Compute gc = gcd(c, N/c)
-///    b. For each d in 1..c with gcd(d, c) = 1:
+///    b. For each d in 0..c with gcd(d, c) = 1:
 ///       If d mod gc has not been seen for this c, add d/c as a new cusp
 /// 3. Return all collected cusps
 ///
 /// Two cusps d1/c and d2/c are equivalent under Gamma_0(N) iff
-/// d1 = +/- d2 (mod gcd(c, N/c)).
+/// d1 = d2 (mod gcd(c, N/c)).
 ///
 /// The number of cusps equals sum_{d|N} phi(gcd(d, N/d)).
 pub fn cuspmake(n: i64) -> Vec<Cusp> {
@@ -134,6 +135,7 @@ pub fn cuspmake(n: i64) -> Vec<Cusp> {
 
     assert!(n >= 1, "cuspmake: N must be >= 1, got {}", n);
 
+    // Infinity represents the cusp class for denominator c = N.
     let mut cusps = vec![Cusp::infinity()];
 
     if n == 1 {
@@ -142,20 +144,19 @@ pub fn cuspmake(n: i64) -> Vec<Cusp> {
 
     let divs = divisors(n);
     for &c in &divs {
-        if c <= 1 {
+        // Skip c = N (represented by infinity) and c = 0 (impossible)
+        if c >= n {
             continue;
         }
         let gc = gcd(c, n / c);
         let mut seen_residues: Vec<i64> = Vec::new();
-        for d in 1..c {
+        // d ranges from 0 to c-1; for c=1, this is just d=0
+        for d in 0..c {
             if gcd(d, c) != 1 {
                 continue;
             }
             let r = d % gc;
-            // Also check gc - r to handle the +/- equivalence
-            // Two cusps d1/c and d2/c are equivalent if d1 = +/- d2 (mod gc)
-            let r_neg = if r == 0 { 0 } else { gc - r };
-            if !seen_residues.contains(&r) && !seen_residues.contains(&r_neg) {
+            if !seen_residues.contains(&r) {
                 seen_residues.push(r);
                 cusps.push(Cusp::new(d, c));
             }
@@ -183,13 +184,15 @@ pub fn cuspmake(n: i64) -> Vec<Cusp> {
 ///
 /// For N >= 3, -I is NOT in Gamma_1(N), so equivalence is stricter (no +/- folding).
 ///
-/// Algorithm: For each divisor c of N, enumerate reduced fractions d/c
-/// with 0 <= d < c, gcd(d,c) = 1, grouping by residue class d mod gcd(c, N).
+/// Algorithm: Infinity represents the c=N class. For each divisor c of N
+/// with 1 <= c < N, enumerate reduced fractions d/c with 0 <= d < c,
+/// gcd(d,c) = 1, grouping by residue class d mod gcd(c, N).
 pub fn cuspmake1(n: i64) -> Vec<Cusp> {
     use crate::qseries::prodmake::divisors;
 
     assert!(n >= 1, "cuspmake1: N must be >= 1, got {}", n);
 
+    // Infinity represents the cusp class for denominator c = N.
     let mut cusps = vec![Cusp::infinity()];
 
     if n == 1 {
@@ -198,12 +201,13 @@ pub fn cuspmake1(n: i64) -> Vec<Cusp> {
 
     let divs = divisors(n);
     for &c in &divs {
-        if c <= 1 {
+        // Skip c = N (represented by infinity)
+        if c >= n {
             continue;
         }
         let gc = gcd(c, n); // Note: gcd(c, N) for Gamma_1, not gcd(c, N/c)
         let mut seen_residues: Vec<i64> = Vec::new();
-        for d in 1..c {
+        for d in 0..c {
             if gcd(d, c) != 1 {
                 continue;
             }
