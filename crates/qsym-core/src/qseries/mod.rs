@@ -11,7 +11,8 @@
 //! - Partition functions: [`partition_count`], [`partition_gf`], [`distinct_parts_gf`],
 //!   [`odd_parts_gf`], [`bounded_parts_gf`]
 //! - Rank/crank: [`rank_gf`], [`crank_gf`]
-//! - Series analysis: [`prodmake`] (Andrews' algorithm for series-to-product conversion)
+//! - Series analysis: [`prodmake`] (Andrews' algorithm for series-to-product conversion),
+//!   [`etamake`], [`jacprodmake`], [`mprodmake`], [`qetamake`] (post-processing)
 //! - Factoring: [`qfactor`], [`QFactorization`] -- decompose polynomials into (1-q^i) factors
 //! - Utilities: [`sift`], [`qdegree`], [`lqdegree`] -- subsequence extraction and degree bounds
 //! - Linear algebra: [`rational_null_space`], [`build_coefficient_matrix`], [`modular_null_space`]
@@ -34,7 +35,7 @@ pub use linalg::{rational_null_space, build_coefficient_matrix, modular_null_spa
 pub use relations::{findlincombo, findhom, findpoly, PolynomialRelation};
 pub use partitions::{partition_count, partition_gf, distinct_parts_gf, odd_parts_gf, bounded_parts_gf};
 pub use pochhammer::aqprod;
-pub use prodmake::{prodmake, InfiniteProductForm};
+pub use prodmake::{prodmake, InfiniteProductForm, etamake, EtaQuotient, jacprodmake, JacobiProductForm, mprodmake, qetamake, QEtaForm};
 pub use products::{etaq, jacprod, tripleprod, quinprod, winquist};
 pub use qbinomial::qbin;
 pub use rank_crank::{rank_gf, crank_gf};
