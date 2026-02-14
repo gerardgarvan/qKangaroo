@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in Q-Symbolic, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 5 -- Python API (In Progress)
+**Current focus:** Phase 5 -- Python API (Complete)
 
 ## Current Position
 
 Phase: 5 of 8 (Python API)
-Plan: 3 of 4 in current phase (3 complete: 05-01, 05-02, 05-03)
-Status: In progress
-Last activity: 2026-02-14 -- Completed 05-03-PLAN.md
+Plan: 4 of 4 in current phase (4 complete: 05-01, 05-02, 05-03, 05-04)
+Status: Phase 5 complete
+Last activity: 2026-02-14 -- Completed 05-04-PLAN.md
 
-Progress: [###############.] 76%
+Progress: [################] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
+- Total plans completed: 20
 - Average duration: 7 min
-- Total execution time: 2.3 hours
+- Total execution time: 2.4 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [###############.] 76%
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
 | 4 - Series Analysis | 7/7 | 57 min | 8 min |
-| 5 - Python API | 3/4 | 16 min | 5 min |
+| 5 - Python API | 4/4 | 20 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 7 min, 4 min, 5 min, 7 min
+- Last 5 plans: 7 min, 4 min, 5 min, 7 min, 4 min
 - Trend: stable ~5 min/plan
 
 *Updated after each plan completion*
@@ -112,6 +112,10 @@ Recent decisions affecting current work:
 - [05-03]: partition_count extracts QRat numerator as QInt for Python int conversion
 - [05-03]: sift DSL named sift_fn in Rust, registered as 'sift' in Python via pyo3(name) attribute
 - [05-03]: extract_fps_refs uses explicit lifetime 'a on both &'a [PyRef<'a, QSeries>] and return Vec<&'a FPS>
+- [05-04]: dispatch_generator as standalone helper shared by generate() and batch_generate() to avoid duplication
+- [05-04]: batch_generate holds session lock once for entire batch, not per iteration
+- [05-04]: n=-1 sentinel for PochhammerOrder::Infinite in batch params (Vec<Vec<i64>> has no Option)
+- [05-04]: Generator-only restriction enforced with descriptive PyValueError listing all 15 supported functions
 
 ### Pending Todos
 
@@ -130,5 +134,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 05-03-PLAN.md (QSeries + 38 DSL functions wrapping all Phase 3-4 q-series operations)
-Resume file: .planning/phases/05-python-api/05-03-SUMMARY.md
+Stopped at: Completed 05-04-PLAN.md (batch_generate + integration tests; Phase 5 Python API complete)
+Resume file: .planning/phases/05-python-api/05-04-SUMMARY.md
