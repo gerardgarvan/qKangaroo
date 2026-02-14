@@ -229,6 +229,53 @@ def test_distinct_odd_euler_identity():
     print(f"Euler distinct-odd partition theorem verified to O(q^{order})")
 
 
+def test_hypergeometric_identity_verification():
+    """
+    Verify a hypergeometric identity end-to-end from Python:
+    Construct a 2phi1 matching q-Gauss parameters, evaluate term-by-term via phi(),
+    get closed form via try_summation(), and confirm both sides agree.
+
+    q-Gauss: _2phi1(a, b; c; q, c/(ab)) = (c/a;q)_inf * (c/b;q)_inf / [(c;q)_inf * (c/(ab);q)_inf]
+
+    Using a=q (1,1,1), b=q^2 (1,1,2), c=q^5 (1,1,5):
+    z = c/(ab) = q^5 / (q * q^2) = q^2 = (1,1,2)
+    """
+    from qsymbolic import QSession, phi, try_summation
+    from fractions import Fraction
+
+    s = QSession()
+    order = 30
+
+    # Define q-Gauss parameters: _2phi1(q, q^2; q^5; q, q^2)
+    upper = [(1, 1, 1), (1, 1, 2)]   # a=q, b=q^2
+    lower = [(1, 1, 5)]               # c=q^5
+    z_num, z_den, z_pow = 1, 1, 2     # z=q^2 = c/(ab)
+
+    # Side 1: Term-by-term evaluation via phi()
+    term_by_term = phi(s, upper, lower, z_num, z_den, z_pow, order)
+
+    # Side 2: Closed form via try_summation()
+    closed_form = try_summation(s, upper, lower, z_num, z_den, z_pow, order)
+
+    # try_summation should recognize q-Gauss and return a result
+    assert closed_form is not None, \
+        "try_summation should recognize q-Gauss pattern for _2phi1(q, q^2; q^5; q, q^2)"
+
+    # Compare coefficients: both sides must agree to O(q^order)
+    for k in range(order):
+        assert term_by_term[k] == closed_form[k], \
+            f"Identity mismatch at q^{k}: phi={term_by_term[k]}, summation={closed_form[k]}"
+
+    # Sanity check: the series is not trivially zero or constant
+    assert term_by_term[0] == Fraction(1), \
+        f"Constant term should be 1, got {term_by_term[0]}"
+    has_nonzero_higher = any(term_by_term[k] != Fraction(0) for k in range(1, min(10, order)))
+    assert has_nonzero_higher, \
+        "Series should have nonzero higher-order terms (not a trivial identity)"
+
+    print(f"Hypergeometric identity (q-Gauss) verified to O(q^{order})")
+
+
 if __name__ == "__main__":
     test_euler_identity()
     test_jacobi_triple_product()
@@ -238,4 +285,5 @@ if __name__ == "__main__":
     test_single_generate()
     test_symbols_and_expressions()
     test_distinct_odd_euler_identity()
+    test_hypergeometric_identity_verification()
     print("\n=== ALL INTEGRATION TESTS PASSED ===")
