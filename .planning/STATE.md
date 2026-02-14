@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 4 of 8 (Series Analysis)
-Plan: 5 of 7 in current phase (5 complete, including 04-01, 04-02, 04-03, 04-04)
+Plan: 6 of 7 in current phase (6 complete, including 04-01, 04-02, 04-03, 04-04, 04-05)
 Status: In progress
-Last activity: 2026-02-14 -- Completed 04-04-PLAN.md
+Last activity: 2026-02-14 -- Completed 04-05-PLAN.md
 
-Progress: [########..] 52%
+Progress: [#########.] 56%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 8 min
-- Total execution time: 1.7 hours
+- Total execution time: 1.8 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [########..] 52%
 | 1 - Expression Foundation | 3/3 | 37 min | 12 min |
 | 2 - Simplification & Series Engine | 3/3 | 14 min | 5 min |
 | 3 - Core q-Series & Partitions | 4/4 | 11 min | 3 min |
-| 4 - Series Analysis | 5/7 | 41 min | 8 min |
+| 4 - Series Analysis | 6/7 | 46 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 4 min, 10 min, 14 min, 5 min
-- Trend: variable ~7 min/plan
+- Last 5 plans: 4 min, 10 min, 14 min, 5 min, 5 min
+- Trend: variable ~8 min/plan
 
 *Updated after each plan completion*
 
@@ -91,6 +91,9 @@ Recent decisions affecting current work:
 - [04-04]: Mobius inversion for etamake: r_n = sum_{d|n} mu(n/d) * (-a_d) rather than iterative subtraction
 - [04-04]: QRat-to-i64 conversion in eta/qeta factors via to_f64() cast -- valid for integer exponents
 - [04-04]: Period search in jacprodmake tries all b from 1 to max_n, picking best coverage
+- [04-05]: Monomial ordering in findhom uses generate_monomials lexicographic order (last index varies fastest)
+- [04-05]: fps_pow uses repeated squaring for efficient power computation
+- [04-05]: findlincombo normalizes null space vector so first component (for f) equals 1, then negates remaining
 
 ### Pending Todos
 
@@ -107,5 +110,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 04-04-PLAN.md (etamake, jacprodmake, mprodmake, qetamake with 14 new tests, 23 total prodmake tests)
-Resume file: .planning/phases/04-series-analysis/04-04-SUMMARY.md
+Stopped at: Completed 04-05-PLAN.md (findlincombo, findhom, findpoly with 10 tests, 366 total passing)
+Resume file: .planning/phases/04-series-analysis/04-05-SUMMARY.md
