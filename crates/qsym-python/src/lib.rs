@@ -1,5 +1,9 @@
 use pyo3::prelude::*;
 
+mod convert;
+mod expr;
+mod session;
+
 /// Return the version string, exercising GMP linkage by creating and
 /// dropping an ExprArena (which internally allocates rug/GMP values).
 #[pyfunction]
@@ -15,5 +19,7 @@ fn version() -> &'static str {
 #[pymodule]
 fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
+    m.add_class::<session::QSession>()?;
+    m.add_class::<expr::QExpr>()?;
     Ok(())
 }
