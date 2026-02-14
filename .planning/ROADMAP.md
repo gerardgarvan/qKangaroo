@@ -106,11 +106,13 @@ Plans:
   3. Expressions display as rendered LaTeX in Jupyter notebooks via _repr_latex_() and as Unicode in Python REPL
   4. Batch computation mode can run systematic parameter searches (e.g., scanning q-Pochhammer products over parameter grids) and return results as Python collections
   5. A Garvan tutorial example (e.g., finding a q-series identity) can be replicated end-to-end in a Python script using Q-Symbolic
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md -- Scaffold qsym-python crate, validate cdylib+GMP build, Python import test
+- [ ] 05-02-PLAN.md -- Core QSession + QExpr with operators, rendering, and GC safety
+- [ ] 05-03-PLAN.md -- QSeries wrapper and DSL functions for all Phase 3-4 functions (30+)
+- [ ] 05-04-PLAN.md -- Batch computation mode and Garvan tutorial integration test
 
 ### Phase 6: Hypergeometric Series
 **Goal**: Researchers can construct, evaluate, and transform basic hypergeometric series using classical summation and transformation formulas
@@ -175,7 +177,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 2. Simplification & Series Engine | 3/3 | Complete | 2026-02-13 |
 | 3. Core q-Series & Partitions | 4/4 | Complete | 2026-02-13 |
 | 4. Series Analysis | 7/7 | Complete | 2026-02-13 |
-| 5. Python API | 0/TBD | Not started | - |
+| 5. Python API | 0/4 | Not started | - |
 | 6. Hypergeometric Series | 0/TBD | Not started | - |
 | 7. Identity Proving | 0/TBD | Not started | - |
 | 8. Mock Theta & Bailey Chains | 0/TBD | Not started | - |
