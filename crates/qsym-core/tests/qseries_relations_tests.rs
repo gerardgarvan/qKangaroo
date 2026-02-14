@@ -11,6 +11,7 @@ use qsym_core::number::QRat;
 use qsym_core::qseries::{
     findlincombo, findhom, findpoly, theta3, theta4,
     findcong, findnonhom, findhomcombo, findnonhomcombo, partition_gf,
+    findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod,
 };
 use qsym_core::series::{FormalPowerSeries, arithmetic};
 use qsym_core::series::generator::InfiniteProductGenerator;
@@ -560,4 +561,218 @@ fn test_findnonhomcombo_affine() {
     assert_eq!(coeffs[0], qi(5), "Constant coefficient should be 5");
     assert_eq!(coeffs[1], qi(1), "Coefficient of g2 should be 1");
     assert_eq!(coeffs[2], qi(1), "Coefficient of g1 should be 1");
+}
+
+// ===========================================================================
+// findlincombomodp tests
+// ===========================================================================
+
+#[test]
+fn test_findlincombomodp() {
+    // f = 3*g1 + 7*g2, discover coefficients mod 101
+    let q = q_var();
+    let trunc = 50;
+
+    let g1 = fps_from_pairs(q, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)], trunc);
+    let g2 = fps_from_pairs(q, &[(0, 2), (1, 1), (2, 4), (3, 3), (4, 6)], trunc);
+
+    let f = arithmetic::add(
+        &arithmetic::scalar_mul(&qi(3), &g1),
+        &arithmetic::scalar_mul(&qi(7), &g2),
+    );
+
+    let result = findlincombomodp(&f, &[&g1, &g2], 101, 0);
+    assert!(result.is_some(), "Should find linear combination mod 101");
+
+    let coeffs = result.unwrap();
+    assert_eq!(coeffs.len(), 2);
+    assert_eq!(coeffs[0], 3, "Coefficient of g1 should be 3 mod 101");
+    assert_eq!(coeffs[1], 7, "Coefficient of g2 should be 7 mod 101");
+}
+
+// ===========================================================================
+// findhommodp tests
+// ===========================================================================
+
+#[test]
+fn test_findhommodp_mod5() {
+    // f and g = 2*f: degree-1 relation exists, verify mod 5
+    let q = q_var();
+    let trunc = 50;
+
+    let f = fps_from_pairs(q, &[(0, 1), (1, 3), (2, 5), (3, 7), (4, 11)], trunc);
+    let g = arithmetic::scalar_mul(&qi(2), &f);
+
+    let relations = findhommodp(&[&f, &g], 5, 1, 0);
+    assert!(
+        !relations.is_empty(),
+        "Should find a degree-1 relation mod 5"
+    );
+
+    // The relation v[0]*monomial_0 + v[1]*monomial_1 = 0 mod 5
+    // Monomials: [(0,1), (1,0)] -> g, f
+    // g = 2*f => v[0]*g + v[1]*f = 0 => 2*v[0] + v[1] = 0 mod 5
+    let v = &relations[0];
+    assert_eq!(v.len(), 2);
+
+    // Verify: 2*v[0] + v[1] = 0 mod 5
+    let check = ((2 * v[0] + v[1]) % 5 + 5) % 5;
+    assert_eq!(check, 0, "Relation 2*v[0] + v[1] should be 0 mod 5");
+}
+
+// ===========================================================================
+// findhomcombomodp tests
+// ===========================================================================
+
+#[test]
+fn test_findhomcombomodp() {
+    // f = g1^2 + g2^2, express as degree-2 combo mod 101
+    let q = q_var();
+    let trunc = 50;
+
+    let g1 = fps_from_pairs(q, &[(0, 1), (1, 2), (2, 3), (3, 1), (4, 2)], trunc);
+    let g2 = fps_from_pairs(q, &[(0, 1), (1, 1), (2, 4), (3, 2), (4, 3)], trunc);
+
+    let g1_sq = arithmetic::mul(&g1, &g1);
+    let g2_sq = arithmetic::mul(&g2, &g2);
+    let f = arithmetic::add(&g1_sq, &g2_sq);
+
+    let result = findhomcombomodp(&f, &[&g1, &g2], 101, 2, 0);
+    assert!(result.is_some(), "Should express f as degree-2 combo mod 101");
+
+    let coeffs = result.unwrap();
+    // Monomials: [g2^2, g1*g2, g1^2] -> expected [1, 0, 1] mod 101
+    assert_eq!(coeffs.len(), 3);
+    assert_eq!(coeffs[0], 1, "Coefficient of g2^2 should be 1 mod 101");
+    assert_eq!(coeffs[1], 0, "Coefficient of g1*g2 should be 0 mod 101");
+    assert_eq!(coeffs[2], 1, "Coefficient of g1^2 should be 1 mod 101");
+}
+
+// ===========================================================================
+// findmaxind tests
+// ===========================================================================
+
+#[test]
+fn test_findmaxind_independent() {
+    // Three linearly independent series -> returns all three indices
+    let q = q_var();
+    let trunc = 50;
+
+    let f1 = fps_from_pairs(q, &[(0, 1), (1, 0), (2, 0), (3, 0)], trunc);
+    let f2 = fps_from_pairs(q, &[(0, 0), (1, 1), (2, 0), (3, 0)], trunc);
+    let f3 = fps_from_pairs(q, &[(0, 0), (1, 0), (2, 1), (3, 0)], trunc);
+
+    let result = findmaxind(&[&f1, &f2, &f3], 5);
+    assert_eq!(result, vec![0, 1, 2], "All three independent series should be returned");
+}
+
+#[test]
+fn test_findmaxind_dependent() {
+    // Three series where f3 = f1 + f2 -> returns two indices
+    let q = q_var();
+    let trunc = 50;
+
+    let f1 = fps_from_pairs(q, &[(0, 1), (1, 2), (2, 3), (3, 5), (4, 7)], trunc);
+    let f2 = fps_from_pairs(q, &[(0, 2), (1, 1), (2, 4), (3, 6), (4, 1)], trunc);
+    let f3 = arithmetic::add(&f1, &f2);
+
+    let result = findmaxind(&[&f1, &f2, &f3], 5);
+    assert_eq!(result.len(), 2, "Should return 2 independent series indices");
+    assert_eq!(result, vec![0, 1], "Pivot columns should be 0 and 1");
+}
+
+// ===========================================================================
+// findprod tests
+// ===========================================================================
+
+#[test]
+fn test_findprod_simple() {
+    // Create a series that IS a nice product: (q;q)_inf = prod (1-q^n)
+    // Then create a second series: 2*(q;q)_inf
+    // findprod should discover that coefficient [1] gives (q;q)_inf (a nice product)
+    // and coefficient [0, 1] should also give 2*(q;q)_inf which also has integer exponents
+    let q = q_var();
+    let trunc = 30;
+
+    // Build (q;q)_inf manually
+    use qsym_core::series::generator::InfiniteProductGenerator;
+    let initial = FormalPowerSeries::one(q, trunc);
+    let mut ipg = InfiniteProductGenerator::new(
+        initial,
+        1,
+        Box::new(move |n, var, tr| {
+            let mut factor = FormalPowerSeries::one(var, tr);
+            factor.set_coeff(n, -QRat::one());
+            factor
+        }),
+    );
+    ipg.ensure_order(trunc);
+    let qq_inf = ipg.into_series();
+
+    // Single series: findprod should find that [1] (the series itself) has a nice product form
+    let results = findprod(&[&qq_inf], 1, 20);
+    assert!(
+        !results.is_empty(),
+        "Should find at least one combination with nice product form"
+    );
+
+    // At minimum, coefficients [1] should work (the series itself)
+    let has_identity = results.iter().any(|c| c == &[1]);
+    assert!(
+        has_identity,
+        "Coefficient [1] (the series itself) should have a nice product form. Found: {:?}",
+        results
+    );
+}
+
+// ===========================================================================
+// Full suite smoke test
+// ===========================================================================
+
+#[test]
+fn test_full_suite_no_panic() {
+    // Smoke test: run each of the 12+ relation discovery functions on simple inputs
+    // to verify no panics. Not checking correctness, just callable without error.
+    let q = q_var();
+    let trunc = 30;
+
+    let f1 = fps_from_pairs(q, &[(0, 1), (1, 2), (2, 3)], trunc);
+    let f2 = fps_from_pairs(q, &[(0, 1), (1, 1), (2, 4)], trunc);
+    let f3 = arithmetic::add(&f1, &f2);
+
+    // 1. findlincombo
+    let _ = findlincombo(&f3, &[&f1, &f2], 0);
+
+    // 2. findhom
+    let _ = findhom(&[&f1, &f2], 1, 0);
+
+    // 3. findpoly
+    let _ = findpoly(&f1, &f2, 1, 1, 0);
+
+    // 4. findcong (on small series)
+    let _ = findcong(&f1, &[2, 3]);
+
+    // 5. findnonhom
+    let _ = findnonhom(&[&f1, &f2], 1, 0);
+
+    // 6. findhomcombo
+    let _ = findhomcombo(&f3, &[&f1, &f2], 1, 0);
+
+    // 7. findnonhomcombo
+    let _ = findnonhomcombo(&f3, &[&f1, &f2], 1, 0);
+
+    // 8. findlincombomodp
+    let _ = findlincombomodp(&f3, &[&f1, &f2], 101, 0);
+
+    // 9. findhommodp
+    let _ = findhommodp(&[&f1, &f2], 101, 1, 0);
+
+    // 10. findhomcombomodp
+    let _ = findhomcombomodp(&f3, &[&f1, &f2], 101, 1, 0);
+
+    // 11. findmaxind
+    let _ = findmaxind(&[&f1, &f2, &f3], 5);
+
+    // 12. findprod (small search space)
+    let _ = findprod(&[&f1], 1, 10);
 }
