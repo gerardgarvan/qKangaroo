@@ -55,7 +55,7 @@ pub struct InfiniteProductForm {
 ///
 /// Uses trial factorization, which is efficient for the small values
 /// of n encountered in prodmake (typically n < truncation_order < 1000).
-fn mobius(n: i64) -> i64 {
+pub(crate) fn mobius(n: i64) -> i64 {
     assert!(n >= 1, "mobius: n must be positive, got {}", n);
     if n == 1 {
         return 1;
@@ -90,7 +90,7 @@ fn mobius(n: i64) -> i64 {
 ///
 /// Uses trial division up to sqrt(n). Efficient for the small values
 /// of n encountered in prodmake.
-fn divisors(n: i64) -> Vec<i64> {
+pub(crate) fn divisors(n: i64) -> Vec<i64> {
     assert!(n >= 1, "divisors: n must be positive, got {}", n);
 
     let mut small = Vec::new();

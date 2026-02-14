@@ -19,6 +19,7 @@
 //! - Relation discovery: [`findlincombo`], [`findhom`], [`findpoly`], [`PolynomialRelation`],
 //!   [`findcong`], [`findnonhom`], [`findhomcombo`], [`findnonhomcombo`], [`Congruence`],
 //!   [`findlincombomodp`], [`findhommodp`], [`findhomcombomodp`], [`findmaxind`], [`findprod`]
+//! - Identity proving: [`identity`] module for JAC/ETA symbolic models, cusps, and proving engine
 
 pub mod factoring;
 pub mod linalg;
@@ -32,6 +33,7 @@ pub mod relations;
 pub mod theta;
 pub mod utilities;
 pub mod hypergeometric;
+pub mod identity;
 
 pub use factoring::{qfactor, QFactorization};
 pub use hypergeometric::{HypergeometricSeries, BilateralHypergeometricSeries, eval_phi, eval_psi, SummationResult, TransformationResult, try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon, try_all_summations, heine_transform_1, heine_transform_2, heine_transform_3, sears_transform, watson_transform, bailey_4phi3_q2};
@@ -45,6 +47,7 @@ pub use qbinomial::qbin;
 pub use rank_crank::{rank_gf, crank_gf};
 pub use theta::{theta2, theta3, theta4};
 pub use utilities::{sift, qdegree, lqdegree};
+pub use identity::{JacFactor, JacExpression, EtaExpression, ModularityResult};
 
 use crate::number::QRat;
 
