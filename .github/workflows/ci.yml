@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-tests:
+    name: Rust Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Install GMP
+        run: sudo apt-get update && sudo apt-get install -y libgmp-dev
+      - name: Run tests
+        run: cargo test --workspace --locked
+
+  python-tests:
+    name: Python Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GMP
+        run: sudo apt-get update && sudo apt-get install -y libgmp-dev
+      - name: Install build tools
+        run: pip install maturin pytest
+      - name: Build Python extension
+        working-directory: crates/qsym-python
+        run: PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin develop --release
+      - name: Run Python tests
+        working-directory: crates/qsym-python
+        run: pytest tests/ -v
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GMP
+        run: sudo apt-get update && sudo apt-get install -y libgmp-dev
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+      - name: Generate coverage
+        run: cargo tarpaulin --workspace --out xml --output-dir coverage/
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/cobertura.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
