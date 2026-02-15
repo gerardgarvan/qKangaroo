@@ -70,6 +70,20 @@ from q_kangaroo._q_kangaroo import (
 
 __version__ = version()
 
+_default_session = None
+
+
+def get_default_session():
+    """Return a shared default QSession for interactive use.
+
+    Creates a new session on first call, reuses it for subsequent calls.
+    For production use, create explicit QSession instances instead.
+    """
+    global _default_session
+    if _default_session is None:
+        _default_session = QSession()
+    return _default_session
+
 
 def symbols(names: str, session=None):
     """Create symbols from a whitespace-separated string.
@@ -92,8 +106,8 @@ def symbols(names: str, session=None):
 __all__ = [
     # Classes
     "QSession", "QExpr", "QSeries",
-    # Helper
-    "symbols",
+    # Helpers
+    "symbols", "get_default_session",
     # Version
     "__version__",
     # Group 1: Pochhammer and q-Binomial

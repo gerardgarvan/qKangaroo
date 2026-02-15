@@ -108,7 +108,11 @@ from q_kangaroo._q_kangaroo import bailey_discover as bailey_discover
 # Version
 __version__: str
 
-# Convenience helper
+# Convenience helpers
+def get_default_session() -> QSession:
+    """Return a shared default QSession for interactive use."""
+    ...
+
 @overload
 def symbols(names: str, session: Optional[QSession] = None) -> QExpr: ...
 @overload
