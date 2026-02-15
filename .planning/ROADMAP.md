@@ -152,12 +152,11 @@ Plans:
   3. Test coverage percentage is reported and displayed as a badge in the README
   4. Pushing a version tag (e.g., `v1.1.0`) triggers an automated release that uploads wheels and sdist to PyPI
   5. PyPI publishing uses OIDC trusted publishing (no API tokens stored in repository secrets)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: TBD
-- [ ] 11-02: TBD
-- [ ] 11-03: TBD
+- [ ] 11-01-PLAN.md -- CI workflow: Rust tests, Python tests, coverage with Codecov badge
+- [ ] 11-02-PLAN.md -- Release workflow: Linux/Windows wheel builds, sdist, OIDC PyPI publishing
 
 ### Phase 12: Documentation & UX Polish
 **Goal**: Researchers can discover, learn, and productively use q-Kangaroo through comprehensive documentation, polished Jupyter integration, and Pythonic API conventions
@@ -194,5 +193,5 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12
 | 8. Mock Theta & Bailey Chains | v1.0 | 4/4 | Complete | 2026-02-14 |
 | 9. Package Rename & Structure | v1.1 | 2/2 | Complete | 2026-02-14 |
 | 10. PyPI Packaging & Metadata | v1.1 | 2/2 | Complete | 2026-02-14 |
-| 11. CI/CD Pipeline | v1.1 | 0/3 | Not started | - |
+| 11. CI/CD Pipeline | v1.1 | 0/2 | Not started | - |
 | 12. Documentation & UX Polish | v1.1 | 0/4 | Not started | - |
