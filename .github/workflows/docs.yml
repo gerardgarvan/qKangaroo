@@ -1,0 +1,56 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    name: Build & Deploy Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-docs-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-docs-cargo-
+
+      - name: Install GMP
+        run: sudo apt-get update && sudo apt-get install -y libgmp-dev
+
+      - name: Build Python extension
+        working-directory: crates/qsym-python
+        run: |
+          pip install maturin
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin develop --release
+
+      - name: Install docs dependencies
+        run: |
+          pip install -r docs/requirements.txt
+          pip install pypandoc_binary
+
+      - name: Build documentation
+        run: sphinx-build -b html docs docs/_build/html
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/_build/html
