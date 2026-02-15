@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "q-Kangaroo"
+abstract: "Open-source symbolic computation engine for q-series, partition functions, and modular forms, replacing proprietary Maple packages."
+type: software
+authors:
+  - family-names: "LastName"
+    given-names: "FirstName"
+license: MIT
+version: 0.1.0
+date-released: "2026-02-14"
+repository-code: "https://github.com/OWNER/q-kangaroo"
+keywords:
+  - q-series
+  - partitions
+  - modular forms
+  - symbolic computation
+  - number theory
