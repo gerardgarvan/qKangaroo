@@ -1,8 +1,9 @@
-# Roadmap: Q-Symbolic
+# Roadmap: q-Kangaroo
 
-## Overview
+## Milestones
 
-Q-Symbolic delivers an open-source symbolic computation engine for q-series, replacing Frank Garvan's proprietary Maple packages (qseries, thetaids, ETA) with a Rust core and Python API. The roadmap follows a strict foundation-to-parity-to-extensions sequence: first build the expression IR and series engine, then achieve function-by-function parity with Garvan's qseries package, expose it to Python, and finally add hypergeometric series, identity proving, and mock theta/Bailey chain capabilities that go beyond Garvan.
+- v1.0 Core Engine - Phases 1-8 (shipped 2026-02-14)
+- v1.1 Polish & Publish - Phases 9-12 (in progress)
 
 ## Phases
 
@@ -12,175 +13,187 @@ Q-Symbolic delivers an open-source symbolic computation engine for q-series, rep
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Expression Foundation** - Hash-consed expression arena, arbitrary precision arithmetic, and rendering
-- [x] **Phase 2: Simplification & Series Engine** - Phased rewrite engine and formal power series with sparse representation
-- [x] **Phase 3: Core q-Series & Partitions** - q-Pochhammer, named products, theta functions, and partition functions
-- [x] **Phase 4: Series Analysis** - Series-to-product conversion, factoring, utilities, and relation discovery
-- [x] **Phase 5: Python API** - PyO3 bindings, session management, DSL, and batch computation
-- [x] **Phase 6: Hypergeometric Series** - Basic hypergeometric representation, summation formulas, and transformations
-- [x] **Phase 7: Identity Proving** - JAC/ETA models, cusp computation, automatic proving, and identity database
-- [x] **Phase 8: Mock Theta & Bailey Chains** - Mock theta functions, Zwegers completions, Appell-Lerch sums, Bailey machinery
-
-## Phase Details
+<details>
+<summary>v1.0 Core Engine (Phases 1-8) - SHIPPED 2026-02-14</summary>
 
 ### Phase 1: Expression Foundation
 **Goal**: Researchers can create, store, and display arbitrary q-series expressions with exact arithmetic
-**Depends on**: Nothing (first phase)
-**Requirements**: CORE-01, CORE-02, CORE-03, CORE-08, CORE-09
-**Success Criteria** (what must be TRUE):
-  1. Expressions with q-Pochhammer, theta, eta, and hypergeometric nodes can be constructed and stored in the arena with O(1) structural equality via hash consing
-  2. Arithmetic on BigInt and BigRat values produces exact results matching GMP reference output for edge cases (zero, negative, large values)
-  3. Every expression type renders to valid LaTeX that compiles without errors
-  4. Every expression type renders to readable Unicode for terminal display
-  5. Structurally identical expressions always resolve to the same ExprRef (hash-consing deduplication is verifiable)
-**Plans**: 3 plans
+**Plans**: 3/3 complete
 
 Plans:
-- [x] 01-01-PLAN.md -- Workspace scaffold, Expr enum, ExprArena with hash-consing, symbol registry, canonical ordering
-- [x] 01-02-PLAN.md -- TDD: BigInt/BigRat arithmetic edge case verification
-- [x] 01-03-PLAN.md -- LaTeX and Unicode rendering for all expression types
+- [x] 01-01: Workspace scaffold, Expr enum, ExprArena with hash-consing
+- [x] 01-02: BigInt/BigRat arithmetic edge case verification
+- [x] 01-03: LaTeX and Unicode rendering for all expression types
 
 ### Phase 2: Simplification & Series Engine
-**Goal**: Expressions can be simplified via rewrite rules and expanded into formal power series with correct truncated arithmetic
-**Depends on**: Phase 1
-**Requirements**: CORE-04, CORE-05, CORE-06, CORE-07
-**Success Criteria** (what must be TRUE):
-  1. The simplification engine applies rewrite rules in phased order and terminates on all inputs (no infinite loops on adversarial expressions)
-  2. Formal power series with sparse representation correctly stores and retrieves coefficients, and tracks truncation order explicitly
-  3. Multiplying two O(q^N) series produces the correct result truncated to O(q^N) without creating O(q^2N) intermediates
-  4. Lazy generators for infinite products yield correct coefficients on demand up to any requested truncation order
-  5. Series addition, multiplication, and coefficient extraction match hand-computed results for known q-series identities (e.g., Euler's identity, Jacobi triple product)
-**Plans**: 3 plans
+**Goal**: Expressions can be simplified via rewrite rules and expanded into formal power series
+**Plans**: 3/3 complete
 
 Plans:
-- [x] 02-01-PLAN.md -- TDD: FormalPowerSeries data structure and series arithmetic (add, mul, invert, shift)
-- [x] 02-02-PLAN.md -- Phased simplification engine with 4 rule phases (normalize, cancel, collect, simplify)
-- [x] 02-03-PLAN.md -- Lazy infinite product generators with Euler function and partition function verification
+- [x] 02-01: FormalPowerSeries data structure and series arithmetic
+- [x] 02-02: Phased simplification engine with 4 rule phases
+- [x] 02-03: Lazy infinite product generators with Euler function verification
 
 ### Phase 3: Core q-Series & Partitions
 **Goal**: Researchers can compute q-Pochhammer symbols, named products, theta functions, and partition functions matching Garvan's qseries output
-**Depends on**: Phase 2
-**Requirements**: QSER-01, QSER-02, QSER-03, QSER-04, QSER-05, QSER-06, QSER-07, QSER-08, PART-01, PART-02, PART-03
-**Success Criteria** (what must be TRUE):
-  1. aqprod(a, q, n) matches Maple output for n in {-5, -1, 0, 1, 2, 5, infinity} and a in {0, 1, q, q^2, generic symbol}
-  2. All named products (etaq, jacprod, tripleprod, quinprod, winquist) expand to series matching Garvan's output to O(q^50)
-  3. theta2(q), theta3(q), theta4(q) produce correct series expansions verified against known identities (e.g., Jacobi theta relations)
-  4. p(n) returns correct partition counts for n = 0..200 matching OEIS A000041, and restricted partition generating functions (distinct parts, odd parts, bounded) produce correct series
-  5. Rank and crank generating functions produce correct series matching published tables
-**Plans**: 4 plans
+**Plans**: 4/4 complete
 
 Plans:
-- [x] 03-01-PLAN.md -- QMonomial, PochhammerOrder, aqprod (q-Pochhammer symbol), and qbin (q-binomial coefficient)
-- [x] 03-02-PLAN.md -- Named products: etaq, jacprod, tripleprod, quinprod, winquist
-- [x] 03-03-PLAN.md -- Theta functions: theta2, theta3, theta4 with product representations
-- [x] 03-04-PLAN.md -- Partition functions (p(n) pentagonal recurrence, restricted GFs) and rank/crank
+- [x] 03-01: QMonomial, PochhammerOrder, aqprod, qbin
+- [x] 03-02: Named products: etaq, jacprod, tripleprod, quinprod, winquist
+- [x] 03-03: Theta functions: theta2, theta3, theta4
+- [x] 03-04: Partition functions and rank/crank
 
 ### Phase 4: Series Analysis
-**Goal**: Researchers can convert between series and product representations, factor q-series, and discover algebraic relations -- completing qseries package parity
-**Depends on**: Phase 3
-**Requirements**: QSER-09, QSER-10, QSER-11, QSER-12, QSER-13, QSER-14, QSER-15, QSER-16, QSER-17, QSER-18, QSER-19
-**Success Criteria** (what must be TRUE):
-  1. prodmake(f, q, n) recovers the product form of known infinite products (e.g., Euler product, Jacobi triple product) from their series expansions, matching Garvan's output
-  2. etamake and jacprodmake correctly express series as eta-quotients and Jacobi products respectively, matching Garvan's results
-  3. qfactor correctly factors q-series polynomials, and sift(f, q, m, j) correctly extracts arithmetic subsequences
-  4. findlincombo, findhom, and findpoly discover known relations (e.g., Rogers-Ramanujan as linear combination) when given sufficient terms
-  5. The full relation discovery suite (findcong and all 12 functions) runs without error and produces results matching Garvan's examples from the qseries documentation
-**Plans**: 7 plans
+**Goal**: Researchers can convert between series and product representations, factor q-series, and discover algebraic relations
+**Plans**: 7/7 complete
 
 Plans:
-- [x] 04-01-PLAN.md -- Andrews' algorithm (prodmake) with number theory helpers (mobius, divisors)
-- [x] 04-02-PLAN.md -- q-polynomial factoring (qfactor) and utilities (sift, qdegree, lqdegree)
-- [x] 04-03-PLAN.md -- Rational linear algebra (Gaussian elimination, null space over QRat and Z/pZ)
-- [x] 04-04-PLAN.md -- Series-to-product post-processing (etamake, jacprodmake, mprodmake, qetamake)
-- [x] 04-05-PLAN.md -- Core relation discovery (findlincombo, findhom, findpoly)
-- [x] 04-06-PLAN.md -- Congruence discovery and combo variants (findcong, findnonhom, findhomcombo, findnonhomcombo)
-- [x] 04-07-PLAN.md -- Modular relation discovery and search (findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod)
+- [x] 04-01: Andrews' algorithm (prodmake)
+- [x] 04-02: q-polynomial factoring (qfactor) and utilities
+- [x] 04-03: Rational linear algebra
+- [x] 04-04: Series-to-product post-processing (etamake, jacprodmake, mprodmake)
+- [x] 04-05: Core relation discovery (findlincombo, findhom, findpoly)
+- [x] 04-06: Congruence discovery and combo variants
+- [x] 04-07: Modular relation discovery and search
 
 ### Phase 5: Python API
-**Goal**: Researchers can use Q-Symbolic from Python with natural syntax, LaTeX display, and batch computation for systematic searches
-**Depends on**: Phase 4
-**Requirements**: PYTH-01, PYTH-02, PYTH-03, PYTH-04, PYTH-05
-**Success Criteria** (what must be TRUE):
-  1. Python users can create q-series expressions using natural DSL syntax (e.g., qpoch(a, q, n), theta3(q)) and all Phase 3-4 functions are callable from Python
-  2. QSession correctly manages arena ownership across Python's garbage collection -- no memory leaks after creating and discarding thousands of expressions
-  3. Expressions display as rendered LaTeX in Jupyter notebooks via _repr_latex_() and as Unicode in Python REPL
-  4. Batch computation mode can run systematic parameter searches (e.g., scanning q-Pochhammer products over parameter grids) and return results as Python collections
-  5. A Garvan tutorial example (e.g., finding a q-series identity) can be replicated end-to-end in a Python script using Q-Symbolic
-**Plans**: 4 plans
+**Goal**: Researchers can use q-Kangaroo from Python with natural syntax, LaTeX display, and batch computation
+**Plans**: 4/4 complete
 
 Plans:
-- [x] 05-01-PLAN.md -- Scaffold qsym-python crate, validate cdylib+GMP build, Python import test
-- [x] 05-02-PLAN.md -- Core QSession + QExpr with operators, rendering, and GC safety
-- [x] 05-03-PLAN.md -- QSeries wrapper and DSL functions for all Phase 3-4 functions (30+)
-- [x] 05-04-PLAN.md -- Batch computation mode and Garvan tutorial integration test
+- [x] 05-01: Scaffold qsym-python crate, validate cdylib+GMP build
+- [x] 05-02: Core QSession + QExpr with operators and rendering
+- [x] 05-03: QSeries wrapper and DSL functions
+- [x] 05-04: Batch computation and integration test
 
 ### Phase 6: Hypergeometric Series
-**Goal**: Researchers can construct, evaluate, and transform basic hypergeometric series using classical summation and transformation formulas
-**Depends on**: Phase 3
-**Requirements**: HYPR-01, HYPR-02, HYPR-03, HYPR-04, HYPR-05, HYPR-06, HYPR-07, HYPR-08, HYPR-09, HYPR-10
-**Success Criteria** (what must be TRUE):
-  1. _r-phi-s and _r-psi-s series can be constructed with arbitrary parameters and evaluated term-by-term to any truncation order, with results matching Gasper-Rahman examples
-  2. q-Gauss, q-Vandermonde, and q-Saalschutz summation formulas are automatically applied when applicable and produce correct closed-form results
-  3. q-Kummer and q-Dixon summation formulas produce correct results matching published tables
-  4. Heine's transformation (all 3 forms), Sears' 4-phi-3, Watson's, and Bailey's transformations correctly convert between hypergeometric representations, verified by expanding both sides to O(q^50)
-  5. Researchers can verify a hypergeometric identity by constructing both sides and confirming series agreement to arbitrary precision
-**Plans**: 4 plans
+**Goal**: Researchers can construct, evaluate, and transform basic hypergeometric series
+**Plans**: 4/4 complete
 
 Plans:
-- [x] 06-01-PLAN.md -- HypergeometricSeries struct, QMonomial arithmetic, eval_phi and eval_psi evaluation
-- [x] 06-02-PLAN.md -- Summation formulas: q-Gauss, q-Vandermonde, q-Saalschutz, q-Kummer, q-Dixon
-- [x] 06-03-PLAN.md -- Heine's transformation (3 forms) and Sears' 4phi3 transformation
-- [x] 06-04-PLAN.md -- Watson's and Bailey's transformations, Python API bindings
+- [x] 06-01: HypergeometricSeries struct, eval_phi, eval_psi
+- [x] 06-02: Summation formulas
+- [x] 06-03: Heine's transformation and Sears' 4phi3
+- [x] 06-04: Watson's and Bailey's transformations, Python bindings
 
 ### Phase 7: Identity Proving
-**Goal**: Researchers can prove q-series identities automatically using the valence formula method, matching thetaids and ETA package capabilities
-**Depends on**: Phase 4, Phase 6
-**Requirements**: IDPR-01, IDPR-02, IDPR-03, IDPR-04, IDPR-05, IDPR-06, IDPR-07, IDPR-08
-**Success Criteria** (what must be TRUE):
-  1. JAC and ETA symbolic representations correctly model Jacobi products and eta quotients as structured data, with conversion between representations
-  2. Cusp computation (cuspmake1, getacuspord suite) produces correct cusp sets and orders matching Garvan's thetaids output for standard modular groups
-  3. provemodfuncid correctly proves known modular function identities via the valence formula, returning a proof certificate or an explicit counterexample
-  4. The ETA identity pipeline verifies eta-quotient identities end-to-end, matching results from Garvan's ETA package examples
-  5. The identity database contains searchable verified identities (TOML format) that can be looked up by tags, involved functions, and structural patterns
-**Plans**: 4 plans
+**Goal**: Researchers can prove q-series identities automatically using the valence formula method
+**Plans**: 4/4 complete
 
 Plans:
-- [x] 07-01-PLAN.md -- JAC and ETA symbolic models with conversion
-- [x] 07-02-PLAN.md -- Cusp computation and order-at-cusp formulas
-- [x] 07-03-PLAN.md -- Proving engine: provemodfuncid via valence formula
-- [x] 07-04-PLAN.md -- Identity database (TOML) and Python API bindings
+- [x] 07-01: JAC and ETA symbolic models
+- [x] 07-02: Cusp computation and order-at-cusp formulas
+- [x] 07-03: Proving engine: provemodfuncid
+- [x] 07-04: Identity database and Python bindings
 
 ### Phase 8: Mock Theta & Bailey Chains
-**Goal**: Researchers can work with mock theta functions, Zwegers completions, Appell-Lerch sums, and systematically generate new identities via Bailey chain machinery
-**Depends on**: Phase 6, Phase 7
-**Requirements**: PART-04, PART-05, PART-06, PART-07, PART-08, PART-09, PART-10, PART-11
-**Success Criteria** (what must be TRUE):
-  1. Ramanujan's third-order mock theta functions (f, phi, psi, chi) and fifth/seventh-order functions produce correct series expansions matching published tables
-  2. Zwegers' completions transform mock theta functions into harmonic Maass forms, and the universal mock theta function g(x, q) matches known evaluations
-  3. Appell-Lerch sums compute correctly and satisfy known functional equations
-  4. The Bailey pair database stores known pairs by type, and the Bailey lemma produces correct new pairs from existing ones via chain iteration
-  5. Automated Bailey pair discovery, given a conjectured identity, can verify or refute it by searching the pair database and applying the lemma
-
-**Plans**: 4 plans
+**Goal**: Researchers can work with mock theta functions, Zwegers completions, Appell-Lerch sums, and Bailey chain machinery
+**Plans**: 4/4 complete
 
 Plans:
-- [x] 08-01-PLAN.md -- All 20 classical mock theta functions (third, fifth, seventh order) with OEIS verification
-- [x] 08-02-PLAN.md -- Appell-Lerch sums m(x,q,z), universal mock theta g2/g3, Zwegers completion
-- [x] 08-03-PLAN.md -- Bailey pair database, lemma, chain iteration, and weak Bailey lemma
-- [x] 08-04-PLAN.md -- Automated Bailey pair discovery and Python API bindings (Group 10)
+- [x] 08-01: All 20 classical mock theta functions
+- [x] 08-02: Appell-Lerch sums, universal mock theta g2/g3, Zwegers completion
+- [x] 08-03: Bailey pair database, lemma, chain iteration, weak Bailey lemma
+- [x] 08-04: Automated Bailey pair discovery and Python bindings
+
+</details>
+
+### v1.1 Polish & Publish (In Progress)
+
+**Milestone Goal:** Make q-Kangaroo release-ready -- publishable on PyPI with documentation, CI, and polished UX so researchers can discover, install, and use it without building from source.
+
+- [ ] **Phase 9: Package Rename & Structure** - Rename qsymbolic to q_kangaroo throughout the codebase with zero test regressions
+- [ ] **Phase 10: PyPI Packaging & Metadata** - Complete package metadata, ABI3 wheels, type stubs, and citation file
+- [ ] **Phase 11: CI/CD Pipeline** - GitHub Actions for testing, wheel building, coverage, and trusted PyPI publishing
+- [ ] **Phase 12: Documentation & UX Polish** - Documentation site, API reference, examples, Jupyter rendering, and API ergonomics
+
+## Phase Details
+
+### Phase 9: Package Rename & Structure
+**Goal**: The codebase uses the final public name (q_kangaroo) everywhere, and all existing functionality continues working without regressions
+**Depends on**: Phase 8 (v1.0 complete)
+**Requirements**: REN-01, REN-02, REN-03, REN-04, REN-05
+**Success Criteria** (what must be TRUE):
+  1. `import q_kangaroo` succeeds in a Python session after `maturin develop`
+  2. All 578 Rust tests pass with `cargo test` after the rename
+  3. All 9 Python integration tests pass with the new `q_kangaroo` import name
+  4. The compiled shared library is named `_q_kangaroo` (with underscore prefix) and loads correctly
+  5. No references to the old name `qsymbolic` remain in source files, configs, or test code
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD
+- [ ] 09-02: TBD
+
+### Phase 10: PyPI Packaging & Metadata
+**Goal**: The package is ready for PyPI upload with complete metadata, cross-version wheels, type hints, and academic citation support
+**Depends on**: Phase 9
+**Requirements**: PKG-01, PKG-02, PKG-03, PKG-04, PKG-05, PKG-06, PKG-07
+**Success Criteria** (what must be TRUE):
+  1. `pip install q-kangaroo` from a locally built wheel succeeds on a fresh Linux virtualenv and `import q_kangaroo` works
+  2. `pip install q-kangaroo` from a locally built wheel succeeds on a fresh Windows virtualenv and `import q_kangaroo` works
+  3. `pip show q-kangaroo` displays complete metadata (author, license, description, classifiers, project URLs, keywords)
+  4. A single wheel file supports Python 3.9 through 3.14+ (ABI3 filename pattern: `*-cp39-abi3-*.whl`)
+  5. IDE autocomplete shows function signatures and docstrings for all 73 DSL functions (type stubs present and valid)
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD
+- [ ] 10-02: TBD
+- [ ] 10-03: TBD
+
+### Phase 11: CI/CD Pipeline
+**Goal**: Every push triggers automated testing and wheel builds, and tagged releases publish to PyPI without manual intervention
+**Depends on**: Phase 10
+**Requirements**: CI-01, CI-02, CI-03, CI-04, CI-05, CI-06, CI-07
+**Success Criteria** (what must be TRUE):
+  1. Pushing a commit to any branch triggers Rust tests and Python integration tests, with results visible on the PR
+  2. CI produces manylinux2014 wheels for Linux and MinGW wheels for Windows on every push
+  3. Test coverage percentage is reported and displayed as a badge in the README
+  4. Pushing a version tag (e.g., `v1.1.0`) triggers an automated release that uploads wheels and sdist to PyPI
+  5. PyPI publishing uses OIDC trusted publishing (no API tokens stored in repository secrets)
+**Plans**: TBD
+
+Plans:
+- [ ] 11-01: TBD
+- [ ] 11-02: TBD
+- [ ] 11-03: TBD
+
+### Phase 12: Documentation & UX Polish
+**Goal**: Researchers can discover, learn, and productively use q-Kangaroo through comprehensive documentation, polished Jupyter integration, and Pythonic API conventions
+**Depends on**: Phase 11 (needs working CI and installable package)
+**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06, DOC-07, UX-01, UX-02, UX-03, UX-04, UX-05
+**Success Criteria** (what must be TRUE):
+  1. README contains installation instructions (`pip install q-kangaroo`), a working quickstart example, and a verification command that a new user can follow end-to-end
+  2. A Sphinx documentation site is live on GitHub Pages with rendered API reference for all 73 functions, a getting-started guide, and an example gallery with at least 5 narrative examples
+  3. Every Python function has a NumPy-style docstring with parameters, return type, mathematical notation (LaTeX), and at least one usage example
+  4. QExpr and QSeries objects display rendered LaTeX in Jupyter notebooks and readable text in terminal sessions
+  5. Functions accept sensible defaults (e.g., default truncation order, optional session), use snake_case with keyword arguments, and produce error messages that name the function and suggest corrections
+**Plans**: TBD
+
+Plans:
+- [ ] 12-01: TBD
+- [ ] 12-02: TBD
+- [ ] 12-03: TBD
+- [ ] 12-04: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
+Phases execute in numeric order: 9 -> 10 -> 11 -> 12
 
-| Phase | Plans Complete | Status | Completed |
-|-------|---------------|--------|-----------|
-| 1. Expression Foundation | 3/3 | Complete | 2026-02-13 |
-| 2. Simplification & Series Engine | 3/3 | Complete | 2026-02-13 |
-| 3. Core q-Series & Partitions | 4/4 | Complete | 2026-02-13 |
-| 4. Series Analysis | 7/7 | Complete | 2026-02-13 |
-| 5. Python API | 4/4 | Complete | 2026-02-13 |
-| 6. Hypergeometric Series | 4/4 | Complete | 2026-02-14 |
-| 7. Identity Proving | 4/4 | Complete | 2026-02-14 |
-| 8. Mock Theta & Bailey Chains | 4/4 | Complete | 2026-02-14 |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Expression Foundation | v1.0 | 3/3 | Complete | 2026-02-13 |
+| 2. Simplification & Series Engine | v1.0 | 3/3 | Complete | 2026-02-13 |
+| 3. Core q-Series & Partitions | v1.0 | 4/4 | Complete | 2026-02-13 |
+| 4. Series Analysis | v1.0 | 7/7 | Complete | 2026-02-13 |
+| 5. Python API | v1.0 | 4/4 | Complete | 2026-02-13 |
+| 6. Hypergeometric Series | v1.0 | 4/4 | Complete | 2026-02-14 |
+| 7. Identity Proving | v1.0 | 4/4 | Complete | 2026-02-14 |
+| 8. Mock Theta & Bailey Chains | v1.0 | 4/4 | Complete | 2026-02-14 |
+| 9. Package Rename & Structure | v1.1 | 0/2 | Not started | - |
+| 10. PyPI Packaging & Metadata | v1.1 | 0/3 | Not started | - |
+| 11. CI/CD Pipeline | v1.1 | 0/3 | Not started | - |
+| 12. Documentation & UX Polish | v1.1 | 0/4 | Not started | - |

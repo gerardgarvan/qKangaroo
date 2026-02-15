@@ -1,7 +1,7 @@
 # Requirements: q-Kangaroo
 
 **Defined:** 2026-02-13 (v1.0), updated 2026-02-14 (v1.1)
-**Core Value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output — so researchers can switch without losing any capability.
+**Core Value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
 
 ## v1.0 Requirements (Complete)
 
@@ -99,17 +99,45 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmap) | | |
+| REN-01 | Phase 9 | Pending |
+| REN-02 | Phase 9 | Pending |
+| REN-03 | Phase 9 | Pending |
+| REN-04 | Phase 9 | Pending |
+| REN-05 | Phase 9 | Pending |
+| PKG-01 | Phase 10 | Pending |
+| PKG-02 | Phase 10 | Pending |
+| PKG-03 | Phase 10 | Pending |
+| PKG-04 | Phase 10 | Pending |
+| PKG-05 | Phase 10 | Pending |
+| PKG-06 | Phase 10 | Pending |
+| PKG-07 | Phase 10 | Pending |
+| CI-01 | Phase 11 | Pending |
+| CI-02 | Phase 11 | Pending |
+| CI-03 | Phase 11 | Pending |
+| CI-04 | Phase 11 | Pending |
+| CI-05 | Phase 11 | Pending |
+| CI-06 | Phase 11 | Pending |
+| CI-07 | Phase 11 | Pending |
+| DOC-01 | Phase 12 | Pending |
+| DOC-02 | Phase 12 | Pending |
+| DOC-03 | Phase 12 | Pending |
+| DOC-04 | Phase 12 | Pending |
+| DOC-05 | Phase 12 | Pending |
+| DOC-06 | Phase 12 | Pending |
+| DOC-07 | Phase 12 | Pending |
+| UX-01 | Phase 12 | Pending |
+| UX-02 | Phase 12 | Pending |
+| UX-03 | Phase 12 | Pending |
+| UX-04 | Phase 12 | Pending |
+| UX-05 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-13 (v1.0)*
-*Last updated: 2026-02-14 after v1.1 milestone definition*
+*Last updated: 2026-02-14 after v1.1 roadmap creation*

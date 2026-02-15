@@ -5,14 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-14)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Milestone v1.1 -- Polish & Publish -- Defining requirements
+**Current focus:** Phase 9 -- Package Rename & Structure
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: --
-Status: Defining requirements
-Last activity: 2026-02-14 -- Milestone v1.1 started
+Phase: 9 of 12 (Package Rename & Structure)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-02-14 -- Roadmap created for v1.1 milestone
+
+Progress: [################################..........] 73% (32/44 plans -- 32 v1.0 complete, 12 v1.1 remaining)
 
 ## v1.0 Performance Metrics
 
@@ -45,7 +47,7 @@ Key v1.1 decisions:
 - [v1.1]: Package name q-kangaroo (PyPI) / q_kangaroo (import) -- user-chosen
 - [v1.1]: GitHub Pages for documentation hosting
 - [v1.1]: CI targets Linux + Windows (macOS deferred)
-- [v1.1]: Full UX polish: Jupyter rendering, API ergonomics, error messages
+- [v1.1]: DOC + UX merged into single Phase 12 (shared delivery boundary)
 
 ### Pending Todos
 
@@ -53,12 +55,13 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH. See .cargo/config.toml for env vars.
+- [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH
 - [Build]: PyO3 builds require PYO3_PYTHON pointing to Python 3.14 and PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
 - [Rename]: qsymbolic -> q_kangaroo rename touches many files (Cargo.toml, pyproject.toml, __init__.py, all tests, all imports)
+- [Research]: Windows GMP DLL bundling strategy needs validation during Phase 10 planning
 
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Milestone v1.1 initialization -- defining requirements
-Resume file: .planning/PROJECT.md
+Stopped at: Roadmap created for v1.1 -- ready to plan Phase 9
+Resume file: .planning/ROADMAP.md
