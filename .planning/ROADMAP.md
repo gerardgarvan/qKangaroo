@@ -3,7 +3,7 @@
 ## Milestones
 
 - v1.0 Core Engine - Phases 1-8 (shipped 2026-02-14)
-- v1.1 Polish & Publish - Phases 9-12 (in progress)
+- v1.1 Polish & Publish - Phases 9-12 (shipped 2026-02-15)
 
 ## Phases
 
@@ -99,14 +99,14 @@ Plans:
 
 </details>
 
-### v1.1 Polish & Publish (In Progress)
+### v1.1 Polish & Publish (SHIPPED 2026-02-15)
 
 **Milestone Goal:** Make q-Kangaroo release-ready -- publishable on PyPI with documentation, CI, and polished UX so researchers can discover, install, and use it without building from source.
 
 - [x] **Phase 9: Package Rename & Structure** - Rename qsymbolic to q_kangaroo throughout the codebase with zero test regressions
 - [x] **Phase 10: PyPI Packaging & Metadata** - Complete package metadata, ABI3 wheels, type stubs, and citation file
 - [x] **Phase 11: CI/CD Pipeline** - GitHub Actions for testing, wheel building, coverage, and trusted PyPI publishing
-- [ ] **Phase 12: Documentation & UX Polish** - Documentation site, API reference, examples, Jupyter rendering, and API ergonomics
+- [x] **Phase 12: Documentation & UX Polish** - Documentation site, API reference, examples, Jupyter rendering, and API ergonomics
 
 ## Phase Details
 
@@ -171,10 +171,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 12-01-PLAN.md -- UX polish: QSeries LaTeX rendering, get_default_session(), README expansion
-- [ ] 12-02-PLAN.md -- NumPy-style docstrings for all 73 DSL functions + error message improvements
-- [ ] 12-03-PLAN.md -- Sphinx documentation site scaffold with API reference and guides
-- [ ] 12-04-PLAN.md -- Example notebooks (5 narratives) and docs CI workflow for GitHub Pages
+- [x] 12-01-PLAN.md -- UX polish: QSeries LaTeX rendering, get_default_session(), README expansion
+- [x] 12-02-PLAN.md -- NumPy-style docstrings for all 73 DSL functions + error message improvements
+- [x] 12-03-PLAN.md -- Sphinx documentation site scaffold with API reference and guides
+- [x] 12-04-PLAN.md -- Example notebooks (5 narratives) and docs CI workflow for GitHub Pages
 
 ## Progress
 
@@ -194,4 +194,4 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12
 | 9. Package Rename & Structure | v1.1 | 2/2 | Complete | 2026-02-14 |
 | 10. PyPI Packaging & Metadata | v1.1 | 2/2 | Complete | 2026-02-14 |
 | 11. CI/CD Pipeline | v1.1 | 2/2 | Complete | 2026-02-15 |
-| 12. Documentation & UX Polish | v1.1 | 0/4 | Not started | - |
+| 12. Documentation & UX Polish | v1.1 | 4/4 | Complete | 2026-02-15 |
