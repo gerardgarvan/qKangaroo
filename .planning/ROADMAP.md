@@ -168,13 +168,13 @@ Plans:
   3. Every Python function has a NumPy-style docstring with parameters, return type, mathematical notation (LaTeX), and at least one usage example
   4. QExpr and QSeries objects display rendered LaTeX in Jupyter notebooks and readable text in terminal sessions
   5. Functions accept sensible defaults (e.g., default truncation order, optional session), use snake_case with keyword arguments, and produce error messages that name the function and suggest corrections
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
-- [ ] 12-03: TBD
-- [ ] 12-04: TBD
+- [ ] 12-01-PLAN.md -- UX polish: QSeries LaTeX rendering, get_default_session(), README expansion
+- [ ] 12-02-PLAN.md -- NumPy-style docstrings for all 73 DSL functions + error message improvements
+- [ ] 12-03-PLAN.md -- Sphinx documentation site scaffold with API reference and guides
+- [ ] 12-04-PLAN.md -- Example notebooks (5 narratives) and docs CI workflow for GitHub Pages
 
 ## Progress
 
