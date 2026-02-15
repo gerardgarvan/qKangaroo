@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux-wheels:
+    name: Linux Wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release
+          working-directory: crates/qsym-python
+          manylinux: "2014"
+          before-script-linux: yum install -y gmp-devel
+        env:
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: '1'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux
+          path: target/wheels/*.whl
+
+  windows-wheels:
+    name: Windows Wheels
+    runs-on: windows-latest
+    steps:
+      - name: Configure line endings
+        shell: bash
+        run: git config --global core.autocrlf input
+      - uses: actions/checkout@v4
+      - name: Setup MSYS2 with MinGW GMP
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-gmp
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Copy MinGW DLLs into package
+        shell: msys2 {0}
+        run: |
+          cp /mingw64/bin/libgmp-10.dll crates/qsym-python/python/q_kangaroo/
+          cp /mingw64/bin/libgcc_s_seh-1.dll crates/qsym-python/python/q_kangaroo/
+          cp /mingw64/bin/libwinpthread-1.dll crates/qsym-python/python/q_kangaroo/
+      - name: Add MinGW to PATH
+        shell: bash
+        run: echo "D:/a/_temp/msys64/mingw64/bin" >> $GITHUB_PATH
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --target x86_64-pc-windows-gnu
+          working-directory: crates/qsym-python
+        env:
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: '1'
+          LIBRARY_PATH: D:/a/_temp/msys64/mingw64/lib
+          C_INCLUDE_PATH: D:/a/_temp/msys64/mingw64/include
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows
+          path: target/wheels/*.whl
+
+  sdist:
+    name: Source Distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          working-directory: crates/qsym-python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: target/wheels/*.tar.gz
+
+  publish:
+    name: Publish to PyPI
+    needs: [linux-wheels, windows-wheels, sdist]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/q-kangaroo
+    permissions:
+      id-token: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
