@@ -4,6 +4,9 @@
 //! FPS is a standalone computation result, not an arena expression -- there is
 //! no need for GC-safe Arc reference counting here.
 
+use std::cmp::Ordering;
+use std::fmt::Write;
+
 use pyo3::prelude::*;
 
 use qsym_core::series::{FormalPowerSeries, arithmetic};
@@ -38,6 +41,50 @@ impl QSeries {
     /// String representation (same as __repr__).
     fn __str__(&self) -> String {
         self.__repr__()
+    }
+
+    /// LaTeX representation for Jupyter notebooks, wrapped in $...$.
+    fn _repr_latex_(&self) -> String {
+        format!("${}$", self.latex())
+    }
+
+    /// LaTeX string without dollar-sign wrappers.
+    fn latex(&self) -> String {
+        let trunc = self.fps.truncation_order();
+        let terms: Vec<(&i64, &qsym_core::QRat)> = self.fps.iter().collect();
+        let total = terms.len();
+
+        if total == 0 {
+            return format!("O(q^{{{}}})", trunc);
+        }
+
+        // Determine which terms to show. If more than 20, show first 15 + "..." + last 2.
+        let (show_first, show_last, ellipsis) = if total > 20 {
+            (15, 2, true)
+        } else {
+            (total, 0, false)
+        };
+
+        let mut result = String::new();
+
+        // Write first group of terms
+        for (i, (k, c)) in terms.iter().enumerate().take(show_first) {
+            latex_term(&mut result, i == 0, **k, c);
+        }
+
+        // Ellipsis and last terms
+        if ellipsis {
+            let _ = write!(result, " + \\cdots");
+            let start = total - show_last;
+            for (k, c) in &terms[start..] {
+                latex_term(&mut result, false, **k, c);
+            }
+        }
+
+        // Truncation order
+        let _ = write!(result, " + O(q^{{{}}})", trunc);
+
+        result
     }
 
     /// Get the coefficient at power `key`, returned as a Python Fraction.
@@ -148,6 +195,60 @@ impl QSeries {
     fn sift(&self, m: i64, j: i64) -> QSeries {
         QSeries {
             fps: qseries::sift(&self.fps, m, j),
+        }
+    }
+}
+
+/// Format a single term of a LaTeX series representation.
+///
+/// Appends the formatted term (with sign prefix) to `out`.
+/// `first` indicates whether this is the very first term (affects sign formatting).
+fn latex_term(out: &mut String, first: bool, k: i64, c: &qsym_core::QRat) {
+    let is_negative = c.0.cmp0() == Ordering::Less;
+    let abs_c = if is_negative { -c.clone() } else { c.clone() };
+    let abs_numer = abs_c.numer().clone();
+    let abs_denom = abs_c.denom().clone();
+    let abs_is_one = abs_numer.cmp0() != Ordering::Equal
+        && abs_numer == abs_denom;
+    let denom_is_one = abs_denom == qsym_core::QInt::one().0;
+
+    // Sign
+    if first {
+        if is_negative {
+            out.push('-');
+        }
+    } else if is_negative {
+        let _ = write!(out, " - ");
+    } else {
+        let _ = write!(out, " + ");
+    }
+
+    // Format coefficient + variable
+    if k == 0 {
+        // Constant term: just the coefficient
+        if denom_is_one {
+            let _ = write!(out, "{}", abs_numer);
+        } else {
+            let _ = write!(out, "\\frac{{{}}}{{{}}}", abs_numer, abs_denom);
+        }
+    } else if abs_is_one {
+        // Coefficient is 1: just the variable part
+        if k == 1 {
+            out.push('q');
+        } else {
+            let _ = write!(out, "q^{{{}}}", k);
+        }
+    } else {
+        // General coefficient * variable
+        let coeff_str = if denom_is_one {
+            format!("{}", abs_numer)
+        } else {
+            format!("\\frac{{{}}}{{{}}}", abs_numer, abs_denom)
+        };
+        if k == 1 {
+            let _ = write!(out, "{} q", coeff_str);
+        } else {
+            let _ = write!(out, "{} q^{{{}}}", coeff_str, k);
         }
     }
 }
