@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-14)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 11 -- CI/CD Pipeline
+**Current focus:** Phase 12 -- Documentation & UX
 
 ## Current Position
 
-Phase: 11 of 12 (CI/CD Pipeline)
-Plan: 1 of 2 in current phase
-Status: 11-01 complete -- CI workflow + README created, ready for 11-02 (release workflow)
-Last activity: 2026-02-15 -- Completed 11-01 (CI workflow with Rust/Python tests + coverage)
+Phase: 12 of 12 (Documentation & UX)
+Plan: 0 of ? in current phase
+Status: Phase 11 complete -- CI/CD pipeline fully configured, ready for Phase 12
+Last activity: 2026-02-15 -- Completed 11-02 (release workflow with wheel builds + PyPI publish)
 
-Progress: [#####################################.......] 84% (37/44 plans -- 32 v1.0 + 5 v1.1 complete, 7 v1.1 remaining)
+Progress: [######################################......] 86% (38/44 plans -- 32 v1.0 + 6 v1.1 complete, 6 v1.1 remaining)
 
 ## v1.0 Performance Metrics
 
@@ -42,7 +42,7 @@ Progress: [#####################################.......] 84% (37/44 plans -- 32 
 |-------|-------|-------|----------|
 | 9 - Package Rename & Structure | 2/2 | 4 min | 2 min |
 | 10 - PyPI Packaging & Metadata | 2/2 | 5 min | 2.5 min |
-| 11 - CI/CD Pipeline | 1/2 | 1 min | 1 min |
+| 11 - CI/CD Pipeline | 2/2 | 2 min | 1 min |
 
 ## Accumulated Context
 
@@ -68,6 +68,10 @@ Key v1.1 decisions:
 - [11-01]: Used --locked flag for cargo test since Cargo.lock is committed
 - [11-01]: Used working-directory for Python job steps instead of shell cd
 - [11-01]: Added restore-keys fallback for cargo cache
+- [11-02]: OIDC trusted publishing (id-token: write) instead of stored PyPI API tokens
+- [11-02]: Bundled 3 MinGW DLLs (libgmp-10, libgcc_s_seh-1, libwinpthread-1) for Windows wheels
+- [11-02]: Hardcoded MSYS2 path D:/a/_temp/msys64/mingw64/ for GitHub Actions runners
+- [11-02]: Set git autocrlf input BEFORE checkout to prevent Windows line ending issues
 
 ### Pending Todos
 
@@ -83,5 +87,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 11-01-PLAN.md (CI workflow + README) -- ready for 11-02 (release workflow)
-Resume file: .planning/phases/11-ci-cd-pipeline/11-01-SUMMARY.md
+Stopped at: Completed 11-02-PLAN.md (release workflow) -- Phase 11 complete, ready for Phase 12
+Resume file: .planning/phases/11-ci-cd-pipeline/11-02-SUMMARY.md
