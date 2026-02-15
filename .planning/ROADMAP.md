@@ -120,11 +120,11 @@ Plans:
   3. All 9 Python integration tests pass with the new `q_kangaroo` import name
   4. The compiled shared library is named `_q_kangaroo` (with underscore prefix) and loads correctly
   5. No references to the old name `qsymbolic` remain in source files, configs, or test code
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md -- Atomic rename of all source files, directory, and Rust build verification
+- [ ] 09-02-PLAN.md -- Python rebuild, integration test verification, and PROJECT.md cleanup
 
 ### Phase 10: PyPI Packaging & Metadata
 **Goal**: The package is ready for PyPI upload with complete metadata, cross-version wheels, type hints, and academic citation support
@@ -193,7 +193,7 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12
 | 6. Hypergeometric Series | v1.0 | 4/4 | Complete | 2026-02-14 |
 | 7. Identity Proving | v1.0 | 4/4 | Complete | 2026-02-14 |
 | 8. Mock Theta & Bailey Chains | v1.0 | 4/4 | Complete | 2026-02-14 |
-| 9. Package Rename & Structure | v1.1 | 0/2 | Not started | - |
+| 9. Package Rename & Structure | v1.1 | 0/2 | Planning complete | - |
 | 10. PyPI Packaging & Metadata | v1.1 | 0/3 | Not started | - |
 | 11. CI/CD Pipeline | v1.1 | 0/3 | Not started | - |
 | 12. Documentation & UX Polish | v1.1 | 0/4 | Not started | - |
