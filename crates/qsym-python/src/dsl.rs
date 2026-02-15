@@ -7,6 +7,7 @@
 //! get a SymbolId (NOT `arena.intern_symbol("q")` which returns ExprRef).
 
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
 use pyo3::types::{PyDict, PyList};
 
 use qsym_core::number::QRat;
@@ -47,16 +48,43 @@ fn qrat_matrix_to_pylist<'py>(py: Python<'py>, m: &[Vec<QRat>]) -> PyResult<Boun
 // GROUP 1: Pochhammer and q-Binomial
 // ===========================================================================
 
-/// Compute the general q-Pochhammer symbol (a; q)_n as a formal power series.
+/// Compute the q-Pochhammer symbol $(a; q)_n$ as a formal power series.
 ///
-/// The base monomial a = (coeff_num/coeff_den) * q^power.
-/// If n is None, computes (a;q)_inf (infinite product).
-/// If n is Some(k), computes (a;q)_k (finite product).
+/// Evaluates the general q-shifted factorial (q-Pochhammer symbol).
+/// The base monomial is $a = \frac{\text{coeff\_num}}{\text{coeff\_den}} \cdot q^{\text{power}}$.
+/// Use ``n=None`` for the infinite product $(a; q)_\infty$.
 ///
-/// ```python
-/// s = QSession()
-/// qq = aqprod(s, 1, 1, 1, None, 20)  # (q;q)_inf to O(q^20)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// coeff_num : int
+///     Numerator of the monomial coefficient.
+/// coeff_den : int
+///     Denominator of the monomial coefficient.
+/// power : int
+///     Power of $q$ in the monomial $a$.
+/// n : int or None
+///     Product length. ``None`` for $(a;q)_\infty$, or an integer $k$ for $(a;q)_k$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The q-Pochhammer symbol as a formal power series truncated to $O(q^{\text{order}})$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, aqprod
+/// >>> s = QSession()
+/// >>> qq_inf = aqprod(s, 1, 1, 1, None, 20)   # (q;q)_inf (Euler function)
+/// >>> qq_5 = aqprod(s, 1, 1, 1, 5, 20)         # (q;q)_5 (finite product)
+///
+/// See Also
+/// --------
+/// etaq : Generalized eta product $(q^b; q^t)_\infty$.
+/// qbin : q-binomial coefficient using q-Pochhammer symbols.
 #[pyfunction]
 #[pyo3(signature = (session, coeff_num, coeff_den, power, n, order))]
 pub fn aqprod(
@@ -78,12 +106,38 @@ pub fn aqprod(
     QSeries { fps }
 }
 
-/// Compute the q-binomial (Gaussian) coefficient [n choose k]_q.
+/// Compute the q-binomial (Gaussian) coefficient $\binom{n}{k}_q$.
 ///
-/// ```python
-/// s = QSession()
-/// b = qbin(s, 5, 2, 20)  # [5 choose 2]_q
-/// ```
+/// The q-binomial coefficient is defined by
+/// $\binom{n}{k}_q = \frac{(q;q)_n}{(q;q)_k (q;q)_{n-k}}$
+/// and satisfies the recurrence
+/// $\binom{n}{k}_q = \binom{n-1}{k-1}_q + q^k \binom{n-1}{k}_q$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// n : int
+///     Top parameter of the q-binomial.
+/// k : int
+///     Bottom parameter of the q-binomial.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The q-binomial coefficient as a polynomial in $q$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, qbin
+/// >>> s = QSession()
+/// >>> b = qbin(s, 5, 2, 20)  # [5 choose 2]_q
+///
+/// See Also
+/// --------
+/// aqprod : General q-Pochhammer symbol.
 #[pyfunction]
 pub fn qbin(session: &QSession, n: i64, k: i64, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -96,34 +150,145 @@ pub fn qbin(session: &QSession, n: i64, k: i64, order: i64) -> QSeries {
 // GROUP 2: Named Products
 // ===========================================================================
 
-/// Compute the generalized eta product: (q^b; q^t)_inf.
+/// Compute the generalized eta product $(q^b; q^t)_\infty$.
 ///
-/// ```python
-/// s = QSession()
-/// e = etaq(s, 1, 1, 20)  # (q;q)_inf = Euler function
-/// ```
+/// Evaluates the infinite product $\prod_{k=0}^{\infty}(1 - q^{b + kt})$.
+/// When $b = t$, this gives $(q^t; q^t)_\infty$, related to the Dedekind eta
+/// function $\eta(\tau) = q^{1/24} (q;q)_\infty$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// b : int
+///     Starting exponent. Must be positive.
+/// t : int
+///     Step size. Must be positive.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The infinite product as a formal power series truncated to $O(q^{\text{order}})$.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``b`` or ``t`` is not positive.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq
+/// >>> s = QSession()
+/// >>> euler = etaq(s, 1, 1, 20)  # (q;q)_inf = Euler function
+/// >>> eta5 = etaq(s, 1, 5, 20)   # (q;q^5)_inf
+///
+/// See Also
+/// --------
+/// aqprod : General q-Pochhammer symbol $(a;q)_n$.
+/// jacprod : Jacobi triple product JAC(a, b).
 #[pyfunction]
-pub fn etaq(session: &QSession, b: i64, t: i64, order: i64) -> QSeries {
+pub fn etaq(session: &QSession, b: i64, t: i64, order: i64) -> PyResult<QSeries> {
+    if b <= 0 {
+        return Err(PyValueError::new_err(format!(
+            "etaq(): parameter 'b' must be positive, got b={}", b
+        )));
+    }
+    if t <= 0 {
+        return Err(PyValueError::new_err(format!(
+            "etaq(): parameter 't' must be positive, got t={}", t
+        )));
+    }
     let mut inner = session.inner.lock().unwrap();
     let sym_q = inner.get_or_create_symbol_id("q");
     let fps = qseries::etaq(b, t, sym_q, order);
-    QSeries { fps }
+    Ok(QSeries { fps })
 }
 
-/// Compute the Jacobi triple product JAC(a, b).
+/// Compute the Jacobi triple product $\text{JAC}(a, b)$.
 ///
-/// JAC(a,b) = (q^a;q^b)_inf * (q^{b-a};q^b)_inf * (q^b;q^b)_inf
+/// Evaluates the three-factor product
+/// $\text{JAC}(a,b) = (q^a; q^b)_\infty \cdot (q^{b-a}; q^b)_\infty \cdot (q^b; q^b)_\infty$.
+/// Requires $0 < a < b$.
 ///
-/// Requires 0 < a < b.
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// a : int
+///     First exponent. Must satisfy $0 < a < b$.
+/// b : int
+///     Period. Must satisfy $b > a > 0$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The Jacobi triple product as a formal power series.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``a`` and ``b`` do not satisfy $0 < a < b$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, jacprod
+/// >>> s = QSession()
+/// >>> j = jacprod(s, 1, 5, 20)  # JAC(1, 5)
+///
+/// See Also
+/// --------
+/// etaq : Generalized eta product.
+/// tripleprod : Jacobi triple product with monomial parameter.
 #[pyfunction]
-pub fn jacprod(session: &QSession, a: i64, b: i64, order: i64) -> QSeries {
+pub fn jacprod(session: &QSession, a: i64, b: i64, order: i64) -> PyResult<QSeries> {
+    if a <= 0 || a >= b {
+        return Err(PyValueError::new_err(format!(
+            "jacprod(): requires 0 < a < b, got a={}, b={}", a, b
+        )));
+    }
     let mut inner = session.inner.lock().unwrap();
     let sym_q = inner.get_or_create_symbol_id("q");
     let fps = qseries::jacprod(a, b, sym_q, order);
-    QSeries { fps }
+    Ok(QSeries { fps })
 }
 
-/// Compute the Jacobi triple product with monomial parameter z = (coeff_num/coeff_den) * q^power.
+/// Compute the Jacobi triple product with monomial parameter $z$.
+///
+/// Evaluates $(z; q)_\infty \cdot (q/z; q)_\infty \cdot (q; q)_\infty$
+/// where $z = \frac{\text{coeff\_num}}{\text{coeff\_den}} \cdot q^{\text{power}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// coeff_num : int
+///     Numerator of the monomial coefficient for $z$.
+/// coeff_den : int
+///     Denominator of the monomial coefficient for $z$.
+/// power : int
+///     Power of $q$ in the monomial $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The triple product as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, tripleprod
+/// >>> s = QSession()
+/// >>> tp = tripleprod(s, 1, 1, 1, 20)  # z = q
+///
+/// See Also
+/// --------
+/// jacprod : Jacobi triple product JAC(a, b) with integer parameters.
+/// quinprod : Quintuple product identity.
 #[pyfunction]
 pub fn tripleprod(
     session: &QSession,
@@ -139,7 +304,39 @@ pub fn tripleprod(
     QSeries { fps }
 }
 
-/// Compute the quintuple product with monomial parameter z = (coeff_num/coeff_den) * q^power.
+/// Compute the quintuple product with monomial parameter $z$.
+///
+/// Evaluates the five-factor quintuple product identity with
+/// $z = \frac{\text{coeff\_num}}{\text{coeff\_den}} \cdot q^{\text{power}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// coeff_num : int
+///     Numerator of the monomial coefficient for $z$.
+/// coeff_den : int
+///     Denominator of the monomial coefficient for $z$.
+/// power : int
+///     Power of $q$ in the monomial $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The quintuple product as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, quinprod
+/// >>> s = QSession()
+/// >>> qp = quinprod(s, 1, 1, 1, 20)  # z = q
+///
+/// See Also
+/// --------
+/// tripleprod : Jacobi triple product.
+/// winquist : Winquist's identity product.
 #[pyfunction]
 pub fn quinprod(
     session: &QSession,
@@ -155,9 +352,45 @@ pub fn quinprod(
     QSeries { fps }
 }
 
-/// Compute Winquist's identity product with parameters a and b.
+/// Compute Winquist's identity product with two monomial parameters $a$ and $b$.
 ///
-/// a = (a_cn/a_cd) * q^a_p, b = (b_cn/b_cd) * q^b_p.
+/// Evaluates the 10-factor product from Winquist's identity, where
+/// $a = \frac{a\_cn}{a\_cd} \cdot q^{a\_p}$ and $b = \frac{b\_cn}{b\_cd} \cdot q^{b\_p}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// a_cn : int
+///     Numerator of the coefficient for monomial $a$.
+/// a_cd : int
+///     Denominator of the coefficient for monomial $a$.
+/// a_p : int
+///     Power of $q$ in monomial $a$.
+/// b_cn : int
+///     Numerator of the coefficient for monomial $b$.
+/// b_cd : int
+///     Denominator of the coefficient for monomial $b$.
+/// b_p : int
+///     Power of $q$ in monomial $b$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The Winquist product as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, winquist
+/// >>> s = QSession()
+/// >>> w = winquist(s, 1, 1, 1, 1, 1, 2, 20)
+///
+/// See Also
+/// --------
+/// quinprod : Quintuple product identity.
+/// tripleprod : Jacobi triple product.
 #[pyfunction]
 #[pyo3(signature = (session, a_cn, a_cd, a_p, b_cn, b_cd, b_p, order))]
 pub fn winquist(
@@ -182,9 +415,34 @@ pub fn winquist(
 // GROUP 3: Theta Functions
 // ===========================================================================
 
-/// Compute the Jacobi theta function theta2(q).
+/// Compute the Jacobi theta function $\theta_2(q)$.
 ///
-/// Returned as a series in X = q^{1/4}, where the variable represents q^{1/4}.
+/// Evaluates $\theta_2(q) = 2q^{1/4} \sum_{n=0}^{\infty} q^{n(n+1)}$.
+/// The result is returned as a series in $X = q^{1/4}$, where the
+/// variable represents $q^{1/4}$ (not $q$ itself).
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// order : int
+///     Truncation order for the resulting series (in terms of $q^{1/4}$).
+///
+/// Returns
+/// -------
+/// QSeries
+///     $\theta_2(q)$ as a series in $q^{1/4}$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, theta2
+/// >>> s = QSession()
+/// >>> t2 = theta2(s, 40)
+///
+/// See Also
+/// --------
+/// theta3 : Jacobi theta function $\theta_3(q)$.
+/// theta4 : Jacobi theta function $\theta_4(q)$.
 #[pyfunction]
 pub fn theta2(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -193,9 +451,33 @@ pub fn theta2(session: &QSession, order: i64) -> QSeries {
     QSeries { fps }
 }
 
-/// Compute the Jacobi theta function theta3(q).
+/// Compute the Jacobi theta function $\theta_3(q) = 1 + 2\sum_{n=1}^{\infty} q^{n^2}$.
 ///
-/// theta3(q) = 1 + 2q + 2q^4 + 2q^9 + ... = sum_{n=-inf}^{inf} q^{n^2}
+/// Also written as $\theta_3(q) = \sum_{n=-\infty}^{\infty} q^{n^2}$.
+/// This is the classical third Jacobi theta function.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     $\theta_3(q)$ as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, theta3
+/// >>> s = QSession()
+/// >>> t3 = theta3(s, 20)  # 1 + 2q + 2q^4 + 2q^9 + ...
+///
+/// See Also
+/// --------
+/// theta2 : Jacobi theta function $\theta_2(q)$.
+/// theta4 : Jacobi theta function $\theta_4(q)$.
 #[pyfunction]
 pub fn theta3(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -204,9 +486,33 @@ pub fn theta3(session: &QSession, order: i64) -> QSeries {
     QSeries { fps }
 }
 
-/// Compute the Jacobi theta function theta4(q).
+/// Compute the Jacobi theta function $\theta_4(q) = 1 + 2\sum_{n=1}^{\infty} (-1)^n q^{n^2}$.
 ///
-/// theta4(q) = 1 - 2q + 2q^4 - 2q^9 + ... = sum_{n=-inf}^{inf} (-1)^n q^{n^2}
+/// Also written as $\theta_4(q) = \sum_{n=-\infty}^{\infty} (-1)^n q^{n^2}$.
+/// This is the classical fourth Jacobi theta function.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     $\theta_4(q)$ as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, theta4
+/// >>> s = QSession()
+/// >>> t4 = theta4(s, 20)  # 1 - 2q + 2q^4 - 2q^9 + ...
+///
+/// See Also
+/// --------
+/// theta2 : Jacobi theta function $\theta_2(q)$.
+/// theta3 : Jacobi theta function $\theta_3(q)$.
 #[pyfunction]
 pub fn theta4(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -219,15 +525,36 @@ pub fn theta4(session: &QSession, order: i64) -> QSeries {
 // GROUP 4: Partition Functions
 // ===========================================================================
 
-/// Compute p(n), the number of partitions of n.
+/// Compute $p(n)$, the number of integer partitions of $n$.
 ///
-/// Returns a Python int (not Fraction) since partition counts are always integers.
-/// No session needed -- pure computation on an integer.
+/// Uses the pentagonal number recurrence for efficient computation.
+/// No session is needed -- this is a pure arithmetic function.
 ///
-/// ```python
-/// print(partition_count(5))   # 7
-/// print(partition_count(100)) # 190569292536040
-/// ```
+/// Parameters
+/// ----------
+/// n : int
+///     The integer to partition. Must be non-negative.
+///
+/// Returns
+/// -------
+/// int
+///     The partition count $p(n)$. Returns a Python ``int``, not ``Fraction``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import partition_count
+/// >>> partition_count(5)
+/// 7
+/// >>> partition_count(100)
+/// 190569292536040
+///
+/// Notes
+/// -----
+/// Computed via Euler's pentagonal recurrence with $O(n\sqrt{n})$ complexity.
+///
+/// See Also
+/// --------
+/// partition_gf : Generating function $\sum p(n) q^n$.
 #[pyfunction]
 pub fn partition_count(py: Python<'_>, n: i64) -> PyResult<PyObject> {
     let result = qseries::partition_count(n);
@@ -237,7 +564,31 @@ pub fn partition_count(py: Python<'_>, n: i64) -> PyResult<PyObject> {
     Ok(obj.into())
 }
 
-/// Compute the partition generating function: sum_{n>=0} p(n) q^n = 1/(q;q)_inf.
+/// Compute the partition generating function $\sum_{n \ge 0} p(n) q^n = \frac{1}{(q;q)_\infty}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The partition generating function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, partition_gf
+/// >>> s = QSession()
+/// >>> pgf = partition_gf(s, 20)  # 1 + q + 2q^2 + 3q^3 + 5q^4 + ...
+///
+/// See Also
+/// --------
+/// partition_count : Compute $p(n)$ directly.
+/// distinct_parts_gf : Partitions into distinct parts.
+/// odd_parts_gf : Partitions into odd parts.
 #[pyfunction]
 pub fn partition_gf(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -246,7 +597,30 @@ pub fn partition_gf(session: &QSession, order: i64) -> QSeries {
     QSeries { fps }
 }
 
-/// Generating function for partitions into distinct parts: prod_{n>=1}(1+q^n).
+/// Generating function for partitions into distinct parts: $\prod_{n \ge 1}(1+q^n)$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The distinct-parts generating function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, distinct_parts_gf
+/// >>> s = QSession()
+/// >>> dpgf = distinct_parts_gf(s, 20)
+///
+/// See Also
+/// --------
+/// partition_gf : Unrestricted partition generating function.
+/// odd_parts_gf : Partitions into odd parts (equal to distinct parts by Euler).
 #[pyfunction]
 pub fn distinct_parts_gf(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -255,7 +629,32 @@ pub fn distinct_parts_gf(session: &QSession, order: i64) -> QSeries {
     QSeries { fps }
 }
 
-/// Generating function for partitions into odd parts: prod_{k>=0} 1/(1-q^{2k+1}).
+/// Generating function for partitions into odd parts: $\prod_{k \ge 0} \frac{1}{1 - q^{2k+1}}$.
+///
+/// By Euler's theorem, this equals the distinct-parts generating function.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The odd-parts generating function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, odd_parts_gf
+/// >>> s = QSession()
+/// >>> opgf = odd_parts_gf(s, 20)
+///
+/// See Also
+/// --------
+/// distinct_parts_gf : Partitions into distinct parts (equal by Euler's theorem).
+/// partition_gf : Unrestricted partition generating function.
 #[pyfunction]
 pub fn odd_parts_gf(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -264,18 +663,83 @@ pub fn odd_parts_gf(session: &QSession, order: i64) -> QSeries {
     QSeries { fps }
 }
 
-/// Generating function for partitions with at most max_part parts.
+/// Generating function for partitions with parts of size at most ``max_part``.
+///
+/// Computes $\prod_{k=1}^{\text{max\_part}} \frac{1}{1 - q^k}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// max_part : int
+///     Maximum allowed part size. Must be positive.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The bounded-parts generating function as a formal power series.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``max_part`` is not positive.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, bounded_parts_gf
+/// >>> s = QSession()
+/// >>> bp = bounded_parts_gf(s, 5, 20)
+///
+/// See Also
+/// --------
+/// partition_gf : Unrestricted partition generating function.
 #[pyfunction]
-pub fn bounded_parts_gf(session: &QSession, max_part: i64, order: i64) -> QSeries {
+pub fn bounded_parts_gf(session: &QSession, max_part: i64, order: i64) -> PyResult<QSeries> {
+    if max_part <= 0 {
+        return Err(PyValueError::new_err(format!(
+            "bounded_parts_gf(): parameter 'max_part' must be positive, got max_part={}", max_part
+        )));
+    }
     let mut inner = session.inner.lock().unwrap();
     let sym_q = inner.get_or_create_symbol_id("q");
     let fps = qseries::bounded_parts_gf(max_part, sym_q, order);
-    QSeries { fps }
+    Ok(QSeries { fps })
 }
 
-/// Compute the rank generating function R(z, q).
+/// Compute the rank generating function $R(z, q)$.
 ///
-/// z is specified as z_num/z_den. At z=1, returns the partition generating function.
+/// The rank of a partition is the largest part minus the number of parts.
+/// The parameter $z$ is specified as the rational number $z\_num / z\_den$.
+/// At $z = 1$, this returns the partition generating function (removable singularity).
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// z_num : int
+///     Numerator of the parameter $z$.
+/// z_den : int
+///     Denominator of the parameter $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The rank generating function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, rank_gf
+/// >>> s = QSession()
+/// >>> r = rank_gf(s, 1, 1, 20)  # z=1 gives partition_gf
+///
+/// See Also
+/// --------
+/// crank_gf : Crank generating function $C(z, q)$.
+/// partition_gf : Unrestricted partition generating function.
 #[pyfunction]
 pub fn rank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -285,9 +749,38 @@ pub fn rank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSerie
     QSeries { fps }
 }
 
-/// Compute the crank generating function C(z, q).
+/// Compute the crank generating function $C(z, q)$.
 ///
-/// z is specified as z_num/z_den. At z=1, returns the partition generating function.
+/// The crank statistic was introduced by Andrews and Garvan to explain
+/// Ramanujan's partition congruences. The parameter $z$ is specified as
+/// $z\_num / z\_den$. At $z = 1$, this returns the partition generating function.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// z_num : int
+///     Numerator of the parameter $z$.
+/// z_den : int
+///     Denominator of the parameter $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The crank generating function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, crank_gf
+/// >>> s = QSession()
+/// >>> c = crank_gf(s, 1, 1, 20)  # z=1 gives partition_gf
+///
+/// See Also
+/// --------
+/// rank_gf : Rank generating function $R(z, q)$.
+/// partition_gf : Unrestricted partition generating function.
 #[pyfunction]
 pub fn crank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -301,9 +794,34 @@ pub fn crank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeri
 // GROUP 5: Factoring, Utilities, and Prodmake/Post-processing
 // ===========================================================================
 
-/// Factor a q-polynomial into (1-q^i) components.
+/// Factor a q-polynomial into $(1 - q^i)$ components.
 ///
-/// Returns a dict: {"scalar": Fraction, "factors": {i: multiplicity, ...}, "is_exact": bool}
+/// Attempts to express the series as $c \cdot \prod_i (1 - q^i)^{m_i}$.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The series to factor.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with keys:
+///     - ``"scalar"`` (Fraction): the leading scalar coefficient $c$.
+///     - ``"factors"`` (dict[int, int]): map from $i$ to multiplicity $m_i$.
+///     - ``"is_exact"`` (bool): whether the factorization is exact.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, qfactor
+/// >>> s = QSession()
+/// >>> f = qfactor(etaq(s, 1, 1, 20))
+/// >>> f["is_exact"]
+/// True
+///
+/// See Also
+/// --------
+/// prodmake : Recover infinite product exponents (Andrews' algorithm).
 #[pyfunction]
 pub fn qfactor(py: Python<'_>, series: &QSeries) -> PyResult<PyObject> {
     let result = qseries::qfactor(&series.fps);
@@ -320,10 +838,36 @@ pub fn qfactor(py: Python<'_>, series: &QSeries) -> PyResult<PyObject> {
     Ok(dict.into())
 }
 
-/// Extract arithmetic subsequence: g[i] = series[m*i + j].
+/// Extract arithmetic subsequence: $g[i] = f[mi + j]$.
 ///
-/// Named `sift` in Python (registered as "sift" to avoid name conflict with
-/// QSeries.sift() method, since Python sees them differently).
+/// Sifts the series $f$ to produce a new series whose $i$-th coefficient
+/// is the $(mi + j)$-th coefficient of $f$. This operation is critical
+/// for studying partition congruences.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series $f$.
+/// m : int
+///     The modulus (step size).
+/// j : int
+///     The residue (offset).
+///
+/// Returns
+/// -------
+/// QSeries
+///     The sifted series $g$ with $g[i] = f[mi + j]$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, partition_gf, sift
+/// >>> s = QSession()
+/// >>> pgf = partition_gf(s, 100)
+/// >>> sifted = sift(pgf, 5, 4)  # coefficients at indices 4, 9, 14, ...
+///
+/// See Also
+/// --------
+/// findcong : Discover partition congruences automatically.
 #[pyfunction]
 #[pyo3(name = "sift")]
 pub fn sift_fn(series: &QSeries, m: i64, j: i64) -> QSeries {
@@ -332,21 +876,93 @@ pub fn sift_fn(series: &QSeries, m: i64, j: i64) -> QSeries {
     }
 }
 
-/// Highest nonzero exponent (degree) of a series.
+/// Return the highest nonzero exponent (degree) of a series.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series.
+///
+/// Returns
+/// -------
+/// int or None
+///     The largest exponent with a nonzero coefficient, or ``None`` if the series is zero.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, qbin, qdegree
+/// >>> s = QSession()
+/// >>> qdegree(qbin(s, 5, 2, 20))
+/// 6
+///
+/// See Also
+/// --------
+/// lqdegree : Lowest nonzero exponent (valuation).
 #[pyfunction]
 pub fn qdegree(series: &QSeries) -> Option<i64> {
     qseries::qdegree(&series.fps)
 }
 
-/// Lowest nonzero exponent (low degree / valuation) of a series.
+/// Return the lowest nonzero exponent (valuation) of a series.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series.
+///
+/// Returns
+/// -------
+/// int or None
+///     The smallest exponent with a nonzero coefficient, or ``None`` if the series is zero.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, lqdegree
+/// >>> s = QSession()
+/// >>> lqdegree(etaq(s, 1, 1, 20))
+/// 0
+///
+/// See Also
+/// --------
+/// qdegree : Highest nonzero exponent (degree).
 #[pyfunction]
 pub fn lqdegree(series: &QSeries) -> Option<i64> {
     qseries::lqdegree(&series.fps)
 }
 
-/// Andrews' algorithm: recover infinite product exponents from series coefficients.
+/// Recover infinite product exponents from series coefficients (Andrews' algorithm).
 ///
-/// Returns a dict: {"factors": {n: Fraction(exponent), ...}, "terms_used": int}
+/// Given a series $f(q)$, finds exponents $e_n$ such that
+/// $f(q) \approx \prod_{n=1}^{N} (1 - q^n)^{e_n}$.
+/// Uses log-derivative recurrence and Mobius inversion.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series to decompose.
+/// max_n : int
+///     Maximum factor index $N$ to compute.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with keys:
+///     - ``"factors"`` (dict[int, Fraction]): map from $n$ to exponent $e_n$.
+///     - ``"terms_used"`` (int): number of series terms consumed.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, partition_gf, prodmake
+/// >>> s = QSession()
+/// >>> pm = prodmake(partition_gf(s, 50), 20)
+/// >>> pm["factors"][1]  # exponent of (1-q) should be -1
+/// Fraction(-1, 1)
+///
+/// See Also
+/// --------
+/// etamake : Express as eta-quotient.
+/// jacprodmake : Express as Jacobi products.
+/// qfactor : Factor a polynomial.
 #[pyfunction]
 pub fn prodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::prodmake(&series.fps, max_n);
@@ -362,9 +978,34 @@ pub fn prodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObje
     Ok(dict.into())
 }
 
-/// Express a series as an eta-quotient: prod eta(d*tau)^{r_d}.
+/// Express a series as an eta-quotient: $\prod_d \eta(d\tau)^{r_d}$.
 ///
-/// Returns a dict: {"factors": {d: int, ...}, "q_shift": Fraction}
+/// Converts the prodmake output into Dedekind eta function notation.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series to decompose.
+/// max_n : int
+///     Maximum factor index for the underlying prodmake.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with keys:
+///     - ``"factors"`` (dict[int, int]): map from divisor $d$ to exponent $r_d$.
+///     - ``"q_shift"`` (Fraction): the $q$-power prefactor.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, partition_gf, etamake
+/// >>> s = QSession()
+/// >>> em = etamake(partition_gf(s, 50), 20)
+///
+/// See Also
+/// --------
+/// prodmake : Underlying Andrews' algorithm.
+/// etaq : Compute an eta product directly.
 #[pyfunction]
 pub fn etamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::etamake(&series.fps, max_n);
@@ -380,9 +1021,36 @@ pub fn etamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObjec
     Ok(dict.into())
 }
 
-/// Express a series as a Jacobi product form: prod JAC(a,b)^exp.
+/// Express a series as a Jacobi product form: $\prod \text{JAC}(a, b)^{e}$.
 ///
-/// Returns a dict: {"factors": {(a,b): int, ...}, "scalar": Fraction, "is_exact": bool}
+/// Searches for a representation using Jacobi triple products with
+/// period detection and residue-class grouping.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series to decompose.
+/// max_n : int
+///     Maximum factor index for the underlying prodmake.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with keys:
+///     - ``"factors"`` (dict[tuple[int,int], int]): map from $(a, b)$ to exponent.
+///     - ``"scalar"`` (Fraction): overall scalar factor.
+///     - ``"is_exact"`` (bool): whether the decomposition covers all factors exactly.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, jacprod, jacprodmake
+/// >>> s = QSession()
+/// >>> jpm = jacprodmake(jacprod(s, 1, 5, 30), 20)
+///
+/// See Also
+/// --------
+/// prodmake : Underlying Andrews' algorithm.
+/// jacprod : Compute a Jacobi product directly.
 #[pyfunction]
 pub fn jacprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::jacprodmake(&series.fps, max_n);
@@ -399,9 +1067,31 @@ pub fn jacprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyO
     Ok(dict.into())
 }
 
-/// Express a series as a product of (1+q^n) factors.
+/// Express a series as a product of $(1 + q^n)$ factors.
 ///
-/// Returns a dict: {n: int, ...}
+/// Iteratively extracts factors using $(1 + q^n) = (1 - q^{2n})/(1 - q^n)$.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series to decompose.
+/// max_n : int
+///     Maximum factor index.
+///
+/// Returns
+/// -------
+/// dict[int, int]
+///     Map from $n$ to the multiplicity of $(1 + q^n)$ in the factorization.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, distinct_parts_gf, mprodmake
+/// >>> s = QSession()
+/// >>> mp = mprodmake(distinct_parts_gf(s, 30), 20)
+///
+/// See Also
+/// --------
+/// prodmake : General infinite product decomposition.
 #[pyfunction]
 pub fn mprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::mprodmake(&series.fps, max_n);
@@ -412,9 +1102,34 @@ pub fn mprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObj
     Ok(dict.into())
 }
 
-/// Express a series in (q^d;q^d)_inf notation.
+/// Express a series in $(q^d; q^d)_\infty$ notation.
 ///
-/// Returns a dict: {"factors": {d: int, ...}, "q_shift": Fraction}
+/// Similar to etamake but uses q-Pochhammer notation instead of Dedekind eta.
+///
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The input series to decompose.
+/// max_n : int
+///     Maximum factor index.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with keys:
+///     - ``"factors"`` (dict[int, int]): map from $d$ to exponent of $(q^d; q^d)_\infty$.
+///     - ``"q_shift"`` (Fraction): the $q$-power prefactor.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, partition_gf, qetamake
+/// >>> s = QSession()
+/// >>> qem = qetamake(partition_gf(s, 50), 20)
+///
+/// See Also
+/// --------
+/// etamake : Express as eta-quotient.
+/// prodmake : General infinite product decomposition.
 #[pyfunction]
 pub fn qetamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::qetamake(&series.fps, max_n);
@@ -434,9 +1149,37 @@ pub fn qetamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObje
 // GROUP 6: Relation Discovery (exact rational)
 // ===========================================================================
 
-/// Find f as a linear combination of basis series: f = sum_i c_i * basis[i].
+/// Find $f$ as a linear combination of basis series: $f = \sum_i c_i \cdot g_i$.
 ///
-/// Returns None if no combination exists, or list[Fraction] of coefficients.
+/// Uses exact rational arithmetic (RREF over $\mathbb{Q}$).
+///
+/// Parameters
+/// ----------
+/// target : QSeries
+///     The target series $f$ to express as a combination.
+/// candidates : list[QSeries]
+///     The basis series $[g_0, g_1, \ldots]$.
+/// topshift : int
+///     Number of leading coefficients to ignore (shift the comparison window).
+///
+/// Returns
+/// -------
+/// list[Fraction] or None
+///     Coefficients $[c_0, c_1, \ldots]$ such that $f = \sum c_i g_i$,
+///     or ``None`` if no linear combination exists.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findlincombo
+/// >>> s = QSession()
+/// >>> f = etaq(s, 1, 1, 30)
+/// >>> result = findlincombo(f, [f], 0)
+/// >>> result  # [Fraction(1, 1)]
+///
+/// See Also
+/// --------
+/// findhom : Homogeneous polynomial relations among series.
+/// findhomcombo : Express target as a homogeneous combination.
 #[pyfunction]
 pub fn findlincombo(
     py: Python<'_>,
@@ -454,9 +1197,36 @@ pub fn findlincombo(
     }
 }
 
-/// Find all homogeneous degree-d polynomial relations among series.
+/// Find all homogeneous degree-$d$ polynomial relations among series.
 ///
-/// Returns list[list[Fraction]] -- each inner list is a relation vector.
+/// Discovers all polynomial relations of exact degree $d$ among the given
+/// series, using monomials of total degree $d$.
+///
+/// Parameters
+/// ----------
+/// series_list : list[QSeries]
+///     The series to search for relations among.
+/// degree : int
+///     The homogeneous degree $d$.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[list[Fraction]]
+///     A list of relation vectors. Each inner list gives coefficients for the
+///     monomials of degree $d$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findhom
+/// >>> s = QSession()
+/// >>> rels = findhom([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 2, 0)
+///
+/// See Also
+/// --------
+/// findnonhom : Non-homogeneous polynomial relations.
+/// findpoly : Polynomial relation $P(x, y) = 0$ between two series.
 #[pyfunction]
 pub fn findhom(
     py: Python<'_>,
@@ -470,9 +1240,43 @@ pub fn findhom(
     Ok(list.into())
 }
 
-/// Find a polynomial relation P(x, y) = 0 between two series.
+/// Find a polynomial relation $P(x, y) = 0$ between two series.
 ///
-/// Returns None if no relation, or dict with coefficients grid, deg_x, deg_y.
+/// Searches for a bivariate polynomial $P$ of degree at most ``deg_x`` in $x$
+/// and ``deg_y`` in $y$ such that $P(x, y) = 0$ when $x$ and $y$ are the
+/// given series.
+///
+/// Parameters
+/// ----------
+/// x : QSeries
+///     First series.
+/// y : QSeries
+///     Second series.
+/// deg_x : int
+///     Maximum degree in $x$.
+/// deg_y : int
+///     Maximum degree in $y$.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// dict or None
+///     ``None`` if no relation found, otherwise a dictionary with keys:
+///     - ``"coefficients"`` (list[list[Fraction]]): coefficient grid $P_{i,j}$.
+///     - ``"deg_x"`` (int): degree in $x$.
+///     - ``"deg_y"`` (int): degree in $y$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findpoly
+/// >>> s = QSession()
+/// >>> result = findpoly(etaq(s, 1, 5, 50), etaq(s, 2, 5, 50), 3, 3, 0)
+///
+/// See Also
+/// --------
+/// findhom : Homogeneous multivariate relations.
+/// findlincombo : Linear combination search.
 #[pyfunction]
 pub fn findpoly(
     py: Python<'_>,
@@ -497,9 +1301,37 @@ pub fn findpoly(
 
 /// Discover congruences among the coefficients of a series.
 ///
-/// NOTE: findcong does NOT take topshift.
+/// Tests whether the series satisfies congruences of the form
+/// $a(mn + b) \equiv 0 \pmod{r}$ for the given moduli $m$.
 ///
-/// Returns list of dicts: [{"modulus": int, "residue": int, "divisor": int}, ...]
+/// Parameters
+/// ----------
+/// series : QSeries
+///     The series whose coefficients to test.
+/// moduli : list[int]
+///     List of moduli $m$ to test for congruences.
+///
+/// Returns
+/// -------
+/// list[dict]
+///     A list of found congruences, each a dictionary with keys:
+///     - ``"modulus"`` (int): the modulus $m$.
+///     - ``"residue"`` (int): the residue $b$.
+///     - ``"divisor"`` (int): the divisor $r$ such that $r | a(mn + b)$ for all $n$.
+///
+/// Notes
+/// -----
+/// This function does NOT take a ``topshift`` parameter.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, partition_gf, findcong
+/// >>> s = QSession()
+/// >>> congs = findcong(partition_gf(s, 200), [5, 7, 11])
+///
+/// See Also
+/// --------
+/// sift : Extract arithmetic subsequences manually.
 #[pyfunction]
 pub fn findcong(py: Python<'_>, series: &QSeries, moduli: Vec<i64>) -> PyResult<PyObject> {
     let result = qseries::findcong(&series.fps, &moduli);
@@ -517,9 +1349,34 @@ pub fn findcong(py: Python<'_>, series: &QSeries, moduli: Vec<i64>) -> PyResult<
     Ok(list.into())
 }
 
-/// Find all non-homogeneous polynomial relations of degree <= d among series.
+/// Find all non-homogeneous polynomial relations of degree $\le d$ among series.
 ///
-/// Returns list[list[Fraction]] -- relation vectors covering all degrees 0..=d.
+/// Includes monomials of all degrees from 0 through $d$ (not just exact degree $d$).
+///
+/// Parameters
+/// ----------
+/// series_list : list[QSeries]
+///     The series to search for relations among.
+/// degree : int
+///     Maximum total degree $d$.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[list[Fraction]]
+///     A list of relation vectors covering monomials of all degrees $0, \ldots, d$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findnonhom
+/// >>> s = QSession()
+/// >>> rels = findnonhom([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 2, 0)
+///
+/// See Also
+/// --------
+/// findhom : Homogeneous (exact degree) relations.
+/// findnonhomcombo : Express a target as a non-homogeneous combination.
 #[pyfunction]
 pub fn findnonhom(
     py: Python<'_>,
@@ -533,9 +1390,37 @@ pub fn findnonhom(
     Ok(list.into())
 }
 
-/// Express target as a homogeneous degree-d combination of basis series.
+/// Express target as a homogeneous degree-$d$ combination of basis series.
 ///
-/// Returns None or list[Fraction] of monomial coefficients.
+/// Searches for coefficients $c_i$ such that the target equals
+/// $\sum c_i \cdot M_i$ where $M_i$ are monomials of degree $d$ in the basis series.
+///
+/// Parameters
+/// ----------
+/// target : QSeries
+///     The target series.
+/// candidates : list[QSeries]
+///     The basis series.
+/// degree : int
+///     The homogeneous degree $d$.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[Fraction] or None
+///     Coefficients for the degree-$d$ monomials, or ``None`` if no combination exists.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findhomcombo
+/// >>> s = QSession()
+/// >>> result = findhomcombo(etaq(s, 1, 5, 30), [etaq(s, 1, 5, 30)], 1, 0)
+///
+/// See Also
+/// --------
+/// findlincombo : Linear (degree 1) combination.
+/// findnonhomcombo : Non-homogeneous combination.
 #[pyfunction]
 pub fn findhomcombo(
     py: Python<'_>,
@@ -554,9 +1439,36 @@ pub fn findhomcombo(
     }
 }
 
-/// Express target as a non-homogeneous degree <= d combination of basis series.
+/// Express target as a non-homogeneous degree $\le d$ combination of basis series.
 ///
-/// Returns None or list[Fraction] of monomial coefficients.
+/// Like ``findhomcombo`` but includes monomials of all degrees from 0 through $d$.
+///
+/// Parameters
+/// ----------
+/// target : QSeries
+///     The target series.
+/// candidates : list[QSeries]
+///     The basis series.
+/// degree : int
+///     Maximum total degree $d$.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[Fraction] or None
+///     Coefficients for all monomials up to degree $d$, or ``None`` if no combination exists.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findnonhomcombo
+/// >>> s = QSession()
+/// >>> result = findnonhomcombo(etaq(s, 1, 5, 30), [etaq(s, 1, 5, 30)], 2, 0)
+///
+/// See Also
+/// --------
+/// findhomcombo : Homogeneous combination.
+/// findlincombo : Linear combination.
 #[pyfunction]
 pub fn findnonhomcombo(
     py: Python<'_>,
@@ -579,9 +1491,37 @@ pub fn findnonhomcombo(
 // GROUP 7: Relation Discovery (modular and structural)
 // ===========================================================================
 
-/// Find a linear combination mod p: f = sum_i c_i * basis[i] (mod p).
+/// Find a linear combination modulo $p$: $f \equiv \sum_i c_i \cdot g_i \pmod{p}$.
 ///
-/// Returns None or list[int] (coefficients mod p, not Fraction).
+/// Coefficients are integers modulo $p$, not exact rationals.
+///
+/// Parameters
+/// ----------
+/// target : QSeries
+///     The target series $f$.
+/// candidates : list[QSeries]
+///     The basis series $[g_0, g_1, \ldots]$.
+/// p : int
+///     The prime modulus.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[int] or None
+///     Coefficients $[c_0, c_1, \ldots]$ as integers mod $p$,
+///     or ``None`` if no combination exists.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findlincombomodp
+/// >>> s = QSession()
+/// >>> result = findlincombomodp(etaq(s, 1, 1, 30), [etaq(s, 1, 1, 30)], 7, 0)
+///
+/// See Also
+/// --------
+/// findlincombo : Exact rational version.
+/// findhommodp : Homogeneous relations mod $p$.
 #[pyfunction]
 pub fn findlincombomodp(
     _py: Python<'_>,
@@ -594,9 +1534,36 @@ pub fn findlincombomodp(
     qseries::findlincombomodp(&target.fps, &fps_refs, p, topshift)
 }
 
-/// Find homogeneous degree-d relations mod p.
+/// Find homogeneous degree-$d$ relations modulo $p$.
 ///
-/// Returns list[list[int]] -- coefficients are i64 mod p.
+/// Coefficients are integers modulo $p$, not exact rationals.
+///
+/// Parameters
+/// ----------
+/// series_list : list[QSeries]
+///     The series to search for relations among.
+/// p : int
+///     The prime modulus.
+/// degree : int
+///     The homogeneous degree $d$.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[list[int]]
+///     A list of relation vectors with integer coefficients mod $p$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findhommodp
+/// >>> s = QSession()
+/// >>> rels = findhommodp([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 7, 2, 0)
+///
+/// See Also
+/// --------
+/// findhom : Exact rational version.
+/// findlincombomodp : Linear combination mod $p$.
 #[pyfunction]
 pub fn findhommodp(
     _py: Python<'_>,
@@ -609,9 +1576,38 @@ pub fn findhommodp(
     qseries::findhommodp(&fps_refs, p, degree, topshift)
 }
 
-/// Express target as a homogeneous degree-d combination mod p.
+/// Express target as a homogeneous degree-$d$ combination modulo $p$.
 ///
-/// Returns None or list[int] (coefficients mod p).
+/// Coefficients are integers modulo $p$, not exact rationals.
+///
+/// Parameters
+/// ----------
+/// target : QSeries
+///     The target series.
+/// candidates : list[QSeries]
+///     The basis series.
+/// p : int
+///     The prime modulus.
+/// degree : int
+///     The homogeneous degree $d$.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[int] or None
+///     Coefficients for degree-$d$ monomials as integers mod $p$,
+///     or ``None`` if no combination exists.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findhomcombomodp
+/// >>> s = QSession()
+/// >>> result = findhomcombomodp(etaq(s, 1, 5, 30), [etaq(s, 1, 5, 30)], 7, 1, 0)
+///
+/// See Also
+/// --------
+/// findhomcombo : Exact rational version.
 #[pyfunction]
 pub fn findhomcombomodp(
     _py: Python<'_>,
@@ -627,18 +1623,68 @@ pub fn findhomcombomodp(
 
 /// Find the maximal linearly independent subset of the given series.
 ///
-/// Returns list[int] of indices.
+/// Uses inline Gaussian elimination to extract pivot columns.
+///
+/// Parameters
+/// ----------
+/// series_list : list[QSeries]
+///     The series to test for linear independence.
+/// topshift : int
+///     Number of leading coefficients to ignore.
+///
+/// Returns
+/// -------
+/// list[int]
+///     Indices of a maximal linearly independent subset.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findmaxind
+/// >>> s = QSession()
+/// >>> indices = findmaxind([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 0)
+///
+/// See Also
+/// --------
+/// findlincombo : Test if a series is a combination of others.
 #[pyfunction]
 pub fn findmaxind(series_list: Vec<PyRef<'_, QSeries>>, topshift: i64) -> Vec<usize> {
     let fps_refs = extract_fps_refs(&series_list);
     qseries::findmaxind(&fps_refs, topshift)
 }
 
-/// Search for linear combinations of series with nice product forms.
+/// Search for linear combinations of series with nice infinite product forms.
 ///
-/// NOTE: findprod does NOT take topshift. It takes max_coeff and max_exp.
+/// Brute-force search over integer coefficient vectors in
+/// $[-\text{max\_coeff}, \text{max\_coeff}]^k$ checking which combinations
+/// have nice product representations via prodmake.
 ///
-/// Returns list[list[int]] -- coefficient vectors for combinations with nice products.
+/// Parameters
+/// ----------
+/// series_list : list[QSeries]
+///     The series to combine.
+/// max_coeff : int
+///     Maximum absolute value of coefficients in the search.
+/// max_exp : int
+///     Maximum exponent to check in the product form.
+///
+/// Returns
+/// -------
+/// list[list[int]]
+///     Coefficient vectors for combinations that have nice product forms.
+///
+/// Notes
+/// -----
+/// This function does NOT take a ``topshift`` parameter.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, etaq, findprod
+/// >>> s = QSession()
+/// >>> results = findprod([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 2, 10)
+///
+/// See Also
+/// --------
+/// prodmake : Decompose a single series into product form.
 #[pyfunction]
 pub fn findprod(
     _py: Python<'_>,
@@ -661,17 +1707,45 @@ fn parse_qmonomials(params: Vec<(i64, i64, i64)>) -> Vec<QMonomial> {
         .collect()
 }
 
-/// Evaluate a basic hypergeometric series _r phi_s to O(q^order) as a formal power series.
+/// Evaluate the basic hypergeometric series ${}_r\phi_s$ (DLMF 17.4.1).
 ///
-/// Upper and lower parameters are lists of (num, den, power) tuples,
-/// where each tuple (n, d, p) represents the QMonomial (n/d) * q^p.
-/// The argument z is similarly (z_num/z_den) * q^z_pow.
+/// Computes ${}_r\phi_s(a_1, \ldots, a_r; b_1, \ldots, b_s; q, z)$ as a
+/// formal power series truncated to $O(q^{\text{order}})$.
 ///
-/// ```python
-/// s = QSession()
-/// # _1phi0(q^2; -; q, q) = (q^3;q)_inf / (q;q)_inf
-/// result = phi(s, [(1,1,2)], [], 1, 1, 1, 20)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters $[a_1, \ldots, a_r]$. Each is ``(num, den, power)``
+///     representing the q-monomial $\frac{num}{den} \cdot q^{power}$.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters $[b_1, \ldots, b_s]$, same tuple format.
+/// z_num : int
+///     Numerator of the argument $z$ coefficient.
+/// z_den : int
+///     Denominator of the argument $z$ coefficient.
+/// z_pow : int
+///     Power of $q$ in the argument $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The basic hypergeometric series as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, phi
+/// >>> s = QSession()
+/// >>> result = phi(s, [(1,1,2)], [], 1, 1, 1, 20)  # _1phi0(q^2; -; q, q)
+///
+/// See Also
+/// --------
+/// psi : Bilateral hypergeometric series ${}_r\psi_s$.
+/// try_summation : Try closed-form summation formulas.
+/// heine1 : Heine's first transformation for ${}_2\phi_1$.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn phi(
@@ -694,12 +1768,42 @@ pub fn phi(
     QSeries { fps }
 }
 
-/// Evaluate a bilateral hypergeometric series _r psi_s to O(q^order).
+/// Evaluate the bilateral hypergeometric series ${}_r\psi_s$.
 ///
-/// ```python
-/// s = QSession()
-/// result = psi(s, [(1,1,2)], [(1,1,5)], 1, 1, 1, 20)
-/// ```
+/// Computes ${}_r\psi_s(a_1, \ldots, a_r; b_1, \ldots, b_s; q, z)$ by
+/// summing over both positive and negative indices.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters. Each is ``(num, den, power)`` representing $\frac{num}{den} \cdot q^{power}$.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters, same tuple format.
+/// z_num : int
+///     Numerator of the argument $z$ coefficient.
+/// z_den : int
+///     Denominator of the argument $z$ coefficient.
+/// z_pow : int
+///     Power of $q$ in the argument $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The bilateral hypergeometric series as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, psi
+/// >>> s = QSession()
+/// >>> result = psi(s, [(1,1,2)], [(1,1,5)], 1, 1, 1, 20)
+///
+/// See Also
+/// --------
+/// phi : Basic (unilateral) hypergeometric series ${}_r\phi_s$.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn psi(
@@ -722,16 +1826,44 @@ pub fn psi(
     QSeries { fps }
 }
 
-/// Try all summation formulas on a hypergeometric series.
+/// Try closed-form summation formulas on a hypergeometric series.
 ///
-/// Returns Some(QSeries) if a summation formula applies (q-Gauss, q-Vandermonde,
-/// q-Saalschutz, q-Kummer, q-Dixon), or None if no formula matches.
+/// Tests the series against known summation formulas: q-Gauss, q-Vandermonde,
+/// q-Saalschutz, q-Kummer, and q-Dixon. Returns the closed form if any
+/// formula matches, otherwise ``None``.
 ///
-/// ```python
-/// s = QSession()
-/// # q-Gauss: _2phi1(q, q^2; q^5; q, q^2)
-/// closed = try_summation(s, [(1,1,1),(1,1,2)], [(1,1,5)], 1, 1, 2, 30)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters. Each is ``(num, den, power)`` representing $\frac{num}{den} \cdot q^{power}$.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters, same tuple format.
+/// z_num : int
+///     Numerator of the argument $z$ coefficient.
+/// z_den : int
+///     Denominator of the argument $z$ coefficient.
+/// z_pow : int
+///     Power of $q$ in the argument $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries or None
+///     The closed-form evaluation if a summation formula applies, otherwise ``None``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, try_summation
+/// >>> s = QSession()
+/// >>> closed = try_summation(s, [(1,1,1),(1,1,2)], [(1,1,5)], 1, 1, 2, 30)
+///
+/// See Also
+/// --------
+/// phi : Direct evaluation of ${}_r\phi_s$.
+/// heine1 : Heine's first transformation for ${}_2\phi_1$.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn try_summation(
@@ -756,16 +1888,49 @@ pub fn try_summation(
     }
 }
 
-/// Apply Heine's first transformation to a 2phi1 series.
+/// Apply Heine's first transformation to a ${}_2\phi_1$ series.
 ///
-/// Returns a tuple (prefactor: QSeries, transformed: QSeries) where
-/// transformed = prefactor * eval_phi(transformed_series).
-/// Raises ValueError if the series is not a 2phi1.
+/// Transforms ${}_2\phi_1(a, b; c; q, z)$ into a product prefactor times
+/// a different ${}_2\phi_1$.
 ///
-/// ```python
-/// s = QSession()
-/// prefactor, result = heine1(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters $[a, b]$. Each is ``(num, den, power)``.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters $[c]$. Each is ``(num, den, power)``.
+/// z_num : int
+///     Numerator of the argument $z$ coefficient.
+/// z_den : int
+///     Denominator of the argument $z$ coefficient.
+/// z_pow : int
+///     Power of $q$ in the argument $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// tuple[QSeries, QSeries]
+///     ``(prefactor, result)`` where ``result = prefactor * transformed_phi``.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If the series is not a ${}_2\phi_1$ (requires exactly 2 upper and 1 lower parameter).
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, heine1
+/// >>> s = QSession()
+/// >>> prefactor, result = heine1(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+///
+/// See Also
+/// --------
+/// heine2 : Heine's second transformation.
+/// heine3 : Heine's third transformation.
+/// phi : Direct evaluation of ${}_r\phi_s$.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn heine1(
@@ -790,16 +1955,54 @@ pub fn heine1(
             let combined = arithmetic::mul(&result.prefactor, &transformed_eval);
             Ok((QSeries { fps: result.prefactor }, QSeries { fps: combined }))
         }
-        None => Err(pyo3::exceptions::PyValueError::new_err(
-            "heine1 requires a 2phi1 series (r=2, s=1)"
+        None => Err(PyValueError::new_err(
+            "heine1(): requires a 2phi1 series (2 upper, 1 lower parameters)"
         )),
     }
 }
 
-/// Apply Heine's second transformation to a 2phi1 series.
+/// Apply Heine's second transformation to a ${}_2\phi_1$ series.
 ///
-/// Returns (prefactor: QSeries, transformed_evaluation: QSeries).
-/// Raises ValueError if the series is not a 2phi1.
+/// Transforms ${}_2\phi_1(a, b; c; q, z)$ into a product prefactor times
+/// a different ${}_2\phi_1$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters $[a, b]$. Each is ``(num, den, power)``.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters $[c]$. Each is ``(num, den, power)``.
+/// z_num : int
+///     Numerator of the argument $z$ coefficient.
+/// z_den : int
+///     Denominator of the argument $z$ coefficient.
+/// z_pow : int
+///     Power of $q$ in the argument $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// tuple[QSeries, QSeries]
+///     ``(prefactor, result)`` where ``result = prefactor * transformed_phi``.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If the series is not a ${}_2\phi_1$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, heine2
+/// >>> s = QSession()
+/// >>> prefactor, result = heine2(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+///
+/// See Also
+/// --------
+/// heine1 : Heine's first transformation.
+/// heine3 : Heine's third transformation.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn heine2(
@@ -824,16 +2027,54 @@ pub fn heine2(
             let combined = arithmetic::mul(&result.prefactor, &transformed_eval);
             Ok((QSeries { fps: result.prefactor }, QSeries { fps: combined }))
         }
-        None => Err(pyo3::exceptions::PyValueError::new_err(
-            "heine2 requires a 2phi1 series (r=2, s=1)"
+        None => Err(PyValueError::new_err(
+            "heine2(): requires a 2phi1 series (2 upper, 1 lower parameters)"
         )),
     }
 }
 
-/// Apply Heine's third transformation to a 2phi1 series.
+/// Apply Heine's third transformation to a ${}_2\phi_1$ series.
 ///
-/// Returns (prefactor: QSeries, transformed_evaluation: QSeries).
-/// Raises ValueError if the series is not a 2phi1.
+/// Transforms ${}_2\phi_1(a, b; c; q, z)$ into a product prefactor times
+/// a different ${}_2\phi_1$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters $[a, b]$. Each is ``(num, den, power)``.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters $[c]$. Each is ``(num, den, power)``.
+/// z_num : int
+///     Numerator of the argument $z$ coefficient.
+/// z_den : int
+///     Denominator of the argument $z$ coefficient.
+/// z_pow : int
+///     Power of $q$ in the argument $z$.
+/// order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// tuple[QSeries, QSeries]
+///     ``(prefactor, result)`` where ``result = prefactor * transformed_phi``.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If the series is not a ${}_2\phi_1$.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, heine3
+/// >>> s = QSession()
+/// >>> prefactor, result = heine3(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+///
+/// See Also
+/// --------
+/// heine1 : Heine's first transformation.
+/// heine2 : Heine's second transformation.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn heine3(
@@ -858,8 +2099,8 @@ pub fn heine3(
             let combined = arithmetic::mul(&result.prefactor, &transformed_eval);
             Ok((QSeries { fps: result.prefactor }, QSeries { fps: combined }))
         }
-        None => Err(pyo3::exceptions::PyValueError::new_err(
-            "heine3 requires a 2phi1 series (r=2, s=1)"
+        None => Err(PyValueError::new_err(
+            "heine3(): requires a 2phi1 series (2 upper, 1 lower parameters)"
         )),
     }
 }
@@ -870,14 +2111,47 @@ pub fn heine3(
 
 /// Prove an eta-quotient identity via the valence formula.
 ///
-/// Takes two sides as lists of (delta, r_delta) pairs and a level N.
-/// Returns a dict with proof result.
+/// Each side is given as a list of $(\delta, r_\delta)$ pairs representing
+/// $\prod_\delta \eta(\delta\tau)^{r_\delta}$. The proof uses the Sturm
+/// bound to verify equality of modular forms.
 ///
-/// ```python
-/// s = QSession()
-/// result = prove_eta_id(s, [(5, 6)], [(1, 6)], 5)
-/// print(result["status"])  # "proved", "not_modular", "negative_order", "counterexample"
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session (kept for API consistency).
+/// lhs_factors : list[tuple[int, int]]
+///     Left-hand side factors as $(\delta, r_\delta)$ pairs.
+/// rhs_factors : list[tuple[int, int]]
+///     Right-hand side factors as $(\delta, r_\delta)$ pairs.
+/// level : int
+///     The modular level $N$. Must be positive.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with key ``"status"`` being one of:
+///     - ``"proved"``: identity verified up to Sturm bound (includes ``"sturm_bound"``, ``"cusp_orders"``).
+///     - ``"not_modular"``: modularity conditions failed (includes ``"failed_conditions"``).
+///     - ``"negative_order"``: cusp order is negative (includes ``"cusp"``, ``"order"``).
+///     - ``"counterexample"``: coefficient mismatch found (includes ``"coefficient_index"``).
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``level`` is not positive.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, prove_eta_id
+/// >>> s = QSession()
+/// >>> result = prove_eta_id(s, [(5, 6)], [(1, 6)], 5)
+/// >>> result["status"]
+/// 'proved'
+///
+/// See Also
+/// --------
+/// search_identities : Search the identity database.
+/// etamake : Express a series as an eta-quotient.
 #[pyfunction]
 #[pyo3(signature = (session, lhs_factors, rhs_factors, level))]
 pub fn prove_eta_id(
@@ -887,6 +2161,11 @@ pub fn prove_eta_id(
     level: i64,
 ) -> PyResult<PyObject> {
     let _ = session; // Session not needed for proving, but keeps API consistent
+    if level <= 0 {
+        return Err(PyValueError::new_err(format!(
+            "prove_eta_id(): parameter 'level' must be positive, got level={}", level
+        )));
+    }
 
     use qsym_core::qseries::identity::{EtaExpression, EtaIdentity, prove_eta_identity, ProofResult};
 
@@ -930,11 +2209,36 @@ pub fn prove_eta_id(
 
 /// Search the identity database by tag, function, or pattern.
 ///
-/// ```python
-/// results = search_identities("classical", search_type="tag")
-/// results = search_identities("eta", search_type="function")
-/// results = search_identities("partition", search_type="pattern")
-/// ```
+/// Searches the built-in identity database (or a custom TOML file) for
+/// matching entries.
+///
+/// Parameters
+/// ----------
+/// query : str
+///     Search query string.
+/// search_type : str, optional
+///     Type of search: ``"tag"``, ``"function"``, or ``"pattern"`` (default).
+/// db_path : str or None, optional
+///     Path to a custom identity database TOML file. Uses the built-in
+///     database if ``None``.
+///
+/// Returns
+/// -------
+/// list[dict]
+///     A list of matching identity entries, each a dictionary with keys
+///     ``"id"``, ``"name"``, ``"tags"``, ``"functions"``, and optionally
+///     ``"author"`` and ``"year"``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import search_identities
+/// >>> results = search_identities("classical", search_type="tag")
+/// >>> results = search_identities("eta", search_type="function")
+/// >>> results = search_identities("partition", search_type="pattern")
+///
+/// See Also
+/// --------
+/// prove_eta_id : Prove an eta-quotient identity.
 #[pyfunction]
 #[pyo3(signature = (query, search_type = "pattern", db_path = None))]
 pub fn search_identities(
@@ -955,7 +2259,7 @@ pub fn search_identities(
     };
 
     let db = IdentityDatabase::load_from_toml(&toml_content)
-        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+        .map_err(|e| PyValueError::new_err(e))?;
 
     let results: Vec<&qsym_core::qseries::identity::IdentityEntry> = match search_type {
         "tag" => db.search_by_tag(query),
@@ -997,7 +2301,25 @@ fn qmonomial_from_tuple(num: i64, den: i64, pow: i64) -> QMonomial {
     QMonomial::new(coeff, pow)
 }
 
-/// Third-order mock theta function f(q) (Ramanujan).
+/// Third-order mock theta function $f(q) = \sum_{n=0}^{\infty} \frac{q^{n^2}}{(-q;q)_n^2}$ (Ramanujan).
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_f3
+/// >>> s = QSession()
+/// >>> f3 = mock_theta_f3(s, 20)
 #[pyfunction]
 pub fn mock_theta_f3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1007,7 +2329,19 @@ pub fn mock_theta_f3(session: &QSession, truncation_order: i64) -> PyResult<QSer
     Ok(QSeries { fps })
 }
 
-/// Third-order mock theta function phi(q).
+/// Third-order mock theta function $\phi(q) = \sum_{n=0}^{\infty} \frac{q^{n^2}}{(-q^2;q^2)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_phi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1017,7 +2351,19 @@ pub fn mock_theta_phi3(session: &QSession, truncation_order: i64) -> PyResult<QS
     Ok(QSeries { fps })
 }
 
-/// Third-order mock theta function psi(q).
+/// Third-order mock theta function $\psi(q) = \sum_{n=1}^{\infty} \frac{q^{n^2}}{(q;q^2)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_psi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1027,7 +2373,19 @@ pub fn mock_theta_psi3(session: &QSession, truncation_order: i64) -> PyResult<QS
     Ok(QSeries { fps })
 }
 
-/// Third-order mock theta function chi(q).
+/// Third-order mock theta function $\chi(q) = \sum_{n=0}^{\infty} \frac{q^{n^2} (-q;q)_n}{(-q^3;q^3)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_chi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1037,7 +2395,19 @@ pub fn mock_theta_chi3(session: &QSession, truncation_order: i64) -> PyResult<QS
     Ok(QSeries { fps })
 }
 
-/// Third-order mock theta function omega(q).
+/// Third-order mock theta function $\omega(q) = \sum_{n=0}^{\infty} \frac{q^{2n(n+1)}}{(q;q^2)_{n+1}^2}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_omega3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1047,7 +2417,19 @@ pub fn mock_theta_omega3(session: &QSession, truncation_order: i64) -> PyResult<
     Ok(QSeries { fps })
 }
 
-/// Third-order mock theta function nu(q).
+/// Third-order mock theta function $\nu(q) = \sum_{n=0}^{\infty} \frac{q^{n(n+1)}}{(-q;q^2)_{n+1}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_nu3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1057,7 +2439,19 @@ pub fn mock_theta_nu3(session: &QSession, truncation_order: i64) -> PyResult<QSe
     Ok(QSeries { fps })
 }
 
-/// Third-order mock theta function rho(q).
+/// Third-order mock theta function $\rho(q) = \sum_{n=0}^{\infty} \frac{q^{2n(n+1)}}{(q;q^2)_{n+1}(q^3;q^6)_{n+1}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_rho3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1067,7 +2461,19 @@ pub fn mock_theta_rho3(session: &QSession, truncation_order: i64) -> PyResult<QS
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function f0(q).
+/// Fifth-order mock theta function $f_0(q) = \sum_{n=0}^{\infty} \frac{q^{n^2}}{(-q;q)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1077,7 +2483,19 @@ pub fn mock_theta_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QS
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function f1(q).
+/// Fifth-order mock theta function $f_1(q) = \sum_{n=1}^{\infty} \frac{q^{n(n+1)}}{(-q;q)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1087,7 +2505,19 @@ pub fn mock_theta_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QS
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function F0(q).
+/// Fifth-order mock theta function $F_0(q) = \sum_{n=0}^{\infty} \frac{q^{2n^2}}{(q;q^2)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_cap_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1097,7 +2527,19 @@ pub fn mock_theta_cap_f0_5(session: &QSession, truncation_order: i64) -> PyResul
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function F1(q).
+/// Fifth-order mock theta function $F_1(q) = \sum_{n=0}^{\infty} \frac{q^{2n(n+1)}}{(q;q^2)_{n+1}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_cap_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1107,7 +2549,19 @@ pub fn mock_theta_cap_f1_5(session: &QSession, truncation_order: i64) -> PyResul
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function phi0(q).
+/// Fifth-order mock theta function $\phi_0(q) = \sum_{n=0}^{\infty} q^{n^2} (-q;q^2)_n$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_phi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1117,7 +2571,19 @@ pub fn mock_theta_phi0_5(session: &QSession, truncation_order: i64) -> PyResult<
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function phi1(q).
+/// Fifth-order mock theta function $\phi_1(q) = \sum_{n=0}^{\infty} q^{(n+1)^2} (-q;q^2)_n$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_phi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1127,7 +2593,19 @@ pub fn mock_theta_phi1_5(session: &QSession, truncation_order: i64) -> PyResult<
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function psi0(q).
+/// Fifth-order mock theta function $\psi_0(q) = \sum_{n=0}^{\infty} q^{n(n+1)/2} (-q;q)_n$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_psi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1137,7 +2615,19 @@ pub fn mock_theta_psi0_5(session: &QSession, truncation_order: i64) -> PyResult<
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function psi1(q).
+/// Fifth-order mock theta function $\psi_1(q) = \sum_{n=1}^{\infty} q^{n(n+1)/2} (-q;q)_{n-1}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_psi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1147,7 +2637,19 @@ pub fn mock_theta_psi1_5(session: &QSession, truncation_order: i64) -> PyResult<
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function chi0(q).
+/// Fifth-order mock theta function $\chi_0(q) = \sum_{n=0}^{\infty} \frac{q^n (-q;q)_n}{(q;q^2)_{n+1}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_chi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1157,7 +2659,19 @@ pub fn mock_theta_chi0_5(session: &QSession, truncation_order: i64) -> PyResult<
     Ok(QSeries { fps })
 }
 
-/// Fifth-order mock theta function chi1(q).
+/// Fifth-order mock theta function $\chi_1(q) = \sum_{n=0}^{\infty} \frac{q^n (-q;q)_n}{(q;q^2)_{n+1}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_chi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1167,7 +2681,19 @@ pub fn mock_theta_chi1_5(session: &QSession, truncation_order: i64) -> PyResult<
     Ok(QSeries { fps })
 }
 
-/// Seventh-order mock theta function F0(q).
+/// Seventh-order mock theta function $F_0(q) = \sum_{n=0}^{\infty} \frac{q^{n^2}}{(q^n;q)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_cap_f0_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1177,7 +2703,19 @@ pub fn mock_theta_cap_f0_7(session: &QSession, truncation_order: i64) -> PyResul
     Ok(QSeries { fps })
 }
 
-/// Seventh-order mock theta function F1(q).
+/// Seventh-order mock theta function $F_1(q) = \sum_{n=1}^{\infty} \frac{q^{n^2}}{(q^n;q)_n}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_cap_f1_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1187,7 +2725,19 @@ pub fn mock_theta_cap_f1_7(session: &QSession, truncation_order: i64) -> PyResul
     Ok(QSeries { fps })
 }
 
-/// Seventh-order mock theta function F2(q).
+/// Seventh-order mock theta function $F_2(q) = \sum_{n=0}^{\infty} \frac{q^{n(n+1)}}{(q^{n+1};q)_{n+1}}$.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The mock theta function as a formal power series.
 #[pyfunction]
 pub fn mock_theta_cap_f2_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1201,14 +2751,37 @@ pub fn mock_theta_cap_f2_7(session: &QSession, truncation_order: i64) -> PyResul
 // 10b. Appell-Lerch sums and universal mock theta functions (3 functions)
 // ---------------------------------------------------------------------------
 
-/// Compute the Appell-Lerch bilateral sum m(q^a, q, q^z) as a formal power series.
+/// Compute the Appell-Lerch bilateral sum $m(q^a, q, q^z)$ as a formal power series.
 ///
-/// Returns the raw bilateral sum (not normalized by j(z;q), which vanishes for integer parameters).
+/// Returns the raw bilateral sum (not divided by $j(z;q)$, which vanishes
+/// for integer parameters).
 ///
-/// ```python
-/// s = QSession()
-/// result = appell_lerch_m(s, 3, 2, 20)  # m(q^3, q, q^2) to O(q^20)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// a_pow : int
+///     Power of $q$ in the first argument.
+/// z_pow : int
+///     Power of $q$ in the third argument.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The Appell-Lerch sum as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, appell_lerch_m
+/// >>> s = QSession()
+/// >>> result = appell_lerch_m(s, 3, 2, 20)
+///
+/// See Also
+/// --------
+/// universal_mock_theta_g2 : Universal mock theta function $g_2$.
+/// universal_mock_theta_g3 : Universal mock theta function $g_3$.
 #[pyfunction]
 pub fn appell_lerch_m(session: &QSession, a_pow: i64, z_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -1218,16 +2791,47 @@ pub fn appell_lerch_m(session: &QSession, a_pow: i64, z_pow: i64, truncation_ord
     Ok(QSeries { fps })
 }
 
-/// Compute the universal mock theta function g2(q^a, q) as a formal power series.
+/// Compute the universal mock theta function $g_2(q^a, q)$ as a formal power series.
 ///
-/// Requires a_pow >= 2 for nontrivial result.
+/// The universal mock theta function $g_2$ is defined using Appell-Lerch
+/// sums with a positive-exponent algebraic identity.
 ///
-/// ```python
-/// s = QSession()
-/// result = universal_mock_theta_g2(s, 3, 20)  # g2(q^3, q) to O(q^20)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// a_pow : int
+///     Power of $q$ in the first argument. Must be $\ge 2$ for nontrivial result.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The universal mock theta function as a formal power series.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``a_pow`` is less than 2.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, universal_mock_theta_g2
+/// >>> s = QSession()
+/// >>> result = universal_mock_theta_g2(s, 3, 20)
+///
+/// See Also
+/// --------
+/// universal_mock_theta_g3 : Universal mock theta function $g_3$.
+/// appell_lerch_m : Appell-Lerch bilateral sum.
 #[pyfunction]
 pub fn universal_mock_theta_g2(session: &QSession, a_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
+    if a_pow < 2 {
+        return Err(PyValueError::new_err(format!(
+            "universal_mock_theta_g2(): parameter 'a_pow' must be >= 2, got a_pow={}", a_pow
+        )));
+    }
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
     let var = inner.get_or_create_symbol_id("q");
     drop(inner);
@@ -1235,16 +2839,47 @@ pub fn universal_mock_theta_g2(session: &QSession, a_pow: i64, truncation_order:
     Ok(QSeries { fps })
 }
 
-/// Compute the universal mock theta function g3(q^a, q) as a formal power series.
+/// Compute the universal mock theta function $g_3(q^a, q)$ as a formal power series.
 ///
-/// Requires a_pow >= 2 for nontrivial result.
+/// The universal mock theta function $g_3$ is defined using Appell-Lerch
+/// sums with a positive-exponent algebraic identity.
 ///
-/// ```python
-/// s = QSession()
-/// result = universal_mock_theta_g3(s, 3, 20)  # g3(q^3, q) to O(q^20)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// a_pow : int
+///     Power of $q$ in the first argument. Must be $\ge 2$ for nontrivial result.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// QSeries
+///     The universal mock theta function as a formal power series.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``a_pow`` is less than 2.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, universal_mock_theta_g3
+/// >>> s = QSession()
+/// >>> result = universal_mock_theta_g3(s, 3, 20)
+///
+/// See Also
+/// --------
+/// universal_mock_theta_g2 : Universal mock theta function $g_2$.
+/// appell_lerch_m : Appell-Lerch bilateral sum.
 #[pyfunction]
 pub fn universal_mock_theta_g3(session: &QSession, a_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
+    if a_pow < 2 {
+        return Err(PyValueError::new_err(format!(
+            "universal_mock_theta_g3(): parameter 'a_pow' must be >= 2, got a_pow={}", a_pow
+        )));
+    }
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
     let var = inner.get_or_create_symbol_id("q");
     drop(inner);
@@ -1256,15 +2891,51 @@ pub fn universal_mock_theta_g3(session: &QSession, a_pow: i64, truncation_order:
 // 10c. Bailey machinery DSL (4 functions)
 // ---------------------------------------------------------------------------
 
-/// Compute both sides of the weak Bailey lemma for a named pair from the database.
+/// Compute both sides of the weak Bailey lemma for a named pair.
 ///
-/// The parameter `a` is specified as (num, den, power) giving a = (num/den)*q^power.
-/// Returns (lhs, rhs) where LHS = sum q^{n^2}*a^n*beta_n, RHS = [1/(aq;q)_inf] * sum q^{n^2}*a^n*alpha_n.
+/// The weak Bailey lemma states that if $(\alpha_n, \beta_n)$ is a Bailey
+/// pair relative to $a$, then
+/// $\sum q^{n^2} a^n \beta_n = \frac{1}{(aq;q)_\infty} \sum q^{n^2} a^n \alpha_n$.
 ///
-/// ```python
-/// s = QSession()
-/// lhs, rhs = bailey_weak_lemma(s, "rogers-ramanujan", 1, 1, 0, 10, 20)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// pair_name : str
+///     Name of the Bailey pair from the database (e.g. ``"unit"``,
+///     ``"rogers-ramanujan"``, ``"q-binomial"``).
+/// a_num : int
+///     Numerator of the parameter $a$ coefficient.
+/// a_den : int
+///     Denominator of the parameter $a$ coefficient.
+/// a_pow : int
+///     Power of $q$ in the parameter $a$.
+/// max_n : int
+///     Maximum summation index.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// tuple[QSeries, QSeries]
+///     ``(lhs, rhs)`` -- both sides of the weak Bailey lemma.
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``pair_name`` is not found in the database.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, bailey_weak_lemma
+/// >>> s = QSession()
+/// >>> lhs, rhs = bailey_weak_lemma(s, "rogers-ramanujan", 1, 1, 0, 10, 20)
+///
+/// See Also
+/// --------
+/// bailey_apply_lemma : Apply the full Bailey lemma.
+/// bailey_chain : Iterative Bailey chain.
+/// bailey_discover : Automated Bailey pair discovery.
 #[pyfunction]
 #[pyo3(signature = (session, pair_name, a_num, a_den, a_pow, max_n, truncation_order))]
 pub fn bailey_weak_lemma(
@@ -1283,7 +2954,10 @@ pub fn bailey_weak_lemma(
     let db = BaileyDatabase::new();
     let pairs = db.search_by_name(pair_name);
     let pair = pairs.first().ok_or_else(|| {
-        pyo3::exceptions::PyValueError::new_err(format!("Bailey pair '{}' not found in database", pair_name))
+        PyValueError::new_err(format!(
+            "bailey_weak_lemma(): pair '{}' not found in database. Available: 'unit', 'rogers-ramanujan', 'q-binomial'",
+            pair_name
+        ))
     })?;
 
     let a = qmonomial_from_tuple(a_num, a_den, a_pow);
@@ -1291,15 +2965,49 @@ pub fn bailey_weak_lemma(
     Ok((QSeries { fps: lhs }, QSeries { fps: rhs }))
 }
 
-/// Apply the Bailey lemma to transform a named pair with parameters b, c.
+/// Apply the Bailey lemma to transform a named pair with parameters $b$, $c$.
 ///
-/// Parameters a, b, c are each (num, den, power) tuples.
-/// Returns a dict with the derived pair info: {"name": str, "pair_type": "tabulated", "num_terms": int}.
+/// Given a Bailey pair $(\alpha_n, \beta_n)$ relative to $a$, produces a
+/// new derived pair via the Bailey lemma with additional parameters $b$, $c$.
 ///
-/// ```python
-/// s = QSession()
-/// result = bailey_apply_lemma(s, "unit", (1,1,2), (1,2,1), (1,3,1), 4, 15)
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// pair_name : str
+///     Name of the Bailey pair from the database.
+/// a : tuple[int, int, int]
+///     Parameter $a$ as ``(num, den, power)`` giving $\frac{num}{den} \cdot q^{power}$.
+/// b : tuple[int, int, int]
+///     Parameter $b$ as ``(num, den, power)``.
+/// c : tuple[int, int, int]
+///     Parameter $c$ as ``(num, den, power)``.
+/// max_n : int
+///     Maximum summation index.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with keys ``"name"`` (str), ``"pair_type"`` (str),
+///     and ``"num_terms"`` (int).
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``pair_name`` is not found in the database.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, bailey_apply_lemma
+/// >>> s = QSession()
+/// >>> result = bailey_apply_lemma(s, "unit", (1,1,2), (1,2,1), (1,3,1), 4, 15)
+///
+/// See Also
+/// --------
+/// bailey_weak_lemma : Weak Bailey lemma.
+/// bailey_chain : Iterative Bailey chain.
 #[pyfunction]
 #[pyo3(signature = (session, pair_name, a, b, c, max_n, truncation_order))]
 pub fn bailey_apply_lemma(
@@ -1319,7 +3027,10 @@ pub fn bailey_apply_lemma(
     let db = BaileyDatabase::new();
     let pairs = db.search_by_name(pair_name);
     let pair = pairs.first().ok_or_else(|| {
-        pyo3::exceptions::PyValueError::new_err(format!("Bailey pair '{}' not found in database", pair_name))
+        PyValueError::new_err(format!(
+            "bailey_apply_lemma(): pair '{}' not found in database. Available: 'unit', 'rogers-ramanujan', 'q-binomial'",
+            pair_name
+        ))
     })?;
 
     let a_mon = qmonomial_from_tuple(a.0, a.1, a.2);
@@ -1337,14 +3048,51 @@ pub fn bailey_apply_lemma(
 
 /// Apply the Bailey lemma iteratively (Bailey chain) to a named pair.
 ///
-/// Returns a list of dicts, each with pair info: [{"name": str, "pair_type": str, "index": int}, ...].
-/// The chain has length depth+1 (original + depth derived pairs).
+/// Produces a chain of derived Bailey pairs by repeatedly applying the
+/// Bailey lemma. The chain has length ``depth + 1`` (original + derived pairs).
 ///
-/// ```python
-/// s = QSession()
-/// chain = bailey_chain(s, "unit", (1,1,2), (1,2,1), (1,3,1), 2, 4, 15)
-/// print(len(chain))  # 3
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// pair_name : str
+///     Name of the initial Bailey pair from the database.
+/// a : tuple[int, int, int]
+///     Parameter $a$ as ``(num, den, power)``.
+/// b : tuple[int, int, int]
+///     Parameter $b$ as ``(num, den, power)``.
+/// c : tuple[int, int, int]
+///     Parameter $c$ as ``(num, den, power)``.
+/// depth : int
+///     Number of iterations to apply the lemma.
+/// max_n : int
+///     Maximum summation index.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// list[dict]
+///     A list of dictionaries, each with keys ``"name"`` (str),
+///     ``"pair_type"`` (str), and ``"index"`` (int).
+///
+/// Raises
+/// ------
+/// ValueError
+///     If ``pair_name`` is not found in the database.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, bailey_chain
+/// >>> s = QSession()
+/// >>> chain = bailey_chain(s, "unit", (1,1,2), (1,2,1), (1,3,1), 2, 4, 15)
+/// >>> len(chain)
+/// 3
+///
+/// See Also
+/// --------
+/// bailey_apply_lemma : Single application of the Bailey lemma.
+/// bailey_discover : Automated Bailey pair discovery.
 #[pyfunction]
 #[pyo3(name = "bailey_chain", signature = (session, pair_name, a, b, c, depth, max_n, truncation_order))]
 pub fn bailey_chain_fn(
@@ -1365,7 +3113,10 @@ pub fn bailey_chain_fn(
     let db = BaileyDatabase::new();
     let pairs = db.search_by_name(pair_name);
     let pair = pairs.first().ok_or_else(|| {
-        pyo3::exceptions::PyValueError::new_err(format!("Bailey pair '{}' not found in database", pair_name))
+        PyValueError::new_err(format!(
+            "bailey_chain(): pair '{}' not found in database. Available: 'unit', 'rogers-ramanujan', 'q-binomial'",
+            pair_name
+        ))
     })?;
 
     let a_mon = qmonomial_from_tuple(a.0, a.1, a.2);
@@ -1385,16 +3136,47 @@ pub fn bailey_chain_fn(
     Ok(PyList::new(py, &items)?.into())
 }
 
-/// Automated Bailey pair discovery: search the database for a pair that explains LHS.
+/// Automated Bailey pair discovery from series data.
 ///
-/// Returns a dict: {"found": bool, "pair_name": str|None, "chain_depth": int, "verification": str}.
+/// Searches the database for a Bailey pair that explains the relationship
+/// between the given LHS and RHS series. Tries trivial equality, weak
+/// lemma matching, and chain depth search up to ``max_chain_depth``.
 ///
-/// ```python
-/// s = QSession()
-/// result = bailey_discover(s, lhs_series, rhs_series, (1,1,0), 2, 20)
-/// print(result["found"])       # True/False
-/// print(result["pair_name"])   # "rogers-ramanujan" or None
-/// ```
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session.
+/// lhs : QSeries
+///     The left-hand side series.
+/// rhs : QSeries
+///     The right-hand side series.
+/// a : tuple[int, int, int]
+///     Parameter $a$ as ``(num, den, power)``.
+/// max_chain_depth : int
+///     Maximum Bailey chain depth to search.
+/// truncation_order : int
+///     Truncation order for the resulting series.
+///
+/// Returns
+/// -------
+/// dict
+///     A dictionary with keys:
+///     - ``"found"`` (bool): whether a matching pair was discovered.
+///     - ``"pair_name"`` (str or None): name of the matching pair.
+///     - ``"chain_depth"`` (int): depth of the chain used.
+///     - ``"verification"`` (str): description of the verification result.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, bailey_discover
+/// >>> s = QSession()
+/// >>> result = bailey_discover(s, lhs, rhs, (1,1,0), 2, 20)
+/// >>> result["found"]
+///
+/// See Also
+/// --------
+/// bailey_chain : Iterative Bailey chain.
+/// bailey_weak_lemma : Weak Bailey lemma verification.
 #[pyfunction]
 #[pyo3(name = "bailey_discover", signature = (session, lhs, rhs, a, max_chain_depth, truncation_order))]
 pub fn bailey_discover_fn(
