@@ -105,7 +105,7 @@ Plans:
 
 - [x] **Phase 9: Package Rename & Structure** - Rename qsymbolic to q_kangaroo throughout the codebase with zero test regressions
 - [x] **Phase 10: PyPI Packaging & Metadata** - Complete package metadata, ABI3 wheels, type stubs, and citation file
-- [ ] **Phase 11: CI/CD Pipeline** - GitHub Actions for testing, wheel building, coverage, and trusted PyPI publishing
+- [x] **Phase 11: CI/CD Pipeline** - GitHub Actions for testing, wheel building, coverage, and trusted PyPI publishing
 - [ ] **Phase 12: Documentation & UX Polish** - Documentation site, API reference, examples, Jupyter rendering, and API ergonomics
 
 ## Phase Details
@@ -155,8 +155,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 11-01-PLAN.md -- CI workflow: Rust tests, Python tests, coverage with Codecov badge
-- [ ] 11-02-PLAN.md -- Release workflow: Linux/Windows wheel builds, sdist, OIDC PyPI publishing
+- [x] 11-01-PLAN.md -- CI workflow: Rust tests, Python tests, coverage with Codecov badge
+- [x] 11-02-PLAN.md -- Release workflow: Linux/Windows wheel builds, sdist, OIDC PyPI publishing
 
 ### Phase 12: Documentation & UX Polish
 **Goal**: Researchers can discover, learn, and productively use q-Kangaroo through comprehensive documentation, polished Jupyter integration, and Pythonic API conventions
@@ -193,5 +193,5 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12
 | 8. Mock Theta & Bailey Chains | v1.0 | 4/4 | Complete | 2026-02-14 |
 | 9. Package Rename & Structure | v1.1 | 2/2 | Complete | 2026-02-14 |
 | 10. PyPI Packaging & Metadata | v1.1 | 2/2 | Complete | 2026-02-14 |
-| 11. CI/CD Pipeline | v1.1 | 0/2 | Not started | - |
+| 11. CI/CD Pipeline | v1.1 | 2/2 | Complete | 2026-02-15 |
 | 12. Documentation & UX Polish | v1.1 | 0/4 | Not started | - |
