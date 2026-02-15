@@ -31,6 +31,12 @@ Key features:
 
    api/index
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Examples
+
+   examples/index
+
 Indices and tables
 ==================
 
