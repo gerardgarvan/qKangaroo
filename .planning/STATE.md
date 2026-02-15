@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-14)
+See: .planning/PROJECT.md (updated 2026-02-15)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 12 -- Documentation & UX
+**Current focus:** All milestones complete. Planning next milestone or publishing.
 
 ## Current Position
 
-Phase: 12 of 12 (Documentation & UX) -- COMPLETE
-Plan: 4 of 4 in current phase -- ALL PHASES COMPLETE
-Status: Completed 12-04 -- Example notebooks and docs CI deployment to GitHub Pages
-Last activity: 2026-02-15 -- Completed 12-04 (Example notebooks + docs CI)
+Phase: 12 of 12 (all complete)
+Plan: 4 of 4 in current phase (MILESTONE COMPLETE)
+Status: v1.1 shipped -- all 12 phases, 44 plans complete
+Last activity: 2026-02-15 -- Milestone v1.1 archived
 
-Progress: [############################################] 100% (44/44 plans -- 32 v1.0 + 12 v1.1 complete)
+Progress: [############################################] 100% (44/44 plans)
 
 ## v1.0 Performance Metrics
 
@@ -43,62 +43,26 @@ Progress: [############################################] 100% (44/44 plans -- 32
 | 9 - Package Rename & Structure | 2/2 | 4 min | 2 min |
 | 10 - PyPI Packaging & Metadata | 2/2 | 5 min | 2.5 min |
 | 11 - CI/CD Pipeline | 2/2 | 2 min | 1 min |
-| 12 - Documentation & UX | 4/4 | 57 min | 14 min |
+| 12 - Documentation & UX Polish | 4/4 | 57 min | 14 min |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
+All decisions logged in PROJECT.md Key Decisions table.
 v1.0 decisions preserved in MILESTONES.md.
-
-Key v1.1 decisions:
-- [v1.1]: Package name q-kangaroo (PyPI) / q_kangaroo (import) -- user-chosen
-- [v1.1]: GitHub Pages for documentation hosting
-- [v1.1]: CI targets Linux + Windows (macOS deferred)
-- [v1.1]: DOC + UX merged into single Phase 12 (shared delivery boundary)
-- [09-01]: Rust crate names unchanged (qsym-core, qsym-python) -- only Python-facing names renamed
-- [09-01]: cdylib uses leading underscore (_q_kangaroo) per maturin/PyO3 convention
-- [09-02]: Old qsymbolic package uninstalled before rebuild for clean verification
-- [09-02]: PROJECT.md updated with 3 q_kangaroo references (architecture diagram, API example, directory tree)
-- [10-01]: ABI3 feature via maturin features in pyproject.toml (not Cargo.toml) to avoid feature conflicts
-- [10-01]: DLL loading prefers bundled package directory, falls back to MINGW_BIN env var then hardcoded path
-- [10-01]: Placeholder author/owner fields -- user fills before publish
-- [10-02]: Type stubs derived from Rust pyfunction signatures, dict returns typed as dict[str, object]
-- [10-02]: overload decorator for symbols() helper (single vs multi return)
-- [11-01]: Used --locked flag for cargo test since Cargo.lock is committed
-- [11-01]: Used working-directory for Python job steps instead of shell cd
-- [11-01]: Added restore-keys fallback for cargo cache
-- [11-02]: OIDC trusted publishing (id-token: write) instead of stored PyPI API tokens
-- [11-02]: Bundled 3 MinGW DLLs (libgmp-10, libgcc_s_seh-1, libwinpthread-1) for Windows wheels
-- [11-02]: Hardcoded MSYS2 path D:/a/_temp/msys64/mingw64/ for GitHub Actions runners
-- [11-02]: Set git autocrlf input BEFORE checkout to prevent Windows line ending issues
-- [12-01]: Verification uses p(50)=204226 instead of p(100) due to pre-existing large-integer truncation
-- [12-01]: LaTeX ellipsis at 20 terms: first 15 + \cdots + last 2
-- [12-01]: latex_term as free function (not closure) to avoid borrow checker conflict
-- [12-02]: Functions with new validation return PyResult<QSeries> instead of QSeries
-- [12-02]: Mock theta functions get brief docstrings (identical parameter pattern across 20 functions)
-- [12-02]: PyValueError imported at module level for cleaner validation code
-- [12-03]: list-table RST directive for math-heavy tables (avoids grid-table column alignment issues)
-- [12-03]: Sphinx build without -W flag (pre-existing docstring warnings from batch_generate/prove_eta_id)
-- [12-03]: Examples toctree omitted from index.rst (added in Plan 04)
-- [12-04]: pypandoc_binary required for nbsphinx notebook rendering (pandoc CLI dependency)
-- [12-04]: All notebook outputs generated from actual q_kangaroo execution (not hand-written)
-- [12-04]: CI installs pypandoc_binary alongside docs/requirements.txt for pandoc
+v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-- [Build]: Windows build requires MinGW GCC 14.2.0 + pre-built GMP in PATH
-- [Build]: PyO3 builds require PYO3_PYTHON pointing to Python 3.14 and PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
-- [Rename]: RESOLVED -- qsymbolic -> q_kangaroo rename completed in 09-01, fully verified in 09-02 (9 Python tests pass)
-- [DLL Bundling]: RESOLVED -- DLL include config and package-relative loading implemented in 10-01
+All resolved. No active blockers.
 
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 12-04-PLAN.md (Example notebooks + docs CI) -- ALL PLANS COMPLETE
-Resume file: .planning/phases/12-documentation-ux-polish/12-04-SUMMARY.md
+Stopped at: v1.1 milestone complete, archived
+Resume file: .planning/MILESTONES.md

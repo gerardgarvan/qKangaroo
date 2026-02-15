@@ -27,3 +27,32 @@
 ### Key Decisions
 
 See STATE.md Accumulated Context for full decision log.
+
+## v1.1: Polish & Publish (Complete)
+
+**Shipped:** 2026-02-15
+**Phases:** 9-12 (10 plans, 578 Rust tests + 9 Python integration tests)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 9 | Package rename: qsymbolic -> q_kangaroo throughout codebase, zero test regressions |
+| 10 | PyPI packaging: ABI3 wheels (cp39-abi3), type stubs (.pyi), LICENSE (MIT), CITATION.cff, DLL bundling |
+| 11 | CI/CD: GitHub Actions CI (Rust + Python tests + Codecov), release workflow (Linux/Windows wheels + OIDC PyPI publish) |
+| 12 | Documentation & UX: Sphinx docs site (Furo theme, 13 API pages, 5 example notebooks), 73 NumPy-style docstrings, QSeries LaTeX rendering, error message improvements |
+
+### Key Accomplishments
+
+- `pip install q-kangaroo` ready with cross-platform wheels (Linux manylinux2014 + Windows MinGW)
+- Complete Sphinx documentation site with API reference for all 73 functions and 5 narrative examples
+- Every function has NumPy-style docstring with parameters, returns, examples, and LaTeX math
+- QExpr and QSeries render LaTeX in Jupyter notebooks via `_repr_latex_()`
+- Zero-token PyPI publishing via OIDC trusted publishing
+- README with working quickstart example and Codecov coverage badge
+
+### Key Metrics
+
+- 26 v1.1 requirements: 26/26 complete
+- 11,331 lines Rust core + 3,881 lines Python API + 5,862 lines docs
+- Total project: 44 plans across 12 phases (v1.0 + v1.1)
