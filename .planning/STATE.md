@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 
 ## Current Position
 
-Phase: 12 of 12 (Documentation & UX)
-Plan: 3 of ? in current phase
-Status: Completed 12-03 -- Sphinx documentation site with API reference for all 73 functions
-Last activity: 2026-02-15 -- Completed 12-03 (Sphinx docs site)
+Phase: 12 of 12 (Documentation & UX) -- COMPLETE
+Plan: 4 of 4 in current phase -- ALL PHASES COMPLETE
+Status: Completed 12-04 -- Example notebooks and docs CI deployment to GitHub Pages
+Last activity: 2026-02-15 -- Completed 12-04 (Example notebooks + docs CI)
 
-Progress: [#########################################...] 93% (41/44 plans -- 32 v1.0 + 9 v1.1 complete, 3 v1.1 remaining)
+Progress: [############################################] 100% (44/44 plans -- 32 v1.0 + 12 v1.1 complete)
 
 ## v1.0 Performance Metrics
 
@@ -43,7 +43,7 @@ Progress: [#########################################...] 93% (41/44 plans -- 32 
 | 9 - Package Rename & Structure | 2/2 | 4 min | 2 min |
 | 10 - PyPI Packaging & Metadata | 2/2 | 5 min | 2.5 min |
 | 11 - CI/CD Pipeline | 2/2 | 2 min | 1 min |
-| 12 - Documentation & UX | 3/? | 46 min | 15 min |
+| 12 - Documentation & UX | 4/4 | 57 min | 14 min |
 
 ## Accumulated Context
 
@@ -82,6 +82,9 @@ Key v1.1 decisions:
 - [12-03]: list-table RST directive for math-heavy tables (avoids grid-table column alignment issues)
 - [12-03]: Sphinx build without -W flag (pre-existing docstring warnings from batch_generate/prove_eta_id)
 - [12-03]: Examples toctree omitted from index.rst (added in Plan 04)
+- [12-04]: pypandoc_binary required for nbsphinx notebook rendering (pandoc CLI dependency)
+- [12-04]: All notebook outputs generated from actual q_kangaroo execution (not hand-written)
+- [12-04]: CI installs pypandoc_binary alongside docs/requirements.txt for pandoc
 
 ### Pending Todos
 
@@ -97,5 +100,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 12-03-PLAN.md (Sphinx documentation site)
-Resume file: .planning/phases/12-documentation-ux-polish/12-03-SUMMARY.md
+Stopped at: Completed 12-04-PLAN.md (Example notebooks + docs CI) -- ALL PLANS COMPLETE
+Resume file: .planning/phases/12-documentation-ux-polish/12-04-SUMMARY.md
