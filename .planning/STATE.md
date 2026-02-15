@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 ## Current Position
 
 Phase: 10 of 12 (CI & Distribution)
-Plan: 1 of 2 in current phase
-Status: 10-01 complete, ready for 10-02
-Last activity: 2026-02-15 -- Completed 10-01 (PyPI packaging metadata, LICENSE, CITATION.cff)
+Plan: 2 of 2 in current phase (PHASE COMPLETE)
+Status: 10-02 complete, Phase 10 done -- ready for Phase 11
+Last activity: 2026-02-15 -- Completed 10-02 (type stubs + ABI3 wheel verification)
 
-Progress: [###################################.........] 80% (35/44 plans -- 32 v1.0 + 3 v1.1 complete, 9 v1.1 remaining)
+Progress: [####################################........] 82% (36/44 plans -- 32 v1.0 + 4 v1.1 complete, 8 v1.1 remaining)
 
 ## v1.0 Performance Metrics
 
@@ -41,7 +41,7 @@ Progress: [###################################.........] 80% (35/44 plans -- 32 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 9 - Package Rename & Structure | 2/2 | 4 min | 2 min |
-| 10 - PyPI Packaging & Metadata | 1/2 | 1 min | 1 min |
+| 10 - PyPI Packaging & Metadata | 2/2 | 5 min | 2.5 min |
 
 ## Accumulated Context
 
@@ -62,6 +62,8 @@ Key v1.1 decisions:
 - [10-01]: ABI3 feature via maturin features in pyproject.toml (not Cargo.toml) to avoid feature conflicts
 - [10-01]: DLL loading prefers bundled package directory, falls back to MINGW_BIN env var then hardcoded path
 - [10-01]: Placeholder author/owner fields -- user fills before publish
+- [10-02]: Type stubs derived from Rust pyfunction signatures, dict returns typed as dict[str, object]
+- [10-02]: overload decorator for symbols() helper (single vs multi return)
 
 ### Pending Todos
 
@@ -77,5 +79,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 10-01-PLAN.md (PyPI packaging metadata) -- ready for 10-02 (wheel build)
-Resume file: .planning/phases/10-pypi-packaging-metadata/10-01-SUMMARY.md
+Stopped at: Completed 10-02-PLAN.md (type stubs + wheel verification) -- Phase 10 complete, ready for Phase 11
+Resume file: .planning/phases/10-pypi-packaging-metadata/10-02-SUMMARY.md
