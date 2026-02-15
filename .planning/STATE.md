@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 
 ## Current Position
 
-Phase: 10 of 12 (CI & Distribution)
-Plan: 2 of 2 in current phase (PHASE COMPLETE)
-Status: 10-02 complete, Phase 10 done -- ready for Phase 11
-Last activity: 2026-02-15 -- Completed 10-02 (type stubs + ABI3 wheel verification)
+Phase: 11 of 12 (CI/CD Pipeline)
+Plan: 1 of 2 in current phase
+Status: 11-01 complete -- CI workflow + README created, ready for 11-02 (release workflow)
+Last activity: 2026-02-15 -- Completed 11-01 (CI workflow with Rust/Python tests + coverage)
 
-Progress: [####################################........] 82% (36/44 plans -- 32 v1.0 + 4 v1.1 complete, 8 v1.1 remaining)
+Progress: [#####################################.......] 84% (37/44 plans -- 32 v1.0 + 5 v1.1 complete, 7 v1.1 remaining)
 
 ## v1.0 Performance Metrics
 
@@ -42,6 +42,7 @@ Progress: [####################################........] 82% (36/44 plans -- 32 
 |-------|-------|-------|----------|
 | 9 - Package Rename & Structure | 2/2 | 4 min | 2 min |
 | 10 - PyPI Packaging & Metadata | 2/2 | 5 min | 2.5 min |
+| 11 - CI/CD Pipeline | 1/2 | 1 min | 1 min |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Key v1.1 decisions:
 - [10-01]: Placeholder author/owner fields -- user fills before publish
 - [10-02]: Type stubs derived from Rust pyfunction signatures, dict returns typed as dict[str, object]
 - [10-02]: overload decorator for symbols() helper (single vs multi return)
+- [11-01]: Used --locked flag for cargo test since Cargo.lock is committed
+- [11-01]: Used working-directory for Python job steps instead of shell cd
+- [11-01]: Added restore-keys fallback for cargo cache
 
 ### Pending Todos
 
@@ -79,5 +83,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 10-02-PLAN.md (type stubs + wheel verification) -- Phase 10 complete, ready for Phase 11
-Resume file: .planning/phases/10-pypi-packaging-metadata/10-02-SUMMARY.md
+Stopped at: Completed 11-01-PLAN.md (CI workflow + README) -- ready for 11-02 (release workflow)
+Resume file: .planning/phases/11-ci-cd-pipeline/11-01-SUMMARY.md
