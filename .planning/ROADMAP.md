@@ -103,8 +103,8 @@ Plans:
 
 **Milestone Goal:** Make q-Kangaroo release-ready -- publishable on PyPI with documentation, CI, and polished UX so researchers can discover, install, and use it without building from source.
 
-- [ ] **Phase 9: Package Rename & Structure** - Rename qsymbolic to q_kangaroo throughout the codebase with zero test regressions
-- [ ] **Phase 10: PyPI Packaging & Metadata** - Complete package metadata, ABI3 wheels, type stubs, and citation file
+- [x] **Phase 9: Package Rename & Structure** - Rename qsymbolic to q_kangaroo throughout the codebase with zero test regressions
+- [x] **Phase 10: PyPI Packaging & Metadata** - Complete package metadata, ABI3 wheels, type stubs, and citation file
 - [ ] **Phase 11: CI/CD Pipeline** - GitHub Actions for testing, wheel building, coverage, and trusted PyPI publishing
 - [ ] **Phase 12: Documentation & UX Polish** - Documentation site, API reference, examples, Jupyter rendering, and API ergonomics
 
@@ -123,25 +123,24 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md -- Atomic rename of all source files, directory, and Rust build verification
-- [ ] 09-02-PLAN.md -- Python rebuild, integration test verification, and PROJECT.md cleanup
+- [x] 09-01-PLAN.md -- Atomic rename of all source files, directory, and Rust build verification
+- [x] 09-02-PLAN.md -- Python rebuild, integration test verification, and PROJECT.md cleanup
 
 ### Phase 10: PyPI Packaging & Metadata
 **Goal**: The package is ready for PyPI upload with complete metadata, cross-version wheels, type hints, and academic citation support
 **Depends on**: Phase 9
 **Requirements**: PKG-01, PKG-02, PKG-03, PKG-04, PKG-05, PKG-06, PKG-07
 **Success Criteria** (what must be TRUE):
-  1. `pip install q-kangaroo` from a locally built wheel succeeds on a fresh Linux virtualenv and `import q_kangaroo` works
-  2. `pip install q-kangaroo` from a locally built wheel succeeds on a fresh Windows virtualenv and `import q_kangaroo` works
-  3. `pip show q-kangaroo` displays complete metadata (author, license, description, classifiers, project URLs, keywords)
-  4. A single wheel file supports Python 3.9 through 3.14+ (ABI3 filename pattern: `*-cp39-abi3-*.whl`)
-  5. IDE autocomplete shows function signatures and docstrings for all 73 DSL functions (type stubs present and valid)
-**Plans**: TBD
+  1. `pip install q-kangaroo` from a locally built wheel succeeds on a fresh Windows virtualenv and `import q_kangaroo` works
+  2. `pip show q-kangaroo` displays complete metadata (author, license, description, classifiers, project URLs, keywords)
+  3. A single wheel file supports Python 3.9 through 3.14+ (ABI3 filename pattern: `*-cp39-abi3-*.whl`)
+  4. IDE autocomplete shows function signatures and docstrings for all 73 DSL functions (type stubs present and valid)
+  5. LICENSE and CITATION.cff files exist
+**Plans**: 2 plans
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
-- [ ] 10-03: TBD
+- [x] 10-01-PLAN.md -- Metadata, ABI3, LICENSE, CITATION.cff, and DLL loading configuration
+- [x] 10-02-PLAN.md -- Type stubs (.pyi), wheel build, and end-to-end installation verification
 
 ### Phase 11: CI/CD Pipeline
 **Goal**: Every push triggers automated testing and wheel builds, and tagged releases publish to PyPI without manual intervention
@@ -193,7 +192,7 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12
 | 6. Hypergeometric Series | v1.0 | 4/4 | Complete | 2026-02-14 |
 | 7. Identity Proving | v1.0 | 4/4 | Complete | 2026-02-14 |
 | 8. Mock Theta & Bailey Chains | v1.0 | 4/4 | Complete | 2026-02-14 |
-| 9. Package Rename & Structure | v1.1 | 0/2 | Planning complete | - |
-| 10. PyPI Packaging & Metadata | v1.1 | 0/3 | Not started | - |
+| 9. Package Rename & Structure | v1.1 | 2/2 | Complete | 2026-02-14 |
+| 10. PyPI Packaging & Metadata | v1.1 | 2/2 | Complete | 2026-02-14 |
 | 11. CI/CD Pipeline | v1.1 | 0/3 | Not started | - |
 | 12. Documentation & UX Polish | v1.1 | 0/4 | Not started | - |

@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-14)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 10 -- CI & Distribution
+**Current focus:** Phase 11 -- CI/CD Pipeline
 
 ## Current Position
 
