@@ -15,7 +15,12 @@ use qsym_core::series::{FormalPowerSeries, arithmetic};
 use qsym_core::qseries::{
     self, QMonomial, PochhammerOrder, HypergeometricSeries, SummationResult,
     BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, bailey_discover,
+    QGosperResult,
+    q_zeilberger, QZeilbergerResult, ZeilbergerResult, detect_n_params,
+    verify_wz_certificate,
+    q_petkovsek, QPetkovsekResult, ClosedForm,
 };
+use qsym_core::poly::QRatRationalFunc;
 
 use crate::convert::{qint_to_python, qrat_to_python};
 use crate::series::QSeries;
@@ -3206,4 +3211,395 @@ pub fn bailey_discover_fn(
     dict.set_item("chain_depth", result.chain_depth)?;
     dict.set_item("verification", &result.verification)?;
     Ok(dict.into())
+}
+
+// ===========================================================================
+// GROUP 11: q-Gosper Algorithm
+// ===========================================================================
+
+/// Run the q-Gosper algorithm for indefinite q-hypergeometric summation.
+///
+/// Given a q-hypergeometric series defined by upper/lower parameters and argument,
+/// determines whether the series has a q-hypergeometric antidifference (indefinite sum).
+///
+/// Parameters
+/// ----------
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters. Each is ``(num, den, power)`` representing `(num/den) * q^power`.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters, same tuple format.
+/// z_num : int
+///     Numerator of the argument z coefficient.
+/// z_den : int
+///     Denominator of the argument z coefficient.
+/// z_pow : int
+///     Power of q in the argument z.
+/// q_num : int
+///     Numerator of the concrete q value (e.g. 2 for q=2).
+/// q_den : int
+///     Denominator of the concrete q value (e.g. 1 for q=2).
+///
+/// Returns
+/// -------
+/// dict or None
+///     If summable: ``{"summable": True, "certificate": "f(x)/g(x)", "numer": "...", "denom": "..."}``.
+///     If not summable: ``{"summable": False}``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import q_gosper
+/// >>> # q-Vandermonde: 2phi1(q^{-3}, q^2; q^3; q, q^4)
+/// >>> result = q_gosper([(1,1,-3), (1,1,2)], [(1,1,3)], 1, 1, 4, 2, 1)
+/// >>> result["summable"]
+/// True
+#[pyfunction]
+#[pyo3(signature = (upper, lower, z_num, z_den, z_pow, q_num, q_den))]
+pub fn q_gosper_fn(
+    py: Python<'_>,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    q_num: i64,
+    q_den: i64,
+) -> PyResult<PyObject> {
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    let q_val = QRat::from((q_num, q_den));
+
+    let result = qseries::q_gosper(&series, &q_val);
+
+    let dict = PyDict::new(py);
+    match result {
+        QGosperResult::Summable { certificate } => {
+            dict.set_item("summable", true)?;
+            dict.set_item("certificate", format!("{}", certificate))?;
+            dict.set_item("numer", format!("{}", certificate.numer))?;
+            dict.set_item("denom", format!("{}", certificate.denom))?;
+        }
+        QGosperResult::NotSummable => {
+            dict.set_item("summable", false)?;
+        }
+    }
+    Ok(dict.into())
+}
+
+// ===========================================================================
+// GROUP 12: Algorithmic Summation (q-Zeilberger, WZ Verification, q-Petkovsek)
+// ===========================================================================
+
+/// Run the q-Zeilberger creative telescoping algorithm for definite q-hypergeometric summation.
+///
+/// Given a q-hypergeometric series `F(n,k)` defined by upper/lower parameters and argument,
+/// finds a linear recurrence `c_0*S(n) + c_1*S(n+1) + ... + c_d*S(n+d) = 0` for
+/// the definite sum `S(n) = sum_k F(n,k)`, along with a WZ proof certificate.
+///
+/// Parameters
+/// ----------
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters. Each is ``(num, den, power)`` representing `(num/den) * q^power`.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters, same tuple format.
+/// z_num : int
+///     Numerator of the argument z coefficient.
+/// z_den : int
+///     Denominator of the argument z coefficient.
+/// z_pow : int
+///     Power of q in the argument z.
+/// n_val : int
+///     Concrete value of the summation parameter n.
+/// q_num : int
+///     Numerator of the concrete q value (e.g. 2 for q=2).
+/// q_den : int
+///     Denominator of the concrete q value (e.g. 1 for q=2).
+/// max_order : int
+///     Maximum recurrence order to search.
+/// n_param_indices : list[int] or None
+///     Manual override: indices into upper parameters that depend on n.
+///     If None, auto-detected via ``detect_n_params``.
+/// n_is_in_argument : bool or None
+///     Manual override: whether n appears in the argument z.
+///     If None, auto-detected via ``detect_n_params``.
+///
+/// Returns
+/// -------
+/// dict
+///     If recurrence found: ``{"found": True, "order": int, "coefficients": list[Fraction],
+///     "certificate": str, "numer": str, "denom": str}``.
+///     If no recurrence: ``{"found": False}``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import q_zeilberger
+/// >>> # q-Vandermonde: 2phi1(q^{-5}, q^2; q^3; q, q^4) at n=5, q=2
+/// >>> result = q_zeilberger([(1,1,-5), (1,1,2)], [(1,1,3)], 1, 1, 4, 5, 2, 1, 3)
+/// >>> result["found"]
+/// True
+/// >>> result["order"]
+/// 1
+///
+/// See Also
+/// --------
+/// q_gosper : Indefinite q-hypergeometric summation (inner subroutine).
+/// verify_wz : Independent verification of the WZ certificate.
+/// q_petkovsek : Solve the recurrence for closed-form solutions.
+#[pyfunction]
+#[pyo3(name = "q_zeilberger", signature = (upper, lower, z_num, z_den, z_pow, n_val, q_num, q_den, max_order, n_param_indices=None, n_is_in_argument=None))]
+pub fn q_zeilberger_fn(
+    py: Python<'_>,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    n_val: i64,
+    q_num: i64,
+    q_den: i64,
+    max_order: usize,
+    n_param_indices: Option<Vec<usize>>,
+    n_is_in_argument: Option<bool>,
+) -> PyResult<PyObject> {
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    let q_val = QRat::from((q_num, q_den));
+
+    // Auto-detect or use manual overrides
+    let (indices, in_arg) = match (&n_param_indices, &n_is_in_argument) {
+        (Some(idx), Some(flag)) => (idx.clone(), *flag),
+        _ => {
+            let (auto_idx, auto_flag) = detect_n_params(&series, n_val, &q_val);
+            (
+                n_param_indices.unwrap_or(auto_idx),
+                n_is_in_argument.unwrap_or(auto_flag),
+            )
+        }
+    };
+
+    let result = q_zeilberger(&series, n_val, &q_val, max_order, &indices, in_arg);
+
+    let dict = PyDict::new(py);
+    match result {
+        QZeilbergerResult::Recurrence(zr) => {
+            dict.set_item("found", true)?;
+            dict.set_item("order", zr.order)?;
+            dict.set_item("coefficients", qrat_vec_to_pylist(py, &zr.coefficients)?)?;
+            dict.set_item("certificate", format!("{}", zr.certificate))?;
+            dict.set_item("numer", format!("{}", zr.certificate.numer))?;
+            dict.set_item("denom", format!("{}", zr.certificate.denom))?;
+        }
+        QZeilbergerResult::NoRecurrence => {
+            dict.set_item("found", false)?;
+        }
+    }
+    Ok(dict.into())
+}
+
+/// Independently verify a WZ certificate for a q-hypergeometric identity.
+///
+/// Re-derives the q-Zeilberger recurrence and certificate, then verifies the
+/// telescoping identity by checking that the recurrence holds at multiple
+/// evaluation points up to ``max_k``.
+///
+/// Parameters
+/// ----------
+/// upper : list[tuple[int, int, int]]
+///     Upper parameters. Each is ``(num, den, power)`` representing `(num/den) * q^power`.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters, same tuple format.
+/// z_num : int
+///     Numerator of the argument z coefficient.
+/// z_den : int
+///     Denominator of the argument z coefficient.
+/// z_pow : int
+///     Power of q in the argument z.
+/// n_val : int
+///     Concrete value of the summation parameter n.
+/// q_num : int
+///     Numerator of the concrete q value.
+/// q_den : int
+///     Denominator of the concrete q value.
+/// max_order : int
+///     Maximum recurrence order to search (passed to q_zeilberger).
+/// max_k : int
+///     Number of evaluation points for certificate verification.
+/// n_param_indices : list[int] or None
+///     Manual override: indices into upper parameters that depend on n.
+///     If None, auto-detected via ``detect_n_params``.
+/// n_is_in_argument : bool or None
+///     Manual override: whether n appears in the argument z.
+///     If None, auto-detected via ``detect_n_params``.
+///
+/// Returns
+/// -------
+/// dict
+///     If verification succeeded: ``{"verified": True, "order": int,
+///     "coefficients": list[Fraction], "certificate": str}``.
+///     If no recurrence found: ``{"verified": False, "reason": "no recurrence found"}``.
+///     If verification failed: ``{"verified": False, "reason": "verification failed"}``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import verify_wz
+/// >>> # Verify q-Vandermonde at n=5, q=2
+/// >>> result = verify_wz([(1,1,-5), (1,1,2)], [(1,1,3)], 1, 1, 4, 5, 2, 1, 3, 20)
+/// >>> result["verified"]
+/// True
+///
+/// See Also
+/// --------
+/// q_zeilberger : Find the recurrence and certificate.
+/// q_gosper : Indefinite q-hypergeometric summation.
+#[pyfunction]
+#[pyo3(name = "verify_wz", signature = (upper, lower, z_num, z_den, z_pow, n_val, q_num, q_den, max_order, max_k, n_param_indices=None, n_is_in_argument=None))]
+pub fn verify_wz_fn(
+    py: Python<'_>,
+    upper: Vec<(i64, i64, i64)>,
+    lower: Vec<(i64, i64, i64)>,
+    z_num: i64,
+    z_den: i64,
+    z_pow: i64,
+    n_val: i64,
+    q_num: i64,
+    q_den: i64,
+    max_order: usize,
+    max_k: usize,
+    n_param_indices: Option<Vec<usize>>,
+    n_is_in_argument: Option<bool>,
+) -> PyResult<PyObject> {
+    let series = HypergeometricSeries {
+        upper: parse_qmonomials(upper),
+        lower: parse_qmonomials(lower),
+        argument: QMonomial::new(QRat::from((z_num, z_den)), z_pow),
+    };
+    let q_val = QRat::from((q_num, q_den));
+
+    // Auto-detect or use manual overrides
+    let (indices, in_arg) = match (&n_param_indices, &n_is_in_argument) {
+        (Some(idx), Some(flag)) => (idx.clone(), *flag),
+        _ => {
+            let (auto_idx, auto_flag) = detect_n_params(&series, n_val, &q_val);
+            (
+                n_param_indices.unwrap_or(auto_idx),
+                n_is_in_argument.unwrap_or(auto_flag),
+            )
+        }
+    };
+
+    // First, run q_zeilberger to get the recurrence and certificate
+    let zeil_result = q_zeilberger(&series, n_val, &q_val, max_order, &indices, in_arg);
+
+    let dict = PyDict::new(py);
+    match zeil_result {
+        QZeilbergerResult::Recurrence(zr) => {
+            let verified = verify_wz_certificate(
+                &series, n_val, &q_val, &zr.coefficients, &zr.certificate,
+                &indices, in_arg, max_k,
+            );
+            dict.set_item("verified", verified)?;
+            if verified {
+                dict.set_item("order", zr.order)?;
+                dict.set_item("coefficients", qrat_vec_to_pylist(py, &zr.coefficients)?)?;
+                dict.set_item("certificate", format!("{}", zr.certificate))?;
+            } else {
+                dict.set_item("reason", "verification failed")?;
+            }
+        }
+        QZeilbergerResult::NoRecurrence => {
+            dict.set_item("verified", false)?;
+            dict.set_item("reason", "no recurrence found")?;
+        }
+    }
+    Ok(dict.into())
+}
+
+/// Solve a q-hypergeometric recurrence for closed-form solutions.
+///
+/// Given recurrence coefficients ``c_0*S(n) + c_1*S(n+1) + ... + c_d*S(n+d) = 0``
+/// (typically from :func:`q_zeilberger`), finds all q-hypergeometric solutions
+/// and optionally decomposes them into q-Pochhammer product forms.
+///
+/// Parameters
+/// ----------
+/// coefficients : list[tuple[int, int]]
+///     Recurrence coefficients as ``(numerator, denominator)`` pairs representing
+///     exact rational values. Must have at least 2 entries (order >= 1).
+/// q_num : int
+///     Numerator of the concrete q value.
+/// q_den : int
+///     Denominator of the concrete q value.
+///
+/// Returns
+/// -------
+/// list[dict]
+///     Each dict represents one solution with keys:
+///     - ``"ratio"``: Fraction -- the ratio y(n+1)/y(n).
+///     - ``"has_closed_form"``: bool -- whether a Pochhammer decomposition was found.
+///     - ``"scalar"``: Fraction (if has_closed_form) -- scalar prefactor.
+///     - ``"q_power_coeff"``: int (if has_closed_form) -- coefficient in q^{c*n*(n-1)/2}.
+///     - ``"numer_factors"``: list[tuple[str, int]] (if has_closed_form) --
+///       numerator Pochhammer factors as (coeff_string, power) tuples.
+///     - ``"denom_factors"``: list[tuple[str, int]] (if has_closed_form) --
+///       denominator Pochhammer factors, same format.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import q_zeilberger, q_petkovsek
+/// >>> result = q_zeilberger([(1,1,-5), (1,1,2)], [(1,1,3)], 1, 1, 4, 5, 2, 1, 3)
+/// >>> if result["found"]:
+/// ...     coeffs = [(c.numerator, c.denominator) for c in result["coefficients"]]
+/// ...     solutions = q_petkovsek(coeffs, 2, 1)
+/// ...     len(solutions) >= 1
+/// True
+///
+/// See Also
+/// --------
+/// q_zeilberger : Find recurrence coefficients from a q-hypergeometric sum.
+/// q_gosper : Indefinite q-hypergeometric summation.
+#[pyfunction]
+#[pyo3(name = "q_petkovsek", signature = (coefficients, q_num, q_den))]
+pub fn q_petkovsek_fn(
+    py: Python<'_>,
+    coefficients: Vec<(i64, i64)>,
+    q_num: i64,
+    q_den: i64,
+) -> PyResult<PyObject> {
+    let coeffs: Vec<QRat> = coefficients
+        .iter()
+        .map(|(n, d)| QRat::from((*n, *d)))
+        .collect();
+    let q_val = QRat::from((q_num, q_den));
+
+    let results = q_petkovsek(&coeffs, &q_val);
+
+    let items: Vec<PyObject> = results
+        .iter()
+        .map(|r| {
+            let dict = PyDict::new(py);
+            dict.set_item("ratio", qrat_to_python(py, &r.ratio)?)?;
+            let has_cf = r.closed_form.is_some();
+            dict.set_item("has_closed_form", has_cf)?;
+            if let Some(ref cf) = r.closed_form {
+                dict.set_item("scalar", qrat_to_python(py, &cf.scalar)?)?;
+                dict.set_item("q_power_coeff", cf.q_power_coeff)?;
+                let numer: Vec<(String, i64)> = cf.numer_factors.iter()
+                    .map(|m| (format!("{}", m.coeff), m.power))
+                    .collect();
+                dict.set_item("numer_factors", numer)?;
+                let denom: Vec<(String, i64)> = cf.denom_factors.iter()
+                    .map(|m| (format!("{}", m.coeff), m.power))
+                    .collect();
+                dict.set_item("denom_factors", denom)?;
+            }
+            Ok(dict.into())
+        })
+        .collect::<PyResult<_>>()?;
+
+    Ok(PyList::new(py, &items)?.into())
 }
