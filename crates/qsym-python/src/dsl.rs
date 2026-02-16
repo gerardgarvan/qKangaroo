@@ -82,15 +82,41 @@ fn qrat_matrix_to_pylist<'py>(py: Python<'py>, m: &[Vec<QRat>]) -> PyResult<Boun
 ///
 /// Examples
 /// --------
+/// The infinite product $(q;q)_\infty = \prod_{k=1}^{\infty}(1-q^k)$ (Euler function):
+///
 /// >>> from q_kangaroo import QSession, aqprod
 /// >>> s = QSession()
-/// >>> qq_inf = aqprod(s, 1, 1, 1, None, 20)   # (q;q)_inf (Euler function)
-/// >>> qq_5 = aqprod(s, 1, 1, 1, 5, 20)         # (q;q)_5 (finite product)
+/// >>> euler = aqprod(s, 1, 1, 1, None, 20)
+/// >>> print(euler)  # 1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + O(q^20)
+///
+/// The finite product $(q;q)_5 = (1-q)(1-q^2)(1-q^3)(1-q^4)(1-q^5)$:
+///
+/// >>> finite = aqprod(s, 1, 1, 1, 5, 20)
+/// >>> print(finite)  # 1 - q - q^2 + q^5 + q^6 + q^7 - q^8 - q^9 - q^10 + q^13 + q^14 - q^15 + O(q^20)
+///
+/// The partition generating function is the reciprocal of $(q;q)_\infty$:
+///
+/// >>> from q_kangaroo import partition_gf
+/// >>> pgf = partition_gf(s, 20)
+/// >>> print(pgf)  # 1 + q + 2*q^2 + 3*q^3 + 5*q^4 + 7*q^5 + ...
+///
+/// Notes
+/// -----
+/// The q-Pochhammer symbol supports three regimes:
+///
+/// - **Finite** ($n > 0$): $(a;q)_n = \prod_{k=0}^{n-1}(1 - aq^k)$.
+/// - **Infinite** ($n = \text{None}$): $(a;q)_\infty = \prod_{k=0}^{\infty}(1 - aq^k)$.
+///   The fundamental building block: $(q;q)_\infty = \prod_{k=1}^{\infty}(1-q^k)$ is
+///   Euler's function, whose reciprocal generates the partition numbers.
+/// - **Negative** ($n < 0$): $(a;q)_{-n} = 1 / (aq^{-n};q)_n$, the shifted inversion.
 ///
 /// See Also
 /// --------
+/// partition_gf : Partition generating function $1/(q;q)_\infty$.
 /// etaq : Generalized eta product $(q^b; q^t)_\infty$.
 /// qbin : q-binomial coefficient using q-Pochhammer symbols.
+/// theta3 : Jacobi theta function (uses q-Pochhammer internally).
+/// prodmake : Identify a series as an infinite product.
 #[pyfunction]
 #[pyo3(signature = (session, coeff_num, coeff_den, power, n, order))]
 pub fn aqprod(
@@ -137,13 +163,31 @@ pub fn aqprod(
 ///
 /// Examples
 /// --------
+/// The Gaussian polynomial $\binom{4}{2}_q$:
+///
 /// >>> from q_kangaroo import QSession, qbin
 /// >>> s = QSession()
-/// >>> b = qbin(s, 5, 2, 20)  # [5 choose 2]_q
+/// >>> b = qbin(s, 4, 2, 20)
+/// >>> print(b)  # 1 + q + 2*q^2 + q^3 + q^4 + O(q^20)
+///
+/// Symmetry: $\binom{n}{k}_q = \binom{n}{n-k}_q$:
+///
+/// >>> b52 = qbin(s, 5, 2, 20)
+/// >>> b53 = qbin(s, 5, 3, 20)
+/// >>> print(b52)  # 1 + q + 2*q^2 + 2*q^3 + 2*q^4 + q^5 + q^6 + O(q^20)
+/// >>> # b53 gives the same polynomial, confirming symmetry
+///
+/// Notes
+/// -----
+/// The q-binomial coefficient $\binom{n}{k}_q$ (also called the Gaussian binomial
+/// coefficient or Gaussian polynomial) counts the number of $k$-dimensional
+/// subspaces of an $n$-dimensional vector space over $\mathbb{F}_q$. In the
+/// classical limit, $\lim_{q \to 1} \binom{n}{k}_q = \binom{n}{k}$.
 ///
 /// See Also
 /// --------
 /// aqprod : General q-Pochhammer symbol.
+/// phi : Basic hypergeometric series (q-binomials appear in hypergeometric parameters).
 #[pyfunction]
 pub fn qbin(session: &QSession, n: i64, k: i64, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -185,15 +229,39 @@ pub fn qbin(session: &QSession, n: i64, k: i64, order: i64) -> QSeries {
 ///
 /// Examples
 /// --------
+/// The Euler function $(q;q)_\infty$:
+///
 /// >>> from q_kangaroo import QSession, etaq
 /// >>> s = QSession()
-/// >>> euler = etaq(s, 1, 1, 20)  # (q;q)_inf = Euler function
-/// >>> eta5 = etaq(s, 1, 5, 20)   # (q;q^5)_inf
+/// >>> euler = etaq(s, 1, 1, 20)
+/// >>> print(euler)  # 1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + O(q^20)
+///
+/// The product $(q;q^5)_\infty$, which appears in Rogers-Ramanujan identities:
+///
+/// >>> rr1 = etaq(s, 1, 5, 30)
+/// >>> print(rr1)  # 1 - q - q^6 + q^7 - q^11 + q^12 - q^16 + 2*q^17 - ...
+///
+/// The partition generating function is $1/(q;q)_\infty = 1/\text{etaq}(1,1,N)$:
+///
+/// >>> from q_kangaroo import partition_gf
+/// >>> pgf = partition_gf(s, 20)
+/// >>> print(pgf)  # 1 + q + 2*q^2 + 3*q^3 + 5*q^4 + ...
+///
+/// Notes
+/// -----
+/// The parameters $b$ (base) and $t$ (step) define the product
+/// $(q^b; q^t)_\infty = \prod_{k=0}^{\infty}(1 - q^{b+kt})$.
+/// The Dedekind eta function is $\eta(\tau) = q^{1/24}(q;q)_\infty$ where
+/// $q = e^{2\pi i \tau}$, so ``etaq(1, 1, N)`` computes $(q;q)_\infty$
+/// (the Euler function) which is $q^{-1/24}\eta(\tau)$.
 ///
 /// See Also
 /// --------
 /// aqprod : General q-Pochhammer symbol $(a;q)_n$.
 /// jacprod : Jacobi triple product JAC(a, b).
+/// partition_gf : Partition generating function $1/(q;q)_\infty$.
+/// prodmake : Identify a series as an infinite product.
+/// etamake : Identify a series as an eta quotient.
 #[pyfunction]
 pub fn etaq(session: &QSession, b: i64, t: i64, order: i64) -> PyResult<QSeries> {
     if b <= 0 {
@@ -241,14 +309,32 @@ pub fn etaq(session: &QSession, b: i64, t: i64, order: i64) -> PyResult<QSeries>
 ///
 /// Examples
 /// --------
+/// JAC(1,5) appears in the Rogers-Ramanujan identities:
+///
 /// >>> from q_kangaroo import QSession, jacprod
 /// >>> s = QSession()
-/// >>> j = jacprod(s, 1, 5, 20)  # JAC(1, 5)
+/// >>> j15 = jacprod(s, 1, 5, 30)
+/// >>> print(j15)  # 1 - q - q^4 + q^7 + q^13 - q^18 - q^27 + O(q^30)
+///
+/// JAC(2,5) is the companion product in the second Rogers-Ramanujan identity:
+///
+/// >>> j25 = jacprod(s, 2, 5, 30)
+/// >>> print(j25)  # 1 - q^2 - q^3 + q^9 + q^11 - q^21 - q^24 + O(q^30)
+///
+/// Notes
+/// -----
+/// The Jacobi triple product identity states
+/// $J(z, q) = (z; q)_\infty (q/z; q)_\infty (q; q)_\infty
+///   = \sum_{n=-\infty}^{\infty} (-1)^n z^n q^{n(n-1)/2}$.
+/// In the ``jacprod(a, b)`` notation, we set $z = q^a$ and use step $q^b$,
+/// giving $\text{JAC}(a,b) = (q^a; q^b)_\infty (q^{b-a}; q^b)_\infty (q^b; q^b)_\infty$.
 ///
 /// See Also
 /// --------
 /// etaq : Generalized eta product.
 /// tripleprod : Jacobi triple product with monomial parameter.
+/// theta3 : Jacobi theta function (expressible via triple products).
+/// jacprodmake : Identify a series as a Jacobi product quotient.
 #[pyfunction]
 pub fn jacprod(session: &QSession, a: i64, b: i64, order: i64) -> PyResult<QSeries> {
     if a <= 0 || a >= b {
@@ -287,14 +373,23 @@ pub fn jacprod(session: &QSession, a: i64, b: i64, order: i64) -> PyResult<QSeri
 ///
 /// Examples
 /// --------
+/// With $z = -1$: the product $(-1;q)_\infty \cdot (-q;q)_\infty \cdot (q;q)_\infty$
+/// yields a sum over triangular numbers:
+///
 /// >>> from q_kangaroo import QSession, tripleprod
 /// >>> s = QSession()
-/// >>> tp = tripleprod(s, 1, 1, 1, 20)  # z = q
+/// >>> tp = tripleprod(s, -1, 1, 0, 20)  # z = -1
+/// >>> print(tp)  # 2 + 2*q + 2*q^3 + 2*q^6 + 2*q^10 + 2*q^15 + O(q^20)
+///
+/// Note: $z = q$ (``power=1, coeff=1``) gives 0 because the factor
+/// $(q/z; q)_\infty = (1; q)_\infty$ vanishes. Use ``jacprod`` for the standard
+/// integer-exponent triple products.
 ///
 /// See Also
 /// --------
 /// jacprod : Jacobi triple product JAC(a, b) with integer parameters.
 /// quinprod : Quintuple product identity.
+/// etaq : Generalized eta product.
 #[pyfunction]
 pub fn tripleprod(
     session: &QSession,
@@ -335,14 +430,29 @@ pub fn tripleprod(
 ///
 /// Examples
 /// --------
+/// With $z = -1$, the quintuple product gives twice the Euler function:
+///
 /// >>> from q_kangaroo import QSession, quinprod
 /// >>> s = QSession()
-/// >>> qp = quinprod(s, 1, 1, 1, 20)  # z = q
+/// >>> qp = quinprod(s, -1, 1, 0, 20)  # z = -1
+/// >>> print(qp)  # 2 - 2*q - 2*q^2 + 2*q^5 + 2*q^7 - 2*q^12 - 2*q^15 + O(q^20)
+///
+/// This is $2 \cdot (q;q)_\infty$ -- the pentagonal number coefficients scaled by 2.
+///
+/// Notes
+/// -----
+/// The quintuple product identity is
+/// $\prod_{n \ge 1}(1-q^n)(1-zq^n)(1-z^{-1}q^{n-1})(1-z^2q^{2n-1})(1-z^{-2}q^{2n-1})
+///   = \sum_{n=-\infty}^{\infty}(z^{3n} - z^{-3n-1})q^{n(3n+1)/2}$.
+/// Many standard parameter choices (e.g., $z = q$) lead to vanishing factors;
+/// use $z = -1$ or non-integer monomials for non-trivial output.
 ///
 /// See Also
 /// --------
 /// tripleprod : Jacobi triple product.
+/// jacprod : Jacobi triple product JAC(a, b).
 /// winquist : Winquist's identity product.
+/// etaq : Generalized eta product.
 #[pyfunction]
 pub fn quinprod(
     session: &QSession,
@@ -362,6 +472,8 @@ pub fn quinprod(
 ///
 /// Evaluates the 10-factor product from Winquist's identity, where
 /// $a = \frac{a\_cn}{a\_cd} \cdot q^{a\_p}$ and $b = \frac{b\_cn}{b\_cd} \cdot q^{b\_p}$.
+/// The product is $(q;q)_\infty^2$ multiplied by 8 q-Pochhammer factors involving
+/// $a$, $a^{-1}$, $b$, $b^{-1}$, $ab$, $(ab)^{-1}$, $a/b$, and $b/a$.
 ///
 /// Parameters
 /// ----------
@@ -389,14 +501,27 @@ pub fn quinprod(
 ///
 /// Examples
 /// --------
+/// Many integer-monomial specializations vanish because one of the 8 factors
+/// becomes $(1; q)_\infty = 0$. Use non-unit coefficients for non-trivial output:
+///
 /// >>> from q_kangaroo import QSession, winquist
 /// >>> s = QSession()
 /// >>> w = winquist(s, 1, 1, 1, 1, 1, 2, 20)
+/// >>> # This is identically zero (a degenerate specialization)
+///
+/// Notes
+/// -----
+/// Winquist's identity (1969) expresses $(q;q)_{\\infty}^{10}$ as a double sum,
+/// which Winquist used to give an elementary proof of Ramanujan's congruence
+/// $p(11n+6) \\equiv 0 \\pmod{11}$. The identity relates an infinite product
+/// involving two parameters $a$ and $b$ to
+/// $\sum_{j,k} (-1)^{j+k} (a^{3j} b^{3k} - a^{-3j-1} b^{3k}) q^{(3j^2+j+3k^2+k)/2}$.
 ///
 /// See Also
 /// --------
 /// quinprod : Quintuple product identity.
-/// tripleprod : Jacobi triple product.
+/// etaq : Generalized eta product.
+/// findcong : Discover partition congruences (Winquist proved $p(11n+6) \equiv 0$).
 #[pyfunction]
 #[pyo3(signature = (session, a_cn, a_cd, a_p, b_cn, b_cd, b_p, order))]
 pub fn winquist(
