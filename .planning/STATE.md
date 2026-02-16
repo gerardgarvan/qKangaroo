@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-15)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** All milestones complete. Planning next milestone or publishing.
+**Current focus:** Algorithmic identity proving — q-Zeilberger, creative telescoping, WZ certificates
 
 ## Current Position
 
-Phase: 12 of 12 (all complete)
-Plan: 4 of 4 in current phase (MILESTONE COMPLETE)
-Status: v1.1 shipped -- all 12 phases, 44 plans complete
-Last activity: 2026-02-15 -- Milestone v1.1 archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements for v1.2
+Last activity: 2026-02-15 — Milestone v1.2 started
 
-Progress: [############################################] 100% (44/44 plans)
+Progress: [                                            ] 0%
 
 ## v1.0 Performance Metrics
 
@@ -64,5 +64,5 @@ All resolved. No active blockers.
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: v1.1 milestone complete, archived
-Resume file: .planning/MILESTONES.md
+Stopped at: v1.2 milestone requirements definition
+Resume file: .planning/REQUIREMENTS.md

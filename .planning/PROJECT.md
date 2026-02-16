@@ -44,11 +44,15 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-(No active requirements -- all shipped. Define next milestone with `/gsd:new-milestone`.)
+**v1.2 — Algorithmic Identity Proving:**
+- q-Gosper's algorithm for indefinite q-hypergeometric summation
+- q-Zeilberger's algorithm for definite q-hypergeometric sum recurrences
+- Creative telescoping for multi-sum q-hypergeometric identities
+- WZ proof certificates for identity verification
+- Full Python API with DSL functions, docstrings, Sphinx docs for all new algorithms
 
 ### Future
 
-- Algorithmic identity proving (WZ method, creative telescoping, q-Zeilberger)
 - Quantum algebra (quantum groups, R-matrices, knot polynomial connections)
 - Identity database expansion (~500+ verified identities with citations)
 - macOS CI support
@@ -89,4 +93,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Pre-executed notebooks | Avoids fragile CI notebook execution; nbsphinx_execute="never" | Good |
 
 ---
-*Last updated: 2026-02-15 after v1.1 milestone completion*
+*Last updated: 2026-02-15 after v1.2 milestone started*
