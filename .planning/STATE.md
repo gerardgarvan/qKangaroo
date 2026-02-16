@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-15)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 15 — q-Zeilberger & WZ Certificates (v1.2 Algorithmic Identity Proving)
+**Current focus:** Phase 16 — Extensions (v1.2 Algorithmic Identity Proving)
 
 ## Current Position
 
@@ -101,5 +101,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 15-03-PLAN.md (WZ Certificate Verification & FPS Cross-Check). Phase 15 complete.
-Resume file: .planning/phases/16-q-operator-algebra/16-01-PLAN.md
+Stopped at: Phase 15 verified and complete. Ready to plan Phase 16 (Extensions).
+Resume file: .planning/ROADMAP.md

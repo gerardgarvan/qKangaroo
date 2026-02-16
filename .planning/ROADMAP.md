@@ -42,7 +42,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for details.
 
 - [x] **Phase 13: Polynomial Infrastructure** - Exact polynomial and rational function arithmetic over QRat
 - [x] **Phase 14: q-Gosper Algorithm** - Indefinite q-hypergeometric summation via Gosper's algorithm
-- [ ] **Phase 15: q-Zeilberger & WZ Certificates** - Creative telescoping and WZ proof certificates for definite sums
+- [x] **Phase 15: q-Zeilberger & WZ Certificates** - Creative telescoping and WZ proof certificates for definite sums
 - [ ] **Phase 16: Extensions** - Recurrence solving, nonterminating proofs, transformation discovery
 - [ ] **Phase 17: Python API & Documentation** - DSL functions, docstrings, and Sphinx pages for all new algorithms
 
@@ -94,9 +94,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md -- N-direction shift ratios, extended key equation solver, creative telescoping core (ZEIL-01)
-- [ ] 15-02-PLAN.md -- Public q_zeilberger function with recurrence output and WZ certificate extraction (ZEIL-02, ZEIL-03)
-- [ ] 15-03-PLAN.md -- WZ certificate verification and FPS cross-check (ZEIL-04, ZEIL-05)
+- [x] 15-01-PLAN.md -- N-direction shift ratios, extended key equation solver, creative telescoping core (ZEIL-01)
+- [x] 15-02-PLAN.md -- Public q_zeilberger function with recurrence output and WZ certificate extraction (ZEIL-02, ZEIL-03)
+- [x] 15-03-PLAN.md -- WZ certificate verification and FPS cross-check (ZEIL-04, ZEIL-05)
 
 ### Phase 16: Extensions
 **Goal**: Users can solve recurrences for closed forms, prove nonterminating identities, and discover transformation chains between hypergeometric series
@@ -147,6 +147,6 @@ Plans:
 | 12. Documentation & UX Polish | v1.1 | 4/4 | Complete | 2026-02-15 |
 | 13. Polynomial Infrastructure | v1.2 | 3/3 | Complete | 2026-02-15 |
 | 14. q-Gosper Algorithm | v1.2 | 3/3 | Complete | 2026-02-16 |
-| 15. q-Zeilberger & WZ Certificates | v1.2 | 0/3 | Not started | - |
+| 15. q-Zeilberger & WZ Certificates | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 16. Extensions | v1.2 | 0/TBD | Not started | - |
 | 17. Python API & Documentation | v1.2 | 0/TBD | Not started | - |
