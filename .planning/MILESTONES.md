@@ -56,3 +56,36 @@ See STATE.md Accumulated Context for full decision log.
 - 26 v1.1 requirements: 26/26 complete
 - 11,331 lines Rust core + 3,881 lines Python API + 5,862 lines docs
 - Total project: 44 plans across 12 phases (v1.0 + v1.1)
+
+## v1.2: Algorithmic Identity Proving (Complete)
+
+**Shipped:** 2026-02-16
+**Phases:** 13-17 (14 plans, 836 Rust tests + 9 Python integration tests)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 13 | Polynomial infrastructure — QRatPoly (dense), GCD (subresultant PRS), resultant, q-shift, QRatRationalFunc with auto-simplification |
+| 14 | q-Gosper algorithm — term ratio extraction, q-dispersion, qGFF decomposition, key equation solver, complete indefinite summation |
+| 15 | q-Zeilberger & WZ certificates — creative telescoping, recurrence output, WZ certificate extraction, independent verification, FPS cross-check |
+| 16 | Extensions — q-Petkovsek recurrence solver, Chen-Hou-Mu nonterminating proofs, BFS transformation chain discovery |
+| 17 | Python API — 6 new DSL functions (q_zeilberger, verify_wz, q_petkovsek, prove_nonterminating, find_transformation_chain + q_gosper fix), Sphinx summation.rst |
+
+### Key Accomplishments
+
+- Machine-prove q-hypergeometric identities end-to-end (q-Zeilberger recurrence + WZ certificate)
+- Nonterminating identity proofs via parameter specialization (Chen-Hou-Mu method)
+- BFS transformation chain discovery over 5 transforms (Heine 1/2/3, Sears, Watson)
+- q-Petkovsek solver finds Pochhammer closed forms for recurrences
+- Polynomial infrastructure enabling all algorithms (GCD, resultant, rational functions)
+- 79 Python DSL functions in 13 groups with complete Sphinx documentation
+
+### Key Metrics
+
+- 25 v1.2 requirements: 25/25 complete
+- 18,686 lines Rust core + 4,866 lines Python API
+- +7,355 lines Rust, +985 lines Python over v1.1
+- +258 new Rust tests (578 -> 836)
+- Total project: 54 plans across 17 phases (v1.0 + v1.1 + v1.2)
+- Execution: 14 plans in ~124 min (avg 9 min/plan)

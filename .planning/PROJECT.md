@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (11,300+ lines) with Python bindings (`q_kangaroo`, 73 DSL functions) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, and hypergeometric transformations that Garvan's packages don't cover.
+An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (18,600+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, and machine-assisted identity proving that Garvan's packages don't cover.
 
 ## Core Value
 
@@ -10,20 +10,22 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ## Current State
 
-**v1.1 shipped.** The project is release-ready:
+**v1.2 shipped.** The project now includes algorithmic identity proving:
 - `pip install q-kangaroo` works (Linux manylinux2014 + Windows MinGW wheels)
-- `import q_kangaroo` provides 73 DSL functions across 10 groups
+- `import q_kangaroo` provides 79 DSL functions across 13 groups
 - Sphinx documentation site with API reference, getting-started guide, 5 example notebooks
 - GitHub Actions CI (Rust + Python tests, Codecov coverage, wheel builds, OIDC PyPI publishing)
 - QExpr and QSeries render LaTeX in Jupyter notebooks
-- All 73 functions have NumPy-style docstrings with mathematical notation
+- All 79 functions have NumPy-style docstrings with mathematical notation
+- q-Gosper, q-Zeilberger, WZ certificates for machine-proving q-hypergeometric identities
+- q-Petkovsek recurrence solver, nonterminating proofs, transformation chain discovery
 
 **Codebase:**
-- 11,331 lines Rust core (`crates/qsym-core/src/`)
-- 3,881 lines Python API (`crates/qsym-python/src/`)
-- 5,862 lines documentation (`docs/`)
-- 578 Rust tests, 9 Python integration tests
-- 44 plans across 12 phases (v1.0 + v1.1)
+- 18,686 lines Rust core (`crates/qsym-core/src/`)
+- 4,866 lines Python API (`crates/qsym-python/src/`)
+- 5,862+ lines documentation (`docs/`)
+- 836 Rust tests, 9 Python integration tests
+- 54 plans across 17 phases (v1.0 + v1.1 + v1.2)
 
 ## Requirements
 
@@ -41,18 +43,23 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - CI/CD: GitHub Actions CI + release workflow with OIDC PyPI publishing -- v1.1
 - Documentation: Sphinx site, 73 NumPy-style docstrings, 5 example notebooks -- v1.1
 - UX polish: Jupyter LaTeX rendering, get_default_session(), error messages -- v1.1
+- Polynomial infrastructure: QRatPoly, GCD, resultant, rational functions -- v1.2
+- q-Gosper algorithm for indefinite q-hypergeometric summation -- v1.2
+- q-Zeilberger creative telescoping with WZ proof certificates -- v1.2
+- q-Petkovsek recurrence solver with Pochhammer closed-form output -- v1.2
+- Chen-Hou-Mu nonterminating identity proofs -- v1.2
+- BFS transformation chain discovery over Heine/Sears/Watson catalog -- v1.2
+- Python API for all v1.2 algorithms (6 new DSL functions, Sphinx docs) -- v1.2
 
 ### Active
 
-**v1.2 — Algorithmic Identity Proving:**
-- q-Gosper's algorithm for indefinite q-hypergeometric summation
-- q-Zeilberger's algorithm for definite q-hypergeometric sum recurrences
-- Creative telescoping for multi-sum q-hypergeometric identities
-- WZ proof certificates for identity verification
-- Full Python API with DSL functions, docstrings, Sphinx docs for all new algorithms
+(No active requirements -- planning next milestone)
 
 ### Future
 
+- Multi-sum creative telescoping (qMultiSum equivalent)
+- Batch verification of identity database (Gasper-Rahman Appendix II)
+- Human-readable proof output for publication
 - Quantum algebra (quantum groups, R-matrices, knot polynomial connections)
 - Identity database expansion (~500+ verified identities with citations)
 - macOS CI support
@@ -68,6 +75,9 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - Mobile app
 - Paid hosting / SaaS
 - General-purpose CAS features -- focused q-series tool
+- General holonomic functions framework -- q-hypergeometric algorithms are sufficient
+- q-Integration (Jackson q-integral) -- different algorithmic domain
+- Automatic conjecture generation from data -- existing findlincombo/findhom/findpoly handle relation discovery
 
 ## Constraints
 
@@ -91,6 +101,11 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | OIDC trusted publishing | Zero stored tokens, most secure PyPI publishing method | Good |
 | Explicit session parameter | Better for reproducibility; get_default_session() for convenience | Good |
 | Pre-executed notebooks | Avoids fragile CI notebook execution; nbsphinx_execute="never" | Good |
+| Dense polynomial storage | Vec<QRat> ascending-degree simpler than sparse for algorithm needs | Good |
+| Subresultant PRS for GCD | Prevents intermediate coefficient explosion vs naive Euclidean | Good |
+| Direct term-value creative telescoping | Avoids polynomial key equation evaluation; handles terminating series | Good |
+| BFS for transformation chains | Shortest-path guarantee; DFS could miss shorter paths | Good |
+| Closure-from-template for prove_nonterminating | Declarative Python params, Rust builds closures; avoids FFI closure crossing | Good |
 
 ---
-*Last updated: 2026-02-15 after v1.2 milestone started*
+*Last updated: 2026-02-16 after v1.2 milestone*
