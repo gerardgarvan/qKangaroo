@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 
 ## Current Position
 
-Phase: 16 of 17 (Extensions)
-Plan: 3 of 3 in current phase (PHASE COMPLETE)
-Status: Phase 16 complete
-Last activity: 2026-02-16 — Completed all 3 plans (q-Petkovsek, Chen-Hou-Mu, BFS chain search)
+Phase: 17 of 17 (Python API & Documentation)
+Plan: 1 of 2 in current phase
+Status: Executing Phase 17
+Last activity: 2026-02-16 — Completed 17-01 (Algorithmic Summation DSL)
 
-Progress: [============================================== ] 94% (v1.0+v1.1 complete, v1.2 phases 13-16 complete)
+Progress: [================================================ ] 97% (v1.0+v1.1 complete, v1.2 phases 13-16 complete, 17-01 done)
 
 ## v1.0 Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [============================================== ] 94% (v1.0+v1.1 compl
 | 14 - q-Gosper Algorithm | 3/3 | 19 min | 6 min |
 | 15 - q-Zeilberger & WZ Certificates | 3/3 | 62 min | 21 min |
 | 16 - Extensions | 3/3 | 18 min | 6 min |
+| 17 - Python API & Docs | 1/2 | 7 min | 7 min |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 16-02: Scalar (QRat) rhs_builder interface for prove_nonterminating (avoids eval_phi negative-power bug)
 - 16-02: Re-derive recurrence at each verification n (concrete-q coefficients are n-specific)
 - 16-02: compute_sum_at_q for scalar sum evaluation via term-ratio accumulation
+- 17-01: verify_wz_fn internally calls q_zeilberger (QRatRationalFunc not passable from Python)
+- 17-01: q_petkovsek_fn takes (int,int) tuples for coefficients (QRat boundary pattern)
+- 17-01: Option<Vec<usize>> + Option<bool> for auto-detect with manual override
 
 ### Pending Todos
 
@@ -113,5 +117,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 16 verified and complete. Ready to plan Phase 17 (Python API & Documentation).
-Resume file: .planning/ROADMAP.md
+Stopped at: Completed 17-01-PLAN.md (Algorithmic Summation DSL). Ready for 17-02.
+Resume file: .planning/phases/17-python-api-docs/17-02-PLAN.md
