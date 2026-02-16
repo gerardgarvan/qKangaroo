@@ -26,6 +26,8 @@
 //!   [`ZwegersCompletion`]
 //! - q-Gosper algorithm: [`q_gosper`], [`extract_term_ratio`], [`q_dispersion`],
 //!   [`QGosperResult`], [`GosperNormalForm`], [`gosper_normal_form`], [`solve_key_equation`]
+//! - q-Zeilberger algorithm: [`ZeilbergerResult`], [`QZeilbergerResult`],
+//!   creative telescoping for definite q-hypergeometric summation
 
 pub mod appell_lerch;
 pub mod factoring;
@@ -44,6 +46,7 @@ pub mod identity;
 pub mod mock_theta;
 pub mod bailey;
 pub mod gosper;
+pub mod zeilberger;
 
 pub use factoring::{qfactor, QFactorization};
 pub use hypergeometric::{HypergeometricSeries, BilateralHypergeometricSeries, eval_phi, eval_psi, SummationResult, TransformationResult, try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon, try_all_summations, heine_transform_1, heine_transform_2, heine_transform_3, sears_transform, watson_transform, bailey_4phi3_q2};
@@ -69,6 +72,7 @@ pub use mock_theta::{
 pub use appell_lerch::{appell_lerch_m, appell_lerch_bilateral, universal_mock_theta_g2, universal_mock_theta_g3, ZwegersCompletion};
 pub use bailey::{BaileyPair, BaileyPairType, BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair, bailey_discover, DiscoveryResult};
 pub use gosper::{QGosperResult, GosperNormalForm, extract_term_ratio, q_dispersion, gosper_normal_form, solve_key_equation, q_gosper};
+pub use zeilberger::{ZeilbergerResult, QZeilbergerResult};
 
 use crate::number::QRat;
 
