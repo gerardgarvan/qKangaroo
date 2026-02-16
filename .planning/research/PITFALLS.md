@@ -1,474 +1,566 @@
-# Pitfalls Research: PyO3/Maturin Packaging, CI, Documentation, and Renaming
+# Domain Pitfalls: Algorithmic q-Hypergeometric Identity Proving
 
-**Domain:** Rust+Python library with native dependencies (GMP) using PyO3 0.23 + maturin
-**Researched:** 2026-02-14
-**Confidence:** HIGH
+**Domain:** q-Gosper, q-Zeilberger, creative telescoping, WZ certificates in exact arithmetic
+**Researched:** 2026-02-15
+**Confidence:** HIGH (algorithmic structure), MEDIUM (performance characteristics), LOW (Rust-specific polynomial ring libraries)
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Module Name Triple-Mismatch (Rename Breakage)
-
-**What goes wrong:**
-When renaming a PyO3/maturin package, three separate identifiers must align: `[lib] name` in Cargo.toml, `module-name` in pyproject.toml, and the `#[pymodule]` decorator name. Misalignment causes "ImportError: dynamic module does not define module export function" with no obvious indication which piece is wrong.
-
-**Why it happens:**
-Maturin merges metadata from Cargo.toml and pyproject.toml (pyproject.toml takes precedence), but the Rust macro `#[pymodule]` is evaluated separately during compilation. Developers update 2 of 3 locations and assume it's complete.
-
-**How to avoid:**
-For rename from `qsymbolic` to `q_kangaroo`:
-
-1. **Cargo.toml**: `[lib] name = "_q_kangaroo"` (underscore prefix for internal module)
-2. **pyproject.toml**: `[tool.maturin] module-name = "q_kangaroo._q_kangaroo"` (package.internal_module)
-3. **lib.rs**: `#[pymodule] fn _q_kangaroo(m: &Bound<'_, PyModule>) -> PyResult<()>`
-4. **__init__.py**: `from q_kangaroo._q_kangaroo import ...`
-
-All four must use `_q_kangaroo` for the Rust module. The last component of `module-name` MUST match `#[pymodule]` name exactly.
-
-**Warning signs:**
-- ImportError mentioning `PyInit_` with wrong module name
-- Module imports in interactive Python fail but `maturin develop` succeeds
-- IDE shows module as available but runtime import fails
-
-**Phase to address:**
-Phase 1: Rename (first step before any other work to avoid cascading changes)
+Mistakes that cause rewrites or major architectural issues.
 
 ---
 
-### Pitfall 2: ABI3 Feature Flag Without Minimum Version
+### Pitfall 1: Missing Polynomial Ring Infrastructure (The Representation Gap)
 
 **What goes wrong:**
-Using bare `abi3` feature in PyO3 dependencies creates version-specific wheels (e.g., `cp39-cp39`) instead of cross-version compatible `cp36-abi3` wheels. Users with different Python versions cannot install the wheel despite ABI3 being intended for forward compatibility.
+q-Gosper and q-Zeilberger operate on **polynomials and rational functions in q^n** (the q-shift variable), not on FPS coefficients or QMonomials. The algorithms require:
+- Univariate polynomials in `q^k` (for q-Gosper's p, q, r decomposition)
+- Laurent polynomials in `q^k` (for the q-GFF step)
+- Rational functions `p(q^k)/r(q^k)` (for the term ratio)
+- Polynomial arithmetic: GCD, resultant, factorization, degree computation
+- Solving polynomial equations (finding integer roots of resultants)
+
+q-Kangaroo currently has **none of these**. `QMonomial` is `coeff * q^power` (a single term), `FormalPowerSeries` is a truncated power series in q, and `QRat` is a single rational number. There is no polynomial-in-q^n type.
 
 **Why it happens:**
-PyO3 allows setting `abi3` without any minimum version and defaults to the current Python interpreter version. Maturin requires an explicit minimum version flag (e.g., `abi3-py09`) to properly name the wheel with the correct platform tag.
+The existing system was designed for *evaluating* q-series to finite precision, not for *symbolic manipulation* of the summand's ratio as a function of the summation index. These are fundamentally different operations: FPS works in `Q[[q]]` (power series ring), while Gosper/Zeilberger work in `Q(q^n)[q^k]` or `Q(q^n, q^k)` (polynomial/rational function rings in the shift variable).
 
-**How to avoid:**
-In Cargo.toml dependencies:
-```toml
-pyo3 = { version = "0.23", features = ["extension-module", "abi3-py09"] }
+**Consequences:**
+Without a proper polynomial ring type, you cannot:
+1. Factor the term ratio into coprime polynomials (the p, q, r decomposition in Gosper)
+2. Compute the q-greatest factorial factorization (qGFF)
+3. Solve the key recurrence `a(n)*x(n+1) - b(n-1)*x(n) = c(n)` for polynomial x
+4. Compute resultants for the dispersion set
+5. Build the Zeilberger linear system with polynomial coefficients
+
+Attempting to shoehorn FPS arithmetic into these roles will produce wrong results or require O(N^2) workarounds that defeat the purpose of having an algorithmic prover.
+
+**Prevention:**
+Build a dedicated `QPolynomial` type (univariate polynomial in a formal variable, with QRat coefficients) BEFORE implementing q-Gosper. This type needs:
+```rust
+struct QPolynomial {
+    // Sparse representation: degree -> coefficient
+    coeffs: BTreeMap<i64, QRat>,  // i64 for Laurent polynomials
+}
+
+// Required operations:
+impl QPolynomial {
+    fn degree(&self) -> Option<i64>;
+    fn leading_coeff(&self) -> QRat;
+    fn gcd(a: &Self, b: &Self) -> Self;  // Euclidean algorithm
+    fn resultant(a: &Self, b: &Self) -> QRat;
+    fn evaluate(&self, x: &QRat) -> QRat;
+    fn shift(&self, delta: i64) -> Self;  // p(x) -> p(x + delta)
+    fn q_shift(&self, q_pow: i64) -> Self;  // p(q^k) -> p(q^{k+1})
+    fn div_rem(a: &Self, b: &Self) -> (Self, Self);
+    fn integer_roots(&self) -> Vec<i64>;  // for dispersion
+}
 ```
 
-NOT:
-```toml
-pyo3 = { version = "0.23", features = ["extension-module", "abi3"] }
-```
+Also need `QRationalFunction` = `QPolynomial / QPolynomial` with automatic GCD cancellation.
 
-Use `abi3-py09` (or whatever your minimum supported version is) to generate `cp09-abi3` wheels that work on Python 3.9+. This project uses Python 3.14 but should target `abi3-py09` for backward compatibility.
+**Detection:**
+If you find yourself converting between FPS and "polynomial-like" operations, or using truncated FPS where exact polynomial arithmetic is needed, you have hit this gap.
 
-**Warning signs:**
-- Wheel filename contains `cp314-cp314` instead of `cp09-abi3`
-- Users on Python 3.10/3.11/3.12 report "incompatible wheel" errors
-- `maturin build` output shows platform-specific tag when expecting `abi3`
+**Phase to address:** First phase (foundation). Everything else depends on this.
 
-**Phase to address:**
-Phase 2: Packaging (configure before first test wheel build)
+**Confidence:** HIGH -- this is a fundamental type system requirement visible from the algorithm descriptions in Koornwinder (1993) and Paule-Riese.
 
 ---
 
-### Pitfall 3: GMP Bundling Failures on Windows
+### Pitfall 2: Coefficient Explosion in Exact Rational Arithmetic
 
 **What goes wrong:**
-On Windows, maturin cannot automatically bundle GMP DLLs into wheels like it does on Linux (via patchelf). Users installing from wheels get runtime errors: "DLL load failed while importing _q_kangaroo" because GMP is not found in system PATH.
+During q-Gosper and q-Zeilberger, intermediate QRat coefficients grow **exponentially** in numerator/denominator size. This is called "intermediate expression swell" in computer algebra. Key explosion points:
+
+1. **Polynomial GCD via Euclidean algorithm:** Each step of the Euclidean algorithm over Q[x] can square the bit-size of coefficients. A degree-d GCD computation can produce intermediates with O(2^d) digit counts.
+
+2. **Resultant computation:** The resultant of two polynomials of degree d has coefficients that are determinants of d x d matrices of the input coefficients. For q-Pochhammer ratios, these get large fast.
+
+3. **Linear system solving in Zeilberger:** The qZeil implementation by Paule-Riese found that **95% of runtime** was spent solving the polynomial system, reduced to 30-40% only after aggressive preprocessing to extract constant factors.
+
+4. **q-GFF factorization:** The greatest factorial factorization requires iterated GCD computations with q-shifted polynomials, each amplifying coefficient size.
+
+5. **WZ certificate rational functions:** The certificate R(n,k) = G(n,k)/F(n,k) often has large polynomial numerators and denominators even when the identity itself has small coefficients.
 
 **Why it happens:**
-Maturin's wheel repair process uses patchelf on Linux to bundle shared libraries and adjust rpath. Windows has no equivalent automatic bundling—maturin expects system libraries to be in PATH or requires manual DLL packaging. The current project setup uses MinGW GMP at `C:/mingw64-gcc/mingw64/bin`, which end users won't have.
+Exact rational arithmetic (QRat via GMP/rug) never loses precision, but the *price* is that intermediate computations accumulate large numerators and denominators that are only cancelled at the end. Unlike floating-point where information is silently lost, exact arithmetic faithfully preserves every factor, leading to memory and time blowup.
 
-**How to avoid:**
-**Short-term (development/local users):**
-- Document GMP requirement in README with installation instructions
-- Add runtime check in `__init__.py` with helpful error message
-- Current `os.add_dll_directory()` approach works but requires MINGW_BIN env var
+**Consequences:**
+- Memory exhaustion on moderate-size inputs (10+ parameter identities)
+- Quadratic or worse time growth in what should be linear-time operations
+- GMP allocation overhead dominates actual computation
+- Users experience "hangs" with no progress indication
 
-**Long-term (distribution):**
-- Include GMP DLLs directly in wheel (manual packaging via `include` in pyproject.toml)
-- Build static linkage version (requires rebuilding GMP with static flags—complex)
-- Use cibuildwheel with pre-built GMP and explicit DLL inclusion
-- Document Windows-specific installation: "Requires GMP runtime or use conda-forge"
+**Prevention:**
 
-**Warning signs:**
-- Wheel builds successfully but `import q_kangaroo` fails immediately on fresh Windows install
-- Dependency Walker shows missing `libgmp-10.dll` or similar
-- Works in development environment but not in clean virtualenv
+1. **Normalize aggressively:** After EVERY polynomial arithmetic operation, divide all coefficients by their GCD. For QRat coefficients, call `rug::Rational::canonicalize()` (which q-Kangaroo's QRat should already do, but verify in hot loops).
 
-**Phase to address:**
-Phase 2: Packaging (must decide approach before publishing to PyPI)
+2. **Use modular arithmetic for GCD:** Instead of Euclidean GCD over Q[x], use the modular approach:
+   - Compute GCD modulo several primes p_1, ..., p_k
+   - Reconstruct via Chinese Remainder Theorem + rational reconstruction
+   - This avoids intermediate coefficient swell entirely
+
+3. **Factor out content early:** Before any GCD/resultant, extract the "content" (GCD of all coefficients) from each polynomial. This is the preprocessing that cut qZeil runtime from 95% to 30-40%.
+
+4. **Bound computation depth:** Set configurable limits on polynomial degree, coefficient bit-size, and computation steps. Return "inconclusive" rather than hanging.
+
+5. **Consider lazy/deferred evaluation:** For WZ certificates, store the certificate in factored form (as products of shifted Pochhammer symbols) rather than expanding to a single rational function.
+
+**Detection:**
+- QRat denominators exceeding 1000 digits in intermediate steps
+- Single GCD call taking >1 second
+- Polynomial multiplication producing coefficients 10x larger than inputs
+
+**Phase to address:** Polynomial ring implementation phase (must be built into `QPolynomial` from the start, not retrofitted).
+
+**Confidence:** HIGH -- this is the most documented pitfall in all Zeilberger implementations. Paule-Riese explicitly describe the 95% -> 30-40% runtime improvement.
+
+**Sources:**
+- [Paule-Riese qZeil implementation](https://www3.risc.jku.at/publications/download/risc_117/Paule_Riese.pdf)
+- [Polynomial GCD coefficient swell](https://en.wikipedia.org/wiki/Polynomial_greatest_common_divisor)
+- [Efficient rational creative telescoping](https://www.sciencedirect.com/science/article/abs/pii/S0747717121000535)
 
 ---
 
-### Pitfall 4: Auditwheel Repair with Read-Only Libraries
+### Pitfall 3: q-Greatest Factorial Factorization (qGFF) is Not Standard Factorization
 
 **What goes wrong:**
-When building Linux wheels in Docker/CI, if system libraries (like GMP) have read-only permissions (0o555), maturin's wheel repair process fails with permission errors during `patchelf --set-soname` operations. The repaired wheel is incomplete or build fails entirely.
+The critical Step 2 of q-Gosper requires decomposing the term ratio `r(k) = t_{k+1}/t_k` into coprime polynomials `a(k), b(k), c(k)` such that:
+- `r(k) = a(k)/b(k) * c(k+1)/c(k)` (ordinary Gosper)
+- In q-case: `r(q^k) = a(q^k)/b(q^k) * c(q^{k+1})/c(q^k)` with `gcd(a(q^k), b(q^{k+h})) = 1` for all non-negative integers h
+
+This "q-dispersion" condition is NOT the same as ordinary coprimality. Two polynomials can be coprime in the usual sense but have GCD after q-shifting. Computing the full dispersion set requires:
+1. Computing `resultant_x(a(x), b(q^j * x))` as a polynomial in `q^j`
+2. Finding all non-negative integer values of j where the resultant vanishes
+3. Iteratively dividing out common factors at each shift
 
 **Why it happens:**
-Maturin copies libraries into the wheel and attempts to patch them (adjust SONAME, rpath). If the copied file inherits read-only permissions, patchelf cannot modify it. This commonly occurs in Docker images where system packages install read-only libraries.
+Developers familiar with ordinary polynomial factorization assume `gcd(a, b) = 1` is sufficient. But in the q-shift world, `a(q^k)` and `b(q^{k+3})` might share a factor even though `a(x)` and `b(x)` are coprime. The dispersion set captures all such "hidden" common factors.
 
-**How to avoid:**
-In GitHub Actions / CI configuration:
-```yaml
-- name: Build wheels
-  run: |
-    # Ensure copied libraries are writable before maturin processes them
-    chmod -R u+w target/ || true
-    maturin build --release --manylinux 2014
-```
+**Consequences:**
+- Wrong Gosper decomposition -> wrong or missed solutions
+- Algorithm claims "no closed form" when one exists
+- Silently incorrect WZ certificates that fail verification
 
-Or use maturin 0.13+ which includes fixes for read-only library handling (PR #1292).
+**Prevention:**
+1. Implement q-dispersion as a separate, well-tested function
+2. Use resultant-based computation (not iterated trial GCD which is slower and error-prone)
+3. Test with known examples where ordinary GCD misses the q-shifted common factor
+4. The dispersion set is always finite (bounded by degree), so enumerate explicitly
 
-**Warning signs:**
-- Build succeeds locally but fails in CI with patchelf errors
-- Error messages mentioning "Permission denied" during wheel repair
-- `auditwheel repair` or maturin's internal repair step fails
+**Detection:**
+- WZ certificate verification fails (the telescoping equation doesn't hold)
+- Known summable identities return "no closed form"
+- Disagreement between algorithmic proof and FPS numerical verification
 
-**Phase to address:**
-Phase 3: CI Setup (test Linux wheel builds early)
+**Phase to address:** q-Gosper phase (core algorithm step).
+
+**Confidence:** HIGH -- this is the mathematical core of the algorithm, described rigorously in Koornwinder (1993).
+
+**Sources:**
+- [Koornwinder 1993: rigorous description of q-Zeilberger](https://staff.fnwi.uva.nl/t.h.koornwinder/art/1993/zeilbalgo.pdf)
+- [Fast polynomial dispersion computation](https://dl.acm.org/doi/pdf/10.1145/190347.190413)
+- [Greatest factorial factorization and symbolic summation](https://www.sciencedirect.com/science/article/pii/S0747717185710498)
 
 ---
 
-### Pitfall 5: Python 3.13+ with PyO3 Maximum Version Error
+### Pitfall 4: Zeilberger's Incremental Order Search Can Hang
 
 **What goes wrong:**
-Building with Python 3.13+ triggers error: "the configured Python interpreter version (3.13) is newer than PyO3's maximum supported version (3.12)". Build halts unless `PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1` is set, but developers don't know this flag exists.
+The q-Zeilberger algorithm works by trying to find a recurrence of order J = 1, then J = 2, then J = 3, etc. For each order J, it runs q-Gosper on a parametric sum involving J unknowns. If the minimum recurrence order is large (say J = 8), the algorithm must fail for J = 1 through 7 before finding the answer at J = 8.
+
+Each failed attempt at order J involves:
+- Setting up a polynomial system with J+1 unknowns
+- Running q-Gosper (which itself involves GFF + degree bound + polynomial solving)
+- Verifying that no polynomial solution exists (negative result, which is just as expensive as positive)
 
 **Why it happens:**
-PyO3 explicitly validates Python version against its tested maximum. Newer Python versions may have ABI changes. The stable ABI (abi3) provides forward compatibility, but PyO3 requires explicit opt-in via environment variable to suppress version checking.
+There is no cheap a priori bound on the recurrence order for a given identity. Known theoretical bounds exist but are often very loose (e.g., the product of all parameter magnitudes). The practical strategy is incremental search starting from J = 1.
 
-**How to avoid:**
-For projects using `abi3-py3X`:
+**Consequences:**
+- For identities with high-order recurrences, the algorithm runs q-Gosper many times before succeeding
+- Each unsuccessful q-Gosper call at order J is wasted computation (but necessary to prove minimality)
+- No progress indication -- the algorithm appears hung between J = 1 and the true order
+- Combined with coefficient explosion (Pitfall 2), each failed attempt gets slower
 
-In CI workflows and local development:
-```bash
-export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
-```
+**Prevention:**
 
-In GitHub Actions:
-```yaml
-env:
-  PYO3_USE_ABI3_FORWARD_COMPATIBILITY: 1
-```
+1. **Set a maximum recurrence order:** Default to J_max = 5 or 6. Most standard q-hypergeometric identities have recurrence orders 1-3. If J_max is exceeded, return "inconclusive" with a suggestion to increase the bound.
 
-This tells PyO3: "I'm using stable ABI, allow building with newer Python than tested maximum."
+2. **Use FPS heuristic first:** Before running Zeilberger, check if the identity holds numerically to O(q^100) using the existing eval_phi. If it doesn't hold, don't even try the algorithmic proof. If it does hold, use the FPS check to estimate the recurrence order by looking at the coefficient recurrence.
 
-**Warning signs:**
-- Builds fail on CI runners with Python 3.13+
-- Local development works on Python 3.10 but CI fails with newer Python
-- Error message explicitly mentions maximum supported version
+3. **Parallel/incremental coefficient extraction:** Paule-Riese's preprocessing optimization should be applied: for each J, pre-extract constant factors from the polynomial system before solving.
 
-**Phase to address:**
-Phase 3: CI Setup (configure environment variables before first CI run)
+4. **Cache q-Gosper subresults:** When moving from order J to J+1, some of the polynomial factorizations and GFF computations can be reused.
+
+**Detection:**
+- Algorithm takes >10 seconds on a "simple-looking" identity (likely high recurrence order)
+- Order 1 and 2 attempts complete quickly, then order 3+ slows dramatically
+
+**Phase to address:** q-Zeilberger phase (architecture decision at the start).
+
+**Confidence:** HIGH -- this is inherent to the algorithm design, documented in all implementations.
+
+**Sources:**
+- [Zeilberger's algorithm (MathWorld)](https://mathworld.wolfram.com/ZeilbergersAlgorithm.html)
+- [Creative telescoping bounds](https://www.researchgate.net/publication/278798184_The_ABC_of_Creative_Telescoping_---_Algorithms_Bounds_Complexity)
 
 ---
 
-### Pitfall 6: Editable Install Missing .so After Upgrade
+### Pitfall 5: WZ Certificate Boundary Term Errors
 
 **What goes wrong:**
-After upgrading maturin (e.g., 1.8.2 → 1.11.0+), `maturin develop` appears to succeed but the compiled `.so` file is not placed in the Python package directory. Imports fail with "ModuleNotFoundError" despite successful build output.
+A WZ pair (F, G) satisfies `F(n+1, k) - F(n, k) = G(n, k+1) - G(n, k)`. Summing over k telescopes the RHS, but **only if the boundary terms vanish**: `lim_{k -> +inf} G(n, k) - lim_{k -> -inf} G(n, k) = 0`. For terminating sums with finite bounds [a, b], the condition is `G(n, b+1) = G(n, a)` (often both zero).
+
+Three common boundary errors:
+1. **Forgetting to check boundary terms at all** -- the certificate equation alone is necessary but NOT sufficient
+2. **Off-by-one in summation bounds** -- checking G(n, b) instead of G(n, b+1), or G(n, a-1) instead of G(n, a)
+3. **Non-terminating sums where boundary terms don't vanish** -- the certificate exists algebraically but the identity is false because the boundary contribution is nonzero
 
 **Why it happens:**
-Maturin changed how editable installs handle mixed Rust/Python projects. With `python-source = "python"` in pyproject.toml, the .so location logic changed. Some versions had regressions (Issue #2909).
+The WZ method's elegance makes it tempting to verify only the local equation `F(n+1,k) - F(n,k) = G(n,k+1) - G(n,k)` (which is a purely algebraic check) and skip the analytic boundary check. This is especially tempting in exact arithmetic where the algebraic check is clean.
 
-**How to avoid:**
-**Immediate fix:**
-```bash
-# Force rebuild and install
-maturin develop --release
-# Verify .so exists
-ls -la python/q_kangaroo/_q_kangaroo*.so
+**Consequences:**
+- "Proved" identities that are actually false
+- Subtle errors that only manifest for specific parameter values
+- Loss of trust in the entire proving engine
+
+**Prevention:**
+
+1. **Always verify boundary terms explicitly.** For a terminating sum from k=0 to k=N, check that `G(n, N+1) = 0` and `G(n, 0) = 0` (or whatever the appropriate boundary values are).
+
+2. **For the q-case specifically:** termination comes from `(q^{-N}; q)_k = 0` for k > N. Verify that the certificate `R(n, k) * F(n, k)` vanishes at the boundary. This requires evaluating the certificate at specific k values, not just checking the recurrence.
+
+3. **Separate "certificate found" from "identity proved":** The API should have distinct return types:
+```rust
+enum WZResult {
+    Proved { certificate: ..., boundary_check: BoundaryVerification },
+    CertificateFoundButBoundaryFails { certificate: ..., failing_boundary: ... },
+    NoCertificateFound,
+}
 ```
 
-**Configuration verification:**
-In pyproject.toml:
-```toml
-[tool.maturin]
-python-source = "python"
-module-name = "q_kangaroo._q_kangaroo"
-```
+4. **Use FPS cross-check:** After algorithmic proof, always verify the first N coefficients via direct FPS computation (q-Kangaroo already has this capability via eval_phi). This catches boundary errors.
 
-Ensure directory structure:
-```
-crates/qsym-python/
-  python/
-    q_kangaroo/
-      __init__.py         # imports from ._q_kangaroo
-      _q_kangaroo.*.so    # placed here by maturin develop
-```
+**Detection:**
+- Certificate passes algebraic check but FPS verification disagrees
+- Identity "proved" for parameters where it's known to be false
+- Different results for terminating vs. non-terminating versions of the same identity
 
-**For pytest during development:**
-Use maturin-import-hook to auto-rebuild:
+**Phase to address:** WZ certificate phase (verification logic).
+
+**Confidence:** HIGH -- this is a well-known mathematical subtlety emphasized in A=B (Petkovsek-Wilf-Zeilberger).
+
+**Sources:**
+- [Wilf-Zeilberger pair (Wikipedia)](https://en.wikipedia.org/wiki/Wilf%E2%80%93Zeilberger_pair)
+- [WZ Method (Maple Help)](https://www.maplesoft.com/support/help/maple/view.aspx?path=SumTools/Hypergeometric/WZMethod)
+
+---
+
+## Moderate Pitfalls
+
+---
+
+### Pitfall 6: QMonomial Cannot Represent q-Shift Polynomials
+
+**What goes wrong:**
+The existing `QMonomial { coeff: QRat, power: i64 }` represents a single term `c * q^m`. But q-Gosper's step functions and Zeilberger's operator polynomials require **polynomials in q^n** like `3*q^{2n} - 5*q^n + 2` (a polynomial in the variable `q^n`, NOT a power series in q).
+
+Developers may try to reuse QMonomial or Vec<QMonomial> to represent these, but QMonomial has no concept of a "variable" -- it's always a concrete power of q. The distinction between `q^3` (a specific monomial) and `q^{3n}` (a function of n) is fundamental to the algorithms.
+
+**Prevention:**
+QPolynomial (from Pitfall 1) should explicitly track which variable it's a polynomial in. The q-Gosper algorithm operates on polynomials in `X = q^k` where k is the summation index. When these polynomials are evaluated at a specific k, they produce QRat values. But symbolically, they must remain unevaluated polynomials.
+
+Do NOT attempt to "evaluate at large k and interpolate" -- this is both slower and less reliable than working symbolically.
+
+**Phase to address:** Polynomial ring phase (same as Pitfall 1).
+
+**Confidence:** HIGH -- direct inspection of q-Kangaroo's QMonomial type confirms the gap.
+
+---
+
+### Pitfall 7: Confusing q-Shift with Ordinary Shift
+
+**What goes wrong:**
+In ordinary Gosper/Zeilberger, the shift operator is `E_n: f(n) -> f(n+1)`. In the q-case, the shift operator is `E_q: f(q^n) -> f(q^{n+1})`, which is multiplication by q. This means:
+- "Shifting a polynomial by 1" means replacing `q^n` by `q^{n+1} = q * q^n`, NOT `q^n + 1`
+- The "q-falling factorial" is `(a; q)_n = prod_{k=0}^{n-1} (1 - a*q^k)`, where each factor involves MULTIPLICATION by q, not addition
+- The degree in the q-case counts powers of `q^n`, and shifting up by 1 multiplies each monomial by the appropriate power of q
+
+The entire factorization theory (GFF -> qGFF) changes because "consecutive integer roots" in the ordinary case become "consecutive q-power roots" in the q-case.
+
+**Why it happens:**
+The literature often presents q-Gosper as "almost unchanged" from ordinary Gosper (Koornwinder's words), which is true at the *structural* level but misleading at the *implementation* level. Every polynomial operation needs its q-analogue.
+
+**Prevention:**
+1. Implement q-shift as a first-class operation: `q_shift(p, j)` replaces `X` by `q^j * X` in polynomial p(X)
+2. Write parallel test suites: for every ordinary-Gosper test case, have the q-analogue
+3. Never use `p.evaluate(x + 1)` when you mean `p.evaluate(q * x)` -- these are different operations
+
+**Phase to address:** q-Gosper implementation phase.
+
+**Confidence:** HIGH -- this is the core mathematical distinction.
+
+---
+
+### Pitfall 8: Linear System Solving Bottleneck in q-Zeilberger
+
+**What goes wrong:**
+The final step of both q-Gosper (finding polynomial x(n)) and q-Zeilberger (finding recurrence coefficients) requires solving a linear system over Q. The system has:
+- Variables: coefficients of the unknown polynomial (degree d gives d+1 unknowns)
+- Equations: matching coefficients of q^k for each power (degree of a, b, c polynomials gives the count)
+
+For q-Zeilberger at recurrence order J with parameter polynomials of degree D, the system size is approximately (J+1)*D x (J+1)*D. With exact QRat arithmetic and no modular tricks, Gaussian elimination on this system has complexity O(n^3 * B) where B is the bit-size of coefficients.
+
+q-Kangaroo's existing `rational_null_space` in `linalg.rs` does naive RREF with QRat. This works for the relation discovery functions (findlincombo, etc.) where matrices are moderate-sized and coefficients are small. For Zeilberger's systems, the matrices can be larger AND the coefficients are polynomials in q (so each "entry" is itself a polynomial, not a single rational number).
+
+**Why it happens:**
+The relation discovery functions build matrices from FPS coefficients (small integers/rationals). Zeilberger's algorithm builds matrices from polynomial coefficients (which can have large numerators from Pochhammer products).
+
+**Prevention:**
+1. **Pre-simplify:** Before building the linear system, normalize all polynomials (extract content, cancel common factors). This is the Paule-Riese optimization.
+2. **Consider fraction-free Gaussian elimination:** Instead of pivoting with exact division (which creates large denominators), use the Bareiss algorithm which keeps everything as integers until the end.
+3. **Size the system before solving:** If the matrix exceeds a threshold (e.g., 50x50 with coefficients > 100 digits), warn and offer to switch to modular verification.
+4. **Reuse linalg.rs infrastructure but add a "polynomial coefficient" mode.**
+
+**Phase to address:** q-Zeilberger implementation phase.
+
+**Confidence:** MEDIUM -- the bottleneck is well-documented (Paule-Riese), but the exact thresholds depend on implementation quality and GMP performance.
+
+---
+
+### Pitfall 9: Non-Terminating Input Detection
+
+**What goes wrong:**
+q-Gosper and q-Zeilberger are designed for **terminating** basic hypergeometric sums (where some upper parameter is `q^{-N}`). When applied to non-terminating sums:
+- q-Gosper may loop indefinitely in the dispersion computation (unbounded shift search)
+- q-Zeilberger's incremental order search never terminates (no finite recurrence exists for some non-terminating sums)
+- The algorithms may produce formally correct recurrences that require additional convergence analysis
+
+The existing `HypergeometricSeries::termination_order()` correctly detects termination, but:
+1. The caller might not check it before invoking the prover
+2. Some series terminate for specific parameter values but not in general (parametric termination)
+3. Balanced/very-well-poised non-terminating sums DO have recurrences but require different algorithmic paths
+
+**Prevention:**
+1. **Gate all algorithmic proving functions** behind a termination check:
+```rust
+pub fn q_zeilberger(series: &HypergeometricSeries, ...) -> Result<Recurrence, ProofError> {
+    if series.termination_order().is_none() {
+        return Err(ProofError::NonTerminating);
+    }
+    // ...
+}
+```
+2. For non-terminating sums, offer FPS-based verification (already exists) as fallback
+3. Consider adding a separate `q_zeilberger_nonterminating` for well-poised cases with explicit convergence conditions
+4. Add timeout/step-count limits to all algorithm loops
+
+**Phase to address:** q-Gosper and q-Zeilberger phases (input validation).
+
+**Confidence:** HIGH -- the termination requirement is mathematically necessary and the existing type already supports detection.
+
+---
+
+### Pitfall 10: Degree Bound Computation Returns Negative (Algorithm Says "No Solution")
+
+**What goes wrong:**
+In Gosper's algorithm Step 3, after decomposing the ratio into `a(n), b(n), c(n)`, you must find a polynomial `f(n)` satisfying `a(n)*f(n+1) - b(n-1)*f(n) = c(n)`. The degree of f is bounded by:
+- `deg(f) = max(deg(a), deg(b)) - deg(c)` (when leading coefficients don't cancel)
+- Or `deg(f) = deg(c) - max(deg(a), deg(b)) + [correction]` (alternative formulation depending on convention)
+
+When the degree bound is **negative**, no polynomial solution exists, meaning the term is not Gosper-summable at this order. This is the algorithm's way of saying "try higher order" (in Zeilberger's outer loop) or "no closed form exists" (in standalone Gosper).
+
+The pitfall: developers treat negative degree bound as an error condition (panic/crash) instead of a valid "no solution" result.
+
+**Prevention:**
+1. Return `Option<QPolynomial>` from the Gosper solving step (None = negative degree bound)
+2. In the q-case, the degree bound computation is more subtle because "degree" is in terms of `q^k`, not k. Be careful with the degree convention.
+3. Test with known non-summable terms (e.g., `1/(q;q)_k` has no q-hypergeometric antidifference)
+
+**Phase to address:** q-Gosper implementation phase.
+
+**Confidence:** HIGH -- this is Step 3 of the algorithm, described in Koepf's textbook.
+
+---
+
+### Pitfall 11: Integration with Existing Identity Proving (Eta-Quotient vs. Algorithmic)
+
+**What goes wrong:**
+q-Kangaroo already has `prove_eta_identity` which proves identities via the modular function valence formula. The new algorithmic prover (q-Zeilberger/WZ) is a DIFFERENT proof technique for a DIFFERENT class of identities. Confusion arises in several ways:
+
+1. **Overlapping domains:** Some identities can be proved by BOTH methods (e.g., Rogers-Ramanujan can be expressed as eta-quotients AND as q-hypergeometric sums). If both provers exist, which takes precedence?
+
+2. **Incompatible input formats:** Eta-quotient prover takes `EtaIdentity` (list of eta-quotient terms). Algorithmic prover takes `HypergeometricSeries`. The same mathematical identity looks completely different in each format.
+
+3. **Different result types:** `ProofResult` enum (Proved/NotModular/NegativeOrder/CounterExample) is specific to eta-quotient proving. The algorithmic prover needs its own result type (recurrence found, certificate computed, etc.).
+
+4. **User confusion:** "prove this identity" could mean either method. A unified dispatch is needed.
+
+**Prevention:**
+1. **Separate modules:** Put algorithmic proving in a new submodule (e.g., `qseries/algorithmic/` or `qseries/zeilberger/`) alongside the existing `qseries/identity/`
+2. **Separate result types:** Create `AlgorithmicProofResult` distinct from `ProofResult`
+3. **Unified dispatcher (later phase):** Eventually add a `prove_identity` function that:
+   - Tries eta-quotient method if input is expressible as eta-quotients
+   - Tries q-Zeilberger if input is q-hypergeometric
+   - Falls back to FPS numerical check
+4. **Do NOT modify the existing identity module** to accommodate the new one. They are parallel approaches.
+
+**Phase to address:** Architecture phase (module organization), then implementation phases.
+
+**Confidence:** HIGH -- direct inspection of the existing codebase confirms the integration concern.
+
+---
+
+### Pitfall 12: FPS Truncation Order Inadequacy for Verification
+
+**What goes wrong:**
+After finding a recurrence or WZ certificate algorithmically, the standard practice is to verify the first N terms via direct FPS computation. But what truncation order N is sufficient?
+
+For eta-quotient identities, the Sturm bound gives an exact answer. For algorithmic proofs, the verification needs to:
+1. Check the recurrence initial conditions (typically 1-3 terms)
+2. Verify the certificate equation at enough points
+
+The pitfall is using the FPS truncation_order from the existing session (which might be small, like 20) when the recurrence has high order (needing initial conditions at n=0,...,J) or the certificate has poles that only appear beyond q^20.
+
+**Prevention:**
+1. Compute the required verification depth from the recurrence order and polynomial degrees
+2. Automatically increase truncation_order for verification if needed
+3. Document that algorithmic proofs require higher truncation orders than simple series evaluation
+
+**Phase to address:** Verification phase (after core algorithms are working).
+
+**Confidence:** MEDIUM -- the issue is real but the solution is straightforward.
+
+---
+
+## Minor Pitfalls
+
+---
+
+### Pitfall 13: Bilateral Series (psi) Need Separate Algorithmic Treatment
+
+**What goes wrong:**
+The existing `eval_psi` handles bilateral series `_r psi_s` by summing positive and negative index parts separately. But q-Zeilberger for bilateral sums requires a DIFFERENT algorithm variant (not just running unilateral q-Zeilberger on each half). The bilateral q-Gosper algorithm has additional subtleties around the "Abel Lemma" approach.
+
+**Prevention:**
+Phase bilateral algorithmic proving separately from unilateral. Start with unilateral (phi) only. Most standard identities use phi.
+
+**Confidence:** MEDIUM -- based on Chen-Hou-Mu (2005) work on the Abel Lemma and q-Gosper.
+
+**Source:** [The Abel Lemma and the q-Gosper Algorithm](https://cfc.nankai.edu.cn/_upload/article/files/c6/e1/a2c52bf04b1896f59003b5993582/f50459f6-ce28-4bb2-96c6-9cdb38f67111.pdf)
+
+---
+
+### Pitfall 14: Parametric Identities vs. Concrete Identities
+
+**What goes wrong:**
+q-Zeilberger proves identities that hold for all values of a parameter (e.g., "for all n >= 0, sum_k ... = ..."). But q-Kangaroo's FPS verification works at concrete truncation orders. The gap:
+- Algorithmic proof gives a recurrence valid for all n
+- FPS verification checks finitely many terms
+- If the recurrence has a non-hypergeometric solution for some exceptional n, the FPS check might miss it
+
+**Prevention:**
+Clearly distinguish between "recurrence proved" (universal statement) and "verified to O(q^N)" (existential check). Both together give strong evidence; either alone is incomplete.
+
+**Confidence:** MEDIUM.
+
+---
+
+### Pitfall 15: Python API Ergonomics for Proofs
+
+**What goes wrong:**
+The existing Python DSL uses tuple interfaces for hypergeometric parameters:
 ```python
-# conftest.py or top of test file
-import maturin_import_hook
-maturin_import_hook.install()
+phi([(1, 0), (2, -1)], [(3, 1)], (1, 1), 20)  # upper, lower, z, truncation
 ```
 
-**Warning signs:**
-- `maturin develop` succeeds but Python can't import module
-- .so file missing from expected location
-- Tests worked before maturin upgrade, fail after
+For the algorithmic prover, users need to:
+1. Specify the identity to prove (not just evaluate a series)
+2. Understand what a recurrence or WZ certificate means
+3. Inspect proof objects (recurrence coefficients, certificate rational function)
 
-**Phase to address:**
-Phase 4: Testing Setup (verify before writing CI test jobs)
+Exposing raw polynomial ring operations through PyO3 is complex and error-prone. The Python API needs a high-level "prove this identity" function, not low-level access to q-Gosper internals.
+
+**Prevention:**
+1. Design the Python API top-down: what do mathematicians want to type?
+```python
+result = s.prove_sum(phi_params, expected_closed_form)
+result = s.find_recurrence(phi_params)
+result = s.wz_certificate(F_func, G_func)
+```
+2. Return structured result objects, not raw data
+3. Defer polynomial ring exposure to advanced API (or not at all)
+
+**Phase to address:** Python API phase (after Rust core works).
+
+**Confidence:** MEDIUM -- ergonomics are important but not blocking.
 
 ---
 
-### Pitfall 7: ABI3 + generate-import-lib Configuration Conflict
+### Pitfall 16: Multivariate Extensions (Future-Proofing Trap)
 
 **What goes wrong:**
-When both `abi3` and `generate-import-lib` features are enabled for cross-compilation to Windows, maturin doesn't generate `PYO3_CONFIG_FILE` for pyo3-build-config. PyO3 then uses whatever Python interpreter it finds in PATH (possibly wrong version/platform), causing build failures or incompatible binaries.
+Developers anticipate needing multivariate creative telescoping (for double/triple sums) and over-engineer the polynomial ring infrastructure to support multiple variables. Multivariate polynomial GCD is dramatically harder than univariate:
+- Univariate GCD: O(d^2) via Euclidean, O(d log^2 d) via fast methods
+- Multivariate GCD: O(d^n * ...) with complex algorithms (Zippel, EZ-GCD, etc.)
 
-**Why it happens:**
-Maturin's configuration generation has an interaction bug between these two features (Issue #2385). `generate-import-lib` is designed to enable Windows cross-compilation without needing Python libraries, but when combined with `abi3`, the config file generation path is skipped.
+For q-Kangaroo's use case (single-sum q-hypergeometric identities), univariate polynomials in one q-shift variable suffice for all of q-Gosper, q-Zeilberger, and WZ certificates.
 
-**How to avoid:**
-**For cross-compilation to Windows:**
-- Use `abi3-py3X` feature explicitly (not bare `abi3`)
-- Manually set `PYO3_CROSS_LIB_DIR` and `PYO3_CROSS_PYTHON_VERSION` when using both features
-- Consider using pre-built Windows runners instead of cross-compilation
+**Prevention:**
+Build `QPolynomial` as **univariate only**. If multivariate is ever needed, it's a separate type with separate algorithms. Do not make QPolynomial generic over "number of variables" -- this adds complexity for a use case that may never materialize.
 
-**For this project (Cygwin/MinGW native build):**
-- Not cross-compiling, so `generate-import-lib` not needed
-- Use `abi3-py09` only, let maturin detect local Python
-
-**Warning signs:**
-- Cross-compilation to Windows produces wheels that import-fail
-- Build uses wrong Python version despite configuration
-- pyo3-build-config warnings about missing config file
-
-**Phase to address:**
-Phase 3: CI Setup (if adding Windows cross-compilation jobs)
+**Confidence:** HIGH -- YAGNI principle. All target algorithms are single-sum.
 
 ---
 
-### Pitfall 8: GitHub Actions Cache Bloat with cargo target/
+## Phase-Specific Warnings
 
-**What goes wrong:**
-Using `actions/cache` to cache `target/` directory in GitHub Actions leads to multi-gigabyte cache entries that take 5+ minutes to restore/save. Cache eviction causes frequent cache misses, and the cache contains artifacts from prior builds that aren't useful for current build, slowing CI dramatically.
-
-**Why it happens:**
-The `target/` directory hoards artifacts from all previous builds and grows unbounded. GitHub Actions caches are limited (10GB total across repository), so large caches get evicted frequently. Cargo must wait for entire cache blob to download before starting build, even if most artifacts are irrelevant.
-
-**How to avoid:**
-**Use sccache instead of target/ caching:**
-
-```yaml
-- uses: PyO3/maturin-action@v1
-  with:
-    maturin-version: latest
-    command: build
-    args: --release --manylinux 2014
-    sccache: 'true'  # Enable sccache
-
-env:
-  RUSTC_WRAPPER: sccache
-  SCCACHE_GHA_ENABLED: 'true'
-  SCCACHE_CACHE_SIZE: '2G'
-```
-
-**Benefits:**
-- 50% faster than cargo target caching in tests
-- Concurrent fetch (build starts immediately)
-- Smaller cache entries (only compiled objects, not all artifacts)
-- Built-in eviction strategy
-
-**Warning signs:**
-- CI jobs spend 3-5+ minutes on "Restore cache" step
-- Cache size grows beyond 2-3GB
-- Frequent "cache not found" messages despite recent builds
-
-**Phase to address:**
-Phase 3: CI Setup (configure before running many builds)
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Polynomial ring foundation | Pitfall 1 (representation gap), Pitfall 2 (coefficient explosion) | Build QPolynomial + QRationalFunction with modular GCD from day one |
+| q-Gosper algorithm | Pitfall 3 (qGFF), Pitfall 7 (q-shift confusion), Pitfall 10 (negative degree) | Follow Koornwinder 1993 precisely; test with known A=B examples |
+| q-Zeilberger algorithm | Pitfall 4 (order search hang), Pitfall 8 (linear system), Pitfall 9 (non-terminating) | Max order bound, preprocessing, termination gate |
+| WZ certificates | Pitfall 5 (boundary terms), Pitfall 12 (truncation) | Always verify boundaries; FPS cross-check mandatory |
+| Integration with existing code | Pitfall 6 (QMonomial mismatch), Pitfall 11 (dual provers) | Separate modules, separate types, unified dispatch later |
+| Python API | Pitfall 15 (ergonomics) | Top-down API design; hide polynomial internals |
 
 ---
 
-## Technical Debt Patterns
+## Summary: The Three Hardest Problems
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Skip ABI3, use version-specific builds | Simpler Cargo.toml, one less feature flag | Users need separate wheels per Python version, 5x wheel count | Never for library distribution |
-| Document GMP as external dependency (not bundled) | Avoids complex wheel bundling | Windows users must manually install GMP or use conda | Acceptable for academic/research tool with tech-savvy users |
-| Use bare `abi3` feature without version | Shorter feature list | Wheels named incorrectly, compatibility broken | Never—always specify minimum version |
-| Manually copy .so during development (no maturin develop) | Avoids maturin version issues | Stale .so files cause debugging nightmares, no auto-rebuild | Never—use maturin-import-hook if `develop` breaks |
-| Skip wheel repair on Linux | Faster builds, no patchelf needed | Wheels fail on systems without GMP in standard locations | Only for internal use, never PyPI distribution |
+1. **Building the polynomial ring** (Pitfalls 1, 2, 6, 16): The existing type system has no polynomial-in-q^n type. This is the biggest infrastructure gap. Get it right (with coefficient management) before writing any algorithm code.
 
-## Integration Gotchas
+2. **Coefficient management** (Pitfalls 2, 8): Every operation in exact arithmetic risks coefficient explosion. The Paule-Riese lesson (95% -> 30-40% with preprocessing) must be built in from the start, not added after performance problems appear.
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| pytest with maturin | Running `pytest` directly without rebuild after Rust changes | Use maturin-import-hook or explicit `maturin develop && pytest` |
-| GitHub Actions maturin-action | Not setting `sccache: true`, using actions/cache on target/ | Use maturin-action's built-in sccache parameter |
-| PyPI upload | Uploading wheel without testing in clean virtualenv | Test wheel in Docker/fresh env before upload, verify GMP loading |
-| Documentation generation | Expecting Sphinx autodoc to work with PyO3 functions | Use pyo3-stub-gen to generate .pyi stubs first, then Sphinx autodoc |
-| Cross-platform testing | Only testing on development platform (Windows MinGW) | Test wheels on clean Linux (Docker), macOS (if supporting), Windows MSVC |
+3. **Boundary/verification correctness** (Pitfalls 5, 12, 14): Algorithmic proofs have subtle correctness conditions (boundary terms, initial conditions, termination requirements) that are easy to skip and hard to debug. Always cross-check with FPS.
 
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Caching entire target/ in CI | 5+ min cache restore/save, frequent cache misses | Use sccache instead of target/ caching | After ~10 builds (cache eviction) |
-| No `--release` flag during wheel builds | Wheels work but are 10-100x slower for compute-heavy code | Always use `--release` for distributed wheels | User benchmarks show poor performance |
-| Re-importing module in long-running Python process | Each import re-initializes GMP arena, leaking memory | Use single QSession instance, pass session to functions | Programs running >1hr with many imports |
-| Rebuilding from scratch in CI without caching | 10+ min Rust builds on every commit | Configure sccache with GitHub Actions cache backend | Every CI run without caching |
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Bundling MinGW GMP DLL without verifying source | Supply chain attack if DLL replaced with malicious version | Use checksummed GMP from official MSYS2 repo, verify signatures |
-| Accepting arbitrary code in `prove_eta_id` symbolic expressions | Limited (Rust memory-safe) but potential DoS via exponential expansion | Document input limits, add expansion depth checks if exposing via web API |
-| Not validating Python version in __init__.py | Crashes or wrong behavior on unsupported Python versions | Check `sys.version_info >= (3, 9)` in __init__.py, raise clear error |
-| Exposing internal Rust panic messages to users | Information disclosure about internals | Wrap PyO3 functions with Result, convert panics to Python exceptions with sanitized messages |
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Generic "ImportError: DLL load failed" on Windows | User has no idea GMP is missing, tries reinstalling Python | Catch ImportError in __init__.py, raise with "q_kangaroo requires GMP: install via conda-forge or set MINGW_BIN" |
-| No version() function or __version__ | Users can't report which version they're using in bug reports | Expose version in both Rust (`version()`) and Python (`__version__`) |
-| Docstrings only in Rust, not visible in Python help() | Users run `help(aqprod)` and see cryptic PyO3 signature | Use pyo3-stub-gen or write docstrings in #[pyfunction] doc comments |
-| Error messages using Rust terminology (ExprRef, Arena, etc.) | Python users don't understand Rust internals | Convert Rust errors to Python exceptions with domain terminology |
-| No install test in README | Users install, can't verify it worked | Add "Quick Test" section: `python -c "import q_kangaroo; print(q_kangaroo.version())"` |
-
-## "Looks Done But Isn't" Checklist
-
-- **Wheel builds successfully:** Often missing verification that it installs in clean environment—test in Docker/fresh virtualenv
-- **Tests pass locally:** Often missing CI verification—local .so may be stale, tests passing against old code
-- **Rename completed in code:** Often missing updates to pyproject.toml metadata (author, description, URLs still reference old name)
-- **Documentation generated:** Often missing .pyi stub files for IDE autocomplete—Sphinx docs exist but no type hints
-- **GMP dependency handled:** Often missing runtime check—works on dev machine (GMP in PATH) but fails for users
-- **CI green:** Often missing release build test—debug builds pass, release builds fail due to optimization-exposed bugs
-- **Version bumped:** Often missing git tag—version number updated but no corresponding tag for release tracking
-
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Module name mismatch after rename | LOW | 1. Search codebase for old module name 2. Update Cargo.toml, pyproject.toml, lib.rs, __init__.py 3. `maturin develop` 4. Test import |
-| Wrong ABI3 feature (bare `abi3`) | LOW | 1. Update Cargo.toml to `abi3-py09` 2. Clean build 3. Verify wheel filename contains `abi3` |
-| GMP DLL missing in distributed wheel | MEDIUM | 1. Add manual DLL bundling via pyproject.toml `include` 2. Rebuild wheels 3. Test on clean Windows 4. Republish |
-| Auditwheel repair failure in CI | LOW | 1. Add `chmod -R u+w` before maturin build 2. Or upgrade maturin to 0.13+ 3. Re-run CI |
-| Editable install not working | LOW | 1. `pip uninstall q_kangaroo` 2. `maturin develop --release` 3. Verify .so location 4. Or use maturin-import-hook |
-| GitHub Actions cache too large | MEDIUM | 1. Remove actions/cache steps for target/ 2. Add `sccache: true` to maturin-action 3. Set SCCACHE env vars 4. Initial run slower (no cache), subsequent 50% faster |
-| Published wheel incompatible with Python 3.13 | MEDIUM | 1. Set PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 2. Rebuild wheels 3. Test on Python 3.13 4. Republish with updated version |
-| Sphinx docs missing PyO3 function signatures | MEDIUM | 1. Install pyo3-stub-gen 2. Generate .pyi files 3. Configure Sphinx to read stubs 4. Rebuild docs |
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Module name mismatch | Phase 1: Rename | `python -c "import q_kangaroo; print(q_kangaroo.version())"` succeeds |
-| Wrong ABI3 feature | Phase 2: Packaging | Wheel filename contains `cp09-abi3`, not `cp314-cp314` |
-| GMP bundling on Windows | Phase 2: Packaging | Test wheel install in clean virtualenv without MINGW_BIN set |
-| Auditwheel read-only libraries | Phase 3: CI Setup | Linux wheel build in CI completes without permission errors |
-| Python 3.13+ version error | Phase 3: CI Setup | CI job on Python 3.13 succeeds with forward compat flag |
-| Editable install .so missing | Phase 4: Testing Setup | `maturin develop && pytest` runs without import errors |
-| ABI3 + generate-import-lib conflict | Phase 3: CI Setup (if cross-compiling) | Cross-compiled Windows wheel imports correctly |
-| GitHub Actions cache bloat | Phase 3: CI Setup | Cache restore <30s, build time reduced by ~50% with sccache |
-
-## Phase-Specific Deep Dives
-
-### Phase 1: Rename Risks
-
-**Primary risk:** Incomplete rename creates broken imports in some contexts but not others (works locally, fails in CI; works in development install, fails in wheel).
-
-**All locations requiring update:**
-1. `Cargo.toml` (2 files: workspace member name, `[lib] name`)
-2. `pyproject.toml` ([project] name, module-name)
-3. `lib.rs` (#[pymodule] function name)
-4. `__init__.py` (import statement, __all__, docstrings)
-5. `test_integration.py` (import statements)
-6. `README.md` (package name in examples)
-7. `.github/workflows/*.yml` (package name in test commands if present)
-
-**Verification strategy:**
-```bash
-# Grep for old name across entire project
-rg "qsymbolic" --type toml --type rust --type python --type markdown
-
-# Test matrix
-1. `maturin develop && python -c "import q_kangaroo; print(q_kangaroo.version())"`
-2. `maturin build && pip install target/wheels/*.whl && python -c "import q_kangaroo"`
-3. `pytest` (after develop install)
-```
-
-### Phase 2: Packaging Risks
-
-**Primary risk:** Wheels build successfully but are not installable/usable on target platforms due to:
-- Wrong platform tag (no ABI3)
-- Missing GMP dependency
-- Incorrect manylinux compliance level
-
-**Testing checklist:**
-- [ ] Build wheel on dev machine, verify filename pattern: `q_kangaroo-*-cp09-abi3-*.whl`
-- [ ] Test wheel in Docker Ubuntu 22.04: `pip install wheel && python -c "import q_kangaroo"`
-- [ ] Test wheel in fresh Windows virtualenv without MinGW in PATH
-- [ ] Test wheel on Python 3.9, 3.10, 3.11, 3.12, 3.13 (abi3 forward compat)
-- [ ] Run `auditwheel show` on Linux wheel, verify manylinux2014 tag
-- [ ] Check wheel size—if >50MB, investigate unnecessary bundled files
-
-### Phase 3: CI Setup Risks
-
-**Primary risk:** CI green status gives false confidence—tests pass in CI but wheels produced are broken for end users.
-
-**Critical CI jobs:**
-1. **Linux wheel build:** manylinux2014 Docker, sccache enabled, auditwheel verify
-2. **Windows wheel build:** Native build with MinGW GMP, test install in separate step
-3. **macOS wheel build (if supporting):** Native build, test install
-4. **Test matrix:** Install wheel on Python 3.9, 3.10, 3.11, 3.12, 3.13
-5. **Import smoke test:** Every platform runs `python -c "import q_kangaroo; q_kangaroo.partition_gf(...)"`
-
-**sccache configuration:**
-```yaml
-env:
-  RUSTC_WRAPPER: sccache
-  SCCACHE_GHA_ENABLED: 'true'
-  SCCACHE_CACHE_SIZE: '2G'
-  PYO3_USE_ABI3_FORWARD_COMPATIBILITY: '1'
-```
-
-### Phase 4: Documentation Risks
-
-**Primary risk:** Documentation exists but is unusable—no autocomplete in IDEs, no type hints, docstrings not visible in Python help().
-
-**Documentation components:**
-1. **Type stubs (.pyi):** Use pyo3-stub-gen to generate from Rust code
-2. **Sphinx docs:** Configure autodoc to read .pyi files
-3. **README examples:** Test as part of CI (run examples in doctest or script)
-4. **Docstrings in Rust:** Write in `#[pyfunction]` doc comments, extracted by pyo3-stub-gen
-
-**Verification:**
-- Open VSCode/PyCharm, type `q_kangaroo.aqprod(` → autocomplete shows parameters
-- Run `help(q_kangaroo.aqprod)` → shows full docstring
-- Sphinx build produces HTML without warnings
-- All README code examples execute successfully
+---
 
 ## Sources
 
-### Official Documentation
-- [Maturin User Guide - Project Layout](https://www.maturin.rs/project_layout.html) (module naming)
-- [Maturin User Guide - Distribution](https://www.maturin.rs/distribution.html) (manylinux, wheel repair)
-- [PyO3 Building and Distribution](https://pyo3.rs/v0.28.0/building-and-distribution.html) (ABI3, cross-compilation)
-- [PyO3 FAQ and Troubleshooting](https://pyo3.rs/main/faq) (common import errors)
+### Primary References
+- [Koornwinder 1993: On Zeilberger's Algorithm and its q-Analogue](https://staff.fnwi.uva.nl/t.h.koornwinder/art/1993/zeilbalgo.pdf) -- rigorous algorithm description
+- [Paule-Riese: qZeil implementation](https://www3.risc.jku.at/publications/download/risc_117/Paule_Riese.pdf) -- implementation lessons, preprocessing optimization
+- [Koepf: Hypergeometric Summation (Springer)](https://link.springer.com/book/10.1007/978-1-4471-6464-7) -- textbook covering all algorithms
+- [A=B (Petkovsek-Wilf-Zeilberger)](https://www.amazon.com/B-Marko-Petkovsek/dp/1568810636) -- foundational reference
 
-### GitHub Issues and Discussions
-- [PyO3/maturin #1960](https://github.com/PyO3/maturin/issues/1960) (Python 3.13 version error)
-- [PyO3/maturin #2385](https://github.com/PyO3/maturin/issues/2385) (ABI3 + generate-import-lib bug)
-- [PyO3/maturin #400](https://github.com/PyO3/maturin/issues/400) (bare abi3 feature flag issues)
-- [PyO3/maturin #2909](https://github.com/PyO3/maturin/issues/2909) (editable install .so missing)
-- [PyO3/maturin #742](https://github.com/PyO3/maturin/pull/742) (auditwheel repair implementation)
-- [PyO3/maturin #1135](https://github.com/PyO3/maturin/issues/1135) (patchelf pure Rust rewrite)
-- [PyO3/maturin #1292](https://github.com/PyO3/maturin/pull/1292) (fix auditwheel with read-only libraries)
-- [PyO3/maturin #256](https://github.com/PyO3/maturin/issues/256) (module export function error)
-- [PyO3/pyo3 #2330](https://github.com/PyO3/pyo3/discussions/2330) (documentation generation strategies)
+### Algorithm-Specific
+- [Greatest factorial factorization](https://www.sciencedirect.com/science/article/pii/S0747717185710498)
+- [Fast polynomial dispersion](https://dl.acm.org/doi/pdf/10.1145/190347.190413)
+- [Efficient rational creative telescoping](https://www.sciencedirect.com/science/article/abs/pii/S0747717121000535)
+- [Creative telescoping ABC (thesis)](https://theses.hal.science/tel-01069831/document)
 
-### Community Resources
-- [Fast Rust Builds with sccache and GitHub Actions](https://depot.dev/blog/sccache-in-github-actions) (sccache vs cargo cache comparison)
-- [Optimizing Rust Builds for Faster GitHub Actions Pipelines](https://www.uffizzi.com/blog/optimizing-rust-builds-for-faster-github-actions-pipelines) (CI optimization)
-- [Building Portable Native Python Extensions With Rust, PyO3, And Maturin](https://blog.savant-ai.io/building-portable-native-python-extensions-with-rust-pyo3-and-maturin-3c1a1634d324) (manylinux practices)
-- [Documenting Native Python Extensions Made With Rust and PyO3](https://blog.savant-ai.io/documenting-native-python-extensions-made-with-rust-and-pyo3-227aff68e481) (documentation workflow)
-- [pyo3-stub-gen GitHub](https://github.com/Jij-Inc/pyo3-stub-gen) (stub generation tool)
+### Implementation References
+- [hipergeo (Maxima implementation)](https://github.com/cassiopagnoncelli/hipergeo)
+- [AeqB-sage (Sage implementation)](https://github.com/benyoung/AeqB-sage/blob/master/gosper.sage)
+- [REDUCE zeilberger package](http://www.reduce-algebra.com/manual/manualse197.html)
+- [Ore polynomials in Sage](http://www.algebra.uni-linz.ac.at/people/mkauers/publications/kauers14b.pdf)
 
----
-
-*Pitfalls research for: q-Kangaroo PyO3/maturin packaging and release*
-*Researched: 2026-02-14*
-*Confidence: HIGH (official docs + verified GitHub issues + community best practices)*
+### Coefficient Management
+- [Polynomial GCD coefficient swell](https://en.wikipedia.org/wiki/Polynomial_greatest_common_divisor)
+- [Modular GCD algorithms](https://users.cs.duke.edu/~elk27/bibliography/99/KaMo99.pdf)
+- [Sparse multivariate GCD](https://www.cecm.sfu.ca/CAG/papers/MahsaCASC23.pdf)

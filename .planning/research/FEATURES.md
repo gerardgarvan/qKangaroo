@@ -1,262 +1,535 @@
-# Feature Research: PyPI Release Readiness
+# Feature Landscape: Algorithmic q-Hypergeometric Identity Proving
 
-**Domain:** Python mathematics research library (symbolic q-series computation)
-**Researched:** 2026-02-14
-**Confidence:** HIGH
+**Domain:** Symbolic q-hypergeometric summation and identity certification
+**Researched:** 2026-02-15
+**Overall confidence:** MEDIUM-HIGH (algorithms well-established in literature since 1990s; implementation details verified against multiple sources; some internal algorithm steps rely on training data where PDFs were unreadable)
 
-## Feature Landscape
+---
 
-### Table Stakes (Users Expect These)
+## Context: What Already Exists in q-Kangaroo
 
-Features users assume exist. Missing these = product feels incomplete.
+Before cataloguing new features, here is what the engine already provides (built in Phases 1-8):
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| PyPI package with sdist + wheel | Standard distribution format for Python libraries | LOW | maturin builds both automatically. Requires manylinux2014+ for Linux compatibility (Rust 1.64+ requires glibc 2.17) |
-| Installation via `pip install q-kangaroo` | How researchers install Python libraries | LOW | Already works with maturin. Test on PyPI Test first. |
-| Comprehensive pyproject.toml metadata | Classifiers, keywords, description for PyPI discovery | LOW | Need classifiers: "Topic :: Scientific/Engineering :: Mathematics", Python versions, license (BSD like sympy/mpmath) |
-| README with quickstart example | First thing users see on PyPI/GitHub | LOW | Must include: install command, 5-line code example, link to docs |
-| LICENSE file | Required for academic/research use | LOW | Already exists (check if it's in sdist) |
-| API reference documentation | Users need to know what functions exist and their signatures | MEDIUM | Sphinx autodoc with NumPy-style docstrings (standard for scientific Python) |
-| Type hints in signatures | Expected by modern Python users, enables IDE autocomplete | LOW | PyO3 0.23 supports type stubs generation. Critical for UX in Jupyter/VS Code |
-| Jupyter notebook LaTeX rendering | Math libraries MUST display beautifully in notebooks | LOW | Already implemented via `__repr_latex__()` — table stakes for math libraries |
-| Installation verification example | Users need to confirm install worked | LOW | README should include `python -c "import q_kangaroo; print(q_kangaroo.__version__)"` |
-| Error messages with context | When operations fail, users need to know why | MEDIUM | Current: Rust panics propagate as Python exceptions. Need custom exception types for common errors (e.g., InvalidParameterError, ConvergenceError) |
-| Example gallery/tutorials | Users learn by example, not just API docs | MEDIUM | Sphinx-Gallery to auto-generate from .py files with narrative comments. Standard for matplotlib, scikit-learn |
-| GitHub repository metadata | Repository is the second place users look (after PyPI) | LOW | Description, topics, link to docs in "About" section |
+| Existing Capability | Module | Relevance to New Work |
+|---------------------|--------|----------------------|
+| q-Pochhammer (a;q)\_n evaluation | `pochhammer.rs` | Foundation for q-hypergeometric term representation |
+| HypergeometricSeries / BilateralHypergeometricSeries structs | `hypergeometric.rs` | Input format for summation algorithms |
+| eval\_phi / eval\_psi (FPS evaluation) | `hypergeometric.rs` | Numerical verification of identities |
+| 6 summation formulas (q-Gauss, q-Vandermonde, q-Saalschutz, q-Kummer, q-Dixon, Watson) | `hypergeometric.rs` | Pattern-matching proofs; q-Zeilberger subsumes these |
+| Heine/Sears/Watson/Bailey transformations | `hypergeometric.rs` | Transform to summable form; composable with new algorithms |
+| QMonomial arithmetic (mul, div, try\_sqrt, is\_q\_neg\_power) | `mod.rs` | Critical for ratio analysis in q-Gosper |
+| FormalPowerSeries with exact QRat arithmetic | `series/` | Verification backend; certificate checking |
+| prodmake / etamake / jacprodmake | `prodmake.rs` | Product recognition after summation |
+| findlincombo / findhom / findpoly / findcong | `relations.rs` | Relation discovery; complementary to algorithmic proving |
+| Eta-quotient identity proving (valence formula) | `identity/prove.rs` | Modular function proofs; different domain than q-hypergeometric |
+| Bailey pairs/chains/discovery | `bailey.rs` | Bailey-based identity construction; feeds into new algorithms |
+| Rational null space / RREF over QRat | `linalg.rs` | Needed for polynomial system solving in Gosper/Zeilberger |
 
-### Differentiators (Competitive Advantage)
+**Key insight:** The existing engine excels at *numerical verification* (expand both sides to O(q^T) and compare) and *pattern-matching proofs* (recognize specific summation formulas). What is missing is *algorithmic proving* -- automatically finding recurrences and certificates that constitute a mathematical proof without relying on pattern databases.
 
-Features that set the product apart. Not required, but valuable.
+---
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| CITATION.cff + Zenodo DOI | Academic users need to cite software properly. GitHub displays citation automatically | LOW | Standard format. Zenodo auto-publishes from GitHub releases. DOI badge in README (sympy, pandas do this) |
-| Multi-version Python wheel (abi3) | Single wheel works for Python 3.9-3.14+, smaller downloads | MEDIUM | PyO3 abi3-py39 feature flag. Requires testing across versions. Reduces wheel count from 5+ to 1 per platform |
-| Automated CI badges | Shows project health: tests passing, coverage %, latest version | LOW | GitHub Actions with pytest-coverage-comment. Badges for build status, coverage, PyPI version, downloads |
-| Performance comparison docs | "q-Kangaroo is 50x faster than Maple for X" — validates switch from Garvan's tools | HIGH | Requires benchmarking harness, Maple equivalent implementations. Strong differentiator for adoption |
-| Interactive Binder links | Try library without installing (click link → live Jupyter notebook in cloud) | MEDIUM | Sphinx-Gallery integrates automatically. Free via mybinder.org. Very popular for scientific tutorials |
-| Versioned documentation on ReadTheDocs | Users can reference docs for version they have installed | MEDIUM | ReadTheDocs builds automatically from GitHub tags. Free for open source. Handles version selector automatically |
-| Mathematical notation in docstrings | API docs render formulas (not just code) — critical for q-series | MEDIUM | Sphinx math extension (supports LaTeX). NumPy-style docstrings with `.. math::` directives. Makes docs match papers |
-| Export to LaTeX string | Generate publication-ready equations from symbolic expressions | LOW | Already implemented internally for `__repr_latex__()`. Expose as `.to_latex()` method |
-| Reproducibility lock file example | Academic users need exact versions for paper replication | LOW | Provide `requirements-lock.txt` generated via `pip freeze` or `uv pip compile` in examples/ |
-| Rich error context in Jupyter | Errors show the problematic expression in LaTeX, not just stack trace | HIGH | Requires custom exception classes with `_repr_latex_()`. Very polished UX, rare in math libraries |
+## Table Stakes
 
-### Anti-Features (Commonly Requested, Often Problematic)
+Features that any serious q-hypergeometric identity proving system must have. Missing any of these means the tool cannot compete with Garvan's Maple qseries, Paule/Riese's qZeil, or Koepf's qsum.
 
-Features that seem good but create problems.
+### 1. q-Hypergeometric Term Ratio Test
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Automatic simplification | "Make everything simplify automatically like Mathematica" | Unpredictable performance (can hang), breaks symbolic equality, loses canonical forms | Keep explicit `.simplify()` as in Phase 2. Document when to use it. Predictability > magic |
-| GUI/Desktop application | "Can you make a Mathematica-like interface?" | Huge scope creep, maintenance burden, not how researchers work in 2026 | Jupyter notebooks ARE the GUI. Invest in notebook UX (LaTeX rendering, error messages) |
-| Support Python 2.7 | "Some legacy code still uses Python 2" | Python 2 EOL was 2020. PyO3 doesn't support it. Rust toolchain doesn't support it | Minimum Python 3.9 (matches PyO3 abi3 options, sympy's minimum) |
-| Numerical approximation fallback | "If symbolic fails, return float" | Breaks type expectations, hides failures, loses exactness guarantee | Provide explicit `.n()` or `.evalf()` methods when numerical is intentional. Never implicit |
-| Homebrew formula / conda-forge / apt packages | "Make it easier to install than pip" | Fragmented maintenance, platform-specific bugs, delays releases | pip install works everywhere. Document system dependencies (GMP) in README troubleshooting section |
-| Windows binary without MinGW | "Can you make it work without installing extra tools?" | GMP requires MinGW on Windows. Bundling is complex and fragile | Document `os.add_dll_directory()` workaround clearly. Consider static linking in future (high effort) |
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given a sequence t(k), determine whether t(k+1)/t(k) is a rational function of q^k. If yes, extract the rational function r(q^k) = P(q^k)/Q(q^k). |
+| **Why expected** | This is the entry point for ALL q-Gosper/q-Zeilberger algorithms. Every competing tool has this. Without it, you cannot even begin. |
+| **Complexity** | LOW |
+| **Dependencies** | QMonomial arithmetic (exists), polynomial representation in q^k (new) |
+| **Input** | A q-hypergeometric term t(k) specified by its parameters (upper/lower Pochhammer products, argument, extra factors) |
+| **Output** | The rational function r(x) = t(k+1)/t(k) where x = q^k, decomposed as numerator/denominator polynomials in x |
+| **Notes** | Already partially present: HypergeometricSeries encodes the ratio implicitly via Pochhammer parameters. Need to make it explicit as a polynomial ratio for the algorithms. |
+
+### 2. q-Gosper Algorithm (Indefinite q-Hypergeometric Summation)
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given a q-hypergeometric term t(k), decide whether there exists a q-hypergeometric antidifference g(k) such that t(k) = g(k) - g(k-1), and if so, find g(k). This is a COMPLETE decision procedure: if it fails, no q-hypergeometric antidifference exists. |
+| **Why expected** | Fundamental building block. Every competing tool (qZeil, qsum, Koornwinder's Maple package) implements this. It is to q-Zeilberger what Gaussian elimination is to linear algebra -- you cannot do the definite case without the indefinite case. |
+| **Complexity** | HIGH |
+| **Dependencies** | q-hypergeometric term ratio test, univariate polynomial arithmetic in Q(q)[x], polynomial GCD, resultant computation |
+| **Input** | A q-hypergeometric term t(k) (via its ratio r(q^k) = t(k+1)/t(k)) |
+| **Output** | Either `Summable(g_k)` where g(k) is the antidifference, or `NotSummable` (proof that no q-hypergeometric antidifference exists) |
+
+**Algorithm steps (from Koornwinder 1993, Paule/Riese 1997):**
+
+1. **Compute ratio:** r(x) = t(k+1)/t(k) as rational function of x = q^k
+2. **Polynomial decomposition:** Write r(x) = a(x)/b(x) in lowest terms. Find polynomials p(x), sigma(x), tau(x) such that:
+   - a(x) = p(x) * sigma(x)
+   - b(x) = p(q*x) * tau(x)  (note the q-shift!)
+   - gcd(sigma(x), tau(q^j * x)) = 1 for all j >= 0
+
+   This is the **q-greatest factorial factorization (qGFF)** step. In the q-case, this is actually simpler than the ordinary case: instead of finding rational roots of resultants, one checks multiplicities of factors related by q-shifts. The "q-dispersion" is found by checking when gcd(a(x), b(q^j * x)) is nontrivial for non-negative integers j.
+
+3. **Solve for f:** Find a polynomial f(x) in x = q^k satisfying:
+   sigma(x) * f(q*x) - tau(x) * f(x) = p(x)
+
+   This is a q-difference equation for f. An upper bound on deg(f) is computable from deg(sigma), deg(tau), deg(p). Set up f as unknown polynomial with undetermined coefficients, expand, and solve the resulting linear system over Q(q).
+
+4. **Construct antidifference:** If f exists, then g(k) = (f(q^k) / p(q^k)) * t(k).
+
+**Confidence:** HIGH -- algorithm is well-established (Koornwinder 1993, textbook treatment in Koepf "Hypergeometric Summation" Ch. 8-9, A=B Ch. 8).
+
+### 3. q-Zeilberger Algorithm (Definite q-Hypergeometric Summation / Creative Telescoping)
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given a bivariate q-hypergeometric term F(n,k), find a linear recurrence in n satisfied by S(n) = sum\_k F(n,k), together with a proof certificate G(n,k). |
+| **Why expected** | This is THE central algorithm for proving q-hypergeometric identities. Every competing tool (qZeil, qsum, qMultiSum, HolonomicFunctions) implements this. It is the algorithm that proves identities like q-Vandermonde, q-Gauss, q-Saalschutz automatically, without needing to know them in advance. |
+| **Complexity** | HIGH |
+| **Dependencies** | q-Gosper algorithm (used as subroutine), bivariate polynomial arithmetic, linear system solving |
+| **Input** | A bivariate q-hypergeometric summand F(n,k) and optionally a conjectured recurrence order |
+| **Output** | A `RecurrenceRelation` containing: (1) polynomial coefficients c\_0(n), ..., c\_d(n) such that c\_0(n)*S(n) + c\_1(n)*S(n+1) + ... + c\_d(n)*S(n+d) = 0, and (2) a certificate rational function R(n,k) |
+
+**Algorithm steps (creative telescoping):**
+
+1. **For increasing order d = 1, 2, 3, ...:**
+   a. Form the ansatz: c\_0(q^n)*F(n,k) + c\_1(q^n)*F(n+1,k) + ... + c\_d(q^n)*F(n+d,k) = G(n,k+1) - G(n,k) where c\_i are unknown polynomials in q^n and G(n,k) = R(n,k)*F(n,k) for unknown rational R.
+
+   b. Since each F(n+j,k)/F(n,k) is a known rational function of q^n, q^k (it is q-hypergeometric in both variables), the ansatz reduces to: [c\_0 + c\_1*r\_1 + ... + c\_d*r\_d] * F(n,k) = G(n,k+1) - G(n,k).
+
+   c. Apply **q-Gosper's algorithm** to the term inside brackets (viewed as a function of k with parameters involving q^n). If q-Gosper succeeds for some choice of c\_i, we have found our recurrence.
+
+   d. The q-Gosper step produces the certificate G(n,k) if successful.
+
+2. **Termination:** The algorithm terminates for "proper q-hypergeometric" terms (the ratio F(n,k+1)/F(n,k) and F(n+1,k)/F(n,k) are rational in q^n, q^k). Abramov and colleagues characterized exactly when termination is guaranteed.
+
+3. **Verification:** Given the recurrence and certificate, verification is a finite rational identity check -- purely algebraic, requiring no infinite summation.
+
+**Confidence:** HIGH -- algorithm is the q-analogue of the most well-known algorithm in computer algebra for combinatorial identities. Implementations exist in Maple (Koornwinder, Koepf), Mathematica (Paule/Riese qZeil), and REDUCE (Koepf qsum).
+
+### 4. WZ Proof Certificate Extraction and Verification
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given an identity sum\_k F(n,k) = 1 (or a known closed form), find a rational function R(n,k) -- the WZ proof certificate -- such that G(n,k) = R(n,k)*F(n,k) satisfies the WZ equation: F(n+1,k) - F(n,k) = G(n,k+1) - G(n,k). Verification checks this equation holds as a rational function identity. |
+| **Why expected** | WZ certificates are the standard format for machine-verifiable proofs of hypergeometric identities. The certificate R(n,k) is typically a small rational function even when the identity is complex. Verification is trivial: substitute and check. This is the "proof" that q-Kangaroo can output. |
+| **Complexity** | MEDIUM (extraction is a byproduct of q-Zeilberger; verification is LOW) |
+| **Dependencies** | q-Zeilberger algorithm (produces the certificate), rational function arithmetic |
+| **Input for extraction** | A q-hypergeometric summand F(n,k) and a conjectured identity S(n) = closed\_form(n) |
+| **Input for verification** | F(n,k) and R(n,k), the proposed certificate |
+| **Output** | `CertificateResult::Verified` or `CertificateResult::Invalid { counterexample }` |
+
+**Key property:** Verification is independent of how the certificate was found. A user can supply a certificate from a paper and q-Kangaroo verifies it. This separates "proof discovery" from "proof checking."
+
+**Confidence:** HIGH -- WZ pairs are well-defined mathematical objects (Wilf-Zeilberger 1992).
+
+### 5. Recurrence Solving for Closed Forms
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given a linear recurrence c\_0(n)*a(n) + c\_1(n)*a(n+1) + ... + c\_d(n)*a(n+d) = 0 with polynomial coefficients, find q-hypergeometric solutions (solutions where a(n+1)/a(n) is rational in q^n). |
+| **Why expected** | q-Zeilberger produces a recurrence for S(n). To get a closed form, you must SOLVE that recurrence. Without this step, q-Zeilberger outputs "S(n) satisfies this recurrence" but not "S(n) = [product formula]." The q-Petkovsek algorithm does exactly this. |
+| **Complexity** | HIGH |
+| **Dependencies** | Polynomial factoring over Q(q), rational root finding, polynomial arithmetic |
+| **Input** | A linear recurrence with polynomial coefficients in q^n |
+| **Output** | All q-hypergeometric solutions, or proof that none exist |
+| **Notes** | Can defer to Phase 2 of this milestone. Many proofs work without a closed form -- the recurrence + initial values suffice. But for human-readable results, closed forms are strongly desired. |
+
+**Confidence:** MEDIUM -- q-Petkovsek's algorithm is well-described in Koepf's book but implementations are complex; the q-case uses Newton polygon improvements.
+
+---
+
+## Differentiators
+
+Features that would set q-Kangaroo apart from existing tools. Not strictly required, but valuable for adoption and capability.
+
+### 6. Nonterminating Identity Proving via Parameter Specialization
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Prove nonterminating q-hypergeometric identities by the Chen-Hou-Mu method: replace a parameter x with x*q^n, apply q-Zeilberger to the resulting terminating sum, verify the recurrence matches both sides, check initial conditions. |
+| **Why valuable** | q-Zeilberger directly handles only terminating sums. But most interesting identities (q-Gauss, Heine transformations, Rogers-Ramanujan) are nonterminating. This technique extends q-Zeilberger's reach dramatically. Chen et al. (2008) showed it applies to "almost all nonterminating basic hypergeometric summation formulas in Gasper-Rahman." |
+| **Complexity** | MEDIUM (once q-Zeilberger exists, this is a wrapper strategy) |
+| **Dependencies** | q-Zeilberger algorithm, FPS evaluation for initial condition checking |
+| **Input** | A nonterminating q-hypergeometric identity (LHS = RHS) |
+| **Output** | Proof verdict: recurrence matches + initial conditions verified, or failure |
+
+**Confidence:** HIGH -- technique is published (Chen, Hou, Mu 2008; Proceedings of the Edinburgh Mathematical Society) and has been applied to dozens of classical identities.
+
+### 7. Automatic Transformation Chain Discovery
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given two q-hypergeometric series that are equal, automatically find a sequence of known transformations (Heine I/II/III, Sears, Watson, Bailey) that converts one to the other. |
+| **Why valuable** | Currently, transformations are applied one at a time manually. An automated search would let the user say "prove that phi\_A = phi\_B" and get back the chain of transformations. This is more powerful than pattern-matching individual transformations. Competing tools do NOT typically offer this -- it would be a genuine differentiator. |
+| **Complexity** | MEDIUM-HIGH |
+| **Dependencies** | Existing transformation functions, BFS/DFS search over transformation space |
+| **Input** | Two HypergeometricSeries that should be equal |
+| **Output** | A sequence of transformations, or "no chain found within search depth" |
+| **Notes** | The search space is manageable: there are ~8 transformations, and chains rarely exceed depth 3-4. Can prune by checking FPS agreement at each step. |
+
+### 8. Batch Identity Verification with Certificates
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given a database of q-hypergeometric identities (e.g., all identities in Gasper-Rahman Appendix II), systematically prove each one and output certificates. |
+| **Why valuable** | Demonstrates the power of the proving engine. Creates a verified identity database. Competing tools have example notebooks with ~500 identities (qZeil) but no systematic verified database available as data. This would be a research contribution, not just a software feature. |
+| **Complexity** | MEDIUM (once proving algorithms exist, this is engineering) |
+| **Dependencies** | q-Zeilberger, WZ certificates, identity representation format |
+| **Input** | Collection of identities in structured format |
+| **Output** | For each: proof status, certificate, recurrence, timing |
+
+### 9. Multi-Sum Creative Telescoping (qMultiSum)
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Extend q-Zeilberger to handle multiple nested sums: sum\_{k1} sum\_{k2} ... F(n, k1, k2, ...). Find a recurrence in n by telescoping over all summation variables. |
+| **Why valuable** | Many partition-theoretic identities involve multiple sums. Riese's qMultiSum package (Mathematica) handles this but is not widely available outside Mathematica. Having this in an open-source Rust engine would be significant. |
+| **Complexity** | VERY HIGH |
+| **Dependencies** | q-Zeilberger (single sum case), multivariate polynomial arithmetic |
+| **Input** | Multivariate q-hypergeometric summand F(n, k1, ..., km) |
+| **Output** | Recurrence in n with certificate functions |
+| **Notes** | Defer to future milestone. The single-sum case covers the vast majority of use cases. |
+
+### 10. Human-Readable Proof Output
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Generate a step-by-step proof narrative: "Step 1: Compute ratio t(k+1)/t(k) = ... Step 2: qGFF decomposition gives sigma=..., tau=..., p=... Step 3: Solving for f gives f(x) = ... Step 4: Certificate R(n,k) = ... Step 5: Verification: LHS - RHS = 0." |
+| **Why valuable** | Researchers need to understand and cite proofs, not just get a yes/no answer. A proof they can include in a paper (or at least reference) is much more valuable than a boolean. No competing tool generates publication-ready proof narratives -- they output certificates and recurrences but leave the human to assemble the proof. |
+| **Complexity** | MEDIUM |
+| **Dependencies** | q-Gosper, q-Zeilberger, LaTeX rendering (exists) |
+| **Input** | Any identity that was successfully proved |
+| **Output** | Structured proof with LaTeX-renderable steps |
+
+---
+
+## Anti-Features
+
+Features to explicitly NOT build, despite being tempting or requested.
+
+### A1. General Holonomic Functions Framework
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Koutschan's HolonomicFunctions approach: represent functions as annihilating ideals in Ore algebras, then use closure properties and creative telescoping over arbitrary D-finite / q-D-finite functions. |
+| **Why avoid** | Massively increases scope and complexity. The holonomic approach is more general but q-Kangaroo's domain is specifically q-hypergeometric series, where specialized algorithms (q-Gosper, q-Zeilberger) are faster and simpler. HolonomicFunctions took Koutschan's entire PhD thesis. The overhead of Ore algebras, Groebner bases in non-commutative rings, etc. is not justified for our use case. |
+| **What instead** | Implement q-Gosper and q-Zeilberger directly for q-hypergeometric terms. These cover the vast majority of q-series identities in practice. If a user needs holonomic functions, they should use Mathematica. |
+
+### A2. Symbolic Integration / q-Integration
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | q-analogue of the Risch algorithm for indefinite q-integration (Jackson q-integral). |
+| **Why avoid** | Different algorithmic domain. q-Integration is related but separate from q-summation. The user's stated goal is identity PROVING, not integration. Adding q-integration would double the scope without serving the core use case. |
+| **What instead** | Focus on summation algorithms. If q-integrals arise, they can often be converted to sums. |
+
+### A3. Numerical / Floating-Point Verification as Proof
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Verify identities by evaluating both sides at many numerical points and declaring "proved" if they agree. |
+| **Why avoid** | This is NOT a proof. It is a heuristic that can miss edge cases, and it already exists in q-Kangaroo (FPS comparison to O(q^T)). The whole point of algorithmic proving is to produce MATHEMATICAL PROOFS (certificates, recurrences) that are valid for all n, not just checked values. |
+| **What instead** | Use FPS comparison for quick sanity checks and counterexample detection, but require algebraic certificates for actual proofs. The existing `eval_phi` + FPS comparison already serves the numerical role. |
+
+### A4. Computer Algebra System (CAS) Generality
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Build a general-purpose CAS with pattern matching, rule rewriting, simplification of arbitrary expressions. |
+| **Why avoid** | q-Kangaroo is a domain-specific engine, not a CAS. Adding general symbolic manipulation would require years of development (simplification, pattern matching, calculus, etc.) and compete with SymPy/Mathematica/Maple on their home turf. |
+| **What instead** | Keep the domain-specific approach: q-hypergeometric terms are represented as structured data (HypergeometricSeries), not general symbolic expressions. Algorithms operate on this structured representation. |
+
+### A5. Automatic Conjecture Generation from Data
+
+| Aspect | Detail |
+|--------|--------|
+| **What** | Given a sequence of integers, automatically conjecture a q-hypergeometric closed form (like the OEIS but algorithmic). |
+| **Why avoid** | Different problem domain (sequence recognition vs. identity proving). Would require integer relation detection (PSLQ/LLL), extensive database of known sequences, etc. The existing `findlincombo`/`findhom`/`findpoly` already handle the "find relations among given series" case. Going further into fully automatic conjecture is a research project, not an engineering task. |
+| **What instead** | Strengthen the existing relation discovery tools. Users provide candidate series; q-Kangaroo finds relations among them. |
+
+---
 
 ## Feature Dependencies
 
 ```
-[PyPI Package]
-    └──requires──> [pyproject.toml metadata]
-    └──requires──> [LICENSE file]
-    └──requires──> [README with quickstart]
+[q-Hypergeometric Term Ratio Test]  (Feature 1)
+    |
+    v
+[Univariate Polynomial Arithmetic in Q[x]]  (new infrastructure)
+    |-- polynomial GCD
+    |-- polynomial resultant
+    |-- polynomial evaluation / interpolation
+    |-- q-shift operations on polynomials
+    |
+    v
+[q-Gosper Algorithm]  (Feature 2)
+    |-- uses: qGFF (q-Greatest Factorial Factorization)
+    |-- uses: polynomial linear system solving
+    |-- uses: degree bound computation
+    |
+    +-------+
+    |       |
+    v       v
+[q-Zeilberger Algorithm]  (Feature 3)     [WZ Certificate Verification]  (Feature 4)
+    |-- uses: q-Gosper as subroutine           |-- uses: rational function arithmetic
+    |-- uses: bivariate ratio analysis          |-- independent of how certificate was found
+    |-- outputs: recurrence + certificate
+    |
+    +---+---+
+    |       |
+    v       v
+[Recurrence Solving]     [Nonterminating Proofs]  (Feature 6)
+(Feature 5)                  |-- uses: q-Zeilberger
+    |-- q-Petkovsek          |-- uses: parameter specialization
+    |-- finds closed forms   |-- uses: FPS initial condition check
+    |
+    v
+[Transformation Chain Discovery]  (Feature 7)
+    |-- uses: existing transformations
+    |-- uses: FPS comparison for pruning
+    |-- optional, can be independent
 
-[API Documentation]
-    └──requires──> [NumPy-style docstrings in code]
-    └──requires──> [Sphinx setup]
-    └──enhances──> [Type hints] (auto-extracted via sphinx-autodoc-typehints)
+[Batch Verification]  (Feature 8)
+    |-- uses: q-Zeilberger + WZ certificates
+    |-- primarily engineering, not algorithmic
 
-[Example Gallery]
-    └──requires──> [API Documentation Sphinx setup]
-    └──requires──> [Sphinx-Gallery extension]
-
-[Versioned Docs on ReadTheDocs]
-    └──requires──> [API Documentation]
-    └──requires──> [GitHub repository with tags/releases]
-
-[CITATION.cff + Zenodo]
-    └──requires──> [GitHub repository]
-    └──requires──> [First GitHub release]
-    └──enhances──> [Academic adoption]
-
-[CI Badges]
-    └──requires──> [GitHub Actions workflows]
-    └──requires──> [pytest test suite] (already exists)
-    └──enhances──> [README]
-
-[Interactive Binder]
-    └──requires──> [Example Gallery or notebooks/ directory]
-    └──requires──> [requirements.txt for Binder environment]
-
-[Multi-version abi3 wheel]
-    └──requires──> [PyO3 abi3 feature flag]
-    └──conflicts──> [Python-version-specific APIs]
+[Human-Readable Proof Output]  (Feature 10)
+    |-- uses: all proving algorithms
+    |-- uses: LaTeX rendering (exists)
 ```
 
-### Dependency Notes
+### Critical Path
 
-- **API Documentation requires NumPy-style docstrings:** Sphinx autodoc extracts from docstrings. Retrofit existing code (73 DSL functions).
-- **Example Gallery requires Sphinx:** Sphinx-Gallery is an extension, not standalone. Must set up Sphinx first.
-- **Versioned Docs requires GitHub releases:** ReadTheDocs builds from Git tags. Establishes v0.1.0 release workflow.
-- **Interactive Binder enhances Example Gallery:** Sphinx-Gallery auto-generates Binder links if configured. Synergistic features.
-- **Type hints enhance API docs:** sphinx-autodoc-typehints extracts types from annotations, reducing docstring duplication.
-- **CITATION.cff enhances academic adoption:** Researchers need to cite dependencies. Makes attribution frictionless.
-- **CI badges enhance README:** Visual proof of quality. Increases trust for new users.
-- **Multi-version abi3 conflicts with version-specific APIs:** Can't use Python 3.14-only features if supporting 3.9+.
+The critical dependency chain is:
 
-## MVP Definition
+1. **Polynomial infrastructure** (GCD, resultant, q-shift) -- everything depends on this
+2. **q-Gosper** -- must work before q-Zeilberger can be attempted
+3. **q-Zeilberger** -- the main deliverable; enables features 4, 6, 8, 10
+4. **WZ verification** -- relatively easy once q-Zeilberger produces certificates
 
-### Launch With (v0.1.0)
+Features 5, 6, 7, 8, 10 are independent of each other and can be built in parallel once the q-Zeilberger core exists.
 
-Minimum viable PyPI release — what's needed to be credible as a research library.
+---
 
-- [x] PyPI package (sdist + manylinux wheel) — Already works via maturin, need CI to automate
-- [x] Complete pyproject.toml metadata (classifiers, keywords, description, URLs) — Currently minimal
-- [x] README with installation + quickstart (< 10 lines of code) — Needs writing
-- [x] LICENSE file in sdist — Verify inclusion
-- [x] Basic API documentation (Sphinx with autodoc) — No docs currently
-- [x] NumPy-style docstrings for all 73 DSL functions — Current docstrings are minimal
-- [x] Type hints (`.pyi` stub file from PyO3) — PyO3 can generate
-- [x] GitHub repository metadata (description, topics, website link) — Currently bare
-- [x] Installation verification instructions in README — Not present
-- [x] CI badge in README (tests passing) — No badges currently
+## Competitor Analysis
 
-**Why essential:** A library on PyPI without docs is unusable. NumPy-style docstrings are table stakes for scientific Python. Type hints enable IDE autocomplete (critical UX). README is the first impression.
+### Garvan's Maple qseries Package
 
-### Add After Validation (v0.2.0)
+| Capability | Status | How q-Kangaroo Compares |
+|------------|--------|------------------------|
+| prodmake (series-to-product) | In Garvan | ALREADY IN q-Kangaroo |
+| etamake / jacprodmake | In Garvan | ALREADY IN q-Kangaroo |
+| findhom / findlincombo / findpoly | In Garvan | ALREADY IN q-Kangaroo |
+| sift (subsequence extraction) | In Garvan | ALREADY IN q-Kangaroo |
+| qfactor (polynomial factoring) | In Garvan | ALREADY IN q-Kangaroo |
+| Eta-quotient identity proving (valence formula) | In thetaids/ETA packages | ALREADY IN q-Kangaroo |
+| q-Gosper / q-Zeilberger | **NOT in Garvan's packages** | NEW -- this is what we are building |
+| Bailey chain construction | In various papers | ALREADY IN q-Kangaroo |
 
-Features to add once core is working and users start trying it.
+**Key insight:** Garvan's packages do NOT include q-Gosper or q-Zeilberger. His approach is modular functions (valence formula) and relation discovery (linear algebra over coefficient matrices), not algorithmic hypergeometric summation. q-Kangaroo already replicates Garvan's capabilities. The new algorithmic proving features would EXCEED Garvan's toolkit.
 
-- [ ] Example gallery (Sphinx-Gallery with 5-10 .py examples) — Trigger: Users ask "how do I...?" repeatedly
-- [ ] CITATION.cff + Zenodo DOI — Trigger: First paper using library is submitted
-- [ ] Coverage badge + pytest-coverage-comment — Trigger: Setting up CI for v0.1.0
-- [ ] Multi-version abi3 wheel — Trigger: Users request Python 3.14 support but we're not ready to drop 3.9
-- [ ] Versioned docs on ReadTheDocs — Trigger: v0.2.0 release creates need for version selector
-- [ ] Custom exception types (InvalidParameterError, etc.) — Trigger: Users report confusing error messages
-- [ ] Mathematical notation in docstrings (Sphinx math extension) — Trigger: Users reference papers and can't match API to formulas
-- [ ] Performance comparison docs (vs Maple) — Trigger: Users ask "is this faster than Garvan's tools?"
+### Paule/Riese qZeil (Mathematica)
 
-**Why defer:** Example gallery requires effort to write good examples. CITATION.cff is free but only matters when people cite. Versioned docs only matter with multiple versions. Performance comparisons require Maple setup (not trivial).
+| Capability | Status | How q-Kangaroo Compares |
+|------------|--------|------------------------|
+| q-Gosper (indefinite summation) | Core feature | TO BE BUILT (Feature 2) |
+| q-Zeilberger (definite summation) | Core feature | TO BE BUILT (Feature 3) |
+| WZ certificate output | Included | TO BE BUILT (Feature 4) |
+| ~500 worked examples | In notebooks | TO BE BUILT as test suite (Feature 8) |
+| Closed-form Mathematica output | Included | Rust structs instead (different UX) |
+| Multi-sum (qMultiSum) | Separate package by Riese | DEFERRED (Feature 9, future milestone) |
+| Nonterminating identities | Limited | PLANNED (Feature 6, via Chen method) |
 
-### Future Consideration (v1.0+)
+**Key differentiator vs qZeil:** qZeil is Mathematica-only, proprietary, and its code is not openly maintained. q-Kangaroo would be open-source, callable from Python, and significantly faster (Rust vs. interpreted Mathematica). The qGFF approach from Paule-Riese is well-documented and the algorithm is public.
 
-Features to defer until library is established.
+### Koepf's qsum (Maple)
 
-- [ ] Interactive Binder links — Trigger: Example gallery exists + users want to try without installing
-- [ ] Export to LaTeX string API — Trigger: Users want to copy-paste into papers
-- [ ] Rich error context in Jupyter — Trigger: Multiple user complaints about error UX
-- [ ] Reproducibility lock file examples — Trigger: Paper replication requests
-- [ ] Static GMP linking on Windows — Trigger: Windows users struggle with DLL setup
+| Capability | Status | How q-Kangaroo Compares |
+|------------|--------|------------------------|
+| q-Gosper | Implemented (by Boing) | TO BE BUILT |
+| q-Zeilberger | Implemented | TO BE BUILT |
+| q-Petkovsek (recurrence solving) | Implemented | TO BE BUILT (Feature 5) |
+| q-van-Hoeij (improved recurrence solving) | In qFPS.mpl | DEFERRED |
+| Maple worksheet integration | Native | Python/Jupyter integration instead |
 
-**Why defer:** Binder requires examples first. LaTeX export is nice-to-have (can copy from Jupyter cell output). Rich errors are polish. Lock files are niche (advanced users know `pip freeze`). Static linking is hard, wait for pain threshold.
+**Key differentiator vs qsum:** qsum requires Maple (commercial). The algorithms are well-documented in Koepf's textbook "Hypergeometric Summation" (2014, 2nd ed.), making implementation feasible.
 
-## Feature Prioritization Matrix
+### Koutschan's HolonomicFunctions (Mathematica)
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| PyPI package with wheels | HIGH | LOW (maturin handles) | P1 |
-| Complete pyproject.toml | HIGH | LOW (fill template) | P1 |
-| README quickstart | HIGH | LOW (write example) | P1 |
-| NumPy-style docstrings | HIGH | MEDIUM (73 functions) | P1 |
-| Sphinx API docs | HIGH | MEDIUM (setup + autodoc) | P1 |
-| Type hints (.pyi stubs) | HIGH | LOW (PyO3 generates) | P1 |
-| GitHub repo metadata | MEDIUM | LOW (fill fields) | P1 |
-| CI badge | MEDIUM | LOW (GitHub Actions) | P1 |
-| Example gallery | HIGH | MEDIUM (write examples) | P2 |
-| CITATION.cff + Zenodo | HIGH (for academics) | LOW (template) | P2 |
-| Coverage badge | LOW | LOW (GitHub Action) | P2 |
-| Multi-version abi3 wheel | MEDIUM | MEDIUM (testing matrix) | P2 |
-| Versioned ReadTheDocs | MEDIUM | LOW (auto-build) | P2 |
-| Custom exception types | MEDIUM | MEDIUM (refactor errors) | P2 |
-| Math notation in docstrings | MEDIUM | MEDIUM (retrofit docs) | P2 |
-| Performance comparisons | MEDIUM | HIGH (Maple setup + benchmarks) | P2 |
-| Interactive Binder | LOW | LOW (config file) | P3 |
-| LaTeX export API | LOW | LOW (expose existing) | P3 |
-| Rich Jupyter errors | LOW | HIGH (custom exception display) | P3 |
-| Reproducibility lock files | LOW | LOW (generate + document) | P3 |
-| Static GMP linking | MEDIUM | HIGH (build complexity) | P3 |
+| Capability | Status | How q-Kangaroo Compares |
+|------------|--------|------------------------|
+| General holonomic creative telescoping | Core feature | ANTI-FEATURE (too general for our scope) |
+| Closure properties (sum, product, etc.) | Core feature | Not needed for q-hypergeometric |
+| q-difference equations | Supported | We handle q-hypergeometric terms directly |
+| Ore algebra framework | Foundation | NOT BUILDING (too complex, not needed) |
 
-**Priority key:**
-- P1: Must have for v0.1.0 (credible PyPI release)
-- P2: Should have for v0.2.0 (polished research library)
-- P3: Nice to have for v1.0+ (mature ecosystem)
+**Key insight:** HolonomicFunctions is more powerful but more complex. For pure q-hypergeometric work, q-Gosper + q-Zeilberger is sufficient and faster.
 
-## Competitor Feature Analysis
+### Schneider's Sigma (Mathematica)
 
-Comparing q-Kangaroo packaging/docs to established scientific Python libraries:
+| Capability | Status | How q-Kangaroo Compares |
+|------------|--------|------------------------|
+| Difference field theory approach | Core feature | Different paradigm; we use direct algorithms |
+| Nested multi-sum simplification | Core feature | DEFERRED (Feature 9) |
+| Optimal nested depth | Unique capability | Out of scope |
 
-| Feature | SymPy | mpmath | Our Approach (q-Kangaroo) |
-|---------|-------|--------|---------------------------|
-| PyPI metadata | Extensive classifiers (OS Independent, CPython, PyPy, Scientific/Engineering/Mathematics/Physics) | BSD license, comprehensive topics, project links (homepage, docs, source, tracker) | Follow SymPy model: BSD, Scientific/Engineering :: Mathematics, Python 3.9-3.13+, link to docs/repo |
-| Documentation | Sphinx on docs.sympy.org, versioned, extensive tutorials, API reference | Sphinx on mpmath.org, comprehensive API docs, examples, math rendering | Sphinx with autodoc, ReadTheDocs hosting, NumPy-style docstrings, math extension for LaTeX formulas |
-| Example structure | Tutorial sections, example problems, thematic organization | "Basics" section, function demonstrations, use-case driven | Sphinx-Gallery with narrative examples (partition theory, theta functions, mock theta) |
-| Citation | No CITATION.cff visible, but widely cited | No CITATION.cff, author-based attribution | CITATION.cff + Zenodo DOI (newer standard, best practice for 2026) |
-| Badges | PyPI version, Gitter, Zenodo DOI, downloads, GitHub issues, NumFocus | Build status, code coverage, Zenodo DOI | Build status, coverage, PyPI version (same as mpmath, simpler than SymPy's extensive set) |
-| Type hints | Gradually adding (large legacy codebase) | Limited (pre-dates type hint era) | Full type hints from day 1 (PyO3 stubs + manual annotations) — modern advantage |
-| Installation | Pure Python, pip only, simple | Pure Python, pip only, simple | Rust extension, maturin-based, need manylinux wheels + document GMP dependency clearly |
-| Error messages | Custom exception hierarchy (SymPyError base class) | Standard Python exceptions | Start with Python exceptions, add custom hierarchy in v0.2.0 when error patterns emerge |
-| Jupyter integration | LaTeX rendering via `_repr_latex_()`, pretty printing | Text-based output, mpmath.pretty for better display | LaTeX rendering (already implemented), ensure compatibility with IPython.display |
-| Performance docs | Not emphasized (symbolic focus) | Precision vs. speed tradeoffs documented | MUST document vs. Maple (competitor is Garvan's tools, not other Python libs) |
+**Key insight:** Sigma uses a fundamentally different approach (difference rings/fields). It is more general for nested sums but not specifically optimized for q-hypergeometric terms. Not a direct competitor for our use case.
 
-### Key Insights from Competitor Analysis:
+---
 
-1. **NumPy-style docstrings are universal** in scientific Python (sympy, mpmath, scipy, numpy)
-2. **Sphinx + ReadTheDocs is the standard** (free, automated, versioned)
-3. **CITATION.cff is modern best practice** (newer than sympy/mpmath, but becoming standard — pandas uses it)
-4. **Type hints are competitive advantage** (established libraries have legacy code, we can start clean)
-5. **Manylinux compliance is critical** for Rust extensions (unlike pure Python sympy/mpmath)
-6. **Performance matters for our domain** (researchers switching from Maple need speed justification)
-7. **Jupyter LaTeX rendering is non-negotiable** for math libraries (already implemented)
+## MVP Recommendation
+
+### Phase 1: Polynomial Infrastructure + q-Gosper
+
+Build the foundation and the first complete algorithm.
+
+**Prioritize:**
+1. Univariate polynomial arithmetic over Q(q)[x] -- GCD, resultant, degree bounds
+2. q-shift operations on polynomials (evaluate p(q*x), p(q^j*x))
+3. q-dispersion computation (find all j where gcd(a(x), b(q^j*x)) != 1)
+4. qGFF decomposition (sigma, tau, p)
+5. q-Gosper algorithm (polynomial f solver + antidifference construction)
+6. q-hypergeometric term ratio extraction from HypergeometricSeries
+
+**Deliverable:** `q_gosper(term) -> GosperResult::Summable(antidifference) | NotSummable`
+
+### Phase 2: q-Zeilberger + WZ Certificates
+
+The main proving engine.
+
+**Prioritize:**
+1. Bivariate q-hypergeometric term representation
+2. Creative telescoping loop (try orders d = 1, 2, 3, ...)
+3. Certificate extraction and output
+4. WZ certificate verification (independent checker)
+5. Recurrence output format with polynomial coefficients
+
+**Deliverable:** `q_zeilberger(summand) -> ZeilbergerResult { recurrence, certificate }`
+
+### Phase 3: Closed Forms + Nonterminating Proofs
+
+Complete the proving pipeline.
+
+**Prioritize:**
+1. q-Petkovsek algorithm for recurrence solving
+2. Nonterminating identity proving (parameter specialization method)
+3. Integration with existing summation formulas (verify that q-Zeilberger rediscovers q-Gauss etc.)
+4. Transformation chain discovery (search over Heine/Sears/Watson/Bailey)
+
+**Defer:**
+- Multi-sum creative telescoping (Feature 9): Scope too large for this milestone
+- Human-readable proof output (Feature 10): Can be added incrementally
+- Batch verification database (Feature 8): Engineering task, not algorithmic
+
+---
+
+## Input/Output Specifications (Expected User-Facing Behavior)
+
+### q-Gosper
+
+```
+Input:  q_gosper(term: QHypergeometricTerm) -> GosperResult
+        where QHypergeometricTerm encodes t(k) with ratio t(k+1)/t(k) = rational(q^k)
+
+Output: GosperResult::Summable {
+            antidifference: QHypergeometricTerm,  // g(k) such that t(k) = g(k) - g(k-1)
+            certificate: RationalFunction,         // f(x)/p(x) where x = q^k
+        }
+        GosperResult::NotSummable                  // proved: no q-hyp antidifference exists
+
+Example: q_gosper(q^{k^2} * (q;q)_k / (q^2;q^2)_k)
+         -> Summable { ... } or NotSummable
+```
+
+### q-Zeilberger
+
+```
+Input:  q_zeilberger(
+            summand: BivarQHypTerm,     // F(n,k) q-hypergeometric in both n and k
+            max_order: Option<usize>,   // maximum recurrence order to try (default: 5)
+        ) -> ZeilbergerResult
+
+Output: ZeilbergerResult::Found {
+            recurrence: QRecurrence {
+                coefficients: Vec<Polynomial>,  // c_0(q^n), ..., c_d(q^n)
+                order: usize,                   // d
+            },
+            certificate: RationalFunction,       // R(n,k) such that G = R*F
+        }
+        ZeilbergerResult::NotFound {
+            max_order_tried: usize,
+        }
+
+Example: q_zeilberger(F(n,k) = q^{k^2} * [n choose k]_q)
+         -> Found { recurrence: S(n+1) = (1+q^{n+1})*S(n), certificate: R = ... }
+```
+
+### WZ Verification
+
+```
+Input:  verify_wz(
+            summand: BivarQHypTerm,         // F(n,k)
+            certificate: RationalFunction,   // R(n,k)
+        ) -> WZVerification
+
+Output: WZVerification::Valid              // F(n+1,k) - F(n,k) = G(n,k+1) - G(n,k) holds
+        WZVerification::Invalid {
+            failure_description: String,
+        }
+```
+
+### Python API (expected)
+
+```python
+from q_kangaroo import QSession
+
+s = QSession()
+
+# q-Gosper: indefinite summation
+result = s.q_gosper(numerator_params=[(1, 0)], denominator_params=[(1, 1)], argument=(1, 1))
+# Returns: { "summable": True, "antidifference": ..., "certificate": ... }
+# or:      { "summable": False }
+
+# q-Zeilberger: prove a definite sum identity
+result = s.q_zeilberger(
+    summand_params={ "n_upper": [...], "n_lower": [...], "k_upper": [...], "k_lower": [...] },
+    max_order=5
+)
+# Returns: { "found": True, "recurrence_coefficients": [...], "certificate": "..." }
+
+# WZ verification
+valid = s.verify_wz_certificate(summand_params={...}, certificate="...")
+# Returns: True or False
+```
+
+---
 
 ## Sources
 
-**PyPI Packaging & Metadata:**
-- [Python Packaging User Guide - Overview](https://packaging.python.org/en/latest/overview/)
-- [Writing pyproject.toml](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/)
-- [PEP 621 – Storing project metadata in pyproject.toml](https://peps.python.org/pep-0621/)
-- [SymPy on PyPI](https://pypi.org/project/sympy/)
-- [mpmath on PyPI](https://pypi.org/project/mpmath/)
+**Algorithm Foundations:**
+- [Koornwinder, "On Zeilberger's algorithm and its q-analogue" (1993)](https://staff.fnwi.uva.nl/t.h.koornwinder/art/1993/zeilbalgo.pdf) -- rigorous description of q-Gosper and q-Zeilberger
+- [Paule & Riese, "A Mathematica q-Analogue of Zeilberger's Algorithm" (1997)](https://www3.risc.jku.at/publications/download/risc_117/Paule_Riese.pdf) -- qGFF concept, qZeil implementation
+- [Koepf, "Hypergeometric Summation" (2nd ed., 2014)](https://link.springer.com/book/10.1007/978-1-4471-6464-7) -- textbook treatment of all algorithms including q-analogues
+- [Petkovsek, Wilf, Zeilberger, "A=B" (1996)](https://sites.math.rutgers.edu/~zeilberg/AeqB.pdf) -- foundational reference for Gosper, Zeilberger, WZ theory
+- [Wilf & Zeilberger, "An algorithmic proof theory for hypergeometric (ordinary and q) multisum/integral identities" (1992)](https://link.springer.com/article/10.1007/BF02100618) -- WZ proof certificates for q-case
 
-**Maturin & Rust-Python Packaging:**
-- [Maturin User Guide - Distribution](https://www.maturin.rs/distribution.html)
-- [PyO3 Building and Distribution](https://pyo3.rs/v0.28.0/building-and-distribution.html)
-- [Maturin Tutorial](https://www.maturin.rs/tutorial.html)
+**Nonterminating Extensions:**
+- [Chen, Hou, Mu, "Nonterminating Basic Hypergeometric Series and the q-Zeilberger Algorithm" (2008)](https://arxiv.org/abs/math/0509281) -- parameter specialization technique
 
-**Documentation:**
-- [Sphinx Documentation Professional Standards](https://wbarillon.medium.com/sphinx-documentation-with-professional-standards-25e5683cb38b)
-- [Sphinx and Markdown for Research Software](https://coderefinery.github.io/documentation/sphinx/)
-- [NumPy-Style Docstring Format](https://numpydoc.readthedocs.io/en/latest/format.html)
-- [ReadTheDocs Sphinx Deployment](https://docs.readthedocs.com/platform/stable/intro/sphinx.html)
-- [Sphinx-Gallery Documentation](https://sphinx-gallery.github.io/stable/index.html)
+**Competing Implementations:**
+- [qZeil package (Paule/Riese, Mathematica)](https://www3.risc.jku.at/research/combinat/software/ergosum/RISC/qZeil.html) -- ~500 examples
+- [qMultiSum package (Riese, Mathematica)](http://www3.risc.jku.at/research/combinat/software/ergosum/RISC/qMultiSum.html) -- multi-sum extension
+- [qsum package (Koepf/Boing, Maple)](https://www.hypergeometric-summation.org/) -- Maple implementation
+- [HolonomicFunctions (Koutschan, Mathematica)](http://www3.risc.jku.at/research/combinat/software/ergosum/RISC/HolonomicFunctions.html) -- general holonomic approach
+- [Sigma package (Schneider, Mathematica)](https://www3.risc.jku.at/research/combinat/software/Sigma/) -- difference field approach
+- [Garvan qseries/thetaids/ETA (Maple)](https://qseries.org/fgarvan/qmaple/qseries/) -- relation discovery, not algorithmic summation
 
-**Academic Citation & Reproducibility:**
-- [CITATION.cff File - Zenodo](https://help.zenodo.org/docs/github/describe-software/citation-file/)
-- [Citation File Format](https://citation-file-format.github.io/)
-- [pyOpenSci - How to Add Citation to Code](https://www.pyopensci.org/lessons/package-share-code/publish-share-code/cite-code.html)
-- [pip Repeatable Installs](https://pip.pypa.io/en/stable/topics/repeatable-installs/)
-- [PEP 665 – File format for reproducibility](https://peps.python.org/pep-0665/)
+**WZ Theory:**
+- [AMS Notices, "What is a Wilf-Zeilberger Pair?" (Tefera, 2010)](https://www.ams.org/notices/201004/rtx100400508p.pdf) -- accessible introduction
+- [Gosper's Algorithm (Wikipedia-equivalent)](https://handwiki.org/wiki/Gosper's_algorithm) -- polynomial p, q, r decomposition steps
 
-**CI/CD & Badges:**
-- [Pytest Coverage Comment GitHub Action](https://github.com/marketplace/actions/pytest-coverage-comment)
-- [Coverage Badge Action](https://github.com/marketplace/actions/coverage-badge)
-- [Making a Coverage Badge - Ned Batchelder](https://nedbatchelder.com/blog/202209/making_a_coverage_badge)
-
-**Jupyter & LaTeX Rendering:**
-- [How to Render LaTeX in Jupyter Using IPython](https://medium.com/@idelossantosruiz/how-to-render-latex-output-in-jupyter-notebook-and-other-python-environments-using-ipython-4e1484431e21)
-- [LaTeX - Mathematical Python](https://patrickwalls.github.io/mathematicalpython/jupyter/latex/)
-
-**Error Handling & UX:**
-- [Python Errors Done Right](https://medium.com/swlh/python-errors-done-right-faa1bfa85d02)
-- [Error Handling Strategies in Python](https://llego.dev/posts/error-handling-strategies-best-practices-python/)
-- [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
-
-**Performance & Benchmarking:**
-- [Python Performance Benchmark Suite](https://pyperformance.readthedocs.io/)
-- [Python Math Benchmarks](https://www.simonwenkel.com/notes/programming_languages/python/python-math-benchmarks.html)
+**Termination and Complexity:**
+- [Abramov et al., "Applicability of the q-analogue of Zeilberger's algorithm" (2004)](https://ui.adsabs.harvard.edu/abs/arXiv:math%2F0410222) -- when q-Zeilberger terminates
+- [Chen et al., "A Unification of Zeilberger's Algorithm and Its q-Analogue" (2025)](https://arxiv.org/abs/2501.03837) -- recent unified treatment
 
 ---
-*Feature research for: PyPI release readiness (packaging, documentation, CI, UX polish)*
-*Researched: 2026-02-14*
-*Confidence: HIGH (verified with official docs, SymPy/mpmath analysis, maturin/PyO3 guides)*
+*Feature research for: Algorithmic q-hypergeometric identity proving*
+*Researched: 2026-02-15*
+*Confidence: MEDIUM-HIGH (algorithms well-established in literature; specific implementation details cross-checked against multiple academic sources; some PDF sources unreadable, compensated by multiple corroborating web sources)*
