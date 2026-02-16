@@ -724,3 +724,444 @@ mod tests {
         assert_eq!(triple_shift, shift_n_3);
     }
 }
+
+// ---- Integration tests verifying Phase 13 success criteria ----
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use super::gcd::{poly_gcd, poly_resultant};
+    use super::ratfunc::QRatRationalFunc;
+
+    // Helper: build (x - r)
+    fn x_minus(r: i64) -> QRatPoly {
+        QRatPoly::from_vec(vec![QRat::from((-r, 1i64)), QRat::one()])
+    }
+
+    // Helper: build product of linear factors (x - r1)(x - r2)...
+    fn poly_from_roots(roots: &[i64]) -> QRatPoly {
+        let mut result = QRatPoly::one();
+        for &r in roots {
+            result = &result * &x_minus(r);
+        }
+        result
+    }
+
+    // ========================================
+    // POLY-01: QRatPoly arithmetic operations
+    // ========================================
+
+    #[test]
+    fn test_poly01_div_and_mul_roundtrip() {
+        // (x^3 - 2x^2 + x) / (x - 1) = x^2 - x
+        // (x^2 - x) * (x - 1) + 0 = x^3 - 2x^2 + x
+        let a = QRatPoly::from_i64_coeffs(&[0, 1, -2, 1]); // x^3 - 2x^2 + x
+        let b = QRatPoly::from_i64_coeffs(&[-1, 1]); // x - 1
+        let (q, r) = a.div_rem(&b);
+        assert_eq!(q, QRatPoly::from_i64_coeffs(&[0, -1, 1])); // x^2 - x
+        assert!(r.is_zero());
+        // Verify reconstruction: q * b + r == a
+        let reconstructed = &(&q * &b) + &r;
+        assert_eq!(reconstructed, a);
+    }
+
+    #[test]
+    fn test_poly01_full_arithmetic_chain() {
+        // Verify: (a + b) * c == a*c + b*c (distributive law with larger polys)
+        let a = QRatPoly::from_i64_coeffs(&[1, -3, 2, 1]); // x^3 + 2x^2 - 3x + 1
+        let b = QRatPoly::from_i64_coeffs(&[2, 0, -1, 0, 1]); // x^4 - x^2 + 2
+        let c = QRatPoly::from_i64_coeffs(&[-1, 2, 3]); // 3x^2 + 2x - 1
+        let lhs = &(&a + &b) * &c;
+        let rhs = &(&a * &c) + &(&b * &c);
+        assert_eq!(lhs, rhs);
+    }
+
+    #[test]
+    fn test_poly01_exact_div_with_qrat() {
+        // (3/2 x^2 + 3x + 3/2) / (x + 1) = (3/2)(x + 1)
+        // numerator = (3/2)(x^2 + 2x + 1) = (3/2)(x+1)^2
+        let numer = QRatPoly::from_vec(vec![
+            QRat::from((3, 2)),
+            QRat::from((3, 1)),
+            QRat::from((3, 2)),
+        ]);
+        let denom = QRatPoly::from_i64_coeffs(&[1, 1]); // x + 1
+        let q = numer.exact_div(&denom);
+        let expected = QRatPoly::from_vec(vec![QRat::from((3, 2)), QRat::from((3, 2))]);
+        assert_eq!(q, expected);
+    }
+
+    // ========================================
+    // POLY-02: GCD of degree-5+ polynomials
+    // ========================================
+
+    #[test]
+    fn test_poly02_gcd_degree5_known_common() {
+        // p = (x^2 + 1)(x^3 - x + 1), q = (x^2 + 1)(x^2 - 3x + 2)
+        // gcd(p, q) = x^2 + 1
+        let common = QRatPoly::from_i64_coeffs(&[1, 0, 1]); // x^2 + 1
+        let p_extra = QRatPoly::from_i64_coeffs(&[1, -1, 0, 1]); // x^3 - x + 1
+        let q_extra = QRatPoly::from_i64_coeffs(&[2, -3, 1]); // x^2 - 3x + 2
+        let p = &common * &p_extra;
+        let q = &common * &q_extra;
+
+        assert_eq!(p.degree(), Some(5));
+        assert_eq!(q.degree(), Some(4));
+
+        let g = poly_gcd(&p, &q);
+        assert_eq!(g, common, "GCD should be x^2 + 1");
+    }
+
+    #[test]
+    fn test_poly02_gcd_degree8_no_explosion() {
+        // Build degree 8 polys with a degree 4 common factor
+        let common = poly_from_roots(&[1, 2, 3, 4]); // degree 4
+        let p_extra = poly_from_roots(&[5, 6, 7, 8]); // degree 4
+        let q_extra = poly_from_roots(&[9, 10, 11, 12]); // degree 4
+        let p = &common * &p_extra;
+        let q = &common * &q_extra;
+        assert_eq!(p.degree(), Some(8));
+        assert_eq!(q.degree(), Some(8));
+
+        let g = poly_gcd(&p, &q);
+        assert_eq!(g.degree(), Some(4));
+        assert_eq!(g, common.make_monic());
+    }
+
+    #[test]
+    fn test_poly02_gcd_monic_result() {
+        // GCD should always be monic over Q[x]
+        let a = QRatPoly::from_i64_coeffs(&[6, 4, 2]); // 2x^2 + 4x + 6
+        let b = QRatPoly::from_i64_coeffs(&[3, 2, 1]); // x^2 + 2x + 3
+        let g = poly_gcd(&a, &b);
+        // a = 2 * b, so gcd = b (monic)
+        assert_eq!(g, b);
+        assert_eq!(g.leading_coeff(), Some(QRat::one()));
+    }
+
+    // ========================================
+    // POLY-03: Resultant identifies shared roots
+    // ========================================
+
+    #[test]
+    fn test_poly03_resultant_shared_root() {
+        // resultant(x^2 - 5x + 6, x^2 - 3x + 2) = 0 (share root x=2)
+        let a = QRatPoly::from_i64_coeffs(&[6, -5, 1]); // x^2 - 5x + 6 = (x-2)(x-3)
+        let b = QRatPoly::from_i64_coeffs(&[2, -3, 1]); // x^2 - 3x + 2 = (x-1)(x-2)
+        assert_eq!(poly_resultant(&a, &b), QRat::zero());
+    }
+
+    #[test]
+    fn test_poly03_resultant_no_common_root() {
+        // resultant(x^2 + 1, x^2 - 1) != 0 (no common root over Q)
+        let a = QRatPoly::from_i64_coeffs(&[1, 0, 1]); // x^2 + 1
+        let b = QRatPoly::from_i64_coeffs(&[-1, 0, 1]); // x^2 - 1
+        let r = poly_resultant(&a, &b);
+        assert!(!r.is_zero(), "x^2+1 and x^2-1 have no common root");
+    }
+
+    #[test]
+    fn test_poly03_resultant_value() {
+        // res(x - a, x - b) = a - b for linear polynomials
+        // res(x - 2, x - 5) = 2 - 5 = -3
+        let a = QRatPoly::from_i64_coeffs(&[-2, 1]); // x - 2
+        let b = QRatPoly::from_i64_coeffs(&[-5, 1]); // x - 5
+        let r = poly_resultant(&a, &b);
+        assert_eq!(r, QRat::from((-3i64, 1i64)));
+    }
+
+    // ========================================
+    // POLY-04: q-shift evaluation identity
+    // ========================================
+
+    #[test]
+    fn test_poly04_q_shift_eval_identity() {
+        // For p = x^3 + 2x + 1, q = 3/7:
+        // p.q_shift(q).eval(x) == p.eval(q * x) for several x values
+        let p = QRatPoly::from_i64_coeffs(&[1, 2, 0, 1]); // x^3 + 2x + 1
+        let q = QRat::from((3, 7));
+
+        let shifted = p.q_shift(&q);
+
+        for x_val in &[
+            QRat::from((1, 1)),
+            QRat::from((2, 1)),
+            QRat::from((-3, 2)),
+            QRat::from((7, 5)),
+            QRat::from((0, 1)),
+        ] {
+            let lhs = shifted.eval(x_val);
+            let qx = &q * x_val;
+            let rhs = p.eval(&qx);
+            assert_eq!(lhs, rhs, "q-shift identity failed at x = {}", x_val);
+        }
+    }
+
+    #[test]
+    fn test_poly04_q_shift_n_composition() {
+        // q_shift_n(q, a).q_shift_n(q, b) == q_shift_n(q, a+b)
+        let p = QRatPoly::from_i64_coeffs(&[1, -2, 3, 1]);
+        let q = QRat::from((2, 3));
+
+        let shift_3_then_2 = p.q_shift_n(&q, 3).q_shift_n(&q, 2);
+        let shift_5 = p.q_shift_n(&q, 5);
+        assert_eq!(shift_3_then_2, shift_5);
+    }
+
+    // ========================================
+    // POLY-05: Rational function auto-simplification and arithmetic
+    // ========================================
+
+    #[test]
+    fn test_poly05_ratfunc_simplification() {
+        // (x^3 - x) / (x^2 - 1) = x/1 since x^3-x = x(x^2-1)
+        let numer = QRatPoly::from_i64_coeffs(&[0, -1, 0, 1]); // x^3 - x
+        let denom = QRatPoly::from_i64_coeffs(&[-1, 0, 1]); // x^2 - 1
+        let rf = QRatRationalFunc::new(numer, denom);
+        assert_eq!(rf.numer, QRatPoly::x());
+        assert_eq!(rf.denom, QRatPoly::one());
+        assert!(rf.is_polynomial());
+    }
+
+    #[test]
+    fn test_poly05_ratfunc_addition() {
+        // 1/(x-1) + 1/(x+1) = 2x/(x^2-1)
+        let a = QRatRationalFunc::new(QRatPoly::one(), x_minus(1));
+        let b = QRatRationalFunc::new(QRatPoly::one(), QRatPoly::from_i64_coeffs(&[1, 1]));
+        let sum = &a + &b;
+        // numerator: 2x, denom: x^2 - 1
+        assert_eq!(sum.numer, QRatPoly::from_i64_coeffs(&[0, 2]));
+        assert_eq!(sum.denom, QRatPoly::from_i64_coeffs(&[-1, 0, 1]));
+    }
+
+    // ========================================
+    // Round-trip test: build and decompose rational functions
+    // ========================================
+
+    #[test]
+    fn test_roundtrip_rf_mul_inverse() {
+        // rf = (x+1)(x+2) / ((x+3)(x+4))
+        // rf * ((x+3)(x+4) / (x+1)(x+2)) == 1/1
+        let n1 = &QRatPoly::from_i64_coeffs(&[1, 1]) * &QRatPoly::from_i64_coeffs(&[2, 1]);
+        let d1 = &QRatPoly::from_i64_coeffs(&[3, 1]) * &QRatPoly::from_i64_coeffs(&[4, 1]);
+        let rf = QRatRationalFunc::new(n1.clone(), d1.clone());
+        let rf_inv = QRatRationalFunc::new(d1, n1);
+        let product = &rf * &rf_inv;
+        assert_eq!(product, QRatRationalFunc::one());
+    }
+
+    #[test]
+    fn test_roundtrip_add_sub() {
+        // (a/b + c/d) - c/d == a/b
+        let a = QRatRationalFunc::new(
+            QRatPoly::from_i64_coeffs(&[1, 2]),
+            QRatPoly::from_i64_coeffs(&[3, 0, 1]),
+        );
+        let b = QRatRationalFunc::new(
+            QRatPoly::from_i64_coeffs(&[-1, 1]),
+            QRatPoly::from_i64_coeffs(&[1, 1, 1]),
+        );
+        let roundtrip = &(&a + &b) - &b;
+        assert_eq!(roundtrip, a);
+    }
+
+    // ========================================
+    // Coefficient size test: GCD of degree-10 polynomials
+    // ========================================
+
+    #[test]
+    fn test_coefficient_size_degree10() {
+        // GCD of degree-10 polynomials with 3-digit rational coefficients.
+        // Verify subresultant PRS keeps coefficients manageable.
+
+        // Build common factor with large-ish coefficients
+        // common = (100x + 123)(200x + 456)(300x + 789) -- degree 3
+        let f1 = QRatPoly::from_i64_coeffs(&[123, 100]);
+        let f2 = QRatPoly::from_i64_coeffs(&[456, 200]);
+        let f3 = QRatPoly::from_i64_coeffs(&[789, 300]);
+        let common = &(&f1 * &f2) * &f3;
+        assert_eq!(common.degree(), Some(3));
+
+        // p_extra: degree 7 polynomial from integer roots
+        let p_extra = poly_from_roots(&[1, 2, 3, 4, 5, 6, 7]);
+        // q_extra: degree 7 polynomial from different roots
+        let q_extra = poly_from_roots(&[8, 9, 10, 11, 12, 13, 14]);
+
+        let p = &common * &p_extra; // degree 10
+        let q = &common * &q_extra; // degree 10
+        assert_eq!(p.degree(), Some(10));
+        assert_eq!(q.degree(), Some(10));
+
+        let g = poly_gcd(&p, &q);
+
+        // The GCD should be common.make_monic()
+        assert_eq!(g.degree(), Some(3), "GCD should have degree 3");
+        assert_eq!(g, common.make_monic());
+
+        // Verify coefficient sizes are reasonable (no explosion)
+        // The monic GCD coefficients should have numerators/denominators with < 15 digits
+        for c in g.coeffs() {
+            let numer_digits = c.0.numer().to_string().len();
+            let denom_digits = c.0.denom().to_string().len();
+            assert!(
+                numer_digits <= 15,
+                "Numerator too large: {} ({} digits)",
+                c.0.numer(),
+                numer_digits
+            );
+            assert!(
+                denom_digits <= 15,
+                "Denominator too large: {} ({} digits)",
+                c.0.denom(),
+                denom_digits
+            );
+        }
+    }
+
+    // ========================================
+    // Additional cross-module interaction tests
+    // ========================================
+
+    #[test]
+    fn test_ratfunc_eval_matches_poly_division() {
+        // For p/q rational function, eval at x should match numer.eval / denom.eval
+        let rf = QRatRationalFunc::new(
+            QRatPoly::from_i64_coeffs(&[2, 3, 1]), // x^2 + 3x + 2
+            QRatPoly::from_i64_coeffs(&[-1, 1]),    // x - 1
+        );
+        let x = QRat::from((5, 1));
+        let result = rf.eval(&x).unwrap();
+        let expected = &rf.numer.eval(&x) / &rf.denom.eval(&x);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_gcd_and_ratfunc_consistency() {
+        // poly_gcd(a, b) == 1 iff (a/b) rational function stays unreduced
+        let a = QRatPoly::from_i64_coeffs(&[1, 1]); // x + 1
+        let b = QRatPoly::from_i64_coeffs(&[-1, 1]); // x - 1
+        let g = poly_gcd(&a, &b);
+        assert!(g.is_one(), "x+1 and x-1 are coprime");
+
+        let rf = QRatRationalFunc::new(a.clone(), b.clone());
+        // Since coprime, rf should keep exact numer and denom
+        assert_eq!(rf.numer, a);
+        assert_eq!(rf.denom, b);
+    }
+
+    #[test]
+    fn test_resultant_zero_iff_gcd_nontrivial() {
+        // Verify: resultant(a,b) == 0 iff gcd(a,b) != 1
+        let common = x_minus(3);
+        let a = &common * &x_minus(1); // (x-3)(x-1)
+        let b = &common * &x_minus(5); // (x-3)(x-5)
+
+        let g = poly_gcd(&a, &b);
+        let r = poly_resultant(&a, &b);
+        assert!(!g.is_one(), "Should have nontrivial GCD");
+        assert!(r.is_zero(), "Resultant should be zero when GCD nontrivial");
+
+        // Now test coprime pair
+        let c = QRatPoly::from_i64_coeffs(&[1, 0, 1]); // x^2 + 1
+        let d = QRatPoly::from_i64_coeffs(&[1, 1]); // x + 1
+        let g2 = poly_gcd(&c, &d);
+        let r2 = poly_resultant(&c, &d);
+        assert!(g2.is_one(), "Should be coprime");
+        assert!(!r2.is_zero(), "Resultant should be nonzero when coprime");
+    }
+
+    #[test]
+    fn test_q_shift_preserves_gcd_structure() {
+        // If gcd(a, b) = g, then shifting all by same q preserves the factorization
+        let common = QRatPoly::from_i64_coeffs(&[1, 1]); // x + 1
+        let a = &common * &QRatPoly::from_i64_coeffs(&[-1, 1]); // (x+1)(x-1)
+        let b = &common * &QRatPoly::from_i64_coeffs(&[2, 1]); // (x+1)(x+2)
+
+        let q = QRat::from((3, 1));
+        let a_shifted = a.q_shift(&q);
+        let b_shifted = b.q_shift(&q);
+        let common_shifted = common.q_shift(&q);
+
+        // The shifted common factor should divide both shifted polys
+        let (_, r1) = a_shifted.div_rem(&common_shifted);
+        let (_, r2) = b_shifted.div_rem(&common_shifted);
+        assert!(r1.is_zero(), "Shifted common factor should divide shifted a");
+        assert!(r2.is_zero(), "Shifted common factor should divide shifted b");
+    }
+
+    #[test]
+    fn test_ratfunc_field_axioms() {
+        // Verify field-like axioms for rational functions
+        let a = QRatRationalFunc::new(
+            QRatPoly::from_i64_coeffs(&[1, 1]),
+            QRatPoly::from_i64_coeffs(&[-1, 1]),
+        );
+        let b = QRatRationalFunc::new(
+            QRatPoly::from_i64_coeffs(&[2, 1]),
+            QRatPoly::from_i64_coeffs(&[3, 1]),
+        );
+        let c = QRatRationalFunc::new(
+            QRatPoly::from_i64_coeffs(&[-2, 0, 1]),
+            QRatPoly::from_i64_coeffs(&[1, 0, 1]),
+        );
+
+        // Commutativity of addition
+        assert_eq!(&a + &b, &b + &a);
+
+        // Commutativity of multiplication
+        assert_eq!(&a * &b, &b * &a);
+
+        // Associativity of multiplication
+        assert_eq!(&(&a * &b) * &c, &a * &(&b * &c));
+
+        // Distributivity: a * (b + c) = a*b + a*c
+        let lhs = &a * &(&b + &c);
+        let rhs = &(&a * &b) + &(&a * &c);
+        assert_eq!(lhs, rhs);
+
+        // Multiplicative identity
+        let one = QRatRationalFunc::one();
+        assert_eq!(&a * &one, a.clone());
+
+        // Additive identity
+        let zero = QRatRationalFunc::zero();
+        assert_eq!(&a + &zero, a.clone());
+
+        // Additive inverse
+        let neg_a = -a.clone();
+        assert!((&a + &neg_a).is_zero());
+
+        // Multiplicative inverse (a * (1/a) = 1)
+        let a_inv = &QRatRationalFunc::one() / &a;
+        let product = &a * &a_inv;
+        assert_eq!(product, one);
+    }
+
+    #[test]
+    fn test_poly_eval_at_multiple_points() {
+        // Evaluate a polynomial at several points and verify with known values
+        // p(x) = x^4 - 10x^2 + 9 = (x-1)(x+1)(x-3)(x+3)
+        let p = poly_from_roots(&[1, -1, 3, -3]);
+        assert_eq!(p.eval(&QRat::from((1, 1))), QRat::zero());
+        assert_eq!(p.eval(&QRat::from((-1, 1))), QRat::zero());
+        assert_eq!(p.eval(&QRat::from((3, 1))), QRat::zero());
+        assert_eq!(p.eval(&QRat::from((-3, 1))), QRat::zero());
+        assert_eq!(p.eval(&QRat::from((0, 1))), QRat::from((9, 1)));
+        // p(2) = 16 - 40 + 9 = -15
+        assert_eq!(p.eval(&QRat::from((2, 1))), QRat::from((-15, 1)));
+    }
+
+    #[test]
+    fn test_content_preserves_polynomial() {
+        // content * primitive_part == original (up to sign)
+        let p = QRatPoly::from_vec(vec![
+            QRat::from((2, 3)),
+            QRat::from((4, 3)),
+            QRat::from((8, 3)),
+        ]);
+        let cont = p.content();
+        let pp = p.primitive_part();
+        let reconstructed = pp.scalar_mul(&cont);
+        assert_eq!(reconstructed, p);
+    }
+}
