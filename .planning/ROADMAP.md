@@ -74,11 +74,12 @@ Plans:
   2. q-dispersion computation correctly finds all integer shifts j where gcd(a(x), b(q^j * x)) is nontrivial
   3. qGFF decomposition produces sigma, tau, p factors satisfying the Gosper normal form constraints
   4. The complete q-Gosper algorithm returns Summable(antidifference) for known summable series (e.g., q-Vandermonde) and NotSummable for non-summable ones
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 14-01: TBD
-- [ ] 14-02: TBD
+- [ ] 14-01-PLAN.md -- Term ratio extraction (GOSP-01) and q-dispersion computation (GOSP-02)
+- [ ] 14-02-PLAN.md -- Gosper normal form decomposition (GOSP-03) and key equation solver (GOSP-04)
+- [ ] 14-03-PLAN.md -- Complete q-Gosper algorithm (GOSP-05) with integration tests
 
 ### Phase 15: q-Zeilberger & WZ Certificates
 **Goal**: Users can prove q-hypergeometric identities by obtaining recurrences via creative telescoping and verifying them with WZ certificates
@@ -144,7 +145,7 @@ Plans:
 | 11. CI/CD Pipeline | v1.1 | 2/2 | Complete | 2026-02-15 |
 | 12. Documentation & UX Polish | v1.1 | 4/4 | Complete | 2026-02-15 |
 | 13. Polynomial Infrastructure | v1.2 | 3/3 | Complete | 2026-02-15 |
-| 14. q-Gosper Algorithm | v1.2 | 0/TBD | Not started | - |
+| 14. q-Gosper Algorithm | v1.2 | 0/3 | Not started | - |
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 0/TBD | Not started | - |
 | 16. Extensions | v1.2 | 0/TBD | Not started | - |
 | 17. Python API & Documentation | v1.2 | 0/TBD | Not started | - |
