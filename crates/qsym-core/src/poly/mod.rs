@@ -5,8 +5,10 @@
 
 pub mod arithmetic;
 pub mod gcd;
+pub mod ratfunc;
 
 pub use gcd::{poly_gcd, poly_resultant};
+pub use ratfunc::QRatRationalFunc;
 
 use crate::number::QRat;
 use std::cmp::Ordering;

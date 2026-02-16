@@ -18,5 +18,5 @@ pub mod symbol;
 pub use arena::ExprArena;
 pub use expr::{Expr, ExprRef};
 pub use number::{QInt, QRat};
-pub use poly::QRatPoly;
+pub use poly::{QRatPoly, QRatRationalFunc, poly_gcd, poly_resultant};
 pub use symbol::{SymbolId, SymbolRegistry};
