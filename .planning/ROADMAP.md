@@ -91,11 +91,12 @@ Plans:
   3. A WZ proof certificate is extracted and independently verified against the recurrence
   4. User-supplied WZ certificates are accepted and verified (not just internally generated ones)
   5. FPS cross-verification confirms the recurrence matches numerical series expansion to a given order
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 15-01: TBD
-- [ ] 15-02: TBD
+- [ ] 15-01-PLAN.md -- N-direction shift ratios, extended key equation solver, creative telescoping core (ZEIL-01)
+- [ ] 15-02-PLAN.md -- Public q_zeilberger function with recurrence output and WZ certificate extraction (ZEIL-02, ZEIL-03)
+- [ ] 15-03-PLAN.md -- WZ certificate verification and FPS cross-check (ZEIL-04, ZEIL-05)
 
 ### Phase 16: Extensions
 **Goal**: Users can solve recurrences for closed forms, prove nonterminating identities, and discover transformation chains between hypergeometric series
@@ -146,6 +147,6 @@ Plans:
 | 12. Documentation & UX Polish | v1.1 | 4/4 | Complete | 2026-02-15 |
 | 13. Polynomial Infrastructure | v1.2 | 3/3 | Complete | 2026-02-15 |
 | 14. q-Gosper Algorithm | v1.2 | 3/3 | Complete | 2026-02-16 |
-| 15. q-Zeilberger & WZ Certificates | v1.2 | 0/TBD | Not started | - |
+| 15. q-Zeilberger & WZ Certificates | v1.2 | 0/3 | Not started | - |
 | 16. Extensions | v1.2 | 0/TBD | Not started | - |
 | 17. Python API & Documentation | v1.2 | 0/TBD | Not started | - |
