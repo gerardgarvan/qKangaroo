@@ -24,8 +24,8 @@
 //!   (7 third-order, 10 fifth-order, 3 seventh-order)
 //! - Appell-Lerch sums: [`appell_lerch_m`], [`universal_mock_theta_g2`], [`universal_mock_theta_g3`],
 //!   [`ZwegersCompletion`]
-//! - q-Gosper algorithm: [`extract_term_ratio`], [`q_dispersion`], [`QGosperResult`],
-//!   [`GosperNormalForm`]
+//! - q-Gosper algorithm: [`q_gosper`], [`extract_term_ratio`], [`q_dispersion`],
+//!   [`QGosperResult`], [`GosperNormalForm`], [`gosper_normal_form`], [`solve_key_equation`]
 
 pub mod appell_lerch;
 pub mod factoring;
@@ -68,7 +68,7 @@ pub use mock_theta::{
 };
 pub use appell_lerch::{appell_lerch_m, appell_lerch_bilateral, universal_mock_theta_g2, universal_mock_theta_g3, ZwegersCompletion};
 pub use bailey::{BaileyPair, BaileyPairType, BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair, bailey_discover, DiscoveryResult};
-pub use gosper::{QGosperResult, GosperNormalForm, extract_term_ratio, q_dispersion};
+pub use gosper::{QGosperResult, GosperNormalForm, extract_term_ratio, q_dispersion, gosper_normal_form, solve_key_equation, q_gosper};
 
 use crate::number::QRat;
 

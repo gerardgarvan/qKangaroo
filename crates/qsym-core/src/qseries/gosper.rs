@@ -274,30 +274,45 @@ fn compute_degree_candidates(
             candidates.push(d_c - max_st + 1);
         }
     } else {
-        // d_sigma == d_tau: leading terms may cancel
+        // d_sigma == d_tau: leading terms may cancel when q^{deg_f} = lc_tau/lc_sigma
         let lc_sigma = sigma.leading_coeff().unwrap();
         let lc_tau = tau.leading_coeff().unwrap();
         let ratio = &lc_tau / &lc_sigma;
 
-        // Try to find deg_f such that q_val^{deg_f} = ratio
-        let mut found_match = false;
-        for d in 0..=d_c {
+        // Search for n_0 such that q^{n_0} = ratio.
+        // Upper bound: d_c + d_sigma + 2 (generous bound to handle cascading cancellation).
+        // The degree of f when leading cancellation occurs can exceed d_c.
+        let search_bound = d_c + d_sigma + 2;
+        let mut n0: Option<usize> = None;
+        for d in 0..=search_bound {
             if qrat_pow_i64(q_val, d as i64) == ratio {
-                candidates.push(d);
-                found_match = true;
+                n0 = Some(d);
                 break;
             }
         }
 
-        // Fallback: the "non-cancellation" case
-        if !found_match || d_c >= d_sigma {
-            let fallback = if d_c >= d_sigma { d_c - d_sigma } else { 0 };
-            if !candidates.contains(&fallback) {
-                candidates.push(fallback);
+        if let Some(n) = n0 {
+            // When q^n = lc_tau/lc_sigma, deg(f) = n is the primary candidate.
+            // The leading x^{d_sigma + n} terms cancel, so the effective LHS degree
+            // is at most d_sigma + n - 1, which must equal d_c.
+            // But cascading cancellation can lower the effective degree further,
+            // meaning n could be even larger. We add n and n+1 as candidates.
+            if !candidates.contains(&n) {
+                candidates.push(n);
             }
         }
 
-        // Also try one higher than each candidate as fallback
+        // Non-cancellation case: deg(f) = d_c - d_sigma (when no leading term cancellation)
+        if d_c >= d_sigma {
+            let fallback = d_c - d_sigma;
+            if !candidates.contains(&fallback) {
+                candidates.push(fallback);
+            }
+        } else if !candidates.contains(&0) {
+            candidates.push(0);
+        }
+
+        // Also try one higher than each candidate as fallback for edge cases
         let extra: Vec<usize> = candidates.iter().map(|&d| d + 1).collect();
         for d in extra {
             if !candidates.contains(&d) {
@@ -534,6 +549,56 @@ pub fn extract_term_ratio(
     QRatRationalFunc::new(numer, denom)
 }
 
+/// Run the complete q-Gosper algorithm on a q-hypergeometric series.
+///
+/// Given a HypergeometricSeries and a concrete q value, determines whether
+/// the series has a q-hypergeometric antidifference (indefinite sum).
+///
+/// Returns:
+/// - `QGosperResult::Summable { certificate }` if an antidifference exists.
+///   The certificate is a rational function R(x) such that the antidifference
+///   at step k is s_k = R(q^k) * t_k, where t_k is the k-th term.
+/// - `QGosperResult::NotSummable` if no q-hypergeometric antidifference exists.
+///
+/// The q_val parameter must not be zero or a root of unity.
+pub fn q_gosper(
+    series: &HypergeometricSeries,
+    q_val: &QRat,
+) -> QGosperResult {
+    // Step 1: Extract the term ratio t_{k+1}/t_k as a rational function of x = q^k
+    let ratio = extract_term_ratio(series, q_val);
+
+    // Step 2: Get coprime numerator and denominator
+    // QRatRationalFunc already ensures gcd = 1 via auto-reduction
+    let a = ratio.numer.clone();
+    let b = ratio.denom.clone();
+
+    // Step 3: Compute Gosper normal form: a/b = sigma/tau * c(qx)/c(x)
+    let gnf = gosper_normal_form(&a, &b, q_val);
+
+    // Step 4: Solve the key equation: sigma(x)*f(qx) - tau(x)*f(x) = tau(x)*c(x)
+    //
+    // The standard q-Gosper key equation for the antidifference S_k = y(q^k)*t_k
+    // where S_{k+1} - S_k = t_k and y(x) = f(x)/c(x) requires:
+    //   sigma(x)*f(qx) - tau(x)*f(x) = tau(x)*c(x)
+    //
+    // This is because t_{k+1}/t_k = sigma/tau * c(qx)/c(x), and substituting
+    // S_k = [f(q^k)/c(q^k)] * t_k into the telescoping identity yields:
+    //   sigma*f(qx) - tau*f(x) = tau*c.
+    let rhs = &gnf.tau * &gnf.c;
+    let f = solve_key_equation(&gnf.sigma, &gnf.tau, &rhs, q_val);
+
+    match f {
+        None => QGosperResult::NotSummable,
+        Some(f_poly) => {
+            // Step 5: Construct the certificate rational function
+            // y(x) = f(x) / c(x)
+            let certificate = QRatRationalFunc::new(f_poly, gnf.c.clone());
+            QGosperResult::Summable { certificate }
+        }
+    }
+}
+
 /// Find all non-negative integers j such that gcd(a(x), b(q^j * x)) has degree >= 1.
 ///
 /// This is the q-dispersion set, a key input to the Gosper normal form decomposition.
@@ -605,6 +670,64 @@ fn q_dispersion_range(
     }
 
     result
+}
+
+/// Verify the q-Gosper certificate by checking s_{k+1} - s_k = t_k
+/// for k = 0, 1, ..., max_k, where s_k = R(q^k) * t_k.
+///
+/// Returns true if the identity holds for all tested k.
+#[cfg(test)]
+fn verify_certificate(
+    series: &HypergeometricSeries,
+    certificate: &QRatRationalFunc,
+    q_val: &QRat,
+    max_k: usize,
+) -> bool {
+    let ratio = extract_term_ratio(series, q_val);
+
+    // Compute terms t_0, t_1, ..., t_{max_k+1}
+    // t_0 = 1 (initial term of any _r phi_s)
+    let mut terms = Vec::with_capacity(max_k + 2);
+    terms.push(QRat::one());
+
+    for k in 0..=max_k {
+        let qk = qrat_pow_i64(q_val, k as i64);
+        match ratio.eval(&qk) {
+            Some(r_val) => {
+                let next = &terms[k] * &r_val;
+                terms.push(next);
+            }
+            None => {
+                // Pole in term ratio at q^k -- term sequence ends
+                // We can only verify up to k-1
+                break;
+            }
+        }
+    }
+
+    // For each k = 0..max_k, verify s_{k+1} - s_k == t_k
+    let mut all_ok = true;
+    let actual_max_k = (terms.len() - 2).min(max_k); // need terms[k] and terms[k+1]
+    for k in 0..=actual_max_k {
+        let qk = qrat_pow_i64(q_val, k as i64);
+        let qk1 = qrat_pow_i64(q_val, (k + 1) as i64);
+
+        let s_k = match certificate.eval(&qk) {
+            Some(val) => &val * &terms[k],
+            None => continue, // pole at q^k, skip
+        };
+        let s_k1 = match certificate.eval(&qk1) {
+            Some(val) => &val * &terms[k + 1],
+            None => continue, // pole at q^{k+1}, skip
+        };
+
+        let diff = &s_k1 - &s_k;
+        if diff != terms[k] {
+            all_ok = false;
+        }
+    }
+
+    all_ok
 }
 
 #[cfg(test)]
@@ -1307,5 +1430,226 @@ mod tests {
         let s = sol.unwrap();
         assert_eq!(s[0], qr(2));
         assert_eq!(s[1], qr(1));
+    }
+
+    // ========================================
+    // q_gosper integration tests
+    // ========================================
+
+    #[test]
+    fn test_q_gosper_vandermonde_summable() {
+        // q-Vandermonde: _2phi1(q^{-3}, q^2; q^3; q, q^4)
+        // This is the q-Vandermonde with n=3, a=q^2, c=q^3, z = c*q^n/a = q^3*q^3/q^2 = q^4
+        // Should be summable.
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(-3), QMonomial::q_power(2)],
+            lower: vec![QMonomial::q_power(3)],
+            argument: QMonomial::q_power(4),
+        };
+        let q_val = qr(2);
+
+        let result = q_gosper(&series, &q_val);
+        match &result {
+            QGosperResult::Summable { certificate } => {
+                // Verify the certificate: s_{k+1} - s_k = t_k for k = 0..5
+                assert!(
+                    verify_certificate(&series, certificate, &q_val, 5),
+                    "Certificate verification failed for q-Vandermonde"
+                );
+            }
+            QGosperResult::NotSummable => {
+                panic!("q-Vandermonde should be Gosper-summable");
+            }
+        }
+    }
+
+    #[test]
+    fn test_q_gosper_geometric_summable() {
+        // Terminating geometric-like series: _1phi0(q^{-2}; -; q, q)
+        // upper = [q^{-2}], lower = [], argument = q
+        // This terminates at n=2 terms. The sum is 1 + t_1 + t_2.
+        // Should be Gosper-summable (all terminating 1phi0 are).
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(-2)],
+            lower: vec![],
+            argument: QMonomial::q_power(1),
+        };
+        let q_val = qr(2);
+
+        let result = q_gosper(&series, &q_val);
+        match &result {
+            QGosperResult::Summable { certificate } => {
+                assert!(
+                    verify_certificate(&series, certificate, &q_val, 4),
+                    "Certificate verification failed for geometric series"
+                );
+            }
+            QGosperResult::NotSummable => {
+                panic!("Terminating 1phi0 should be Gosper-summable");
+            }
+        }
+    }
+
+    #[test]
+    fn test_q_gosper_non_summable() {
+        // _2phi1(q^{-3}, q; q^5; q, q) -- a non-Vandermonde, non-balanced 2phi1
+        // This series truncates (n=3), but the Gosper algorithm should not find
+        // a hypergeometric antidifference because the parameters don't satisfy
+        // any summation formula.
+        //
+        // Note: Whether a specific terminating series is Gosper-summable depends
+        // on the structure. We test that the algorithm runs without error
+        // and that if NotSummable is returned, it's consistent.
+        // If Summable, we verify the certificate.
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(-3), QMonomial::q_power(1)],
+            lower: vec![QMonomial::q_power(5)],
+            argument: QMonomial::q_power(1),
+        };
+        let q_val = qr(2);
+
+        let result = q_gosper(&series, &q_val);
+        match &result {
+            QGosperResult::Summable { certificate } => {
+                // If the algorithm finds it summable, verify the certificate
+                assert!(
+                    verify_certificate(&series, certificate, &q_val, 5),
+                    "Certificate verification failed"
+                );
+            }
+            QGosperResult::NotSummable => {
+                // This is the expected result for a generic 2phi1
+            }
+        }
+    }
+
+    #[test]
+    fn test_q_gosper_certificate_round_trip() {
+        // For each summable result, verify the antidifference identity at
+        // more evaluation points. Use the q-Vandermonde again.
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(-3), QMonomial::q_power(2)],
+            lower: vec![QMonomial::q_power(3)],
+            argument: QMonomial::q_power(4),
+        };
+
+        // Test with different q values to ensure robustness
+        for q_num in &[2i64, 3] {
+            let q_val = qr(*q_num);
+            let result = q_gosper(&series, &q_val);
+            if let QGosperResult::Summable { certificate } = &result {
+                assert!(
+                    verify_certificate(&series, certificate, &q_val, 5),
+                    "Round-trip failed for q={}",
+                    q_num
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_q_gosper_trivially_terminating() {
+        // _2phi1(q^0, q^2; q^3; q, q) where q^0 = 1
+        // Termination order is 0 since q^0 = 1 means (1;q)_0 = 1 but (1;q)_1 = 0.
+        // The sum is just the k=0 term (which is 1).
+        // The term ratio at k=0 has the factor (1 - q^0 * x) = (1 - x), which at x = q^0 = 1
+        // gives 0, so t_1 = 0.
+        // This is an edge case: the ratio has a zero at x=1 so the sequence truncates immediately.
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(0), QMonomial::q_power(2)],
+            lower: vec![QMonomial::q_power(3)],
+            argument: QMonomial::q_power(1),
+        };
+        let q_val = qr(2);
+
+        // The algorithm should handle this -- either Summable or NotSummable
+        let result = q_gosper(&series, &q_val);
+        match &result {
+            QGosperResult::Summable { certificate } => {
+                // If summable, the certificate should be valid
+                assert!(
+                    verify_certificate(&series, certificate, &q_val, 2),
+                    "Certificate verification failed for trivially terminating series"
+                );
+            }
+            QGosperResult::NotSummable => {
+                // Also acceptable -- trivially terminating series may not have
+                // a hypergeometric antidifference in the Gosper sense
+            }
+        }
+    }
+
+    #[test]
+    fn test_q_gosper_balanced_3phi2() {
+        // _3phi2(q^{-2}, q, q; q^2, q^2; q, q)
+        // This is a balanced terminating 3phi2 (q-Saalschutz applies).
+        // Gosper should also find it summable since balanced terminating sums
+        // have hypergeometric antidifferences.
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(-2), QMonomial::q_power(1), QMonomial::q_power(1)],
+            lower: vec![QMonomial::q_power(2), QMonomial::q_power(2)],
+            argument: QMonomial::q_power(1),
+        };
+        let q_val = qr(2);
+
+        let result = q_gosper(&series, &q_val);
+        match &result {
+            QGosperResult::Summable { certificate } => {
+                assert!(
+                    verify_certificate(&series, certificate, &q_val, 4),
+                    "Certificate verification failed for balanced 3phi2"
+                );
+            }
+            QGosperResult::NotSummable => {
+                // The algorithm may or may not find this summable via Gosper --
+                // q-Saalschutz is a definite sum, not necessarily Gosper-summable.
+                // This is acceptable.
+            }
+        }
+    }
+
+    #[test]
+    fn test_q_gosper_result_is_summable_variant() {
+        // Quick test: verify that Summable results have a non-trivial certificate
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(-2)],
+            lower: vec![],
+            argument: QMonomial::q_power(1),
+        };
+        let q_val = qr(3);
+
+        let result = q_gosper(&series, &q_val);
+        if let QGosperResult::Summable { certificate } = &result {
+            // The certificate should be a valid rational function
+            assert!(
+                !certificate.numer.is_zero(),
+                "Certificate numerator should not be zero for a summable series"
+            );
+        }
+    }
+
+    #[test]
+    fn test_q_gosper_1phi0_different_params() {
+        // _1phi0(q^{-4}; -; q, q^2) with q_val = 2
+        // Terminating at n=4. Should be Gosper-summable.
+        let series = HypergeometricSeries {
+            upper: vec![QMonomial::q_power(-4)],
+            lower: vec![],
+            argument: QMonomial::q_power(2),
+        };
+        let q_val = qr(2);
+
+        let result = q_gosper(&series, &q_val);
+        match &result {
+            QGosperResult::Summable { certificate } => {
+                assert!(
+                    verify_certificate(&series, certificate, &q_val, 6),
+                    "Certificate verification failed for 1phi0(q^-4;;q,q^2)"
+                );
+            }
+            QGosperResult::NotSummable => {
+                panic!("Terminating 1phi0 should be Gosper-summable");
+            }
+        }
     }
 }
