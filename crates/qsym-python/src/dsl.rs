@@ -1095,15 +1095,34 @@ pub fn crank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeri
 ///
 /// Examples
 /// --------
+/// Factor $(q;q)_\infty$ truncated to 20 terms -- recovers the single factor
+/// $(1-q)^1 \cdot (1-q^2)^1 \cdots$:
+///
 /// >>> from q_kangaroo import QSession, etaq, qfactor
 /// >>> s = QSession()
 /// >>> f = qfactor(etaq(s, 1, 1, 20))
 /// >>> f["is_exact"]
 /// True
+/// >>> f["factors"]  # {1: 1, 2: 1, 3: 1, ..., 19: 1}
+///
+/// Factor a Gaussian binomial (a finite q-polynomial):
+///
+/// >>> f2 = qfactor(qbin(s, 4, 2, 20))
+/// >>> f2["is_exact"]
+/// True
+///
+/// Notes
+/// -----
+/// Uses top-down polynomial division to express a q-polynomial as
+/// $c \cdot \prod_i (1-q^i)^{m_i}$. Exact factorization succeeds for products
+/// of cyclotomic-type factors. For infinite series (truncated), the factorization
+/// is approximate and ``is_exact`` may be ``False``.
 ///
 /// See Also
 /// --------
 /// prodmake : Recover infinite product exponents (Andrews' algorithm).
+/// etaq : Compute an eta product directly.
+/// mprodmake : Decompose into $(1+q^n)$ factors.
 #[pyfunction]
 pub fn qfactor(py: Python<'_>, series: &QSeries) -> PyResult<PyObject> {
     let result = qseries::qfactor(&series.fps);
@@ -1142,14 +1161,38 @@ pub fn qfactor(py: Python<'_>, series: &QSeries) -> PyResult<PyObject> {
 ///
 /// Examples
 /// --------
+/// Ramanujan's congruence $p(5n+4) \equiv 0 \pmod{5}$: sift out the
+/// subsequence at residue 4 mod 5 and verify every coefficient is
+/// divisible by 5:
+///
 /// >>> from q_kangaroo import QSession, partition_gf, sift
 /// >>> s = QSession()
-/// >>> pgf = partition_gf(s, 100)
-/// >>> sifted = sift(pgf, 5, 4)  # coefficients at indices 4, 9, 14, ...
+/// >>> pgf = partition_gf(s, 200)
+/// >>> s5_4 = sift(pgf, 5, 4)
+/// >>> # Coefficients: p(4)=5, p(9)=30, p(14)=135, p(19)=490, ...
+/// >>> # Every coefficient is divisible by 5
+///
+/// Similarly, $p(7n+5) \equiv 0 \pmod{7}$:
+///
+/// >>> s7_5 = sift(pgf, 7, 5)
+/// >>> # Coefficients: p(5)=7, p(12)=77, p(19)=490, ...
+/// >>> # Every coefficient is divisible by 7
+///
+/// Notes
+/// -----
+/// The sift operation extracts the arithmetic subsequence $f[mi+j]$,
+/// producing a new series $g$ with $g[n] = f[mn+j]$. This is the key tool
+/// for studying partition congruences and other arithmetic properties of
+/// q-series coefficients. For example, Ramanujan's three congruences
+/// are discovered by sifting ``partition_gf`` at residues 4 mod 5,
+/// 5 mod 7, and 6 mod 11.
 ///
 /// See Also
 /// --------
 /// findcong : Discover partition congruences automatically.
+/// partition_gf : Partition generating function to sift.
+/// findlincombo : Express sifted series as linear combinations.
+/// etaq : Eta products used in congruence analysis.
 #[pyfunction]
 #[pyo3(name = "sift")]
 pub fn sift_fn(series: &QSeries, m: i64, j: i64) -> QSeries {
@@ -1172,14 +1215,24 @@ pub fn sift_fn(series: &QSeries, m: i64, j: i64) -> QSeries {
 ///
 /// Examples
 /// --------
+/// The Gaussian binomial $\binom{5}{2}_q = 1 + q + 2q^2 + 2q^3 + 2q^4 + q^5 + q^6$
+/// is a polynomial of degree 6:
+///
 /// >>> from q_kangaroo import QSession, qbin, qdegree
 /// >>> s = QSession()
 /// >>> qdegree(qbin(s, 5, 2, 20))
 /// 6
 ///
+/// For a truncated infinite series, the degree equals the truncation order minus 1:
+///
+/// >>> from q_kangaroo import partition_gf
+/// >>> qdegree(partition_gf(s, 20))
+/// 19
+///
 /// See Also
 /// --------
 /// lqdegree : Lowest nonzero exponent (valuation).
+/// qfactor : Factor a q-polynomial into cyclotomic components.
 #[pyfunction]
 pub fn qdegree(series: &QSeries) -> Option<i64> {
     qseries::qdegree(&series.fps)
@@ -1199,14 +1252,30 @@ pub fn qdegree(series: &QSeries) -> Option<i64> {
 ///
 /// Examples
 /// --------
-/// >>> from q_kangaroo import QSession, etaq, lqdegree
+/// The partition generating function starts at $q^0$ (constant term 1):
+///
+/// >>> from q_kangaroo import QSession, partition_gf, lqdegree
 /// >>> s = QSession()
+/// >>> lqdegree(partition_gf(s, 20))
+/// 0
+///
+/// An eta product $(q;q)_\infty = 1 - q - q^2 + \cdots$ also has valuation 0:
+///
+/// >>> from q_kangaroo import etaq
 /// >>> lqdegree(etaq(s, 1, 1, 20))
+/// 0
+///
+/// A sifted series may have a different valuation:
+///
+/// >>> from q_kangaroo import sift
+/// >>> pgf = partition_gf(s, 100)
+/// >>> lqdegree(sift(pgf, 5, 4))
 /// 0
 ///
 /// See Also
 /// --------
 /// qdegree : Highest nonzero exponent (degree).
+/// sift : Extract arithmetic subsequences.
 #[pyfunction]
 pub fn lqdegree(series: &QSeries) -> Option<i64> {
     qseries::lqdegree(&series.fps)
@@ -1234,17 +1303,40 @@ pub fn lqdegree(series: &QSeries) -> Option<i64> {
 ///
 /// Examples
 /// --------
+/// The partition generating function $\sum p(n) q^n = \prod_{k \ge 1} (1-q^k)^{-1}$,
+/// so prodmake recovers exponent $-1$ for every factor:
+///
 /// >>> from q_kangaroo import QSession, partition_gf, prodmake
 /// >>> s = QSession()
 /// >>> pm = prodmake(partition_gf(s, 50), 20)
-/// >>> pm["factors"][1]  # exponent of (1-q) should be -1
+/// >>> pm["factors"][1]  # exponent of (1-q)
 /// Fraction(-1, 1)
+/// >>> pm["factors"][2]  # exponent of (1-q^2)
+/// Fraction(-1, 1)
+/// >>> all(pm["factors"][k] == Fraction(-1, 1) for k in range(1, 21))
+/// True
+///
+/// For a theta function $\theta_3(q) = (q^2;q^2)_\infty \cdot (-q;q^2)_\infty^2$,
+/// prodmake reveals the $(1-q^n)$ exponent pattern:
+///
+/// >>> from q_kangaroo import theta3
+/// >>> pm3 = prodmake(theta3(s, 50), 20)
+///
+/// Notes
+/// -----
+/// Implements Andrews' algorithm: compute the log derivative $-f'/f$, find
+/// recurrence coefficients $c_n$ via $q \cdot d/dq$, then use Mobius inversion
+/// to recover $(1-q^n)$ exponents. The result is
+/// $f = \prod_{n \ge 1} (1-q^n)^{a_n}$. Requires enough series terms
+/// (at least ``max_n`` + a margin) for accurate recovery.
 ///
 /// See Also
 /// --------
-/// etamake : Express as eta-quotient.
-/// jacprodmake : Express as Jacobi products.
-/// qfactor : Factor a polynomial.
+/// etamake : Express as eta-quotient (groups prodmake output by divisor).
+/// jacprodmake : Express as Jacobi products (residue-class grouping).
+/// mprodmake : Extract $(1+q^n)$ factors from prodmake output.
+/// qfactor : Factor a finite q-polynomial.
+/// partition_gf : Partition generating function (classic prodmake target).
 #[pyfunction]
 pub fn prodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::prodmake(&series.fps, max_n);
@@ -1280,14 +1372,34 @@ pub fn prodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObje
 ///
 /// Examples
 /// --------
+/// The partition generating function is $1/\eta(\tau)$ up to a $q$-shift,
+/// so etamake recovers a single eta factor with exponent $-1$:
+///
 /// >>> from q_kangaroo import QSession, partition_gf, etamake
 /// >>> s = QSession()
 /// >>> em = etamake(partition_gf(s, 50), 20)
+/// >>> em["factors"]  # {1: -1}
+/// >>> em["q_shift"]  # Fraction(1, 24) -- the eta q-shift
+///
+/// Compare with prodmake, which gives individual $(1-q^n)$ exponents:
+///
+/// >>> from q_kangaroo import prodmake
+/// >>> pm = prodmake(partition_gf(s, 50), 20)
+/// >>> # pm["factors"] has 20 entries {1: -1, 2: -1, ..., 20: -1}
+/// >>> # etamake groups these into a single eta: {1: -1}
+///
+/// Notes
+/// -----
+/// Groups the prodmake exponents by divisor $d$, producing the eta-quotient
+/// form $\prod_d (q^d; q^d)_\infty^{e_d}$. Only succeeds when exponents have
+/// finite eta-quotient support (i.e., the prodmake exponents $a_n$ satisfy
+/// $a_n = \sum_{d|n} e_d$ for finitely many nonzero $e_d$).
 ///
 /// See Also
 /// --------
-/// prodmake : Underlying Andrews' algorithm.
+/// prodmake : Underlying Andrews' algorithm (raw exponents).
 /// etaq : Compute an eta product directly.
+/// jacprodmake : Express as Jacobi products (alternative grouping).
 #[pyfunction]
 pub fn etamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::etamake(&series.fps, max_n);
@@ -1325,13 +1437,27 @@ pub fn etamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObjec
 ///
 /// Examples
 /// --------
+/// Recover the Jacobi product form of $\text{JAC}(1,5)$:
+///
 /// >>> from q_kangaroo import QSession, jacprod, jacprodmake
 /// >>> s = QSession()
 /// >>> jpm = jacprodmake(jacprod(s, 1, 5, 30), 20)
+/// >>> jpm["is_exact"]
+/// True
+/// >>> # jpm["factors"] contains {(1, 5): 1}
+///
+/// Notes
+/// -----
+/// Searches for a period $m$ such that the prodmake exponents group into
+/// residue classes modulo $m$, producing a representation in terms of
+/// $(q^a; q^m)_\infty$ factors. The ``is_exact`` flag indicates whether all
+/// prodmake exponents were successfully grouped. Series that are not naturally
+/// Jacobi products may give ``is_exact = False``.
 ///
 /// See Also
 /// --------
-/// prodmake : Underlying Andrews' algorithm.
+/// prodmake : Underlying Andrews' algorithm (raw exponents).
+/// etamake : Express as eta-quotient (alternative grouping).
 /// jacprod : Compute a Jacobi product directly.
 #[pyfunction]
 pub fn jacprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
@@ -1367,13 +1493,26 @@ pub fn jacprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyO
 ///
 /// Examples
 /// --------
+/// The distinct-parts generating function $\prod_{k \ge 1}(1+q^k)$ should
+/// recover exponent 1 for every factor:
+///
 /// >>> from q_kangaroo import QSession, distinct_parts_gf, mprodmake
 /// >>> s = QSession()
-/// >>> mp = mprodmake(distinct_parts_gf(s, 30), 20)
+/// >>> mp = mprodmake(distinct_parts_gf(s, 50), 20)
+/// >>> mp  # {1: 1, 2: 1, 3: 1, ..., 20: 1}
+///
+/// Notes
+/// -----
+/// Extracts $(1+q^n)$ factors by using the identity
+/// $(1+q^n) = (1-q^{2n})/(1-q^n)$. Iteratively peels off factors from
+/// the prodmake representation, converting pairs of $(1-q^n)$ and
+/// $(1-q^{2n})$ exponents into $(1+q^n)$ multiplicities.
 ///
 /// See Also
 /// --------
 /// prodmake : General infinite product decomposition.
+/// distinct_parts_gf : Generating function for distinct partitions.
+/// etamake : Express as eta-quotient (alternative decomposition).
 #[pyfunction]
 pub fn mprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::mprodmake(&series.fps, max_n);
@@ -1387,6 +1526,7 @@ pub fn mprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObj
 /// Express a series in $(q^d; q^d)_\infty$ notation.
 ///
 /// Similar to etamake but uses q-Pochhammer notation instead of Dedekind eta.
+/// The result omits the $q^{1/24}$ factors that appear in eta notation.
 ///
 /// Parameters
 /// ----------
@@ -1404,14 +1544,25 @@ pub fn mprodmake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObj
 ///
 /// Examples
 /// --------
+/// The partition generating function is $1/(q;q)_\infty$:
+///
 /// >>> from q_kangaroo import QSession, partition_gf, qetamake
 /// >>> s = QSession()
 /// >>> qem = qetamake(partition_gf(s, 50), 20)
+/// >>> qem["factors"]  # {1: -1}
+/// >>> qem["q_shift"]  # Fraction(0, 1) -- no q-shift in Pochhammer notation
+///
+/// Compare with etamake, which includes the $q^{1/24}$ shift from the
+/// Dedekind eta definition $\eta(\tau) = q^{1/24}(q;q)_\infty$:
+///
+/// >>> from q_kangaroo import etamake
+/// >>> em = etamake(partition_gf(s, 50), 20)
+/// >>> em["q_shift"]  # Fraction(1, 24)
 ///
 /// See Also
 /// --------
-/// etamake : Express as eta-quotient.
-/// prodmake : General infinite product decomposition.
+/// etamake : Express as eta-quotient (includes $q^{1/24}$ shifts).
+/// prodmake : General infinite product decomposition (raw exponents).
 #[pyfunction]
 pub fn qetamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObject> {
     let result = qseries::qetamake(&series.fps, max_n);
