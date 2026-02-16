@@ -13,6 +13,10 @@
 //! - Transformation formulas: [`heine_transform_1`], [`heine_transform_2`], [`heine_transform_3`],
 //!   [`sears_transform`], [`watson_transform`]
 //! - Bailey's identity: [`bailey_4phi3_q2`] (standalone closed-form for DLMF 17.7.12)
+//! - Transformation chain search: [`find_transformation_chain`], [`TransformationStep`],
+//!   [`TransformationChainResult`]
+
+use std::collections::{VecDeque, HashSet};
 
 use crate::number::QRat;
 use crate::series::{FormalPowerSeries, arithmetic};
@@ -119,6 +123,34 @@ pub struct TransformationResult {
     pub prefactor: FormalPowerSeries,
     /// The transformed hypergeometric series.
     pub transformed: HypergeometricSeries,
+}
+
+/// A single step in a transformation chain.
+#[derive(Clone, Debug)]
+pub struct TransformationStep {
+    /// Name of the transformation applied (e.g., "heine_1", "sears").
+    pub name: String,
+    /// The resulting series after this transformation.
+    pub result_series: HypergeometricSeries,
+    /// The prefactor from this single transformation step.
+    pub step_prefactor: FormalPowerSeries,
+}
+
+/// Result of a transformation chain search.
+#[derive(Clone, Debug)]
+pub enum TransformationChainResult {
+    /// A chain of transformations was found connecting source to target.
+    Found {
+        /// The sequence of transformation steps.
+        steps: Vec<TransformationStep>,
+        /// The cumulative prefactor (product of all step prefactors).
+        total_prefactor: FormalPowerSeries,
+    },
+    /// No chain found within the depth bound.
+    NotFound {
+        /// The depth bound used.
+        max_depth: usize,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -1380,4 +1412,500 @@ pub fn bailey_4phi3_q2(
     let numer = arithmetic::mul(&a_n_fps, &arithmetic::mul(&neg_q_n, &ba_n));
     let denom = arithmetic::mul(&neg_aq_n, &b_n);
     arithmetic::mul(&numer, &arithmetic::invert(&denom))
+}
+
+// ---------------------------------------------------------------------------
+// Transformation chain search (BFS)
+// ---------------------------------------------------------------------------
+
+/// Normalize a HypergeometricSeries into a canonical String key for visited-set deduplication.
+///
+/// Returns a single String built by:
+/// 1. For each upper param QMonomial, produce string "{power}:{coeff_numer}/{coeff_denom}"
+///    from coeff.numer().to_string(), coeff.denom().to_string(), and power.
+/// 2. Sort the upper param strings lexicographically.
+/// 3. Do the same for lower params.
+/// 4. Produce the argument string in the same format.
+/// 5. Concatenate: "U[{sorted_upper_joined_by_comma}]L[{sorted_lower_joined_by_comma}]A[{argument}]"
+///
+/// This gives a deterministic, order-independent key so that series with the same
+/// parameter multisets (regardless of ordering) produce the same key.
+fn normalize_series_key(series: &HypergeometricSeries) -> String {
+    let format_monomial = |m: &QMonomial| -> String {
+        format!("{}:{}/{}", m.power, m.coeff.numer(), m.coeff.denom())
+    };
+
+    let mut upper_strs: Vec<String> = series.upper.iter().map(|m| format_monomial(m)).collect();
+    upper_strs.sort();
+
+    let mut lower_strs: Vec<String> = series.lower.iter().map(|m| format_monomial(m)).collect();
+    lower_strs.sort();
+
+    let arg_str = format_monomial(&series.argument);
+
+    format!("U[{}]L[{}]A[{}]", upper_strs.join(","), lower_strs.join(","), arg_str)
+}
+
+/// Search for a transformation chain between two hypergeometric series.
+///
+/// Uses BFS over the transformation catalog {heine_1, heine_2, heine_3, sears, watson}
+/// to find a sequence of transformations that transforms source into target
+/// (modulo a prefactor).
+///
+/// # Arguments
+/// - `source`: Starting hypergeometric series.
+/// - `target`: Target hypergeometric series to reach.
+/// - `max_depth`: Maximum number of transformation steps to try.
+/// - `variable`: FPS variable for evaluation.
+/// - `truncation_order`: FPS truncation order for comparison.
+///
+/// # Returns
+/// - `Found { steps, total_prefactor }` if a chain exists within max_depth.
+/// - `NotFound { max_depth }` if no chain was found.
+pub fn find_transformation_chain(
+    source: &HypergeometricSeries,
+    target: &HypergeometricSeries,
+    max_depth: usize,
+    variable: SymbolId,
+    truncation_order: i64,
+) -> TransformationChainResult {
+    // Evaluate target once for comparison
+    let target_fps = eval_phi(target, variable, truncation_order);
+
+    // Check source == target (trivial chain with 0 steps)
+    let source_fps = eval_phi(source, variable, truncation_order);
+    if source_fps == target_fps {
+        return TransformationChainResult::Found {
+            steps: vec![],
+            total_prefactor: FormalPowerSeries::one(variable, truncation_order),
+        };
+    }
+
+    // BFS queue: (current_series, chain_so_far, cumulative_prefactor)
+    let mut queue: VecDeque<(HypergeometricSeries, Vec<TransformationStep>, FormalPowerSeries)> = VecDeque::new();
+    let mut visited: HashSet<String> = HashSet::new();
+
+    // Initialize with source
+    visited.insert(normalize_series_key(source));
+    queue.push_back((
+        source.clone(),
+        vec![],
+        FormalPowerSeries::one(variable, truncation_order),
+    ));
+
+    // Define the transformation catalog as closures that wrap the function pointers
+    // (needed because watson_transform has a different internal structure but same signature)
+    let transform_names = ["heine_1", "heine_2", "heine_3", "sears", "watson"];
+
+    while let Some((current_series, chain_so_far, cumulative_prefactor)) = queue.pop_front() {
+        // Don't expand further if at max depth
+        if chain_so_far.len() >= max_depth {
+            continue;
+        }
+
+        // Try each transformation
+        for (idx, &name) in transform_names.iter().enumerate() {
+            let result_opt: Option<TransformationResult> = match idx {
+                0 => heine_transform_1(&current_series, variable, truncation_order),
+                1 => heine_transform_2(&current_series, variable, truncation_order),
+                2 => heine_transform_3(&current_series, variable, truncation_order),
+                3 => sears_transform(&current_series, variable, truncation_order),
+                4 => watson_transform(&current_series, variable, truncation_order),
+                _ => unreachable!(),
+            };
+
+            if let Some(result) = result_opt {
+                // Compute new cumulative prefactor
+                let new_prefactor = arithmetic::mul(&cumulative_prefactor, &result.prefactor);
+
+                // Build new step
+                let new_step = TransformationStep {
+                    name: name.to_string(),
+                    result_series: result.transformed.clone(),
+                    step_prefactor: result.prefactor,
+                };
+
+                // Build new chain
+                let mut new_chain = chain_so_far.clone();
+                new_chain.push(new_step);
+
+                // Check if result.transformed matches target
+                // Match condition: eval_phi(result.transformed) == eval_phi(target)
+                let transformed_fps = eval_phi(&result.transformed, variable, truncation_order);
+                if transformed_fps == target_fps {
+                    return TransformationChainResult::Found {
+                        steps: new_chain,
+                        total_prefactor: new_prefactor,
+                    };
+                }
+
+                // Add to queue if not visited
+                let key = normalize_series_key(&result.transformed);
+                if visited.insert(key) {
+                    queue.push_back((result.transformed, new_chain, new_prefactor));
+                }
+            }
+        }
+    }
+
+    TransformationChainResult::NotFound { max_depth }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ExprArena;
+
+    /// Helper: create a SymbolId for "q".
+    fn q_var() -> SymbolId {
+        let mut arena = ExprArena::new();
+        arena.symbols_mut().intern("q")
+    }
+
+    /// Helper: QMonomial shorthand for q^power.
+    fn qm(power: i64) -> QMonomial {
+        QMonomial::q_power(power)
+    }
+
+    // ===================================================================
+    // 1. test_chain_identity -- Source == target
+    // ===================================================================
+    #[test]
+    fn test_chain_identity() {
+        let q = q_var();
+        let trunc = 20;
+
+        let series = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        let result = find_transformation_chain(&series, &series, 3, q, trunc);
+        match result {
+            TransformationChainResult::Found { steps, total_prefactor } => {
+                assert_eq!(steps.len(), 0, "Identity chain should have 0 steps");
+                // Prefactor should be 1
+                let one = FormalPowerSeries::one(q, trunc);
+                assert_eq!(total_prefactor, one, "Identity prefactor should be 1");
+            }
+            TransformationChainResult::NotFound { .. } => {
+                panic!("Source == target should always be found");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 2. test_chain_single_heine1
+    // ===================================================================
+    #[test]
+    fn test_chain_single_heine1() {
+        let q = q_var();
+        let trunc = 20;
+
+        // Source: _2phi1(q^2, q^3; q^5; q, q)
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        // Target: the heine_1 transformed series
+        let h1 = heine_transform_1(&source, q, trunc).unwrap();
+        let target = h1.transformed;
+
+        let result = find_transformation_chain(&source, &target, 3, q, trunc);
+        match result {
+            TransformationChainResult::Found { steps, .. } => {
+                assert!(steps.len() >= 1, "Should find at least 1-step chain");
+                // The chain should reach target within depth bound
+            }
+            TransformationChainResult::NotFound { .. } => {
+                panic!("Should find chain from source to heine_1 target");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 3. test_chain_single_heine2
+    // ===================================================================
+    #[test]
+    fn test_chain_single_heine2() {
+        let q = q_var();
+        let trunc = 20;
+
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        let h2 = heine_transform_2(&source, q, trunc).unwrap();
+        let target = h2.transformed;
+
+        let result = find_transformation_chain(&source, &target, 3, q, trunc);
+        match result {
+            TransformationChainResult::Found { steps, .. } => {
+                assert!(steps.len() >= 1, "Should find at least 1-step chain");
+            }
+            TransformationChainResult::NotFound { .. } => {
+                panic!("Should find chain from source to heine_2 target");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 4. test_chain_two_step
+    // ===================================================================
+    #[test]
+    fn test_chain_two_step() {
+        let q = q_var();
+        let trunc = 20;
+
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        // Apply heine_1 then heine_2 to get a doubly-transformed series
+        let h1 = heine_transform_1(&source, q, trunc).unwrap();
+        let h2 = heine_transform_2(&h1.transformed, q, trunc).unwrap();
+        let target = h2.transformed;
+
+        let result = find_transformation_chain(&source, &target, 4, q, trunc);
+        match result {
+            TransformationChainResult::Found { steps, .. } => {
+                // BFS should find a path (possibly not the same 2-step path we used,
+                // but within the depth bound)
+                assert!(steps.len() >= 1, "Should find at least a 1-step chain (or more)");
+                assert!(steps.len() <= 4, "Should be within depth bound of 4");
+            }
+            TransformationChainResult::NotFound { .. } => {
+                panic!("Should find chain from source to doubly-transformed target");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 5. test_chain_not_found_depth0
+    // ===================================================================
+    #[test]
+    fn test_chain_not_found_depth0() {
+        let q = q_var();
+        let trunc = 20;
+
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        // Target is different from source
+        let h1 = heine_transform_1(&source, q, trunc).unwrap();
+        let target = h1.transformed;
+
+        let result = find_transformation_chain(&source, &target, 0, q, trunc);
+        match result {
+            TransformationChainResult::NotFound { max_depth } => {
+                assert_eq!(max_depth, 0);
+            }
+            TransformationChainResult::Found { .. } => {
+                panic!("With depth 0, should not find chain when source != target");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 6. test_chain_not_found_different_rs
+    // ===================================================================
+    #[test]
+    fn test_chain_not_found_different_rs() {
+        let q = q_var();
+        let trunc = 20;
+
+        // Source is 2phi1
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        // Target is 3phi2 (different r,s). No Heine transform can change (r,s) from (2,1)
+        // to (3,2), and sears requires (4,3).
+        let target = HypergeometricSeries {
+            upper: vec![qm(1), qm(2), qm(3)],
+            lower: vec![qm(4), qm(5)],
+            argument: qm(1),
+        };
+
+        let result = find_transformation_chain(&source, &target, 3, q, trunc);
+        match result {
+            TransformationChainResult::NotFound { max_depth } => {
+                assert_eq!(max_depth, 3);
+            }
+            TransformationChainResult::Found { .. } => {
+                panic!("Should not find chain between different (r,s) series");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 7. test_chain_visited_dedup
+    // ===================================================================
+    #[test]
+    fn test_chain_visited_dedup() {
+        let q = q_var();
+        let trunc = 20;
+
+        // Use a 2phi1 series. BFS expands heine_1, heine_2, heine_3.
+        // Each of those can also be transformed again. With visited set,
+        // BFS should not loop and should terminate quickly.
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        // Target that doesn't exist via any short chain
+        let target = HypergeometricSeries {
+            upper: vec![qm(10), qm(11)],
+            lower: vec![qm(20)],
+            argument: qm(1),
+        };
+
+        // If visited set is broken, this would loop or take very long.
+        // With depth 3, at most ~5^3 = 125 nodes (minus dedup).
+        let result = find_transformation_chain(&source, &target, 3, q, trunc);
+        // We don't care if found or not; the test verifies BFS terminates.
+        match result {
+            TransformationChainResult::NotFound { .. } => { /* expected */ }
+            TransformationChainResult::Found { .. } => { /* unlikely but ok */ }
+        }
+    }
+
+    // ===================================================================
+    // 8. test_chain_with_prefactor
+    // ===================================================================
+    #[test]
+    fn test_chain_with_prefactor() {
+        let q = q_var();
+        let trunc = 25;
+
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        // Target is heine_1 transformed
+        let h1 = heine_transform_1(&source, q, trunc).unwrap();
+        let target = h1.transformed;
+
+        let result = find_transformation_chain(&source, &target, 3, q, trunc);
+        match result {
+            TransformationChainResult::Found { steps, total_prefactor } => {
+                // Verify: total_prefactor * eval_phi(final_series) == eval_phi(source)
+                let source_fps = eval_phi(&source, q, trunc);
+                let final_series = &steps.last().unwrap().result_series;
+                let final_fps = eval_phi(final_series, q, trunc);
+                let reconstructed = arithmetic::mul(&total_prefactor, &final_fps);
+
+                for k in 0..trunc {
+                    assert_eq!(
+                        source_fps.coeff(k), reconstructed.coeff(k),
+                        "Prefactor verification: mismatch at q^{}", k
+                    );
+                }
+            }
+            TransformationChainResult::NotFound { .. } => {
+                panic!("Should find chain from source to heine_1 target");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 9. test_chain_heine3_involution
+    // ===================================================================
+    #[test]
+    fn test_chain_heine3_involution() {
+        let q = q_var();
+        let trunc = 20;
+
+        // Heine 3 applied twice gives a series related back to the original.
+        // Verify BFS handles this without infinite loop (visited set prevents revisiting).
+        let source = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        // Apply heine_3 twice
+        let h3_1 = heine_transform_3(&source, q, trunc).unwrap();
+        let h3_2 = heine_transform_3(&h3_1.transformed, q, trunc).unwrap();
+
+        // The double application of heine_3 should give back a series
+        // equivalent to the original (it's an involution up to parameter reordering).
+        // Verify via FPS comparison.
+        let original_fps = eval_phi(&source, q, trunc);
+        let double_h3_fps = eval_phi(&h3_2.transformed, q, trunc);
+
+        // These should be equal (heine_3 is an involution on the series parameters)
+        assert_eq!(original_fps, double_h3_fps,
+            "Heine 3 applied twice should give back equivalent series");
+
+        // Now verify BFS finds the identity chain (since source == h3_2.transformed as FPS)
+        let target = h3_2.transformed;
+        let result = find_transformation_chain(&source, &target, 3, q, trunc);
+        match result {
+            TransformationChainResult::Found { steps, .. } => {
+                // Could be 0 steps (identity) or 2 steps (heine_3 twice).
+                // Either is valid.
+                assert!(steps.len() <= 3, "Should be within depth bound");
+            }
+            TransformationChainResult::NotFound { .. } => {
+                panic!("Should find chain for heine_3 involution case");
+            }
+        }
+    }
+
+    // ===================================================================
+    // 10. test_normalize_series_key_order_independent
+    // ===================================================================
+    #[test]
+    fn test_normalize_series_key_order_independent() {
+        // Two series with same parameters in different order should have same key
+        let s1 = HypergeometricSeries {
+            upper: vec![qm(2), qm(3)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+        let s2 = HypergeometricSeries {
+            upper: vec![qm(3), qm(2)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+
+        assert_eq!(
+            normalize_series_key(&s1),
+            normalize_series_key(&s2),
+            "Same parameters in different order should produce same key"
+        );
+
+        // Different parameters should produce different key
+        let s3 = HypergeometricSeries {
+            upper: vec![qm(2), qm(4)],
+            lower: vec![qm(5)],
+            argument: qm(1),
+        };
+        assert_ne!(
+            normalize_series_key(&s1),
+            normalize_series_key(&s3),
+            "Different parameters should produce different key"
+        );
+    }
 }

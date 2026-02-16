@@ -29,6 +29,10 @@
 //! - q-Zeilberger algorithm: [`q_zeilberger`], [`ZeilbergerResult`], [`QZeilbergerResult`],
 //!   [`detect_n_params`], [`verify_wz_certificate`], [`verify_recurrence_fps`],
 //!   creative telescoping for definite q-hypergeometric summation with WZ verification
+//! - q-Petkovsek algorithm: [`q_petkovsek`], [`QPetkovsekResult`], [`ClosedForm`],
+//!   solving constant-coefficient q-recurrences for q-hypergeometric closed forms
+//! - Nonterminating identity proofs: [`prove_nonterminating`], [`NonterminatingProofResult`],
+//!   Chen-Hou-Mu parameter specialization for nonterminating q-hypergeometric identities
 
 pub mod appell_lerch;
 pub mod factoring;
@@ -48,9 +52,11 @@ pub mod mock_theta;
 pub mod bailey;
 pub mod gosper;
 pub mod zeilberger;
+pub mod petkovsek;
+pub mod nonterminating;
 
 pub use factoring::{qfactor, QFactorization};
-pub use hypergeometric::{HypergeometricSeries, BilateralHypergeometricSeries, eval_phi, eval_psi, SummationResult, TransformationResult, try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon, try_all_summations, heine_transform_1, heine_transform_2, heine_transform_3, sears_transform, watson_transform, bailey_4phi3_q2};
+pub use hypergeometric::{HypergeometricSeries, BilateralHypergeometricSeries, eval_phi, eval_psi, SummationResult, TransformationResult, try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon, try_all_summations, heine_transform_1, heine_transform_2, heine_transform_3, sears_transform, watson_transform, bailey_4phi3_q2, TransformationStep, TransformationChainResult, find_transformation_chain};
 pub use linalg::{rational_null_space, build_coefficient_matrix, modular_null_space};
 pub use relations::{findlincombo, findhom, findpoly, PolynomialRelation, findcong, findnonhom, findhomcombo, findnonhomcombo, Congruence, findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod};
 pub use partitions::{partition_count, partition_gf, distinct_parts_gf, odd_parts_gf, bounded_parts_gf};
@@ -74,6 +80,8 @@ pub use appell_lerch::{appell_lerch_m, appell_lerch_bilateral, universal_mock_th
 pub use bailey::{BaileyPair, BaileyPairType, BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair, bailey_discover, DiscoveryResult};
 pub use gosper::{QGosperResult, GosperNormalForm, extract_term_ratio, q_dispersion, gosper_normal_form, solve_key_equation, q_gosper};
 pub use zeilberger::{ZeilbergerResult, QZeilbergerResult, q_zeilberger, detect_n_params, verify_wz_certificate, verify_recurrence_fps};
+pub use petkovsek::{q_petkovsek, QPetkovsekResult, ClosedForm};
+pub use nonterminating::{prove_nonterminating, NonterminatingProofResult};
 
 use crate::number::QRat;
 
