@@ -106,6 +106,366 @@ fn eval_qmonomial(mono: &QMonomial, q_val: &QRat) -> QRat {
 
 // ---- Public functions ----
 
+/// Decompose the term ratio numer(x)/denom(x) into Gosper normal form.
+///
+/// The Gosper normal form writes r(x) = sigma(x)/tau(x) * c(qx)/c(x) where:
+/// - gcd(sigma(x), tau(q^j * x)) = 1 for all j >= 1
+/// - c(x) captures the "shiftable" common factors
+///
+/// This decomposition is the key prerequisite for solving the Gosper key equation.
+///
+/// # Arguments
+/// * `numer` - Numerator of the term ratio.
+/// * `denom` - Denominator of the term ratio.
+/// * `q_val` - The q-shift parameter.
+///
+/// # Returns
+/// A `GosperNormalForm` with sigma, tau, c satisfying the decomposition.
+pub fn gosper_normal_form(
+    numer: &QRatPoly,
+    denom: &QRatPoly,
+    q_val: &QRat,
+) -> GosperNormalForm {
+    let mut sigma = numer.clone();
+    let mut tau = denom.clone();
+    let mut c = QRatPoly::one();
+
+    loop {
+        let disp = q_dispersion_positive(&sigma, &tau, q_val);
+        if disp.is_empty() {
+            break;
+        }
+
+        let j_max = *disp.last().unwrap();
+
+        // Compute tau shifted by j_max: tau(q^{j_max} * x)
+        let tau_shifted = tau.q_shift_n(q_val, j_max);
+
+        // Compute GCD of sigma and tau_shifted, make it monic for consistency
+        let g = poly_gcd(&sigma, &tau_shifted).make_monic();
+
+        // If GCD is constant (degree 0), the dispersion was spurious -- break
+        if g.is_constant() {
+            break;
+        }
+
+        // Update sigma: divide out g
+        sigma = sigma.exact_div(&g);
+
+        // Compute g unshifted: g(q^{-j_max} * x), then divide tau by it
+        let g_unshifted = g.q_shift_n(q_val, -j_max);
+        tau = tau.exact_div(&g_unshifted);
+
+        // Accumulate into c: multiply by g(q^{-i} * x) for i = 1, 2, ..., j_max
+        // This gives c(qx)/c(x) = g(x) / g(q^{-j_max} * x), which is what we need
+        // since sigma_new * g / (tau_new * g_unshift) = sigma/tau requires
+        // c_new(qx)/c_new(x) = g(x) / g(q^{-j_max} * x)
+        for i in 1..=j_max {
+            let g_back = g.q_shift_n(q_val, -i);
+            c = &c * &g_back;
+        }
+    }
+
+    // Verification (debug mode only): check the decomposition identity
+    // sigma(x)/tau(x) * c(qx)/c(x) = numer(x)/denom(x)
+    debug_assert!({
+        let c_shifted = c.q_shift(q_val);
+        let reconstructed = QRatRationalFunc::new(&sigma * &c_shifted, &tau * &c);
+        let original = QRatRationalFunc::new(numer.clone(), denom.clone());
+        reconstructed == original
+    }, "Normal form decomposition failed: sigma/tau * c(qx)/c(x) != numer/denom");
+
+    GosperNormalForm { sigma, tau, c }
+}
+
+/// Solve the Gosper key equation: sigma(x) * f(qx) - tau(x) * f(x) = c_poly(x).
+///
+/// Finds a polynomial f(x) satisfying the key equation, or returns None if no
+/// polynomial solution exists. This is the core step that determines whether
+/// a q-hypergeometric term is indefinitely summable.
+///
+/// # Arguments
+/// * `sigma` - The sigma polynomial from the normal form.
+/// * `tau` - The tau polynomial from the normal form.
+/// * `c_poly` - The c polynomial from the normal form.
+/// * `q_val` - The q-shift parameter.
+///
+/// # Returns
+/// `Some(f)` if a polynomial solution exists, `None` otherwise.
+pub fn solve_key_equation(
+    sigma: &QRatPoly,
+    tau: &QRatPoly,
+    c_poly: &QRatPoly,
+    q_val: &QRat,
+) -> Option<QRatPoly> {
+    // Edge case: c_poly is zero => f = 0 is trivially a solution
+    if c_poly.is_zero() {
+        return Some(QRatPoly::zero());
+    }
+
+    let d_c = c_poly.degree().unwrap();
+    let sigma_zero = sigma.is_zero() || sigma.degree().is_none();
+    let tau_zero = tau.is_zero() || tau.degree().is_none();
+
+    // Edge case: both sigma and tau are zero, but c is nonzero => impossible
+    if sigma_zero && tau_zero {
+        return None;
+    }
+
+    // Edge case: only sigma is zero => -tau(x)*f(x) = c(x), so f = -c/tau if divisible
+    if sigma_zero {
+        let neg_c = -c_poly.clone();
+        let (q, r) = neg_c.div_rem(tau);
+        if r.is_zero() {
+            return Some(q);
+        } else {
+            return None;
+        }
+    }
+
+    // Edge case: only tau is zero => sigma(x)*f(qx) = c(x)
+    // This means we need deg(sigma) + deg(f) = deg(c), so deg(f) = d_c - d_sigma
+    if tau_zero {
+        let d_sigma = sigma.degree().unwrap();
+        if d_c < d_sigma {
+            return None;
+        }
+        let deg_f = d_c - d_sigma;
+        return try_solve_with_degree(sigma, tau, c_poly, q_val, deg_f);
+    }
+
+    // Normal case: both nonzero
+    let d_sigma = sigma.degree().unwrap();
+    let d_tau = tau.degree().unwrap();
+
+    // Compute candidate degree bound for f
+    let candidates = compute_degree_candidates(sigma, tau, c_poly, q_val, d_sigma, d_tau, d_c);
+
+    // Try each candidate degree bound
+    for deg_f in candidates {
+        if let Some(f) = try_solve_with_degree(sigma, tau, c_poly, q_val, deg_f) {
+            return Some(f);
+        }
+    }
+
+    None
+}
+
+/// Compute candidate degree bounds for the polynomial f in the key equation.
+fn compute_degree_candidates(
+    sigma: &QRatPoly,
+    tau: &QRatPoly,
+    _c_poly: &QRatPoly,
+    q_val: &QRat,
+    d_sigma: usize,
+    d_tau: usize,
+    d_c: usize,
+) -> Vec<usize> {
+    let mut candidates = Vec::new();
+
+    if d_sigma != d_tau {
+        // Degree of LHS is max(d_sigma, d_tau) + deg_f
+        let max_st = d_sigma.max(d_tau);
+        if d_c >= max_st {
+            candidates.push(d_c - max_st);
+        }
+        // Also try one higher as a fallback
+        if d_c + 1 >= max_st {
+            candidates.push(d_c - max_st + 1);
+        }
+    } else {
+        // d_sigma == d_tau: leading terms may cancel
+        let lc_sigma = sigma.leading_coeff().unwrap();
+        let lc_tau = tau.leading_coeff().unwrap();
+        let ratio = &lc_tau / &lc_sigma;
+
+        // Try to find deg_f such that q_val^{deg_f} = ratio
+        let mut found_match = false;
+        for d in 0..=d_c {
+            if qrat_pow_i64(q_val, d as i64) == ratio {
+                candidates.push(d);
+                found_match = true;
+                break;
+            }
+        }
+
+        // Fallback: the "non-cancellation" case
+        if !found_match || d_c >= d_sigma {
+            let fallback = if d_c >= d_sigma { d_c - d_sigma } else { 0 };
+            if !candidates.contains(&fallback) {
+                candidates.push(fallback);
+            }
+        }
+
+        // Also try one higher than each candidate as fallback
+        let extra: Vec<usize> = candidates.iter().map(|&d| d + 1).collect();
+        for d in extra {
+            if !candidates.contains(&d) {
+                candidates.push(d);
+            }
+        }
+    }
+
+    candidates
+}
+
+/// Try to solve the key equation with a specific degree bound for f.
+fn try_solve_with_degree(
+    sigma: &QRatPoly,
+    tau: &QRatPoly,
+    c_poly: &QRatPoly,
+    q_val: &QRat,
+    deg_f: usize,
+) -> Option<QRatPoly> {
+    let d_sigma = sigma.degree().unwrap_or(0);
+    let d_tau = tau.degree().unwrap_or(0);
+    let d_c = c_poly.degree().unwrap_or(0);
+
+    // Number of unknowns: f_0, f_1, ..., f_{deg_f}
+    let n_unknowns = deg_f + 1;
+
+    // The LHS sigma(x)*f(qx) - tau(x)*f(x) has max degree max(d_sigma + deg_f, d_tau + deg_f)
+    // We need enough equations to match all coefficients up to d_c
+    let max_lhs_deg = d_sigma.max(d_tau) + deg_f;
+    let n_equations = max_lhs_deg.max(d_c) + 1;
+
+    // Build the linear system A * [f_0, ..., f_{deg_f}]^T = b
+    // A[k][j] = sigma.coeff(k-j) * q_val^j - tau.coeff(k-j)
+    // b[k] = c_poly.coeff(k)
+    let mut matrix = vec![vec![QRat::zero(); n_unknowns]; n_equations];
+    let mut rhs = vec![QRat::zero(); n_equations];
+
+    // Precompute q_val powers
+    let mut q_powers = Vec::with_capacity(n_unknowns);
+    for j in 0..n_unknowns {
+        q_powers.push(qrat_pow_i64(q_val, j as i64));
+    }
+
+    for k in 0..n_equations {
+        for j in 0..n_unknowns {
+            if k >= j {
+                let idx = k - j;
+                let sigma_contrib = &sigma.coeff(idx) * &q_powers[j];
+                let tau_contrib = tau.coeff(idx);
+                matrix[k][j] = &sigma_contrib - &tau_contrib;
+            }
+            // If k < j, both sigma.coeff(negative) and tau.coeff(negative) are 0
+        }
+        rhs[k] = c_poly.coeff(k);
+    }
+
+    // Solve via Gaussian elimination
+    solve_linear_system(&matrix, &rhs).map(|coeffs| QRatPoly::from_vec(coeffs))
+}
+
+/// Solve the linear system Ax = b via Gaussian elimination (RREF) over Q.
+///
+/// The system may be overdetermined (more equations than unknowns).
+/// Returns None if the system is inconsistent. Returns Some(solution) for
+/// the unique solution if one exists. For underdetermined systems, returns
+/// the solution with free variables set to zero.
+fn solve_linear_system(matrix: &[Vec<QRat>], rhs: &[QRat]) -> Option<Vec<QRat>> {
+    let m = matrix.len();
+    if m == 0 {
+        return Some(Vec::new());
+    }
+    let n = matrix[0].len();
+    if n == 0 {
+        // Check consistency: all rhs must be zero
+        if rhs.iter().all(|r| r.is_zero()) {
+            return Some(Vec::new());
+        } else {
+            return None;
+        }
+    }
+
+    // Build augmented matrix [A | b]
+    let mut aug: Vec<Vec<QRat>> = Vec::with_capacity(m);
+    for i in 0..m {
+        let mut row = Vec::with_capacity(n + 1);
+        row.extend(matrix[i].iter().cloned());
+        row.push(rhs[i].clone());
+        aug.push(row);
+    }
+
+    let n_cols = n + 1; // augmented column count
+
+    // Forward elimination with partial pivoting -> RREF
+    let mut pivot_cols: Vec<usize> = Vec::new();
+    let mut pivot_row = 0;
+
+    for col in 0..n {
+        if pivot_row >= m {
+            break;
+        }
+
+        // Find a row with nonzero entry in this column
+        let mut found = None;
+        for row in pivot_row..m {
+            if !aug[row][col].is_zero() {
+                found = Some(row);
+                break;
+            }
+        }
+
+        let some_row = match found {
+            Some(r) => r,
+            None => continue, // free variable
+        };
+
+        // Swap to pivot position
+        if some_row != pivot_row {
+            aug.swap(some_row, pivot_row);
+        }
+
+        // Scale pivot row to make pivot = 1
+        let pivot_val = aug[pivot_row][col].clone();
+        for j in 0..n_cols {
+            let val = aug[pivot_row][j].clone();
+            aug[pivot_row][j] = &val / &pivot_val;
+        }
+
+        // Eliminate all other entries in this column
+        for row in 0..m {
+            if row == pivot_row {
+                continue;
+            }
+            if aug[row][col].is_zero() {
+                continue;
+            }
+            let factor = aug[row][col].clone();
+            for j in 0..n_cols {
+                let sub = &factor * &aug[pivot_row][j];
+                let val = aug[row][j].clone();
+                aug[row][j] = &val - &sub;
+            }
+        }
+
+        pivot_cols.push(col);
+        pivot_row += 1;
+    }
+
+    // Check consistency: any row with all-zero LHS but nonzero RHS => inconsistent
+    for row in 0..m {
+        let all_zero_lhs = (0..n).all(|j| aug[row][j].is_zero());
+        if all_zero_lhs && !aug[row][n].is_zero() {
+            return None; // inconsistent
+        }
+    }
+
+    // Extract solution: set free variables to zero, read pivot variables from augmented column
+    let mut solution = vec![QRat::zero(); n];
+    let pivot_col_to_row: std::collections::HashMap<usize, usize> =
+        pivot_cols.iter().enumerate().map(|(row, &col)| (col, row)).collect();
+
+    for &pc in &pivot_cols {
+        let row = pivot_col_to_row[&pc];
+        solution[pc] = aug[row][n].clone();
+    }
+
+    Some(solution)
+}
+
 /// Extract the term ratio t_{k+1}/t_k of a hypergeometric series as a rational
 /// function of x = q^k.
 ///
@@ -548,5 +908,142 @@ mod tests {
     #[test]
     fn test_qrat_pow_i64_negative() {
         assert_eq!(qrat_pow_i64(&qr(2), -3), qr_frac(1, 8));
+    }
+
+    // ========================================
+    // gosper_normal_form tests
+    // ========================================
+
+    /// Helper: verify the Gosper normal form decomposition identity.
+    /// sigma(x)/tau(x) * c(qx)/c(x) = numer(x)/denom(x)
+    fn verify_normal_form(numer: &QRatPoly, denom: &QRatPoly, nf: &GosperNormalForm, q_val: &QRat) {
+        let c_shifted = nf.c.q_shift(q_val);
+        let reconstructed = QRatRationalFunc::new(&nf.sigma * &c_shifted, &nf.tau * &nf.c);
+        let original = QRatRationalFunc::new(numer.clone(), denom.clone());
+        assert_eq!(
+            reconstructed, original,
+            "Normal form identity failed: sigma/tau * c(qx)/c(x) != numer/denom\n\
+             sigma={}, tau={}, c={}\nnumer={}, denom={}",
+            nf.sigma, nf.tau, nf.c, numer, denom
+        );
+    }
+
+    #[test]
+    fn test_gosper_normal_form_already_coprime() {
+        // a(x) = 1-x, b(x) = 1-3x, q=2
+        // These should have no positive dispersion.
+        // Result: sigma=a, tau=b, c=1
+        let a = QRatPoly::from_i64_coeffs(&[1, -1]); // 1 - x
+        let b = QRatPoly::from_i64_coeffs(&[1, -3]); // 1 - 3x
+        let q_val = qr(2);
+
+        let nf = gosper_normal_form(&a, &b, &q_val);
+
+        // sigma and tau should be proportional to a and b (rational function equality)
+        verify_normal_form(&a, &b, &nf, &q_val);
+
+        // c should be constant (no shiftable factors extracted)
+        assert!(nf.c.is_constant(), "c should be constant for coprime case, got: {}", nf.c);
+
+        // Verify q-coprimality: q_dispersion_positive of the resulting sigma, tau should be empty
+        let remaining_disp = q_dispersion_positive(&nf.sigma, &nf.tau, &q_val);
+        assert!(remaining_disp.is_empty(), "sigma and tau should be q-coprime after normal form");
+    }
+
+    #[test]
+    fn test_gosper_normal_form_simple_dispersion_j1() {
+        // Construct a(x) and b(x) with nontrivial gcd(a(x), b(q*x)):
+        // q_val = 2
+        // a(x) = (1-x)(1-4x)  — roots at x=1 and x=1/4
+        // b(x) = (1-2x)(1-6x) — roots at x=1/2 and x=1/6
+        // b(2x) = (1-4x)(1-12x) — roots at x=1/4 and x=1/12
+        // gcd(a(x), b(2x)) = (1-4x) -- nontrivial, so j=1 is in dispersion
+        let a = &QRatPoly::from_i64_coeffs(&[1, -1]) * &QRatPoly::from_i64_coeffs(&[1, -4]);
+        let b = &QRatPoly::from_i64_coeffs(&[1, -2]) * &QRatPoly::from_i64_coeffs(&[1, -6]);
+        let q_val = qr(2);
+
+        let nf = gosper_normal_form(&a, &b, &q_val);
+
+        // Verify reconstruction identity
+        verify_normal_form(&a, &b, &nf, &q_val);
+
+        // Verify q-coprimality
+        let remaining_disp = q_dispersion_positive(&nf.sigma, &nf.tau, &q_val);
+        assert!(remaining_disp.is_empty(),
+            "sigma and tau should be q-coprime, but got dispersion {:?}", remaining_disp);
+
+        // c should not be constant (some factor was extracted)
+        assert!(!nf.c.is_constant(), "c should be non-constant when dispersion was non-empty");
+    }
+
+    #[test]
+    fn test_gosper_normal_form_verification_identity_multiple_points() {
+        // Test the reconstruction identity at several evaluation points
+        let a = &QRatPoly::from_i64_coeffs(&[1, -1]) * &QRatPoly::from_i64_coeffs(&[1, -4]);
+        let b = &QRatPoly::from_i64_coeffs(&[1, -2]) * &QRatPoly::from_i64_coeffs(&[1, -6]);
+        let q_val = qr(2);
+
+        let nf = gosper_normal_form(&a, &b, &q_val);
+
+        // Verify at several x values: sigma(x)/tau(x) * c(qx)/c(x) == a(x)/b(x)
+        for x_val in &[qr_frac(1, 7), qr_frac(3, 11), qr_frac(1, 100), qr_frac(5, 3)] {
+            let c_at_x = nf.c.eval(x_val);
+            let c_at_qx = nf.c.eval(&(&q_val * x_val));
+            if c_at_x.is_zero() {
+                continue; // skip evaluation where c(x) = 0
+            }
+            let lhs_numer = &nf.sigma.eval(x_val) * &c_at_qx;
+            let lhs_denom = &nf.tau.eval(x_val) * &c_at_x;
+            let lhs = &lhs_numer / &lhs_denom;
+
+            let rhs_numer = a.eval(x_val);
+            let rhs_denom = b.eval(x_val);
+            if rhs_denom.is_zero() {
+                continue;
+            }
+            let rhs = &rhs_numer / &rhs_denom;
+
+            assert_eq!(lhs, rhs,
+                "Normal form evaluation mismatch at x={}: lhs={} != rhs={}", x_val, lhs, rhs);
+        }
+    }
+
+    #[test]
+    fn test_gosper_normal_form_constant_polys() {
+        // Edge case: constant numer and denom
+        let a = QRatPoly::constant(qr(3));
+        let b = QRatPoly::constant(qr(5));
+        let q_val = qr(2);
+
+        let nf = gosper_normal_form(&a, &b, &q_val);
+        verify_normal_form(&a, &b, &nf, &q_val);
+        assert!(nf.c.is_constant(), "c should be 1 for constant polys");
+    }
+
+    #[test]
+    fn test_gosper_normal_form_q_coprimality_check() {
+        // After decomposition, verify gcd(sigma(x), tau(q^j*x)) = 1 for all j >= 1
+        // Use a case with multiple dispersion values
+        // a(x) = (1-x)(1-4x)(1-8x), b(x) = (1-2x), q=2
+        // b(2x) = (1-4x), b(4x) = (1-8x)
+        // So dispersion = {1, 2} for (a, b)
+        let f1 = QRatPoly::from_i64_coeffs(&[1, -1]);
+        let f2 = QRatPoly::from_i64_coeffs(&[1, -4]);
+        let f3 = QRatPoly::from_i64_coeffs(&[1, -8]);
+        let a = &(&f1 * &f2) * &f3;
+        let b = QRatPoly::from_i64_coeffs(&[1, -2]);
+        let q_val = qr(2);
+
+        let nf = gosper_normal_form(&a, &b, &q_val);
+        verify_normal_form(&a, &b, &nf, &q_val);
+
+        // Verify q-coprimality for j = 1, 2, 3, 4
+        for j in 1..=4 {
+            let tau_shifted = nf.tau.q_shift_n(&q_val, j);
+            let g = poly_gcd(&nf.sigma, &tau_shifted);
+            assert!(g.is_constant(),
+                "gcd(sigma, tau(q^{}*x)) should be 1, but got degree {:?}",
+                j, g.degree());
+        }
     }
 }
