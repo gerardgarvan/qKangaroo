@@ -205,6 +205,82 @@ impl QRatPoly {
         }
         result
     }
+
+    // ---- q-shift operations ----
+
+    /// Compute p(q_val * x): scale coefficient c_i by q_val^i.
+    ///
+    /// This is an O(n) operation that shifts the polynomial argument by a
+    /// multiplicative factor. Used extensively in q-dispersion and q-Gosper.
+    pub fn q_shift(&self, q_val: &QRat) -> QRatPoly {
+        if self.is_zero() {
+            return QRatPoly::zero();
+        }
+        if *q_val == QRat::one() {
+            return self.clone();
+        }
+        let mut result = Vec::with_capacity(self.coeffs.len());
+        let mut q_power = QRat::one();
+        for c in &self.coeffs {
+            result.push(&q_power * c);
+            q_power = &q_power * q_val;
+        }
+        QRatPoly::from_vec(result)
+    }
+
+    /// Compute p(q_val^j * x) for integer j.
+    ///
+    /// Equivalent to j successive applications of `q_shift` (for positive j)
+    /// or shifting by the inverse (for negative j).
+    ///
+    /// Panics if `q_val` is zero and `j` is negative.
+    pub fn q_shift_n(&self, q_val: &QRat, j: i64) -> QRatPoly {
+        if j == 0 || self.is_zero() {
+            return self.clone();
+        }
+        let effective_q = qrat_pow_signed(q_val, j);
+        self.q_shift(&effective_q)
+    }
+}
+
+/// Raise a QRat to a signed integer power.
+///
+/// For negative exponents, computes base^|exp| then inverts.
+/// Panics if base is zero and exp is negative.
+fn qrat_pow_signed(base: &QRat, exp: i64) -> QRat {
+    if exp == 0 {
+        return QRat::one();
+    }
+    if exp > 0 {
+        qrat_pow_u32(base, exp as u32)
+    } else {
+        assert!(!base.is_zero(), "qrat_pow_signed: zero base with negative exponent");
+        let positive = qrat_pow_u32(base, (-exp) as u32);
+        &QRat::one() / &positive
+    }
+}
+
+/// Raise a QRat to a u32 power via repeated squaring.
+fn qrat_pow_u32(base: &QRat, exp: u32) -> QRat {
+    if exp == 0 {
+        return QRat::one();
+    }
+    if exp == 1 {
+        return base.clone();
+    }
+    let mut result = QRat::one();
+    let mut b = base.clone();
+    let mut e = exp;
+    while e > 0 {
+        if e & 1 == 1 {
+            result = &result * &b;
+        }
+        e >>= 1;
+        if e > 0 {
+            b = &b * &b;
+        }
+    }
+    result
 }
 
 // ---- PartialEq / Eq ----
@@ -540,5 +616,109 @@ mod tests {
             QRatPoly::from_vec(vec![QRat::zero()]),
             QRatPoly::zero()
         );
+    }
+
+    // ---- q-shift tests ----
+
+    #[test]
+    fn test_q_shift_identity() {
+        // Shifting by q=1 should return the same polynomial
+        let p = QRatPoly::from_i64_coeffs(&[1, 1, 1]); // x^2 + x + 1
+        let shifted = p.q_shift(&QRat::one());
+        assert_eq!(shifted, p);
+    }
+
+    #[test]
+    fn test_q_shift_simple() {
+        // (x^2 + x + 1).q_shift(2) = 4x^2 + 2x + 1
+        // c_0 * 2^0 + c_1 * 2^1 * x + c_2 * 2^2 * x^2
+        // = 1 + 2x + 4x^2
+        let p = QRatPoly::from_i64_coeffs(&[1, 1, 1]);
+        let shifted = p.q_shift(&QRat::from((2, 1)));
+        assert_eq!(shifted, QRatPoly::from_i64_coeffs(&[1, 2, 4]));
+    }
+
+    #[test]
+    fn test_q_shift_zero_poly() {
+        let z = QRatPoly::zero();
+        let shifted = z.q_shift(&QRat::from((5, 1)));
+        assert!(shifted.is_zero());
+    }
+
+    #[test]
+    fn test_q_shift_evaluation_identity() {
+        // For any p, q, x: p.q_shift(q).eval(x) == p.eval(q*x)
+        let p = QRatPoly::from_i64_coeffs(&[3, -2, 1, 5]); // 5x^3 + x^2 - 2x + 3
+        let q = QRat::from((3, 2)); // q = 3/2
+        let x = QRat::from((7, 3)); // x = 7/3
+
+        let shifted = p.q_shift(&q);
+        let lhs = shifted.eval(&x);
+
+        let qx = &q * &x;
+        let rhs = p.eval(&qx);
+
+        assert_eq!(lhs, rhs, "p.q_shift(q).eval(x) should equal p.eval(q*x)");
+    }
+
+    #[test]
+    fn test_q_shift_evaluation_identity_2() {
+        // Test with a different polynomial and values
+        let p = QRatPoly::from_vec(vec![
+            QRat::from((1, 2)),
+            QRat::from((-3, 7)),
+            QRat::from((5, 1)),
+        ]); // 5x^2 - 3/7 x + 1/2
+        let q = QRat::from((4, 5));
+        let x = QRat::from((-1, 3));
+
+        let shifted = p.q_shift(&q);
+        let lhs = shifted.eval(&x);
+        let qx = &q * &x;
+        let rhs = p.eval(&qx);
+        assert_eq!(lhs, rhs);
+    }
+
+    #[test]
+    fn test_q_shift_double_equals_shift_n_2() {
+        // p.q_shift(q).q_shift(q) == p.q_shift_n(q, 2)
+        let p = QRatPoly::from_i64_coeffs(&[1, -1, 2, 3]);
+        let q = QRat::from((2, 3));
+
+        let double_shift = p.q_shift(&q).q_shift(&q);
+        let shift_n_2 = p.q_shift_n(&q, 2);
+
+        assert_eq!(double_shift, shift_n_2);
+    }
+
+    #[test]
+    fn test_q_shift_n_negative_roundtrip() {
+        // p.q_shift_n(q, -1).q_shift(q) == p
+        let p = QRatPoly::from_i64_coeffs(&[2, 3, 1]);
+        let q = QRat::from((5, 2));
+
+        let shifted_neg = p.q_shift_n(&q, -1);
+        let roundtrip = shifted_neg.q_shift(&q);
+
+        assert_eq!(roundtrip, p, "q_shift_n(-1) then q_shift should be identity");
+    }
+
+    #[test]
+    fn test_q_shift_n_zero_returns_original() {
+        let p = QRatPoly::from_i64_coeffs(&[1, 2, 3]);
+        let shifted = p.q_shift_n(&QRat::from((7, 1)), 0);
+        assert_eq!(shifted, p);
+    }
+
+    #[test]
+    fn test_q_shift_n_positive_3() {
+        // q_shift_n(q, 3) should equal three successive q_shifts
+        let p = QRatPoly::from_i64_coeffs(&[1, 1, 1]);
+        let q = QRat::from((2, 1));
+
+        let triple_shift = p.q_shift(&q).q_shift(&q).q_shift(&q);
+        let shift_n_3 = p.q_shift_n(&q, 3);
+
+        assert_eq!(triple_shift, shift_n_3);
     }
 }
