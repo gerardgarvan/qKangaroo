@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 ## Current Position
 
 Phase: 13 of 17 (Polynomial Infrastructure)
-Plan: 2 of TBD in current phase
-Status: Executing phase 13
-Last activity: 2026-02-16 — Completed 13-02 (Polynomial GCD, Resultant, q-Shift)
+Plan: 3 of 3 in current phase (PHASE COMPLETE)
+Status: Phase 13 complete
+Last activity: 2026-02-16 — Completed 13-03 (QRatRationalFunc Rational Function Type)
 
-Progress: [================================              ] 69% (v1.0+v1.1 complete, v1.2 phase 13 in progress)
+Progress: [==================================            ] 72% (v1.0+v1.1 complete, v1.2 phase 13 complete)
 
 ## v1.0 Performance Metrics
 
@@ -49,7 +49,7 @@ Progress: [================================              ] 69% (v1.0+v1.1 comple
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 13 - Polynomial Infrastructure | 2/? | 8 min | 4 min |
+| 13 - Polynomial Infrastructure | 3/3 | 13 min | 4 min |
 
 ## Accumulated Context
 
@@ -64,6 +64,9 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 13-02: Subresultant PRS for GCD with content extraction before PRS loop
 - 13-02: Euclidean algorithm (not subresultant) for resultant since Q[x] is a field
 - 13-02: q_shift/q_shift_n as methods on QRatPoly for p(x)->p(q^j*x)
+- 13-03: Auto-reduce via poly_gcd on every construction for canonical form at all times
+- 13-03: Cross-cancellation in mul: gcd(a,d) and gcd(c,b) before multiplying
+- 13-03: Monic denominator invariant; negation bypasses constructor (preserves invariants)
 
 ### Pending Todos
 
@@ -77,5 +80,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 13-02-PLAN.md (Polynomial GCD, Resultant, q-Shift)
-Resume file: .planning/phases/13-polynomial-infrastructure/13-02-SUMMARY.md
+Stopped at: Completed 13-03-PLAN.md (QRatRationalFunc Rational Function Type) -- Phase 13 COMPLETE
+Resume file: .planning/phases/13-polynomial-infrastructure/13-03-SUMMARY.md
