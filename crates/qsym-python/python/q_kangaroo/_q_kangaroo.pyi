@@ -490,3 +490,15 @@ def verify_wz(upper: list[tuple[int, int, int]], lower: list[tuple[int, int, int
 def q_petkovsek(coefficients: list[tuple[int, int]], q_num: int, q_den: int) -> list[dict[str, object]]:
     """Solve a q-hypergeometric recurrence for closed-form solutions."""
     ...
+
+# ===========================================================================
+# Group 13: Identity Proving Extensions
+# ===========================================================================
+
+def prove_nonterminating(upper_fixed: list[tuple[int, int, int]], n_param_offset: int, lower: list[tuple[int, int, int]], z_pow_offset: int, rhs_numer_bases: list[int], rhs_denom_bases: list[int], q_num: int, q_den: int, n_test: int, max_order: int) -> dict[str, object]:
+    """Prove a nonterminating q-hypergeometric identity via Chen-Hou-Mu method."""
+    ...
+
+def find_transformation_chain(session: QSession, source_upper: list[tuple[int, int, int]], source_lower: list[tuple[int, int, int]], source_z_num: int, source_z_den: int, source_z_pow: int, target_upper: list[tuple[int, int, int]], target_lower: list[tuple[int, int, int]], target_z_num: int, target_z_den: int, target_z_pow: int, max_depth: int, order: int) -> dict[str, object]:
+    """Search for a chain of transformations between two hypergeometric series."""
+    ...

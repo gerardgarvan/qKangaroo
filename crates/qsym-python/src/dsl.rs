@@ -20,7 +20,7 @@ use qsym_core::qseries::{
     verify_wz_certificate,
     q_petkovsek,
     prove_nonterminating, NonterminatingProofResult,
-    find_transformation_chain, TransformationChainResult, TransformationStep,
+    find_transformation_chain, TransformationChainResult,
 };
 
 use crate::convert::{qint_to_python, qrat_to_python};

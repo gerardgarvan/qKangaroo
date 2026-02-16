@@ -113,6 +113,10 @@ from q_kangaroo._q_kangaroo import q_zeilberger as q_zeilberger
 from q_kangaroo._q_kangaroo import verify_wz as verify_wz
 from q_kangaroo._q_kangaroo import q_petkovsek as q_petkovsek
 
+# Group 13: Identity Proving Extensions
+from q_kangaroo._q_kangaroo import prove_nonterminating as prove_nonterminating
+from q_kangaroo._q_kangaroo import find_transformation_chain as find_transformation_chain
+
 # Version
 __version__: str
 

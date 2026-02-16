@@ -129,5 +129,9 @@ fn _q_kangaroo(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dsl::verify_wz_fn, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::q_petkovsek_fn, m)?)?;
 
+    // Group 13: Identity Proving Extensions
+    m.add_function(wrap_pyfunction!(dsl::prove_nonterminating_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::find_transformation_chain_fn, m)?)?;
+
     Ok(())
 }

@@ -11,7 +11,7 @@ proving -- all accessible from Python via a clean API.
 
 Key features:
 
-- **73 functions** organized in 10 functional groups
+- **79 functions** organized in 13 functional groups
 - **Exact arithmetic** using GMP-backed rationals (no floating-point)
 - **Sparse representation** via BTreeMap with explicit truncation
 - **LaTeX rendering** for Jupyter notebooks ($q$-series display as math)

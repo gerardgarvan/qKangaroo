@@ -1,7 +1,7 @@
 API Reference
 =============
 
-q-Kangaroo provides 73 functions organized in 10 functional groups,
+q-Kangaroo provides 79 functions organized in 13 functional groups,
 plus 3 core classes. Each function operates on formal power series with
 exact rational coefficients.
 
@@ -28,3 +28,4 @@ exact rational coefficients.
    hypergeometric
    identity
    mock_theta
+   summation
