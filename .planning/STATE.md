@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.2 COMPLETE -- all 17 phases shipped. Planning next milestone.
+**Current focus:** v1.3 Documentation & Vignettes — defining requirements and roadmap.
 
 ## Current Position
 
-Phase: 17 of 17 (all complete)
-Plan: N/A
-Status: v1.2 milestone archived
-Last activity: 2026-02-16 — Archived v1.2 milestone
+Phase: 18 of 21 (Docstring Enrichment)
+Plan: Not yet planned
+Status: Ready for /gsd:plan-phase 18
+Last activity: 2026-02-16 — v1.3 milestone setup complete (requirements + roadmap)
 
-Progress: [==================================================] 100% (v1.0+v1.1+v1.2 complete, all 17 phases shipped)
+Progress: [                                                  ] 0% (v1.3: 0/4 phases complete)
 
 ## Performance Metrics
 
@@ -70,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: v1.2 milestone archived. Ready for /gsd:new-milestone.
+Stopped at: v1.3 milestone setup complete. Ready for /gsd:plan-phase 18.
 Resume file: .planning/ROADMAP.md

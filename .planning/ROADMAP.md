@@ -5,6 +5,7 @@
 - v1.0 Core Engine - Phases 1-8 (shipped 2026-02-14)
 - v1.1 Polish & Publish - Phases 9-12 (shipped 2026-02-15)
 - v1.2 Algorithmic Identity Proving - Phases 13-17 (shipped 2026-02-16)
+- v1.3 Documentation & Vignettes - Phases 18-21 (in progress)
 
 ## Phases
 
@@ -49,6 +50,70 @@ See `.planning/milestones/v1.2-ROADMAP.md` for details.
 
 </details>
 
+### v1.3 Documentation & Vignettes
+
+- [ ] Phase 18: Docstring Enrichment
+- [ ] Phase 19: Vignette Expansion
+- [ ] Phase 20: New Vignettes & Migration Guide
+- [ ] Phase 21: Sphinx Site Polish
+
+#### Phase 18: Docstring Enrichment
+
+**Goal:** Upgrade all 79 function docstrings to research-quality with realistic mathematical examples, cross-references, and mathematical notes.
+
+**Requirements:** DOC-01, DOC-02, DOC-03
+
+**Scope:**
+- Enrich all 79 function examples in dsl.rs with meaningful mathematical use cases (not toy inputs)
+- Add "See Also" cross-references between related functions across all 13 groups
+- Add "Notes" sections with mathematical background where needed (theta, mock theta, Bailey, hypergeometric functions)
+- Update .pyi type stubs to match enriched docstrings
+
+**Dependencies:** None (can start immediately)
+
+#### Phase 19: Vignette Expansion
+
+**Goal:** Expand existing 5 notebooks from introductory demos to comprehensive tutorials covering all relevant functions in each topic area.
+
+**Requirements:** DOC-04, DOC-05, DOC-06, DOC-07, DOC-08
+
+**Scope:**
+- partition_congruences.ipynb: Add rank/crank, prodmake analysis, Dyson's conjecture
+- theta_identities.ipynb: Add Jacobi triple product, quintuple product, Winquist, relationships
+- hypergeometric_summation.ipynb: All 6 summation formulas, all Heine transforms, Sears/Watson
+- mock_theta_functions.ipynb: Appell-Lerch connection, g2/g3, order comparisons
+- bailey_chains.ipynb: Multi-step chains, Rogers-Ramanujan from unit pair, bailey_discover
+
+**Dependencies:** Phase 18 (enriched docstrings referenced from notebooks)
+
+#### Phase 20: New Vignettes & Migration Guide
+
+**Goal:** Create 4 new notebooks covering gaps: newcomer onboarding, series analysis workflow, identity proving workflow, and Maple migration.
+
+**Requirements:** DOC-09, DOC-10, DOC-11, DOC-12, DOC-13
+
+**Scope:**
+- getting_started.ipynb: Zero to first identity for newcomers (install → session → q-Pochhammer → products → identity)
+- series_analysis.ipynb: prodmake → etamake → sift → findlincombo/findhom/findpoly → findcong pipeline
+- identity_proving.ipynb: q-Zeilberger → WZ certificate → verification → q-Petkovsek → prove_nonterminating
+- maple_migration.ipynb: Side-by-side Maple→Python for all 13 function groups, 30+ common operations
+
+**Dependencies:** Phase 18 (docstrings ready for notebook cross-references)
+
+#### Phase 21: Sphinx Site Polish
+
+**Goal:** Polish the Sphinx documentation site with improved navigation, cross-linking, and a decision guide for function selection.
+
+**Requirements:** DOC-14, DOC-15, DOC-16
+
+**Scope:**
+- Rewrite index.rst with audience-aware navigation ("New to q-series?", "Switching from Maple?", "Looking for a specific function?")
+- Add cross-links from each API page to relevant vignettes
+- Create function_guide.rst: "Which function should I use?" decision page organized by task type
+- Update examples/index.rst with descriptions and audience tags for all 9 notebooks
+
+**Dependencies:** Phases 19-20 (all notebooks must exist before cross-linking)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -70,3 +135,7 @@ See `.planning/milestones/v1.2-ROADMAP.md` for details.
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 16. Extensions | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 17. Python API & Documentation | v1.2 | 2/2 | Complete | 2026-02-16 |
+| 18. Docstring Enrichment | v1.3 | 0/? | Planned | - |
+| 19. Vignette Expansion | v1.3 | 0/? | Planned | - |
+| 20. New Vignettes & Migration Guide | v1.3 | 0/? | Planned | - |
+| 21. Sphinx Site Polish | v1.3 | 0/? | Planned | - |

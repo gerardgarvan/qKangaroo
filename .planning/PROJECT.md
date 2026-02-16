@@ -53,7 +53,11 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-(No active requirements -- planning next milestone)
+- Docstring enrichment: Upgrade all 79 function examples to research-quality with richer mathematical context -- v1.3
+- Maple migration guide: Side-by-side cheat sheet mapping Garvan's Maple functions to q_kangaroo equivalents -- v1.3
+- Revised core vignettes: Expand existing 5 notebooks with deeper examples, cross-references, and exercises -- v1.3
+- New vignettes: Getting Started tutorial, Series Analysis workflow, Identity Proving workflow -- v1.3
+- Sphinx site polish: Navigation improvements, landing page, cross-linking between API docs and vignettes -- v1.3
 
 ### Future
 
