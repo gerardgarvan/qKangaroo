@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 
 ## Current Position
 
-Phase: 14 of 17 (q-Gosper Algorithm)
-Plan: 3 of 3 in current phase (PHASE COMPLETE)
-Status: Phase 14 complete
-Last activity: 2026-02-16 — Completed 14-03 (Complete q-Gosper Algorithm & Integration Tests)
+Phase: 15 of 17 (q-Zeilberger & WZ Certificates)
+Plan: 1 of 3 in current phase
+Status: Executing phase 15
+Last activity: 2026-02-16 — Completed 15-01 (q-Zeilberger Creative Telescoping Core)
 
-Progress: [======================================        ] 78% (v1.0+v1.1 complete, v1.2 phases 13-14 complete)
+Progress: [========================================      ] 82% (v1.0+v1.1 complete, v1.2 phases 13-14 complete, 15 in progress)
 
 ## v1.0 Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [======================================        ] 78% (v1.0+v1.1 comple
 |-------|-------|-------|----------|
 | 13 - Polynomial Infrastructure | 3/3 | 13 min | 4 min |
 | 14 - q-Gosper Algorithm | 3/3 | 19 min | 6 min |
+| 15 - q-Zeilberger & WZ Certificates | 1/3 | 45 min | 45 min |
 
 ## Accumulated Context
 
@@ -77,6 +78,10 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 14-03: Key equation RHS is tau(x)*c(x) for correct antidifference y(x)=f(x)/c(x)
 - 14-03: Degree bound search extended to d_c+d_sigma+2 for cascading q-power cancellation
 - 14-03: Certificate formula y(x)=f(x)/c(x) where s_k=y(q^k)*t_k satisfies S_{k+1}-S_k=t_k
+- 15-01: Direct term-value approach instead of polynomial key equation evaluation for creative telescoping
+- 15-01: Lagrange interpolation for WZ certificate construction from G(n,k) values
+- 15-01: Duplicate private helpers from gosper.rs rather than making them pub(crate)
+- 15-01: Boundary conditions G(n,0)=0 and G(n,max_k+1)=0 for telescoping sum
 
 ### Pending Todos
 
@@ -90,5 +95,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 14 verified and complete. Ready to plan Phase 15 (q-Zeilberger & WZ Certificates).
-Resume file: .planning/ROADMAP.md
+Stopped at: Completed 15-01-PLAN.md (q-Zeilberger Creative Telescoping Core). Continuing with 15-02.
+Resume file: .planning/phases/15-q-zeilberger-wz-certificates/15-02-PLAN.md
