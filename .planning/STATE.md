@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-15)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 16 — Extensions (v1.2 Algorithmic Identity Proving)
+**Current focus:** Phase 17 — Python API & Documentation (v1.2 Algorithmic Identity Proving)
 
 ## Current Position
 
 Phase: 16 of 17 (Extensions)
-Plan: 3 of 3 in current phase
-Status: Executing Phase 16
-Last activity: 2026-02-16 — Completed 16-03 (BFS Transformation Chain Search)
+Plan: 3 of 3 in current phase (PHASE COMPLETE)
+Status: Phase 16 complete
+Last activity: 2026-02-16 — Completed all 3 plans (q-Petkovsek, Chen-Hou-Mu, BFS chain search)
 
-Progress: [============================================= ] 94% (v1.0+v1.1 complete, v1.2 phases 13-15 complete, 16 plan 3/3)
+Progress: [============================================== ] 94% (v1.0+v1.1 complete, v1.2 phases 13-16 complete)
 
 ## v1.0 Performance Metrics
 
@@ -113,5 +113,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 16-02-PLAN.md (Nonterminating Identity Proofs). 274 Rust tests.
+Stopped at: Phase 16 verified and complete. Ready to plan Phase 17 (Python API & Documentation).
 Resume file: .planning/ROADMAP.md

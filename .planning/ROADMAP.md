@@ -110,9 +110,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 16-01-PLAN.md -- q-Petkovsek recurrence solver with Pochhammer closed-form output (SOLV-01, SOLV-02)
-- [ ] 16-02-PLAN.md -- Chen-Hou-Mu nonterminating identity proofs via parameter specialization (NTPR-01, NTPR-02)
-- [ ] 16-03-PLAN.md -- BFS transformation chain search over Heine/Sears/Watson catalog (TRNS-01, TRNS-02)
+- [x] 16-01-PLAN.md -- q-Petkovsek recurrence solver with Pochhammer closed-form output (SOLV-01, SOLV-02)
+- [x] 16-02-PLAN.md -- Chen-Hou-Mu nonterminating identity proofs via parameter specialization (NTPR-01, NTPR-02)
+- [x] 16-03-PLAN.md -- BFS transformation chain search over Heine/Sears/Watson catalog (TRNS-01, TRNS-02)
 
 ### Phase 17: Python API & Documentation
 **Goal**: All v1.2 algorithms are accessible from Python with the same quality of documentation as existing functions
@@ -148,5 +148,5 @@ Plans:
 | 13. Polynomial Infrastructure | v1.2 | 3/3 | Complete | 2026-02-15 |
 | 14. q-Gosper Algorithm | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 3/3 | Complete | 2026-02-16 |
-| 16. Extensions | v1.2 | 0/3 | In progress | - |
+| 16. Extensions | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 17. Python API & Documentation | v1.2 | 0/TBD | Not started | - |
