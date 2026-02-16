@@ -40,7 +40,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for details.
 
 **Milestone Goal:** Machine-prove q-hypergeometric identities using q-Gosper, q-Zeilberger, creative telescoping, and WZ certificates -- completing the transition from Garvan's Maple toolbox to a self-contained proving engine.
 
-- [ ] **Phase 13: Polynomial Infrastructure** - Exact polynomial and rational function arithmetic over QRat
+- [x] **Phase 13: Polynomial Infrastructure** - Exact polynomial and rational function arithmetic over QRat
 - [ ] **Phase 14: q-Gosper Algorithm** - Indefinite q-hypergeometric summation via Gosper's algorithm
 - [ ] **Phase 15: q-Zeilberger & WZ Certificates** - Creative telescoping and WZ proof certificates for definite sums
 - [ ] **Phase 16: Extensions** - Recurrence solving, nonterminating proofs, transformation discovery
@@ -61,9 +61,9 @@ See `.planning/milestones/v1.1-ROADMAP.md` for details.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 13-01-PLAN.md -- QRatPoly type with constructors, arithmetic, div/rem, content, eval, Display
-- [ ] 13-02-PLAN.md -- Subresultant PRS GCD, resultant, q-shift operations
-- [ ] 13-03-PLAN.md -- QRatRationalFunc with auto-simplification, arithmetic, integration tests
+- [x] 13-01-PLAN.md -- QRatPoly type with constructors, arithmetic, div/rem, content, eval, Display
+- [x] 13-02-PLAN.md -- Subresultant PRS GCD, resultant, q-shift operations
+- [x] 13-03-PLAN.md -- QRatRationalFunc with auto-simplification, arithmetic, integration tests
 
 ### Phase 14: q-Gosper Algorithm
 **Goal**: Users can determine whether a q-hypergeometric sum has a closed-form antidifference, and obtain it when one exists
@@ -143,7 +143,7 @@ Plans:
 | 10. PyPI Packaging & Metadata | v1.1 | 2/2 | Complete | 2026-02-14 |
 | 11. CI/CD Pipeline | v1.1 | 2/2 | Complete | 2026-02-15 |
 | 12. Documentation & UX Polish | v1.1 | 4/4 | Complete | 2026-02-15 |
-| 13. Polynomial Infrastructure | v1.2 | 0/3 | In progress | - |
+| 13. Polynomial Infrastructure | v1.2 | 3/3 | Complete | 2026-02-15 |
 | 14. q-Gosper Algorithm | v1.2 | 0/TBD | Not started | - |
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 0/TBD | Not started | - |
 | 16. Extensions | v1.2 | 0/TBD | Not started | - |
