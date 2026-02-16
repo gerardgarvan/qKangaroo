@@ -17,9 +17,9 @@ fn version() -> &'static str {
     "0.1.0"
 }
 
-/// The native Python module entry point.
+/// The native q-Kangaroo Python module entry point.
 #[pymodule]
-fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _q_kangaroo(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_class::<session::QSession>()?;
     m.add_class::<expr::QExpr>()?;
@@ -120,6 +120,14 @@ fn _qsymbolic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dsl::bailey_apply_lemma, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::bailey_chain_fn, m)?)?;
     m.add_function(wrap_pyfunction!(dsl::bailey_discover_fn, m)?)?;
+
+    // Group 11: q-Gosper Algorithm
+    m.add_function(wrap_pyfunction!(dsl::q_gosper_fn, m)?)?;
+
+    // Group 12: Algorithmic Summation
+    m.add_function(wrap_pyfunction!(dsl::q_zeilberger_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::verify_wz_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(dsl::q_petkovsek_fn, m)?)?;
 
     Ok(())
 }

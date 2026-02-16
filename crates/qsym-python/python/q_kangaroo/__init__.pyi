@@ -105,6 +105,14 @@ from q_kangaroo._q_kangaroo import bailey_apply_lemma as bailey_apply_lemma
 from q_kangaroo._q_kangaroo import bailey_chain as bailey_chain
 from q_kangaroo._q_kangaroo import bailey_discover as bailey_discover
 
+# Group 11: q-Gosper Algorithm
+from q_kangaroo._q_kangaroo import q_gosper as q_gosper
+
+# Group 12: Algorithmic Summation
+from q_kangaroo._q_kangaroo import q_zeilberger as q_zeilberger
+from q_kangaroo._q_kangaroo import verify_wz as verify_wz
+from q_kangaroo._q_kangaroo import q_petkovsek as q_petkovsek
+
 # Version
 __version__: str
 

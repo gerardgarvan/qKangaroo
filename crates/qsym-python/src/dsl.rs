@@ -16,11 +16,10 @@ use qsym_core::qseries::{
     self, QMonomial, PochhammerOrder, HypergeometricSeries, SummationResult,
     BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, bailey_discover,
     QGosperResult,
-    q_zeilberger, QZeilbergerResult, ZeilbergerResult, detect_n_params,
+    q_zeilberger, QZeilbergerResult, detect_n_params,
     verify_wz_certificate,
-    q_petkovsek, QPetkovsekResult, ClosedForm,
+    q_petkovsek,
 };
-use qsym_core::poly::QRatRationalFunc;
 
 use crate::convert::{qint_to_python, qrat_to_python};
 use crate::series::QSeries;

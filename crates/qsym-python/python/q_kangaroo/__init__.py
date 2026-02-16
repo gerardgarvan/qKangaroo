@@ -66,6 +66,12 @@ from q_kangaroo._q_kangaroo import (
     mock_theta_cap_f0_7, mock_theta_cap_f1_7, mock_theta_cap_f2_7,
     appell_lerch_m, universal_mock_theta_g2, universal_mock_theta_g3,
     bailey_weak_lemma, bailey_apply_lemma, bailey_chain, bailey_discover,
+    # Group 11: q-Gosper Algorithm
+    q_gosper_fn as q_gosper,
+    # Group 12: Algorithmic Summation
+    q_zeilberger_fn as q_zeilberger,
+    verify_wz_fn as verify_wz,
+    q_petkovsek_fn as q_petkovsek,
 )
 
 __version__ = version()
@@ -140,4 +146,8 @@ __all__ = [
     "mock_theta_cap_f0_7", "mock_theta_cap_f1_7", "mock_theta_cap_f2_7",
     "appell_lerch_m", "universal_mock_theta_g2", "universal_mock_theta_g3",
     "bailey_weak_lemma", "bailey_apply_lemma", "bailey_chain", "bailey_discover",
+    # Group 11: q-Gosper Algorithm
+    "q_gosper",
+    # Group 12: Algorithmic Summation
+    "q_zeilberger", "verify_wz", "q_petkovsek",
 ]

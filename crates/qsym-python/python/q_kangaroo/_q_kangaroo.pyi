@@ -466,3 +466,27 @@ def bailey_chain(session: QSession, pair_name: str, a: tuple[int, int, int], b: 
 def bailey_discover(session: QSession, lhs: QSeries, rhs: QSeries, a: tuple[int, int, int], max_chain_depth: int, truncation_order: int) -> dict[str, object]:
     """Automated Bailey pair discovery from the database."""
     ...
+
+# ===========================================================================
+# Group 11: q-Gosper Algorithm
+# ===========================================================================
+
+def q_gosper(upper: list[tuple[int, int, int]], lower: list[tuple[int, int, int]], z_num: int, z_den: int, z_pow: int, q_num: int, q_den: int) -> dict[str, object]:
+    """Run the q-Gosper algorithm for indefinite q-hypergeometric summation."""
+    ...
+
+# ===========================================================================
+# Group 12: Algorithmic Summation
+# ===========================================================================
+
+def q_zeilberger(upper: list[tuple[int, int, int]], lower: list[tuple[int, int, int]], z_num: int, z_den: int, z_pow: int, n_val: int, q_num: int, q_den: int, max_order: int, n_param_indices: Optional[list[int]] = None, n_is_in_argument: Optional[bool] = None) -> dict[str, object]:
+    """Run the q-Zeilberger creative telescoping algorithm."""
+    ...
+
+def verify_wz(upper: list[tuple[int, int, int]], lower: list[tuple[int, int, int]], z_num: int, z_den: int, z_pow: int, n_val: int, q_num: int, q_den: int, max_order: int, max_k: int, n_param_indices: Optional[list[int]] = None, n_is_in_argument: Optional[bool] = None) -> dict[str, object]:
+    """Verify a WZ certificate for a q-hypergeometric identity."""
+    ...
+
+def q_petkovsek(coefficients: list[tuple[int, int]], q_num: int, q_den: int) -> list[dict[str, object]]:
+    """Solve a q-hypergeometric recurrence for closed-form solutions."""
+    ...
