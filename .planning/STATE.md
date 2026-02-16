@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 ## Current Position
 
 Phase: 13 of 17 (Polynomial Infrastructure)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-15 — Roadmap created for v1.2
+Plan: 1 of TBD in current phase
+Status: Executing phase 13
+Last activity: 2026-02-16 — Completed 13-01 (QRatPoly dense polynomial type)
 
-Progress: [================================              ] 67% (v1.0+v1.1 complete, v1.2 0/5 phases)
+Progress: [================================              ] 69% (v1.0+v1.1 complete, v1.2 phase 13 in progress)
 
 ## v1.0 Performance Metrics
 
@@ -45,6 +45,12 @@ Progress: [================================              ] 67% (v1.0+v1.1 comple
 | 11 - CI/CD Pipeline | 2/2 | 2 min | 1 min |
 | 12 - Documentation & UX Polish | 4/4 | 57 min | 14 min |
 
+## v1.2 Performance Metrics
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 13 - Polynomial Infrastructure | 1/? | 4 min | 4 min |
+
 ## Accumulated Context
 
 ### Decisions
@@ -52,6 +58,9 @@ Progress: [================================              ] 67% (v1.0+v1.1 comple
 All decisions logged in PROJECT.md Key Decisions table.
 v1.0 decisions preserved in MILESTONES.md.
 v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
+- 13-01: Dense Vec<QRat> ascending-degree storage with trailing-zero normalization invariant
+- 13-01: Content = gcd(numerators)/lcm(denominators) for rational coefficients
+- 13-01: Four trait impl variants per arithmetic op matching QRat pattern
 
 ### Pending Todos
 
@@ -64,6 +73,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15
-Stopped at: v1.2 roadmap created, ready to plan Phase 13
-Resume file: .planning/ROADMAP.md
+Last session: 2026-02-16
+Stopped at: Completed 13-01-PLAN.md (QRatPoly dense polynomial type)
+Resume file: .planning/phases/13-polynomial-infrastructure/13-01-SUMMARY.md
