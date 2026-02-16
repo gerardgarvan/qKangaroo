@@ -4,6 +4,9 @@
 //! Invariant: the vector is either empty (zero polynomial) or the last element is nonzero.
 
 pub mod arithmetic;
+pub mod gcd;
+
+pub use gcd::{poly_gcd, poly_resultant};
 
 use crate::number::QRat;
 use std::cmp::Ordering;
