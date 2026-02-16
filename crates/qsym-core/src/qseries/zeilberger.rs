@@ -292,16 +292,20 @@ pub(crate) fn compute_rj_values(
     values
 }
 
-/// Detect which upper parameters of a series depend on n.
+/// Detect which upper parameters of a series depend on n (heuristic).
 ///
-/// Checks each upper parameter: if eval_qmonomial(param, q_val) == q^{-n_val},
-/// it's an n-dependent parameter (assumed to be q^{-n}).
-///
-/// Also checks if the argument appears to depend on n by checking if its power
-/// is large enough to contain an n-dependent term.
+/// Examines upper params to find those matching q^{-n_val} (i.e., the param
+/// evaluates to q^{-n} for the given n_val). Also checks if the argument
+/// depends on n by testing whether shifting n changes the argument value.
 ///
 /// Returns (n_param_indices, n_is_in_argument).
-pub(crate) fn detect_n_params(
+///
+/// # Limitations
+///
+/// This is a heuristic that works for standard forms like q-Vandermonde.
+/// For non-standard series, users should provide indices explicitly to
+/// [`q_zeilberger`].
+pub fn detect_n_params(
     series: &HypergeometricSeries,
     n_val: i64,
     q_val: &QRat,
@@ -342,7 +346,7 @@ pub(crate) fn detect_n_params(
 /// The telescoping equation G(n,k+1) - G(n,k) = sum_j c_j * F(n+j,k) is solved
 /// directly by treating G(n,k) values and recurrence coefficients c_j as unknowns.
 ///
-/// Returns Some((coefficients, f_poly, gnf)) if successful, None otherwise.
+/// Returns Some((coefficients, certificate)) if successful, None otherwise.
 pub(crate) fn try_creative_telescoping(
     series: &HypergeometricSeries,
     _n_val: i64,
@@ -350,7 +354,7 @@ pub(crate) fn try_creative_telescoping(
     d: usize,
     n_param_indices: &[usize],
     n_is_in_argument: bool,
-) -> Option<(Vec<QRat>, QRatPoly, GosperNormalForm)> {
+) -> Option<(Vec<QRat>, QRatRationalFunc)> {
     // Step 1: Extract the k-direction term ratio for the original series
     let r_0 = extract_term_ratio(series, q_val);
 
@@ -373,11 +377,9 @@ pub(crate) fn try_creative_telescoping(
     let (coefficients, g_values) = result;
 
     // Step 5: Construct the WZ certificate from g_values
-    let certificate_rf = construct_certificate_from_g(&g_values, series, q_val, &gnf);
-    // Extract the f polynomial from the certificate
-    let f_poly = certificate_rf.numer.clone();
+    let certificate = construct_certificate_from_g(&g_values, series, q_val, &gnf);
 
-    Some((coefficients, f_poly, gnf))
+    Some((coefficients, certificate))
 }
 
 /// Solve the creative telescoping equation directly using term values.
@@ -586,11 +588,19 @@ fn construct_certificate_from_g(
     // We interpolate f from these values.
 
     let r_0 = extract_term_ratio(series, q_val);
-    let mut fn_k = QRat::one(); // F(n, 0) = 1
 
-    // Collect (q^k, f(q^k)) pairs for interpolation
+    // Collect (q^k, f(q^k)) pairs for interpolation.
+    // Include k=0: G(n,0)=0, F(n,0)=1, so R(q^0)=0 and f(q^0) = 0.
     let mut eval_points: Vec<(QRat, QRat)> = Vec::new();
 
+    // k=0 boundary: G(n,0) = 0, F(n,0) = 1 -> R(1) = 0 -> f(1) = 0
+    let q0 = QRat::one(); // q^0 = 1
+    let c_at_q0 = gnf.c.eval(&q0);
+    // f(q^0) = R(q^0)*c(q^0) = 0 * c(1) = 0
+    let _ = c_at_q0; // unused, f_at_q0 = 0
+    eval_points.push((q0, QRat::zero()));
+
+    let mut fn_k = QRat::one(); // F(n, 0) = 1
     for k in 1..=g_values.len() {
         // Advance F(n, k)
         let qk_prev = qrat_pow_i64(q_val, (k - 1) as i64);
@@ -663,12 +673,9 @@ pub fn q_zeilberger(
     n_is_in_argument: bool,
 ) -> QZeilbergerResult {
     for d in 1..=max_order {
-        if let Some((coefficients, f_poly, gnf)) = try_creative_telescoping(
+        if let Some((coefficients, certificate)) = try_creative_telescoping(
             series, n_val, q_val, d, n_param_indices, n_is_in_argument,
         ) {
-            // Build the WZ certificate: y(x) = f(x) / c(x)
-            let certificate = QRatRationalFunc::new(f_poly, gnf.c.clone());
-
             return QZeilbergerResult::Recurrence(ZeilbergerResult {
                 order: d,
                 coefficients,
@@ -822,7 +829,7 @@ mod tests {
         let q_val = qr(2);
         let series = make_vandermonde(n_val);
 
-        let (coeffs, _f, _gnf) = try_creative_telescoping(
+        let (coeffs, _cert) = try_creative_telescoping(
             &series, n_val, &q_val, 1, &[0], true,
         ).expect("Should find solution");
 
@@ -1046,5 +1053,284 @@ mod tests {
                 panic!("q-Zeilberger should find a recurrence for q-Vandermonde at q=3");
             }
         }
+    }
+
+    // ========================================
+    // Test 13: q_zeilberger Vandermonde finds recurrence (SUCCESS CRITERION 1)
+    // Uses n=5, q=1/3 as specified in plan
+    // ========================================
+
+    #[test]
+    fn test_q_zeilberger_vandermonde_finds_recurrence() {
+        // q-Vandermonde: _2phi1(q^{-n}, q^2; q^3; q, q^{n+1}) with n=5, q=1/3
+        let n_val = 5i64;
+        let q_val = qr_frac(1, 3);
+        let series = make_vandermonde(n_val);
+
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 3, &[0], true,
+        );
+
+        match result {
+            QZeilbergerResult::Recurrence(ref zr) => {
+                assert_eq!(zr.order, 1,
+                    "q-Vandermonde should have order-1 recurrence at n=5, q=1/3");
+            }
+            QZeilbergerResult::NoRecurrence => {
+                panic!("SUCCESS CRITERION 1 FAILED: q-Zeilberger should find recurrence for q-Vandermonde at n=5, q=1/3");
+            }
+        }
+    }
+
+    // ========================================
+    // Test 14: Vandermonde coefficients inspectable (SUCCESS CRITERION 2)
+    // ========================================
+
+    #[test]
+    fn test_q_zeilberger_vandermonde_coefficients_inspectable() {
+        let n_val = 5i64;
+        let q_val = qr_frac(1, 3);
+        let series = make_vandermonde(n_val);
+
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 3, &[0], true,
+        );
+
+        match result {
+            QZeilbergerResult::Recurrence(ref zr) => {
+                // Coefficients c_0, c_1 are inspectable QRat values
+                assert_eq!(zr.coefficients.len(), 2, "Order-1 recurrence should have 2 coefficients");
+                assert!(!zr.coefficients[0].is_zero(),
+                    "c_0 should be non-zero, got {}", zr.coefficients[0]);
+                assert!(!zr.coefficients[1].is_zero(),
+                    "c_1 should be non-zero, got {}", zr.coefficients[1]);
+
+                // Verify they are genuine QRat values (can be compared, displayed, etc.)
+                let _ratio = &zr.coefficients[0] / &zr.coefficients[1];
+                let _display = format!("c_0 = {}, c_1 = {}", zr.coefficients[0], zr.coefficients[1]);
+            }
+            QZeilbergerResult::NoRecurrence => {
+                panic!("SUCCESS CRITERION 2 FAILED: expected recurrence");
+            }
+        }
+    }
+
+    // ========================================
+    // Test 15: Certificate is a well-formed QRatRationalFunc
+    // ========================================
+
+    #[test]
+    fn test_q_zeilberger_vandermonde_certificate_is_rational_func() {
+        let n_val = 5i64;
+        let q_val = qr_frac(1, 3);
+        let series = make_vandermonde(n_val);
+
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 3, &[0], true,
+        );
+
+        match result {
+            QZeilbergerResult::Recurrence(ref zr) => {
+                // Certificate should be a non-trivial rational function
+                let cert = &zr.certificate;
+                assert!(!cert.numer.is_zero(),
+                    "Certificate numerator should be non-zero");
+                assert!(!cert.denom.is_zero(),
+                    "Certificate denominator should be non-zero");
+
+                // The certificate can be evaluated at specific points
+                let q1 = qr_frac(1, 3);
+                let _val = cert.eval(&q1);
+            }
+            QZeilbergerResult::NoRecurrence => {
+                panic!("Expected recurrence for certificate test");
+            }
+        }
+    }
+
+    // ========================================
+    // Test 16: NoRecurrence when max_order is too small
+    // ========================================
+
+    #[test]
+    fn test_q_zeilberger_no_recurrence_max_order() {
+        // _3phi2(q^{-n}, q^2, q^3; q^4, q^5; q, q^{n+3}) with n=3
+        // A more complex series that might need order > 1.
+        // Use a series known to need d >= 2.
+        let n_val = 4i64;
+        let q_val = qr(2);
+        let series = HypergeometricSeries {
+            upper: vec![
+                QMonomial::q_power(-n_val),
+                QMonomial::q_power(1),
+                QMonomial::q_power(1),
+            ],
+            lower: vec![QMonomial::q_power(2), QMonomial::q_power(2)],
+            argument: QMonomial::q_power(1),
+        };
+
+        // Try at max_order=0 (no order tried at all)
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 0, &[0], false,
+        );
+        match result {
+            QZeilbergerResult::NoRecurrence => {
+                // Expected: max_order=0 means we try no orders
+            }
+            QZeilbergerResult::Recurrence(_) => {
+                panic!("Should not find recurrence with max_order=0");
+            }
+        }
+    }
+
+    // ========================================
+    // Test 17: Certificate verifies telescoping identity at k values (SUCCESS CRITERION 3)
+    // ========================================
+
+    #[test]
+    fn test_q_zeilberger_certificate_verifies_at_k_values() {
+        // For q-Vandermonde at n=3, q=2:
+        // The WZ identity: sum_j c_j * F(n+j, k) == G(n, k+1) - G(n, k)
+        // where G(n, k) = R(q^k) * F(n, k), and R = certificate.
+        let n_val = 3i64;
+        let q_val = qr(2);
+        let series = make_vandermonde(n_val);
+
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 3, &[0], true,
+        );
+
+        let zr = match result {
+            QZeilbergerResult::Recurrence(ref zr) => zr,
+            QZeilbergerResult::NoRecurrence => {
+                panic!("SUCCESS CRITERION 3 FAILED: expected recurrence");
+            }
+        };
+
+        let coeffs = &zr.coefficients;
+        let cert = &zr.certificate;
+
+        // Compute F(n+j, k) for j=0..d and k=0..n_val using term ratio products
+        let r_0 = extract_term_ratio(&series, &q_val);
+        let shifted = build_shifted_series(&series, 1, &[0], true);
+        let r_1 = extract_term_ratio(&shifted, &q_val);
+
+        // Compute F(n, k) for k=0..4
+        let mut f0_vals = vec![QRat::one()]; // F(n, 0) = 1
+        let mut term0 = QRat::one();
+        for k in 0..4 {
+            let qk = qrat_pow_i64(&q_val, k as i64);
+            match r_0.eval(&qk) {
+                Some(r_val) => {
+                    term0 = &term0 * &r_val;
+                    f0_vals.push(term0.clone());
+                }
+                None => {
+                    term0 = QRat::zero();
+                    f0_vals.push(QRat::zero());
+                }
+            }
+        }
+
+        // Compute F(n+1, k) for k=0..4
+        let mut f1_vals = vec![QRat::one()]; // F(n+1, 0) = 1
+        let mut term1 = QRat::one();
+        for k in 0..4 {
+            let qk = qrat_pow_i64(&q_val, k as i64);
+            match r_1.eval(&qk) {
+                Some(r_val) => {
+                    term1 = &term1 * &r_val;
+                    f1_vals.push(term1.clone());
+                }
+                None => {
+                    term1 = QRat::zero();
+                    f1_vals.push(QRat::zero());
+                }
+            }
+        }
+
+        // Verify the WZ identity at k = 0, 1, 2:
+        // sum_j c_j * F(n+j, k) == G(n, k+1) - G(n, k)
+        // G(n, k) = R(q^k) * F(n, k)
+        for k in 0..3usize {
+            // LHS: sum_j c_j * F(n+j, k)
+            let mut lhs = QRat::zero();
+            let fk_j0 = &f0_vals[k]; // F(n, k)
+            let fk_j1 = &f1_vals[k]; // F(n+1, k)
+            lhs = &lhs + &(&coeffs[0] * fk_j0);
+            lhs = &lhs + &(&coeffs[1] * fk_j1);
+
+            // RHS: G(n, k+1) - G(n, k)
+            let qk = qrat_pow_i64(&q_val, k as i64);
+            let qk1 = qrat_pow_i64(&q_val, (k + 1) as i64);
+
+            let g_k = match cert.eval(&qk) {
+                Some(r_val) => &r_val * &f0_vals[k],
+                None => QRat::zero(), // pole means G=0 at this point
+            };
+            let g_k1 = match cert.eval(&qk1) {
+                Some(r_val) => &r_val * &f0_vals[k + 1],
+                None => QRat::zero(),
+            };
+
+            let rhs = &g_k1 - &g_k;
+
+            assert_eq!(lhs, rhs,
+                "WZ identity fails at k={}: LHS={}, RHS={}", k, lhs, rhs);
+        }
+    }
+
+    // ========================================
+    // Test 18: Multiple n values (consistency)
+    // ========================================
+
+    #[test]
+    fn test_q_zeilberger_multiple_n_values() {
+        let q_val = qr(2);
+
+        for &n_val in &[3i64, 5, 7] {
+            let series = make_vandermonde(n_val);
+            let result = q_zeilberger(
+                &series, n_val, &q_val, 3, &[0], true,
+            );
+
+            match result {
+                QZeilbergerResult::Recurrence(ref zr) => {
+                    assert_eq!(zr.order, 1,
+                        "q-Vandermonde at n={} should have order-1 recurrence", n_val);
+                    assert_eq!(zr.coefficients.len(), 2,
+                        "Order-1 should have 2 coefficients at n={}", n_val);
+                    assert!(!zr.coefficients[0].is_zero(),
+                        "c_0 should be non-zero at n={}", n_val);
+                }
+                QZeilbergerResult::NoRecurrence => {
+                    panic!("q-Zeilberger should find recurrence for q-Vandermonde at n={}", n_val);
+                }
+            }
+        }
+    }
+
+    // ========================================
+    // Test 19: detect_n_params for Vandermonde (plan test 8)
+    // ========================================
+
+    #[test]
+    fn test_detect_n_params_vandermonde() {
+        let n_val = 5i64;
+        let q_val = qr_frac(1, 3);
+
+        // q-Vandermonde: upper = [q^{-5}, q^2], lower = [q^3], z = q^6
+        let series = make_vandermonde(n_val);
+
+        let (indices, n_in_arg) = detect_n_params(&series, n_val, &q_val);
+
+        // Only upper[0] = q^{-5} should be detected as n-dependent
+        assert_eq!(indices, vec![0],
+            "Should detect upper param 0 as n-dependent, got {:?}", indices);
+
+        // The argument z = q^{n+1} = q^6 should be detected as n-dependent
+        // since shifting n by 1 changes it from q^6 to q^7
+        assert!(n_in_arg,
+            "Argument should be detected as n-dependent for q-Vandermonde");
     }
 }

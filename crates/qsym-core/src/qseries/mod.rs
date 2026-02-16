@@ -26,8 +26,8 @@
 //!   [`ZwegersCompletion`]
 //! - q-Gosper algorithm: [`q_gosper`], [`extract_term_ratio`], [`q_dispersion`],
 //!   [`QGosperResult`], [`GosperNormalForm`], [`gosper_normal_form`], [`solve_key_equation`]
-//! - q-Zeilberger algorithm: [`ZeilbergerResult`], [`QZeilbergerResult`],
-//!   creative telescoping for definite q-hypergeometric summation
+//! - q-Zeilberger algorithm: [`q_zeilberger`], [`ZeilbergerResult`], [`QZeilbergerResult`],
+//!   [`detect_n_params`], creative telescoping for definite q-hypergeometric summation
 
 pub mod appell_lerch;
 pub mod factoring;
@@ -72,7 +72,7 @@ pub use mock_theta::{
 pub use appell_lerch::{appell_lerch_m, appell_lerch_bilateral, universal_mock_theta_g2, universal_mock_theta_g3, ZwegersCompletion};
 pub use bailey::{BaileyPair, BaileyPairType, BaileyDatabase, bailey_lemma, bailey_chain, weak_bailey_lemma, verify_bailey_pair, bailey_discover, DiscoveryResult};
 pub use gosper::{QGosperResult, GosperNormalForm, extract_term_ratio, q_dispersion, gosper_normal_form, solve_key_equation, q_gosper};
-pub use zeilberger::{ZeilbergerResult, QZeilbergerResult};
+pub use zeilberger::{ZeilbergerResult, QZeilbergerResult, q_zeilberger, detect_n_params};
 
 use crate::number::QRat;
 
