@@ -12,9 +12,10 @@
 //! Key components:
 //! - [`ZeilbergerResult`]: Recurrence coefficients and WZ proof certificate
 //! - [`QZeilbergerResult`]: Result enum (recurrence found or not)
-//! - [`try_creative_telescoping`]: Core creative telescoping at a given order
-//! - [`build_shifted_series`]: Construct F(n+j, k) by shifting n-dependent parameters
-//! - [`compute_rj_values`]: Evaluate R_j(k) = F(n+j,k)/F(n,k) numerically
+//! - [`q_zeilberger`]: Main entry point for creative telescoping
+//! - [`verify_wz_certificate`]: Independent WZ certificate verification
+//! - [`verify_recurrence_fps`]: FPS cross-verification of recurrences
+//! - [`detect_n_params`]: Auto-detect n-dependent parameters
 
 use crate::number::QRat;
 use crate::poly::{QRatPoly, QRatRationalFunc};
