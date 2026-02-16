@@ -1046,4 +1046,266 @@ mod tests {
                 j, g.degree());
         }
     }
+
+    // ========================================
+    // solve_key_equation tests
+    // ========================================
+
+    /// Helper: verify the key equation sigma(x)*f(qx) - tau(x)*f(x) = c(x)
+    fn verify_key_equation(
+        sigma: &QRatPoly,
+        tau: &QRatPoly,
+        c_poly: &QRatPoly,
+        f: &QRatPoly,
+        q_val: &QRat,
+    ) {
+        let f_shifted = f.q_shift(q_val);
+        let lhs = &(sigma * &f_shifted) - &(tau * f);
+        assert_eq!(lhs, *c_poly,
+            "Key equation verification failed:\n\
+             sigma*f(qx) - tau*f(x) = {}\n\
+             c(x) = {}\n\
+             f(x) = {}\nsigma = {}\ntau = {}",
+            lhs, c_poly, f, sigma, tau);
+    }
+
+    #[test]
+    fn test_solve_key_equation_zero_c() {
+        // c = 0 => f = 0 is always a solution
+        let sigma = QRatPoly::from_i64_coeffs(&[1, -1]);
+        let tau = QRatPoly::from_i64_coeffs(&[1, 1]);
+        let c = QRatPoly::zero();
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_some(), "f=0 should be a solution when c=0");
+        assert!(result.unwrap().is_zero());
+    }
+
+    #[test]
+    fn test_solve_key_equation_known_solvable() {
+        // Construct a known case: sigma = 1-x, tau = 1, c = x, q = 2
+        // The equation: (1-x)*f(2x) - f(x) = x
+        // Try f = ax + b:
+        //   (1-x)(2a*x + b) - (ax + b) = x
+        //   (2ax + b - 2ax^2 - bx) - ax - b = x
+        //   2ax + b - 2ax^2 - bx - ax - b = x
+        //   -2ax^2 + (2a - b - a)x = x
+        //   -2ax^2 + (a - b)x = x
+        //   Coefficient of x^2: -2a = 0 => a = 0
+        //   Coefficient of x: a - b = 1 => -b = 1 => b = -1
+        //   Constant: 0 = 0 (check)
+        // So f(x) = -1
+        let sigma = QRatPoly::from_i64_coeffs(&[1, -1]);
+        let tau = QRatPoly::one();
+        let c = QRatPoly::x();
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_some(), "This case should be solvable");
+        let f = result.unwrap();
+        verify_key_equation(&sigma, &tau, &c, &f, &q_val);
+    }
+
+    #[test]
+    fn test_solve_key_equation_unsolvable() {
+        // sigma = 1, tau = 1, c = 1, q = 2
+        // The equation: f(2x) - f(x) = 1
+        // If f = constant k: k - k = 0 != 1. No solution.
+        // If f = ax + b: 2ax + b - ax - b = ax = 1.
+        // ax = 1 requires a = 0 for the x^0 coeff, contradiction. No polynomial solution.
+        let sigma = QRatPoly::one();
+        let tau = QRatPoly::one();
+        let c = QRatPoly::one();
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_none(), "f(2x) - f(x) = 1 has no polynomial solution");
+    }
+
+    #[test]
+    fn test_solve_key_equation_degree_matching() {
+        // sigma = 1, tau = q = 2, c = x^2 + x, q = 2
+        // The equation: f(2x) - 2*f(x) = x^2 + x
+        // Try f = ax^2 + bx + d:
+        //   f(2x) = 4ax^2 + 2bx + d
+        //   f(2x) - 2f(x) = 4ax^2 + 2bx + d - 2ax^2 - 2bx - 2d
+        //                  = 2ax^2 - d
+        // So 2a = 1 => a = 1/2, and -d = 0 and coefficient of x: 0 = 1. This fails.
+        // Try f = ax^2 + bx + d with different degrees...
+        // Let's try sigma = x, tau = 1, c = x, q = 2
+        // x*f(2x) - f(x) = x
+        // Try f = a: x*a - a = a(x-1) = x => a = x/(x-1), not poly.
+        // Try f = ax + b: x*(2ax+b) - (ax+b) = 2ax^2 + bx - ax - b = 2ax^2 + (b-a)x - b = x
+        // => 2a = 0 => a = 0, b - a = 1 => b = 1, and -b = 0 => b = 0. Contradiction.
+        // So this is unsolvable.
+        let sigma = QRatPoly::x();
+        let tau = QRatPoly::one();
+        let c = QRatPoly::x();
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_none(), "x*f(2x) - f(x) = x has no polynomial solution");
+    }
+
+    #[test]
+    fn test_solve_key_equation_linear_solution() {
+        // Construct a case where f is linear.
+        // Let f(x) = 2x + 3, sigma = 1, tau = 1, q = 2.
+        // Then sigma*f(qx) - tau*f(x) = f(2x) - f(x) = (4x+3) - (2x+3) = 2x.
+        // So the equation is: f(2x) - f(x) = 2x with solution f = 2x + b for any b.
+        // But our solver finds f with free vars set to 0, so it might give f = 2x.
+        let sigma = QRatPoly::one();
+        let tau = QRatPoly::one();
+        let c = QRatPoly::from_i64_coeffs(&[0, 2]); // 2x
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_some(), "f(2x) - f(x) = 2x should be solvable");
+        let f = result.unwrap();
+        verify_key_equation(&sigma, &tau, &c, &f, &q_val);
+    }
+
+    #[test]
+    fn test_solve_key_equation_d_sigma_eq_d_tau_q_power() {
+        // Test the case where d_sigma == d_tau and the ratio lc_tau/lc_sigma is a q-power.
+        // sigma = x, tau = 2x, q = 2
+        // Leading coeffs: lc_sigma = 1, lc_tau = 2, ratio = 2 = q^1
+        // So deg_f = 1.
+        // Equation: x*f(2x) - 2x*f(x) = c(x)
+        // Let f = ax + b:
+        //   x(2ax + b) - 2x(ax + b) = 2ax^2 + bx - 2ax^2 - 2bx = -bx
+        // So c(x) = -bx. If we want c(x) = 3x, then b = -3 and f = ax - 3 for any a.
+        let sigma = QRatPoly::x();
+        let tau = QRatPoly::from_i64_coeffs(&[0, 2]); // 2x
+        let c = QRatPoly::from_i64_coeffs(&[0, 3]); // 3x
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_some(), "Key equation should be solvable");
+        let f = result.unwrap();
+        verify_key_equation(&sigma, &tau, &c, &f, &q_val);
+    }
+
+    #[test]
+    fn test_solve_key_equation_sigma_zero() {
+        // sigma = 0, tau = x + 1, c = x + 1, q = 2
+        // Equation: -tau*f(x) = c => -(x+1)*f = (x+1) => f = -1
+        let sigma = QRatPoly::zero();
+        let tau = QRatPoly::from_i64_coeffs(&[1, 1]);
+        let c = QRatPoly::from_i64_coeffs(&[1, 1]);
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_some());
+        let f = result.unwrap();
+        assert_eq!(f, QRatPoly::from_i64_coeffs(&[-1])); // f = -1
+    }
+
+    #[test]
+    fn test_solve_key_equation_both_zero_sigma_tau() {
+        // sigma = 0, tau = 0, c = x (nonzero) => impossible
+        let sigma = QRatPoly::zero();
+        let tau = QRatPoly::zero();
+        let c = QRatPoly::x();
+        let q_val = qr(2);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_none(), "0*f(qx) - 0*f(x) = x is impossible");
+    }
+
+    #[test]
+    fn test_solve_key_equation_quadratic_solution() {
+        // Construct a case with a quadratic solution.
+        // Let f(x) = x^2 - x + 1, sigma = 1, tau = 1, q = 3.
+        // f(3x) = 9x^2 - 3x + 1
+        // f(3x) - f(x) = (9x^2 - 3x + 1) - (x^2 - x + 1) = 8x^2 - 2x
+        // So c(x) = 8x^2 - 2x
+        let sigma = QRatPoly::one();
+        let tau = QRatPoly::one();
+        let c = QRatPoly::from_i64_coeffs(&[0, -2, 8]); // 8x^2 - 2x
+        let q_val = qr(3);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_some(), "Should find quadratic solution");
+        let f = result.unwrap();
+        verify_key_equation(&sigma, &tau, &c, &f, &q_val);
+    }
+
+    #[test]
+    fn test_solve_key_equation_nontrivial_sigma_tau() {
+        // sigma = 1 - x/4, tau = 1 - 2x, q = 2
+        // Let f(x) = x + 1.
+        // sigma * f(qx) - tau * f(x) = (1-x/4)(2x+1) - (1-2x)(x+1)
+        // = (2x + 1 - x^2/2 - x/4) - (x + 1 - 2x^2 - 2x)
+        // = (2x + 1 - x^2/2 - x/4) - (-x + 1 - 2x^2)
+        // = 2x + 1 - x^2/2 - x/4 + x - 1 + 2x^2
+        // = 3x^2/2 + (2 - 1/4 + 1)x
+        // = (3/2)x^2 + (11/4)x
+        let sigma = QRatPoly::from_vec(vec![QRat::one(), QRat::from((-1, 4))]); // 1 - x/4
+        let tau = QRatPoly::from_i64_coeffs(&[1, -2]); // 1 - 2x
+        let q_val = qr(2);
+
+        // Compute c from the known f
+        let f_known = QRatPoly::from_i64_coeffs(&[1, 1]); // x + 1
+        let f_shifted = f_known.q_shift(&q_val);
+        let c = &(&sigma * &f_shifted) - &(&tau * &f_known);
+
+        let result = solve_key_equation(&sigma, &tau, &c, &q_val);
+        assert!(result.is_some(), "Should find solution");
+        let f = result.unwrap();
+        verify_key_equation(&sigma, &tau, &c, &f, &q_val);
+    }
+
+    #[test]
+    fn test_solve_linear_system_basic() {
+        // Test the internal linear solver with a simple 2x2 system:
+        // 2x + 3y = 8
+        // x - y = 1
+        // Solution: x = 11/5, y = 6/5
+        let matrix = vec![
+            vec![qr(2), qr(3)],
+            vec![qr(1), qr(-1)],
+        ];
+        let rhs = vec![qr(8), qr(1)];
+        let sol = solve_linear_system(&matrix, &rhs);
+        assert!(sol.is_some());
+        let s = sol.unwrap();
+        assert_eq!(s[0], qr_frac(11, 5));
+        assert_eq!(s[1], qr_frac(6, 5));
+    }
+
+    #[test]
+    fn test_solve_linear_system_inconsistent() {
+        // Inconsistent system: x = 1, x = 2
+        let matrix = vec![
+            vec![qr(1)],
+            vec![qr(1)],
+        ];
+        let rhs = vec![qr(1), qr(2)];
+        let sol = solve_linear_system(&matrix, &rhs);
+        assert!(sol.is_none(), "Inconsistent system should return None");
+    }
+
+    #[test]
+    fn test_solve_linear_system_overdetermined_consistent() {
+        // 3 equations, 2 unknowns, consistent:
+        // x + y = 3
+        // 2x + y = 5
+        // x - y = -1
+        // Solution: x = 2, y = 1
+        // Consistent overdetermined system: x + y = 3, 2x + y = 5, 3x + y = 7
+        // All three give x=2, y=1
+        let matrix2 = vec![
+            vec![qr(1), qr(1)],
+            vec![qr(2), qr(1)],
+            vec![qr(3), qr(1)],
+        ];
+        let rhs2 = vec![qr(3), qr(5), qr(7)];
+        let sol = solve_linear_system(&matrix2, &rhs2);
+        assert!(sol.is_some());
+        let s = sol.unwrap();
+        assert_eq!(s[0], qr(2));
+        assert_eq!(s[1], qr(1));
+    }
 }
