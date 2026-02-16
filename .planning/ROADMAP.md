@@ -107,12 +107,12 @@ Plans:
   2. Closed-form output is expressed as products of q-Pochhammer symbols and q-powers
   3. Nonterminating identities are proved by parameter specialization (Chen-Hou-Mu method) reducing to terminating q-Zeilberger problems
   4. Transformation chain search finds known paths (e.g., Heine transform sequences) between two hypergeometric series within a configurable depth bound
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 16-01: TBD
-- [ ] 16-02: TBD
-- [ ] 16-03: TBD
+- [ ] 16-01-PLAN.md -- q-Petkovsek recurrence solver with Pochhammer closed-form output (SOLV-01, SOLV-02)
+- [ ] 16-02-PLAN.md -- Chen-Hou-Mu nonterminating identity proofs via parameter specialization (NTPR-01, NTPR-02)
+- [ ] 16-03-PLAN.md -- BFS transformation chain search over Heine/Sears/Watson catalog (TRNS-01, TRNS-02)
 
 ### Phase 17: Python API & Documentation
 **Goal**: All v1.2 algorithms are accessible from Python with the same quality of documentation as existing functions
@@ -148,5 +148,5 @@ Plans:
 | 13. Polynomial Infrastructure | v1.2 | 3/3 | Complete | 2026-02-15 |
 | 14. q-Gosper Algorithm | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 3/3 | Complete | 2026-02-16 |
-| 16. Extensions | v1.2 | 0/TBD | Not started | - |
+| 16. Extensions | v1.2 | 0/3 | In progress | - |
 | 17. Python API & Documentation | v1.2 | 0/TBD | Not started | - |
