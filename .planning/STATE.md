@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 
 ## Current Position
 
-Phase: 15 of 17 (q-Zeilberger & WZ Certificates)
-Plan: 3 of 3 in current phase (PHASE COMPLETE)
-Status: Phase 15 complete
-Last activity: 2026-02-16 — Completed 15-03 (WZ Certificate Verification & FPS Cross-Check)
+Phase: 16 of 17 (Extensions)
+Plan: 1 of 3 in current phase
+Status: Executing Phase 16
+Last activity: 2026-02-16 — Completed 16-01 (q-Petkovsek Solver)
 
-Progress: [==========================================    ] 88% (v1.0+v1.1 complete, v1.2 phases 13-15 complete)
+Progress: [===========================================   ] 90% (v1.0+v1.1 complete, v1.2 phases 13-15 complete, 16 plan 1/3)
 
 ## v1.0 Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [==========================================    ] 88% (v1.0+v1.1 comple
 | 13 - Polynomial Infrastructure | 3/3 | 13 min | 4 min |
 | 14 - q-Gosper Algorithm | 3/3 | 19 min | 6 min |
 | 15 - q-Zeilberger & WZ Certificates | 3/3 | 62 min | 21 min |
+| 16 - Extensions | 1/3 | 4 min | 4 min |
 
 ## Accumulated Context
 
@@ -88,6 +89,10 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 15-03: WZ certificate verification skips termination boundary where G(n,k) != R(q^k)*F(n,k)
 - 15-03: verify_recurrence_fps re-derives recurrence at each n (concrete-q coefficients are n-specific)
 - 15-03: compute_sum_at_n uses direct term accumulation rather than eval_phi for concrete q
+- 16-01: Characteristic polynomial + Rational Root Theorem for constant-coeff recurrences (not full q-Petkovsek normal form)
+- 16-01: LCM normalization for QRat coefficients before rational root search
+- 16-01: ClosedForm reserved for Pochhammer factorizations; pure q-power ratios return None
+- 16-01: Divisor candidate cap at 5000 to prevent combinatorial explosion
 
 ### Pending Todos
 
@@ -101,5 +106,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 15 verified and complete. Ready to plan Phase 16 (Extensions).
-Resume file: .planning/ROADMAP.md
+Stopped at: Completed 16-01-PLAN.md (q-Petkovsek solver). Phase 16 plan 2/3 next.
+Resume file: .planning/phases/16-extensions/16-02-PLAN.md
