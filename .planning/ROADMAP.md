@@ -63,6 +63,14 @@ See `.planning/milestones/v1.2-ROADMAP.md` for details.
 
 **Requirements:** DOC-01, DOC-02, DOC-03
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 18-01-PLAN.md -- Enrich Groups 1-4 (Pochhammer, Named Products, Theta, Partitions)
+- [ ] 18-02-PLAN.md -- Enrich Groups 5-7 (Utilities/Prodmake, Relation Discovery exact, Relation Discovery modular)
+- [ ] 18-03-PLAN.md -- Enrich Groups 8-10 (Hypergeometric, Identity Proving, Mock Theta/Appell-Lerch/Bailey)
+- [ ] 18-04-PLAN.md -- Enrich Groups 11-13 (q-Gosper, Algorithmic Summation, Extensions) + final validation
+
 **Scope:**
 - Enrich all 79 function examples in dsl.rs with meaningful mathematical use cases (not toy inputs)
 - Add "See Also" cross-references between related functions across all 13 groups
@@ -135,7 +143,7 @@ See `.planning/milestones/v1.2-ROADMAP.md` for details.
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 16. Extensions | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 17. Python API & Documentation | v1.2 | 2/2 | Complete | 2026-02-16 |
-| 18. Docstring Enrichment | v1.3 | 0/? | Planned | - |
+| 18. Docstring Enrichment | v1.3 | 0/4 | Planned | - |
 | 19. Vignette Expansion | v1.3 | 0/? | Planned | - |
 | 20. New Vignettes & Migration Guide | v1.3 | 0/? | Planned | - |
 | 21. Sphinx Site Polish | v1.3 | 0/? | Planned | - |
