@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 ## Current Position
 
 Phase: 15 of 17 (q-Zeilberger & WZ Certificates)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing phase 15
-Last activity: 2026-02-16 — Completed 15-01 (q-Zeilberger Creative Telescoping Core)
+Last activity: 2026-02-16 — Completed 15-02 (Public q_zeilberger API & WZ Certificates)
 
 Progress: [========================================      ] 82% (v1.0+v1.1 complete, v1.2 phases 13-14 complete, 15 in progress)
 
@@ -51,7 +51,7 @@ Progress: [========================================      ] 82% (v1.0+v1.1 comple
 |-------|-------|-------|----------|
 | 13 - Polynomial Infrastructure | 3/3 | 13 min | 4 min |
 | 14 - q-Gosper Algorithm | 3/3 | 19 min | 6 min |
-| 15 - q-Zeilberger & WZ Certificates | 1/3 | 45 min | 45 min |
+| 15 - q-Zeilberger & WZ Certificates | 2/3 | 51 min | 26 min |
 
 ## Accumulated Context
 
@@ -82,6 +82,9 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 15-01: Lagrange interpolation for WZ certificate construction from G(n,k) values
 - 15-01: Duplicate private helpers from gosper.rs rather than making them pub(crate)
 - 15-01: Boundary conditions G(n,0)=0 and G(n,max_k+1)=0 for telescoping sum
+- 15-02: Include k=0 boundary in Lagrange interpolation for correct WZ certificate at R(1)=0
+- 15-02: Return certificate directly from try_creative_telescoping (avoid double QRatRationalFunc::new reduction)
+- 15-02: detect_n_params made fully public with documented limitations for non-standard series
 
 ### Pending Todos
 
@@ -95,5 +98,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 15-01-PLAN.md (q-Zeilberger Creative Telescoping Core). Continuing with 15-02.
-Resume file: .planning/phases/15-q-zeilberger-wz-certificates/15-02-PLAN.md
+Stopped at: Completed 15-02-PLAN.md (Public q_zeilberger API & WZ Certificates). Continuing with 15-03.
+Resume file: .planning/phases/15-q-zeilberger-wz-certificates/15-03-PLAN.md
