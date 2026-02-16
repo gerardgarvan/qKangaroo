@@ -43,7 +43,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for details.
 - [x] **Phase 13: Polynomial Infrastructure** - Exact polynomial and rational function arithmetic over QRat
 - [x] **Phase 14: q-Gosper Algorithm** - Indefinite q-hypergeometric summation via Gosper's algorithm
 - [x] **Phase 15: q-Zeilberger & WZ Certificates** - Creative telescoping and WZ proof certificates for definite sums
-- [ ] **Phase 16: Extensions** - Recurrence solving, nonterminating proofs, transformation discovery
+- [x] **Phase 16: Extensions** - Recurrence solving, nonterminating proofs, transformation discovery
 - [ ] **Phase 17: Python API & Documentation** - DSL functions, docstrings, and Sphinx pages for all new algorithms
 
 ## Phase Details
@@ -123,11 +123,11 @@ Plans:
   2. Python functions prove_nonterminating and find_transformation_chain work from `import q_kangaroo`
   3. All new functions have NumPy-style docstrings with LaTeX mathematical notation
   4. Sphinx API reference pages for the new functions are integrated into the existing documentation site
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: TBD
-- [ ] 17-02: TBD
+- [ ] 17-01-PLAN.md -- q_zeilberger, verify_wz, q_petkovsek DSL functions + q_gosper stub fix (API-01)
+- [ ] 17-02-PLAN.md -- prove_nonterminating, find_transformation_chain DSL functions + Sphinx docs (API-02, API-03, API-04)
 
 ## Progress
 
@@ -149,4 +149,4 @@ Plans:
 | 14. q-Gosper Algorithm | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 16. Extensions | v1.2 | 3/3 | Complete | 2026-02-16 |
-| 17. Python API & Documentation | v1.2 | 0/TBD | Not started | - |
+| 17. Python API & Documentation | v1.2 | 0/2 | Not started | - |
