@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 ## Current Position
 
 Phase: 14 of 17 (q-Gosper Algorithm)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: Executing phase 14
-Last activity: 2026-02-16 — Completed 14-01 (Term Ratio Extraction & q-Dispersion)
+Last activity: 2026-02-16 — Completed 14-02 (Gosper Normal Form & Key Equation Solver)
 
-Progress: [===================================           ] 74% (v1.0+v1.1 complete, v1.2 phase 14 plan 1/4)
+Progress: [====================================          ] 76% (v1.0+v1.1 complete, v1.2 phase 14 plan 2/4)
 
 ## v1.0 Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: [===================================           ] 74% (v1.0+v1.1 comple
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 13 - Polynomial Infrastructure | 3/3 | 13 min | 4 min |
-| 14 - q-Gosper Algorithm | 1/4 | 4 min | 4 min |
+| 14 - q-Gosper Algorithm | 2/4 | 10 min | 5 min |
 
 ## Accumulated Context
 
@@ -71,6 +71,9 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 14-01: Redefine qrat_pow_i64 locally in gosper.rs (poly/mod.rs version is private)
 - 14-01: q-dispersion upper bound deg(a)*deg(b) from resultant theory
 - 14-01: q_dispersion_positive is pub(crate) for Plan 02 normal form decomposition
+- 14-02: Telescoping product index range i=1..=j_max for correct c(qx)/c(x) identity
+- 14-02: Private solve_linear_system (RREF over Q) rather than reusing rational_null_space
+- 14-02: Degree bound fallback: try primary bound then primary+1 for q-power cancellation
 
 ### Pending Todos
 
@@ -84,5 +87,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 14-01-PLAN.md (Term Ratio Extraction & q-Dispersion). Ready for 14-02.
+Stopped at: Completed 14-02-PLAN.md (Gosper Normal Form & Key Equation Solver). Ready for 14-03.
 Resume file: .planning/ROADMAP.md
