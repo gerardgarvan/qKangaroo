@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 ## Current Position
 
 Phase: 13 of 17 (Polynomial Infrastructure)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: Executing phase 13
-Last activity: 2026-02-16 — Completed 13-01 (QRatPoly dense polynomial type)
+Last activity: 2026-02-16 — Completed 13-02 (Polynomial GCD, Resultant, q-Shift)
 
 Progress: [================================              ] 69% (v1.0+v1.1 complete, v1.2 phase 13 in progress)
 
@@ -49,7 +49,7 @@ Progress: [================================              ] 69% (v1.0+v1.1 comple
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 13 - Polynomial Infrastructure | 1/? | 4 min | 4 min |
+| 13 - Polynomial Infrastructure | 2/? | 8 min | 4 min |
 
 ## Accumulated Context
 
@@ -61,6 +61,9 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 13-01: Dense Vec<QRat> ascending-degree storage with trailing-zero normalization invariant
 - 13-01: Content = gcd(numerators)/lcm(denominators) for rational coefficients
 - 13-01: Four trait impl variants per arithmetic op matching QRat pattern
+- 13-02: Subresultant PRS for GCD with content extraction before PRS loop
+- 13-02: Euclidean algorithm (not subresultant) for resultant since Q[x] is a field
+- 13-02: q_shift/q_shift_n as methods on QRatPoly for p(x)->p(q^j*x)
 
 ### Pending Todos
 
@@ -68,11 +71,11 @@ None.
 
 ### Blockers/Concerns
 
-- Research flag: subresultant PRS coefficient growth for degree 5-30 polynomials needs empirical measurement during Phase 13
+- (RESOLVED) Research flag: subresultant PRS coefficient growth empirically verified on degree-10 polynomials in 13-02
 - Research flag: qGFF implementation details may need deeper study from Koornwinder 1993 / Paule-Riese 1997 during Phase 14 planning
 
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 13-01-PLAN.md (QRatPoly dense polynomial type)
-Resume file: .planning/phases/13-polynomial-infrastructure/13-01-SUMMARY.md
+Stopped at: Completed 13-02-PLAN.md (Polynomial GCD, Resultant, q-Shift)
+Resume file: .planning/phases/13-polynomial-infrastructure/13-02-SUMMARY.md
