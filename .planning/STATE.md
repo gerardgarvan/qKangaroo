@@ -52,7 +52,7 @@ Progress: [============================================= ] 94% (v1.0+v1.1 comple
 | 13 - Polynomial Infrastructure | 3/3 | 13 min | 4 min |
 | 14 - q-Gosper Algorithm | 3/3 | 19 min | 6 min |
 | 15 - q-Zeilberger & WZ Certificates | 3/3 | 62 min | 21 min |
-| 16 - Extensions | 3/3 | 9 min | 3 min |
+| 16 - Extensions | 3/3 | 18 min | 6 min |
 
 ## Accumulated Context
 
@@ -97,6 +97,9 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 16-03: Order-independent key normalization for visited-set dedup (sort param strings lexicographically)
 - 16-03: FPS-based match condition: eval_phi(chain_end) == eval_phi(target)
 - 16-03: Five-transformation catalog: heine_1, heine_2, heine_3, sears, watson
+- 16-02: Scalar (QRat) rhs_builder interface for prove_nonterminating (avoids eval_phi negative-power bug)
+- 16-02: Re-derive recurrence at each verification n (concrete-q coefficients are n-specific)
+- 16-02: compute_sum_at_q for scalar sum evaluation via term-ratio accumulation
 
 ### Pending Todos
 
@@ -110,5 +113,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 16-03-PLAN.md (BFS Transformation Chain Search). Phase 16 plan 3/3 done.
+Stopped at: Completed 16-02-PLAN.md (Nonterminating Identity Proofs). 274 Rust tests.
 Resume file: .planning/ROADMAP.md
