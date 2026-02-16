@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-15)
 ## Current Position
 
 Phase: 16 of 17 (Extensions)
-Plan: 1 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: Executing Phase 16
-Last activity: 2026-02-16 — Completed 16-01 (q-Petkovsek Solver)
+Last activity: 2026-02-16 — Completed 16-03 (BFS Transformation Chain Search)
 
-Progress: [===========================================   ] 90% (v1.0+v1.1 complete, v1.2 phases 13-15 complete, 16 plan 1/3)
+Progress: [============================================= ] 94% (v1.0+v1.1 complete, v1.2 phases 13-15 complete, 16 plan 3/3)
 
 ## v1.0 Performance Metrics
 
@@ -52,7 +52,7 @@ Progress: [===========================================   ] 90% (v1.0+v1.1 comple
 | 13 - Polynomial Infrastructure | 3/3 | 13 min | 4 min |
 | 14 - q-Gosper Algorithm | 3/3 | 19 min | 6 min |
 | 15 - q-Zeilberger & WZ Certificates | 3/3 | 62 min | 21 min |
-| 16 - Extensions | 1/3 | 4 min | 4 min |
+| 16 - Extensions | 3/3 | 9 min | 3 min |
 
 ## Accumulated Context
 
@@ -93,6 +93,10 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 16-01: LCM normalization for QRat coefficients before rational root search
 - 16-01: ClosedForm reserved for Pochhammer factorizations; pure q-power ratios return None
 - 16-01: Divisor candidate cap at 5000 to prevent combinatorial explosion
+- 16-03: BFS (not DFS) for shortest-path guarantee in transformation chains
+- 16-03: Order-independent key normalization for visited-set dedup (sort param strings lexicographically)
+- 16-03: FPS-based match condition: eval_phi(chain_end) == eval_phi(target)
+- 16-03: Five-transformation catalog: heine_1, heine_2, heine_3, sears, watson
 
 ### Pending Todos
 
@@ -106,5 +110,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 16-01-PLAN.md (q-Petkovsek solver). Phase 16 plan 2/3 next.
-Resume file: .planning/phases/16-extensions/16-02-PLAN.md
+Stopped at: Completed 16-03-PLAN.md (BFS Transformation Chain Search). Phase 16 plan 3/3 done.
+Resume file: .planning/ROADMAP.md
