@@ -41,7 +41,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for details.
 **Milestone Goal:** Machine-prove q-hypergeometric identities using q-Gosper, q-Zeilberger, creative telescoping, and WZ certificates -- completing the transition from Garvan's Maple toolbox to a self-contained proving engine.
 
 - [x] **Phase 13: Polynomial Infrastructure** - Exact polynomial and rational function arithmetic over QRat
-- [ ] **Phase 14: q-Gosper Algorithm** - Indefinite q-hypergeometric summation via Gosper's algorithm
+- [x] **Phase 14: q-Gosper Algorithm** - Indefinite q-hypergeometric summation via Gosper's algorithm
 - [ ] **Phase 15: q-Zeilberger & WZ Certificates** - Creative telescoping and WZ proof certificates for definite sums
 - [ ] **Phase 16: Extensions** - Recurrence solving, nonterminating proofs, transformation discovery
 - [ ] **Phase 17: Python API & Documentation** - DSL functions, docstrings, and Sphinx pages for all new algorithms
@@ -77,9 +77,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 14-01-PLAN.md -- Term ratio extraction (GOSP-01) and q-dispersion computation (GOSP-02)
-- [ ] 14-02-PLAN.md -- Gosper normal form decomposition (GOSP-03) and key equation solver (GOSP-04)
-- [ ] 14-03-PLAN.md -- Complete q-Gosper algorithm (GOSP-05) with integration tests
+- [x] 14-01-PLAN.md -- Term ratio extraction (GOSP-01) and q-dispersion computation (GOSP-02)
+- [x] 14-02-PLAN.md -- Gosper normal form decomposition (GOSP-03) and key equation solver (GOSP-04)
+- [x] 14-03-PLAN.md -- Complete q-Gosper algorithm (GOSP-05) with integration tests
 
 ### Phase 15: q-Zeilberger & WZ Certificates
 **Goal**: Users can prove q-hypergeometric identities by obtaining recurrences via creative telescoping and verifying them with WZ certificates
@@ -145,7 +145,7 @@ Plans:
 | 11. CI/CD Pipeline | v1.1 | 2/2 | Complete | 2026-02-15 |
 | 12. Documentation & UX Polish | v1.1 | 4/4 | Complete | 2026-02-15 |
 | 13. Polynomial Infrastructure | v1.2 | 3/3 | Complete | 2026-02-15 |
-| 14. q-Gosper Algorithm | v1.2 | 0/3 | Not started | - |
+| 14. q-Gosper Algorithm | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 0/TBD | Not started | - |
 | 16. Extensions | v1.2 | 0/TBD | Not started | - |
 | 17. Python API & Documentation | v1.2 | 0/TBD | Not started | - |
