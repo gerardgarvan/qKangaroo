@@ -44,7 +44,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for details.
 - [x] **Phase 14: q-Gosper Algorithm** - Indefinite q-hypergeometric summation via Gosper's algorithm
 - [x] **Phase 15: q-Zeilberger & WZ Certificates** - Creative telescoping and WZ proof certificates for definite sums
 - [x] **Phase 16: Extensions** - Recurrence solving, nonterminating proofs, transformation discovery
-- [ ] **Phase 17: Python API & Documentation** - DSL functions, docstrings, and Sphinx pages for all new algorithms
+- [x] **Phase 17: Python API & Documentation** - DSL functions, docstrings, and Sphinx pages for all new algorithms
 
 ## Phase Details
 
@@ -126,8 +126,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md -- q_zeilberger, verify_wz, q_petkovsek DSL functions + q_gosper stub fix (API-01)
-- [ ] 17-02-PLAN.md -- prove_nonterminating, find_transformation_chain DSL functions + Sphinx docs (API-02, API-03, API-04)
+- [x] 17-01-PLAN.md -- q_zeilberger, verify_wz, q_petkovsek DSL functions + q_gosper stub fix (API-01)
+- [x] 17-02-PLAN.md -- prove_nonterminating, find_transformation_chain DSL functions + Sphinx docs (API-02, API-03, API-04)
 
 ## Progress
 
@@ -149,4 +149,4 @@ Plans:
 | 14. q-Gosper Algorithm | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 15. q-Zeilberger & WZ Certificates | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 16. Extensions | v1.2 | 3/3 | Complete | 2026-02-16 |
-| 17. Python API & Documentation | v1.2 | 0/2 | Not started | - |
+| 17. Python API & Documentation | v1.2 | 2/2 | Complete | 2026-02-16 |
