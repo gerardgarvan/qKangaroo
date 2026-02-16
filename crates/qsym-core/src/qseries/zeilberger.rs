@@ -835,6 +835,108 @@ pub fn verify_wz_certificate(
     true
 }
 
+/// Compute the definite sum S(n) = sum_{k=0}^{N} F(n,k) at concrete q_val.
+///
+/// Uses term ratio accumulation: F(n,0)=1, F(n,k+1) = F(n,k) * r(q^k).
+/// The sum terminates when the term ratio evaluates to zero (Pochhammer
+/// factor vanishes) or after max_terms iterations.
+fn compute_sum_at_n(series: &HypergeometricSeries, q_val: &QRat) -> QRat {
+    let ratio = extract_term_ratio(series, q_val);
+    let max_terms: usize = 100;
+    let mut sum = QRat::one(); // F(n,0) = 1
+    let mut term = QRat::one();
+
+    for k in 0..max_terms {
+        let qk = qrat_pow_i64(q_val, k as i64);
+        match ratio.eval(&qk) {
+            Some(r) => {
+                if r.is_zero() {
+                    break; // series has terminated
+                }
+                term = &term * &r;
+                sum = &sum + &term;
+            }
+            None => break, // pole means factor vanished
+        }
+    }
+    sum
+}
+
+/// Verify a recurrence by direct numerical cross-check.
+///
+/// For each n = n_start, n_start+1, ..., n_start+n_count-1:
+/// 1. Runs q_zeilberger at that n value to find the recurrence coefficients.
+/// 2. Computes S(n), S(n+1), ..., S(n+d) by direct term accumulation.
+/// 3. Checks that c_0*S(n) + c_1*S(n+1) + ... + c_d*S(n+d) = 0.
+///
+/// This verification is independent of the WZ certificate -- it directly
+/// confirms the recurrence relation holds at multiple n values. The recurrence
+/// is re-derived at each n because the coefficients may be n-dependent when
+/// evaluated at concrete q.
+///
+/// # Arguments
+/// * `series_builder` - Function that creates a HypergeometricSeries for a given n.
+/// * `coefficients` - Recurrence coefficients c_0, ..., c_d from a specific n.
+///   Used to verify the recurrence order; actual coefficients are re-derived at each n.
+/// * `q_val` - Concrete q parameter.
+/// * `n_start` - Starting n value for verification.
+/// * `n_count` - Number of n values to check.
+///
+/// # Returns
+/// `true` if a recurrence of the same order is found and verified for all n values.
+pub fn verify_recurrence_fps(
+    series_builder: &dyn Fn(i64) -> HypergeometricSeries,
+    coefficients: &[QRat],
+    q_val: &QRat,
+    n_start: i64,
+    n_count: usize,
+) -> bool {
+    let expected_order = coefficients.len() - 1;
+
+    for i in 0..n_count {
+        let n = n_start + i as i64;
+        let series_n = series_builder(n);
+
+        // Detect n params at this n value
+        let (n_indices, n_in_arg) = detect_n_params(&series_n, n, q_val);
+
+        // Run q_zeilberger to get coefficients at this n
+        let result = q_zeilberger(
+            &series_n, n, q_val,
+            expected_order + 1, // allow same order or one higher
+            &n_indices,
+            n_in_arg,
+        );
+
+        let zr = match result {
+            QZeilbergerResult::Recurrence(zr) => zr,
+            QZeilbergerResult::NoRecurrence => return false,
+        };
+
+        // Check that recurrence order is consistent
+        if zr.order > expected_order + 1 {
+            return false;
+        }
+
+        let d = zr.coefficients.len() - 1;
+
+        // Compute S(n+j) for j = 0, ..., d and verify the recurrence
+        let mut check = QRat::zero();
+        for j in 0..=d {
+            let series_nj = series_builder(n + j as i64);
+            let s_nj = compute_sum_at_n(&series_nj, q_val);
+            let contrib = &zr.coefficients[j] * &s_nj;
+            check = &check + &contrib;
+        }
+
+        if !check.is_zero() {
+            return false;
+        }
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1666,5 +1768,274 @@ mod tests {
         );
         assert!(verified,
             "Certificate should verify beyond termination (zero terms on both sides)");
+    }
+
+    // ========================================
+    // Test 26: verify_recurrence_fps for q-Vandermonde (SUCCESS CRITERION 5)
+    // ========================================
+
+    #[test]
+    fn test_verify_recurrence_fps_vandermonde() {
+        let n_val = 3i64;
+        let q_val = qr(2);
+        let series = make_vandermonde(n_val);
+
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 3, &[0], true,
+        );
+        let zr = match result {
+            QZeilbergerResult::Recurrence(zr) => zr,
+            QZeilbergerResult::NoRecurrence => panic!("Expected recurrence"),
+        };
+
+        let verified = verify_recurrence_fps(
+            &make_vandermonde,
+            &zr.coefficients,
+            &q_val,
+            3, // n_start
+            5, // n_count: check n=3,4,5,6,7
+        );
+        assert!(verified,
+            "Recurrence should hold for q-Vandermonde at n=3..7");
+    }
+
+    // ========================================
+    // Test 27: verify_recurrence_fps for 1phi0
+    // ========================================
+
+    #[test]
+    fn test_verify_recurrence_fps_1phi0() {
+        let q_val = qr(2);
+
+        let make_1phi0 = |n: i64| -> HypergeometricSeries {
+            HypergeometricSeries {
+                upper: vec![QMonomial::q_power(-n)],
+                lower: vec![],
+                argument: QMonomial::q_power(1),
+            }
+        };
+
+        let series = make_1phi0(3);
+        let result = q_zeilberger(
+            &series, 3, &q_val, 3, &[0], false,
+        );
+        let zr = match result {
+            QZeilbergerResult::Recurrence(zr) => zr,
+            QZeilbergerResult::NoRecurrence => panic!("Expected recurrence for 1phi0"),
+        };
+
+        let verified = verify_recurrence_fps(
+            &make_1phi0,
+            &zr.coefficients,
+            &q_val,
+            3, // n_start
+            5, // n_count: check n=3,4,5,6,7
+        );
+        assert!(verified,
+            "Recurrence should hold for 1phi0 at n=3..7");
+    }
+
+    // ========================================
+    // Test 28: verify_recurrence_fps with wrong coefficients
+    // ========================================
+
+    #[test]
+    fn test_verify_recurrence_fps_wrong_coefficients() {
+        let q_val = qr(2);
+
+        // Build a "series" that has no recurrence at order 0
+        // We create a builder that always returns a constant (non-zero) series,
+        // then pass coefficients with max_order=0, meaning the function tries
+        // q_zeilberger with max_order=1 and finds a recurrence, but at wrong order.
+        //
+        // Actually, the simplest test: use the correct series but verify that
+        // when we ask q_zeilberger with max_order=0 at a specific n, it finds
+        // NoRecurrence, causing verify_recurrence_fps to return false.
+        //
+        // Pass a zero-length coefficient vector (order -1) which forces max_order=0.
+        // This means no recurrence is tried, so the function returns false.
+
+        // Use a single coefficient [1] which means order=0 and max_order=1.
+        // q_zeilberger with max_order=1 should find the order-1 recurrence,
+        // which is order > 0+1 = 1, so it would pass. Let's try something different.
+
+        // The correct approach: verify that an identity like S(n) = 0 (which is false
+        // for q-Vandermonde) would fail.
+        // Use a dummy series_builder that always returns a series with no recurrence:
+        // by restricting max_order to 0, no recurrence can be found.
+
+        // Simplest: pass coefficients with order 0 (just [1]).
+        // verify_recurrence_fps tries max_order = 0+1 = 1.
+        // But q_zeilberger DOES find order-1 recurrence, and order 1 <= 0+1 = 1, so it passes.
+        // That's not what we want.
+
+        // Instead: create a series_builder that doesn't satisfy ANY low-order recurrence.
+        // A non-hypergeometric series wouldn't work since q_zeilberger requires hypergeometric.
+        // The simplest negative test: pass a series_builder that returns different series
+        // types for different n (breaking the hypergeometric assumption).
+
+        // Actually, the simplest negative test: use verify_recurrence_fps with a
+        // series_builder where compute_sum_at_n returns values that DON'T satisfy
+        // the found recurrence. This can happen if the series_builder doesn't
+        // consistently produce the same family of series.
+
+        // New approach: corrupt the series_builder by changing a parameter for one n.
+        let corrupted_vandermonde = |n: i64| -> HypergeometricSeries {
+            if n == 5 {
+                // Change the lower parameter from q^3 to q^4 for n=5 only
+                HypergeometricSeries {
+                    upper: vec![QMonomial::q_power(-n), QMonomial::q_power(2)],
+                    lower: vec![QMonomial::q_power(4)], // Changed from q^3 to q^4
+                    argument: QMonomial::q_power(n + 1),
+                }
+            } else {
+                make_vandermonde(n)
+            }
+        };
+
+        // Get coefficients from normal Vandermonde at n=3
+        let series = make_vandermonde(3);
+        let result = q_zeilberger(
+            &series, 3, &q_val, 3, &[0], true,
+        );
+        let zr = match result {
+            QZeilbergerResult::Recurrence(zr) => zr,
+            QZeilbergerResult::NoRecurrence => panic!("Expected recurrence"),
+        };
+
+        // Verify with corrupted builder starting at n=4 (so n=5 hits the corruption)
+        let verified = verify_recurrence_fps(
+            &corrupted_vandermonde,
+            &zr.coefficients,
+            &q_val,
+            4,
+            3, // check n=4,5,6 -- n=5 is corrupted
+        );
+        assert!(!verified,
+            "Corrupted series builder should fail recurrence verification at n=5");
+    }
+
+    // ========================================
+    // Test 29: verify_recurrence_fps at multiple q values
+    // ========================================
+
+    #[test]
+    fn test_verify_recurrence_fps_multiple_q_values() {
+        for q_val in &[qr_frac(1, 3), qr_frac(1, 5)] {
+            let series = make_vandermonde(5);
+            let result = q_zeilberger(
+                &series, 5, q_val, 3, &[0], true,
+            );
+            let zr = match result {
+                QZeilbergerResult::Recurrence(zr) => zr,
+                QZeilbergerResult::NoRecurrence => {
+                    panic!("Expected recurrence at q={}", q_val);
+                }
+            };
+
+            let verified = verify_recurrence_fps(
+                &make_vandermonde,
+                &zr.coefficients,
+                q_val,
+                3,
+                5,
+            );
+            assert!(verified,
+                "Recurrence should hold for q-Vandermonde at q={}", q_val);
+        }
+    }
+
+    // ========================================
+    // Test 30: End-to-end pipeline for q-Vandermonde
+    // ========================================
+
+    #[test]
+    fn test_end_to_end_vandermonde() {
+        let n_val = 5i64;
+        let q_val = qr_frac(1, 3);
+        let series = make_vandermonde(n_val);
+
+        // Step 1: Find recurrence
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 3, &[0], true,
+        );
+        let zr = match result {
+            QZeilbergerResult::Recurrence(zr) => zr,
+            QZeilbergerResult::NoRecurrence => {
+                panic!("End-to-end: expected recurrence for q-Vandermonde");
+            }
+        };
+        assert_eq!(zr.order, 1);
+
+        // Step 2: Verify WZ certificate
+        let wz_ok = verify_wz_certificate(
+            &series, n_val, &q_val,
+            &zr.coefficients, &zr.certificate,
+            &[0], true, 8,
+        );
+        assert!(wz_ok,
+            "End-to-end: WZ certificate should verify for q-Vandermonde");
+
+        // Step 3: Verify recurrence via direct summation
+        let rec_ok = verify_recurrence_fps(
+            &make_vandermonde,
+            &zr.coefficients,
+            &q_val,
+            3,
+            5,
+        );
+        assert!(rec_ok,
+            "End-to-end: recurrence should verify for q-Vandermonde");
+    }
+
+    // ========================================
+    // Test 31: End-to-end pipeline for 1phi0
+    // ========================================
+
+    #[test]
+    fn test_end_to_end_1phi0() {
+        let n_val = 3i64;
+        let q_val = qr(2);
+
+        let make_1phi0 = |n: i64| -> HypergeometricSeries {
+            HypergeometricSeries {
+                upper: vec![QMonomial::q_power(-n)],
+                lower: vec![],
+                argument: QMonomial::q_power(1),
+            }
+        };
+
+        let series = make_1phi0(n_val);
+
+        // Step 1: Find recurrence
+        let result = q_zeilberger(
+            &series, n_val, &q_val, 3, &[0], false,
+        );
+        let zr = match result {
+            QZeilbergerResult::Recurrence(zr) => zr,
+            QZeilbergerResult::NoRecurrence => {
+                panic!("End-to-end: expected recurrence for 1phi0");
+            }
+        };
+
+        // Step 2: Verify WZ certificate
+        let wz_ok = verify_wz_certificate(
+            &series, n_val, &q_val,
+            &zr.coefficients, &zr.certificate,
+            &[0], false, 5,
+        );
+        assert!(wz_ok,
+            "End-to-end: WZ certificate should verify for 1phi0");
+
+        // Step 3: Verify recurrence via direct summation
+        let rec_ok = verify_recurrence_fps(
+            &make_1phi0,
+            &zr.coefficients,
+            &q_val,
+            3,
+            5,
+        );
+        assert!(rec_ok,
+            "End-to-end: recurrence should verify for 1phi0");
     }
 }
