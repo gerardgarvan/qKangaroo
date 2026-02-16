@@ -19,6 +19,8 @@ use qsym_core::qseries::{
     q_zeilberger, QZeilbergerResult, detect_n_params,
     verify_wz_certificate,
     q_petkovsek,
+    prove_nonterminating, NonterminatingProofResult,
+    find_transformation_chain, TransformationChainResult, TransformationStep,
 };
 
 use crate::convert::{qint_to_python, qrat_to_python};
@@ -3601,4 +3603,360 @@ pub fn q_petkovsek_fn(
         .collect::<PyResult<_>>()?;
 
     Ok(PyList::new(py, &items)?.into())
+}
+
+// ===========================================================================
+// GROUP 13: Identity Proving Extensions
+// ===========================================================================
+
+/// Raise a QRat to a signed integer power via repeated squaring.
+/// Duplicated locally (private in gosper.rs, zeilberger.rs, nonterminating.rs).
+fn qrat_pow_i64(base: &QRat, exp: i64) -> QRat {
+    if exp == 0 {
+        return QRat::one();
+    }
+    if exp > 0 {
+        qrat_pow_u32(base, exp as u32)
+    } else {
+        assert!(
+            !base.is_zero(),
+            "qrat_pow_i64: zero base with negative exponent"
+        );
+        let positive = qrat_pow_u32(base, (-exp) as u32);
+        &QRat::one() / &positive
+    }
+}
+
+/// Raise a QRat to a u32 power via repeated squaring.
+fn qrat_pow_u32(base: &QRat, exp: u32) -> QRat {
+    if exp == 0 {
+        return QRat::one();
+    }
+    if exp == 1 {
+        return base.clone();
+    }
+    let mut result = QRat::one();
+    let mut b = base.clone();
+    let mut e = exp;
+    while e > 0 {
+        if e & 1 == 1 {
+            result = &result * &b;
+        }
+        e >>= 1;
+        if e > 0 {
+            b = &b * &b;
+        }
+    }
+    result
+}
+
+/// Compute (q^base_power; q)_n at a concrete q value.
+///
+/// Returns the product prod_{k=0}^{n-1} (1 - q^{base_power} * q^k)
+/// = prod_{k=0}^{n-1} (1 - q^{base_power + k}).
+fn pochhammer_scalar_val(q_val: &QRat, base_power: i64, n: i64) -> QRat {
+    if n <= 0 {
+        return QRat::one();
+    }
+    let mut result = QRat::one();
+    for k in 0..n {
+        let power = base_power + k;
+        let q_pow = qrat_pow_i64(q_val, power);
+        result = &result * &(&QRat::one() - &q_pow);
+    }
+    result
+}
+
+/// Prove a nonterminating q-hypergeometric identity via Chen-Hou-Mu method.
+///
+/// Uses parameter specialization to reduce a nonterminating identity to
+/// a family of terminating ones, then proves both sides satisfy the same
+/// recurrence via q-Zeilberger and checks initial conditions.
+///
+/// The LHS is a hypergeometric series with n-independent upper parameters
+/// ``upper_fixed``, one n-dependent upper parameter $q^{\text{n\_param\_offset} - n}$,
+/// lower parameters ``lower``, and argument $q^{\text{z\_pow\_offset} + n}$.
+///
+/// The RHS is a ratio of q-Pochhammer symbols at concrete q:
+/// $\frac{\prod_b (q^b; q)_n}{\prod_b (q^b; q)_n}$ where numerator/denominator
+/// bases are given by ``rhs_numer_bases`` and ``rhs_denom_bases``.
+///
+/// Parameters
+/// ----------
+/// upper_fixed : list[tuple[int, int, int]]
+///     n-independent upper parameters as ``(coeff_num, coeff_den, power)`` triples.
+/// n_param_offset : int
+///     The n-dependent upper parameter is $q^{\text{offset} - n}$.
+/// lower : list[tuple[int, int, int]]
+///     Lower parameters as ``(coeff_num, coeff_den, power)`` triples.
+/// z_pow_offset : int
+///     The argument is $q^{\text{offset} + n}$.
+/// rhs_numer_bases : list[int]
+///     Each base $b$ contributes $(q^b; q)_n$ to the RHS numerator.
+/// rhs_denom_bases : list[int]
+///     Each base $b$ contributes $(q^b; q)_n$ to the RHS denominator.
+/// q_num : int
+///     Numerator of the concrete $q$ value.
+/// q_den : int
+///     Denominator of the concrete $q$ value.
+/// n_test : int
+///     Test value of $n$ for parameter specialization ($\ge 5$ recommended).
+/// max_order : int
+///     Maximum recurrence order to search via q-Zeilberger.
+///
+/// Returns
+/// -------
+/// dict
+///     On success: ``{"proved": True, "recurrence_order": int,
+///     "coefficients": list[Fraction], "initial_conditions_checked": int}``.
+///     On failure: ``{"proved": False, "reason": str}``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import prove_nonterminating
+/// >>> # Prove the q-Gauss summation (nonterminating form):
+/// >>> # 2phi1(a, b; c; q, c/(ab)) = (c/a; q)_inf * (c/b; q)_inf / ((c; q)_inf * (c/(ab); q)_inf)
+/// >>> # Specialized: upper_fixed=[(1,1,1)], n_param_offset=2, lower=[(1,1,3)],
+/// >>> # z_pow_offset=2, rhs_numer_bases=[2, 1], rhs_denom_bases=[3, 0]
+/// >>> result = prove_nonterminating(
+/// ...     [(1, 1, 1)], 2, [(1, 1, 3)], 2,
+/// ...     [2, 1], [3, 0], 2, 1, 5, 3)
+/// >>> result["proved"]
+/// True
+///
+/// See Also
+/// --------
+/// q_zeilberger : Find recurrence via creative telescoping.
+/// q_gosper : Indefinite q-hypergeometric summation.
+#[pyfunction]
+#[pyo3(name = "prove_nonterminating", signature = (upper_fixed, n_param_offset, lower, z_pow_offset, rhs_numer_bases, rhs_denom_bases, q_num, q_den, n_test, max_order))]
+pub fn prove_nonterminating_fn(
+    py: Python<'_>,
+    upper_fixed: Vec<(i64, i64, i64)>,
+    n_param_offset: i64,
+    lower: Vec<(i64, i64, i64)>,
+    z_pow_offset: i64,
+    rhs_numer_bases: Vec<i64>,
+    rhs_denom_bases: Vec<i64>,
+    q_num: i64,
+    q_den: i64,
+    n_test: i64,
+    max_order: usize,
+) -> PyResult<PyObject> {
+    let upper_fixed_qm = parse_qmonomials(upper_fixed);
+    let lower_qm = parse_qmonomials(lower);
+    let q_val = QRat::from((q_num, q_den));
+
+    // Clone what we need for the closures
+    let q_val_lhs = q_val.clone();
+    let rhs_numer = rhs_numer_bases.clone();
+    let rhs_denom = rhs_denom_bases.clone();
+
+    let lhs_builder = move |n: i64| -> HypergeometricSeries {
+        let mut upper = upper_fixed_qm.clone();
+        upper.push(QMonomial::q_power(n_param_offset - n));
+        HypergeometricSeries {
+            upper,
+            lower: lower_qm.clone(),
+            argument: QMonomial::q_power(z_pow_offset + n),
+        }
+    };
+
+    let rhs_builder = move |n: i64| -> QRat {
+        if n == 0 {
+            return QRat::one();
+        }
+        let mut numer = QRat::one();
+        for &base in &rhs_numer {
+            numer = &numer * &pochhammer_scalar_val(&q_val_lhs, base, n);
+        }
+        let mut denom = QRat::one();
+        for &base in &rhs_denom {
+            denom = &denom * &pochhammer_scalar_val(&q_val_lhs, base, n);
+        }
+        if denom.is_zero() {
+            return QRat::zero();
+        }
+        &numer / &denom
+    };
+
+    let result = prove_nonterminating(&lhs_builder, &rhs_builder, &q_val, n_test, max_order);
+
+    let dict = PyDict::new(py);
+    match result {
+        NonterminatingProofResult::Proved {
+            recurrence_order,
+            recurrence_coefficients,
+            initial_conditions_checked,
+        } => {
+            dict.set_item("proved", true)?;
+            dict.set_item("recurrence_order", recurrence_order)?;
+            dict.set_item(
+                "coefficients",
+                qrat_vec_to_pylist(py, &recurrence_coefficients)?,
+            )?;
+            dict.set_item("initial_conditions_checked", initial_conditions_checked)?;
+        }
+        NonterminatingProofResult::Failed { reason } => {
+            dict.set_item("proved", false)?;
+            dict.set_item("reason", reason)?;
+        }
+    }
+    Ok(dict.into())
+}
+
+/// Search for a chain of transformations between two hypergeometric series.
+///
+/// Uses breadth-first search over the catalog of known transformations
+/// (Heine 1/2/3, Sears, Watson) to find a sequence connecting the source
+/// series to the target series, with accumulated prefactors.
+///
+/// Parameters
+/// ----------
+/// session : QSession
+///     The computation session (needed for symbolic variable lookup).
+/// source_upper : list[tuple[int, int, int]]
+///     Source series upper parameters as ``(coeff_num, coeff_den, power)`` triples.
+/// source_lower : list[tuple[int, int, int]]
+///     Source series lower parameters.
+/// source_z_num : int
+///     Source argument numerator coefficient.
+/// source_z_den : int
+///     Source argument denominator coefficient.
+/// source_z_pow : int
+///     Source argument power of $q$.
+/// target_upper : list[tuple[int, int, int]]
+///     Target series upper parameters.
+/// target_lower : list[tuple[int, int, int]]
+///     Target series lower parameters.
+/// target_z_num : int
+///     Target argument numerator coefficient.
+/// target_z_den : int
+///     Target argument denominator coefficient.
+/// target_z_pow : int
+///     Target argument power of $q$.
+/// max_depth : int
+///     Maximum chain length (BFS depth bound).
+/// order : int
+///     Truncation order for FPS comparison.
+///
+/// Returns
+/// -------
+/// dict
+///     On success: ``{"found": True, "steps": list[dict], "total_prefactor": QSeries}``
+///     where each step dict has ``"name"`` (str) and ``"prefactor"`` (QSeries).
+///     On failure: ``{"found": False, "max_depth": int}``.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, find_transformation_chain
+/// >>> s = QSession()
+/// >>> # Search for a chain from 2phi1(a,b;c;q,z) to a transformed form
+/// >>> result = find_transformation_chain(
+/// ...     s,
+/// ...     [(1,1,1), (1,1,2)], [(1,1,3)], 1, 1, 1,  # source
+/// ...     [(1,1,3), (1,1,1)], [(1,1,2)], 1, 1, 1,   # target
+/// ...     3, 20)
+///
+/// See Also
+/// --------
+/// heine1 : Heine's first transformation.
+/// heine2 : Heine's second transformation.
+/// heine3 : Heine's third transformation.
+#[pyfunction]
+#[pyo3(name = "find_transformation_chain", signature = (session, source_upper, source_lower, source_z_num, source_z_den, source_z_pow, target_upper, target_lower, target_z_num, target_z_den, target_z_pow, max_depth, order))]
+pub fn find_transformation_chain_fn(
+    py: Python<'_>,
+    session: &QSession,
+    source_upper: Vec<(i64, i64, i64)>,
+    source_lower: Vec<(i64, i64, i64)>,
+    source_z_num: i64,
+    source_z_den: i64,
+    source_z_pow: i64,
+    target_upper: Vec<(i64, i64, i64)>,
+    target_lower: Vec<(i64, i64, i64)>,
+    target_z_num: i64,
+    target_z_den: i64,
+    target_z_pow: i64,
+    max_depth: usize,
+    order: i64,
+) -> PyResult<PyObject> {
+    // Lock session to get SymbolId for q, then drop the lock
+    let variable = {
+        let mut inner = session.inner.lock().unwrap();
+        inner.get_or_create_symbol_id("q")
+    };
+
+    let source = HypergeometricSeries {
+        upper: parse_qmonomials(source_upper),
+        lower: parse_qmonomials(source_lower),
+        argument: QMonomial::new(QRat::from((source_z_num, source_z_den)), source_z_pow),
+    };
+
+    let target = HypergeometricSeries {
+        upper: parse_qmonomials(target_upper),
+        lower: parse_qmonomials(target_lower),
+        argument: QMonomial::new(QRat::from((target_z_num, target_z_den)), target_z_pow),
+    };
+
+    let result = find_transformation_chain(&source, &target, max_depth, variable, order);
+
+    let dict = PyDict::new(py);
+    match result {
+        TransformationChainResult::Found {
+            steps,
+            total_prefactor,
+        } => {
+            dict.set_item("found", true)?;
+
+            let step_list: Vec<PyObject> = steps
+                .iter()
+                .map(|step| {
+                    let step_dict = PyDict::new(py);
+                    step_dict.set_item("name", &step.name)?;
+                    let prefactor_series = QSeries {
+                        fps: step.step_prefactor.clone(),
+                    };
+                    let prefactor_obj = prefactor_series.into_pyobject(py)?;
+                    step_dict.set_item("prefactor", prefactor_obj)?;
+
+                    // Represent result_series as parameter lists
+                    let upper_repr: Vec<(String, i64)> = step
+                        .result_series
+                        .upper
+                        .iter()
+                        .map(|m| (format!("{}", m.coeff), m.power))
+                        .collect();
+                    let lower_repr: Vec<(String, i64)> = step
+                        .result_series
+                        .lower
+                        .iter()
+                        .map(|m| (format!("{}", m.coeff), m.power))
+                        .collect();
+                    let arg_repr = (
+                        format!("{}", step.result_series.argument.coeff),
+                        step.result_series.argument.power,
+                    );
+                    step_dict.set_item("upper", upper_repr)?;
+                    step_dict.set_item("lower", lower_repr)?;
+                    step_dict.set_item("argument", arg_repr)?;
+
+                    Ok(step_dict.into())
+                })
+                .collect::<PyResult<_>>()?;
+
+            dict.set_item("steps", PyList::new(py, &step_list)?)?;
+
+            let total_pf = QSeries {
+                fps: total_prefactor,
+            };
+            let total_pf_obj = total_pf.into_pyobject(py)?;
+            dict.set_item("total_prefactor", total_pf_obj)?;
+        }
+        TransformationChainResult::NotFound { max_depth } => {
+            dict.set_item("found", false)?;
+            dict.set_item("max_depth", max_depth)?;
+        }
+    }
+    Ok(dict.into())
 }
