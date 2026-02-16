@@ -566,14 +566,29 @@ pub fn winquist(
 ///
 /// Examples
 /// --------
+/// The series is in $q^{1/4}$, so the exponents are multiples of 1/4 in $q$:
+///
 /// >>> from q_kangaroo import QSession, theta2
 /// >>> s = QSession()
 /// >>> t2 = theta2(s, 40)
+/// >>> print(t2)  # 2*q + 2*q^9 + 2*q^25 + O(q^40)
+///
+/// Here the variable is $X = q^{1/4}$, so ``2*q`` means $2 X^1 = 2q^{1/4}$,
+/// and ``2*q^9`` means $2 X^9 = 2q^{9/4}$.
+///
+/// Notes
+/// -----
+/// The second Jacobi theta function. In the $q^{1/4}$ convention used here,
+/// $\theta_2(q) = 2q^{1/4}\sum_{n=0}^{\infty} q^{n(n+1)}$. The variable in
+/// the returned series represents $X = q^{1/4}$, so the constant term is 0
+/// and the $X^1$ coefficient is 2. The three Jacobi theta functions satisfy
+/// the identity $\theta_2(q)^4 + \theta_4(q)^4 = \theta_3(q)^4$.
 ///
 /// See Also
 /// --------
 /// theta3 : Jacobi theta function $\theta_3(q)$.
 /// theta4 : Jacobi theta function $\theta_4(q)$.
+/// etaq : Theta functions factor through eta products internally.
 #[pyfunction]
 pub fn theta2(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -601,14 +616,28 @@ pub fn theta2(session: &QSession, order: i64) -> QSeries {
 ///
 /// Examples
 /// --------
+/// The nonzero coefficients occur at perfect squares:
+///
 /// >>> from q_kangaroo import QSession, theta3
 /// >>> s = QSession()
-/// >>> t3 = theta3(s, 20)  # 1 + 2q + 2q^4 + 2q^9 + ...
+/// >>> t3 = theta3(s, 20)
+/// >>> print(t3)  # 1 + 2*q + 2*q^4 + 2*q^9 + 2*q^16 + O(q^20)
+///
+/// The coefficient of $q^n$ in $\theta_3(q)^2$ counts the number of
+/// representations of $n$ as a sum of two squares $r_2(n)$.
+///
+/// Notes
+/// -----
+/// $\theta_3(q) = \sum_{n=-\infty}^{\infty} q^{n^2} = 1 + 2\sum_{n=1}^{\infty} q^{n^2}$.
+/// The coefficient of $q^n$ in $\theta_3(q)^k$ counts the number of
+/// representations of $n$ as a sum of $k$ squares (with signs and order).
+/// Satisfies the Jacobi identity $\theta_3(q)^4 = \theta_2(q)^4 + \theta_4(q)^4$.
 ///
 /// See Also
 /// --------
 /// theta2 : Jacobi theta function $\theta_2(q)$.
 /// theta4 : Jacobi theta function $\theta_4(q)$.
+/// aqprod : Product representation of theta functions.
 #[pyfunction]
 pub fn theta3(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -636,14 +665,24 @@ pub fn theta3(session: &QSession, order: i64) -> QSeries {
 ///
 /// Examples
 /// --------
+/// The alternating version of $\theta_3$:
+///
 /// >>> from q_kangaroo import QSession, theta4
 /// >>> s = QSession()
-/// >>> t4 = theta4(s, 20)  # 1 - 2q + 2q^4 - 2q^9 + ...
+/// >>> t4 = theta4(s, 20)
+/// >>> print(t4)  # 1 - 2*q + 2*q^4 - 2*q^9 + 2*q^16 + O(q^20)
+///
+/// Notes
+/// -----
+/// $\theta_4(q) = \sum_{n=-\infty}^{\infty} (-1)^n q^{n^2}$. This is the
+/// alternating version of $\theta_3$. Has the product form
+/// $\theta_4(q) = (q;q^2)_\infty^2 \cdot (q^2;q^2)_\infty$.
 ///
 /// See Also
 /// --------
 /// theta2 : Jacobi theta function $\theta_2(q)$.
 /// theta3 : Jacobi theta function $\theta_3(q)$.
+/// aqprod : Product representation of theta functions.
 #[pyfunction]
 pub fn theta4(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -674,18 +713,39 @@ pub fn theta4(session: &QSession, order: i64) -> QSeries {
 /// Examples
 /// --------
 /// >>> from q_kangaroo import partition_count
+/// >>> partition_count(0)
+/// 1
 /// >>> partition_count(5)
 /// 7
 /// >>> partition_count(100)
 /// 190569292536040
 ///
+/// Ramanujan's congruence $p(5n+4) \equiv 0 \pmod{5}$:
+///
+/// >>> partition_count(4)    # p(5*0+4) = 5, divisible by 5
+/// 5
+/// >>> partition_count(9)    # p(5*1+4) = 30, divisible by 5
+/// 30
+/// >>> partition_count(14)   # p(5*2+4) = 135, divisible by 5
+/// 135
+///
 /// Notes
 /// -----
 /// Computed via Euler's pentagonal recurrence with $O(n\sqrt{n})$ complexity.
+/// Ramanujan discovered the celebrated congruences:
+///
+/// - $p(5n+4) \equiv 0 \pmod{5}$
+/// - $p(7n+5) \equiv 0 \pmod{7}$
+/// - $p(11n+6) \equiv 0 \pmod{11}$
+///
+/// Use ``sift`` and ``findcong`` to discover and verify such congruences
+/// computationally.
 ///
 /// See Also
 /// --------
 /// partition_gf : Generating function $\sum p(n) q^n$.
+/// sift : Extract arithmetic subsequences from a series.
+/// findcong : Discover congruences in series coefficients.
 #[pyfunction]
 pub fn partition_count(py: Python<'_>, n: i64) -> PyResult<PyObject> {
     let result = qseries::partition_count(n);
@@ -713,13 +773,29 @@ pub fn partition_count(py: Python<'_>, n: i64) -> PyResult<PyObject> {
 /// --------
 /// >>> from q_kangaroo import QSession, partition_gf
 /// >>> s = QSession()
-/// >>> pgf = partition_gf(s, 20)  # 1 + q + 2q^2 + 3q^3 + 5q^4 + ...
+/// >>> pgf = partition_gf(s, 20)
+/// >>> print(pgf)
+/// >>> # 1 + q + 2*q^2 + 3*q^3 + 5*q^4 + 7*q^5 + 11*q^6 + 15*q^7 + 22*q^8 + ...
+///
+/// The coefficients are the partition numbers: $p(0)=1, p(1)=1, p(2)=2, p(3)=3, p(4)=5, \ldots$
+///
+/// Notes
+/// -----
+/// $\sum_{n=0}^{\infty} p(n)q^n = \prod_{k=1}^{\infty} \frac{1}{1-q^k}
+///   = \frac{1}{(q;q)_\infty}$.
+/// This is one of the most important generating functions in combinatorics.
+/// The connection to ``etaq`` is: ``partition_gf(s, N)`` equals the series
+/// inverse of ``etaq(s, 1, 1, N)``.
 ///
 /// See Also
 /// --------
 /// partition_count : Compute $p(n)$ directly.
 /// distinct_parts_gf : Partitions into distinct parts.
 /// odd_parts_gf : Partitions into odd parts.
+/// etaq : Euler function $(q;q)_\infty$ (reciprocal of partition_gf).
+/// aqprod : General q-Pochhammer symbol.
+/// sift : Extract arithmetic subsequences for congruence analysis.
+/// findcong : Discover partition congruences.
 #[pyfunction]
 pub fn partition_gf(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -747,11 +823,27 @@ pub fn partition_gf(session: &QSession, order: i64) -> QSeries {
 /// >>> from q_kangaroo import QSession, distinct_parts_gf
 /// >>> s = QSession()
 /// >>> dpgf = distinct_parts_gf(s, 20)
+/// >>> print(dpgf)
+/// >>> # 1 + q + q^2 + 2*q^3 + 2*q^4 + 3*q^5 + 4*q^6 + 5*q^7 + 6*q^8 + ...
+///
+/// By Euler's partition theorem, this equals odd_parts_gf:
+///
+/// >>> opgf = odd_parts_gf(s, 20)
+/// >>> # dpgf and opgf have identical coefficients
+///
+/// Notes
+/// -----
+/// $\prod_{k=1}^{\infty}(1+q^k) = \frac{(q^2;q^2)_\infty}{(q;q)_\infty}$.
+/// By Euler's partition theorem, the number of partitions of $n$ into distinct
+/// parts equals the number of partitions of $n$ into odd parts. Thus this
+/// generating function equals ``odd_parts_gf``.
 ///
 /// See Also
 /// --------
 /// partition_gf : Unrestricted partition generating function.
-/// odd_parts_gf : Partitions into odd parts (equal to distinct parts by Euler).
+/// odd_parts_gf : Partitions into odd parts (equal by Euler's theorem).
+/// etaq : Eta products (distinct-parts = $(q^2;q^2)/(q;q)$).
+/// mprodmake : Identify a product of $(1+q^n)$ factors.
 #[pyfunction]
 pub fn distinct_parts_gf(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -781,11 +873,23 @@ pub fn distinct_parts_gf(session: &QSession, order: i64) -> QSeries {
 /// >>> from q_kangaroo import QSession, odd_parts_gf
 /// >>> s = QSession()
 /// >>> opgf = odd_parts_gf(s, 20)
+/// >>> print(opgf)
+/// >>> # 1 + q + q^2 + 2*q^3 + 2*q^4 + 3*q^5 + 4*q^6 + 5*q^7 + 6*q^8 + ...
+///
+/// The output is identical to distinct_parts_gf, verifying Euler's theorem.
+///
+/// Notes
+/// -----
+/// Euler's partition theorem (1748): the number of partitions of $n$ into
+/// odd parts equals the number of partitions of $n$ into distinct parts.
+/// The generating function is
+/// $\prod_{k=0}^{\infty}\frac{1}{1-q^{2k+1}} = \frac{1}{(q;q^2)_\infty}$.
 ///
 /// See Also
 /// --------
 /// distinct_parts_gf : Partitions into distinct parts (equal by Euler's theorem).
 /// partition_gf : Unrestricted partition generating function.
+/// etaq : Eta products.
 #[pyfunction]
 pub fn odd_parts_gf(session: &QSession, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -819,13 +923,27 @@ pub fn odd_parts_gf(session: &QSession, order: i64) -> QSeries {
 ///
 /// Examples
 /// --------
+/// Partitions with parts at most 3 (i.e., using only 1s, 2s, and 3s):
+///
 /// >>> from q_kangaroo import QSession, bounded_parts_gf
 /// >>> s = QSession()
-/// >>> bp = bounded_parts_gf(s, 5, 20)
+/// >>> bp = bounded_parts_gf(s, 3, 20)
+/// >>> print(bp)
+/// >>> # 1 + q + 2*q^2 + 3*q^3 + 4*q^4 + 5*q^5 + 7*q^6 + 8*q^7 + 10*q^8 + ...
+///
+/// For example, $q^6$ has coefficient 7: the partitions of 6 into parts $\le 3$
+/// are 3+3, 3+2+1, 3+1+1+1, 2+2+2, 2+2+1+1, 2+1+1+1+1, 1+1+1+1+1+1.
+///
+/// Notes
+/// -----
+/// $\prod_{k=1}^{m}\frac{1}{1-q^k}$ counts partitions with largest part at
+/// most $m$, or equivalently, partitions with at most $m$ parts (by
+/// conjugation). As $m \to \infty$, this converges to ``partition_gf``.
 ///
 /// See Also
 /// --------
 /// partition_gf : Unrestricted partition generating function.
+/// qbin : Gaussian binomial (related to bounded partitions).
 #[pyfunction]
 pub fn bounded_parts_gf(session: &QSession, max_part: i64, order: i64) -> PyResult<QSeries> {
     if max_part <= 0 {
@@ -863,14 +981,29 @@ pub fn bounded_parts_gf(session: &QSession, max_part: i64, order: i64) -> PyResu
 ///
 /// Examples
 /// --------
+/// At $z = 1$, the rank generating function reduces to the partition generating
+/// function (the rank refinement sums back to the total count):
+///
 /// >>> from q_kangaroo import QSession, rank_gf
 /// >>> s = QSession()
-/// >>> r = rank_gf(s, 1, 1, 20)  # z=1 gives partition_gf
+/// >>> r = rank_gf(s, 1, 1, 20)
+/// >>> print(r)
+/// >>> # 1 + q + 2*q^2 + 3*q^3 + 5*q^4 + 7*q^5 + 11*q^6 + ...
+///
+/// Notes
+/// -----
+/// The rank of a partition is its largest part minus the number of parts.
+/// Dyson (1944) conjectured that the rank modulo 5 (resp. 7) provides a
+/// combinatorial explanation of Ramanujan's congruences
+/// $p(5n+4) \equiv 0 \pmod{5}$ (resp. $p(7n+5) \equiv 0 \pmod{7}$),
+/// later proved by Atkin and Swinnerton-Dyer (1954). The rank does not
+/// explain the mod 11 congruence -- that requires the crank.
 ///
 /// See Also
 /// --------
 /// crank_gf : Crank generating function $C(z, q)$.
 /// partition_gf : Unrestricted partition generating function.
+/// sift : Extract arithmetic subsequences.
 #[pyfunction]
 pub fn rank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
@@ -904,14 +1037,32 @@ pub fn rank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSerie
 ///
 /// Examples
 /// --------
+/// At $z = 1$, the crank generating function reduces to the partition
+/// generating function:
+///
 /// >>> from q_kangaroo import QSession, crank_gf
 /// >>> s = QSession()
-/// >>> c = crank_gf(s, 1, 1, 20)  # z=1 gives partition_gf
+/// >>> c = crank_gf(s, 1, 1, 20)
+/// >>> print(c)
+/// >>> # 1 + q + 2*q^2 + 3*q^3 + 5*q^4 + 7*q^5 + 11*q^6 + ...
+///
+/// Notes
+/// -----
+/// The crank was introduced by Andrews and Garvan (1988) to explain all three
+/// Ramanujan congruences. For a partition $\lambda$, the crank is defined as:
+///
+/// - the largest part, if $\lambda$ has no 1's;
+/// - (number of parts larger than the number of 1's) minus (number of 1's),
+///   otherwise.
+///
+/// The crank modulo 5, 7, and 11 provides equinumerous classes that explain
+/// $p(5n+4) \equiv 0$, $p(7n+5) \equiv 0$, and $p(11n+6) \equiv 0$.
 ///
 /// See Also
 /// --------
 /// rank_gf : Rank generating function $R(z, q)$.
 /// partition_gf : Unrestricted partition generating function.
+/// findcong : Discover congruences in series coefficients.
 #[pyfunction]
 pub fn crank_gf(session: &QSession, z_num: i64, z_den: i64, order: i64) -> QSeries {
     let mut inner = session.inner.lock().unwrap();
