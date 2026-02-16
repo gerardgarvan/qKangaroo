@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-15)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 17 — Python API & Documentation (v1.2 Algorithmic Identity Proving)
+**Current focus:** v1.2 COMPLETE -- all 17 phases shipped
 
 ## Current Position
 
 Phase: 17 of 17 (Python API & Documentation)
-Plan: 1 of 2 in current phase
-Status: Executing Phase 17
-Last activity: 2026-02-16 — Completed 17-01 (Algorithmic Summation DSL)
+Plan: 2 of 2 in current phase (COMPLETE)
+Status: v1.2 COMPLETE
+Last activity: 2026-02-16 — Completed 17-02 (Identity Proving Extensions & Sphinx Summation)
 
-Progress: [================================================ ] 97% (v1.0+v1.1 complete, v1.2 phases 13-16 complete, 17-01 done)
+Progress: [==================================================] 100% (v1.0+v1.1+v1.2 complete, all 17 phases shipped)
 
 ## v1.0 Performance Metrics
 
@@ -53,7 +53,7 @@ Progress: [================================================ ] 97% (v1.0+v1.1 com
 | 14 - q-Gosper Algorithm | 3/3 | 19 min | 6 min |
 | 15 - q-Zeilberger & WZ Certificates | 3/3 | 62 min | 21 min |
 | 16 - Extensions | 3/3 | 18 min | 6 min |
-| 17 - Python API & Docs | 1/2 | 7 min | 7 min |
+| 17 - Python API & Docs | 2/2 | 12 min | 6 min |
 
 ## Accumulated Context
 
@@ -104,6 +104,9 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 - 17-01: verify_wz_fn internally calls q_zeilberger (QRatRationalFunc not passable from Python)
 - 17-01: q_petkovsek_fn takes (int,int) tuples for coefficients (QRat boundary pattern)
 - 17-01: Option<Vec<usize>> + Option<bool> for auto-detect with manual override
+- 17-02: Closure-from-template design for prove_nonterminating (declarative Python params, Rust builds closures)
+- 17-02: pochhammer_scalar_val helper computes (q^b;q)_n at concrete q for RHS builder
+- 17-02: 13 functional groups (not 12) reflecting q-Gosper as separate Group 11
 
 ### Pending Todos
 
@@ -117,5 +120,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 17-01-PLAN.md (Algorithmic Summation DSL). Ready for 17-02.
-Resume file: .planning/phases/17-python-api-docs/17-02-PLAN.md
+Stopped at: Completed 17-02-PLAN.md (Identity Proving Extensions & Sphinx Summation). v1.2 milestone complete.
+Resume file: N/A -- all plans complete
