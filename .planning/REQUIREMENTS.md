@@ -80,19 +80,37 @@ Deferred to future milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| POLY-01..05 | Phase 13 | Pending |
-| GOSP-01..05 | Phase 14 | Pending |
-| ZEIL-01..05 | Phase 15 | Pending |
-| SOLV-01..02 | Phase 16 | Pending |
-| NTPR-01..02 | Phase 16 | Pending |
-| TRNS-01..02 | Phase 16 | Pending |
-| API-01..04 | Phase 17 | Pending |
+| POLY-01 | Phase 13 | Pending |
+| POLY-02 | Phase 13 | Pending |
+| POLY-03 | Phase 13 | Pending |
+| POLY-04 | Phase 13 | Pending |
+| POLY-05 | Phase 13 | Pending |
+| GOSP-01 | Phase 14 | Pending |
+| GOSP-02 | Phase 14 | Pending |
+| GOSP-03 | Phase 14 | Pending |
+| GOSP-04 | Phase 14 | Pending |
+| GOSP-05 | Phase 14 | Pending |
+| ZEIL-01 | Phase 15 | Pending |
+| ZEIL-02 | Phase 15 | Pending |
+| ZEIL-03 | Phase 15 | Pending |
+| ZEIL-04 | Phase 15 | Pending |
+| ZEIL-05 | Phase 15 | Pending |
+| SOLV-01 | Phase 16 | Pending |
+| SOLV-02 | Phase 16 | Pending |
+| NTPR-01 | Phase 16 | Pending |
+| NTPR-02 | Phase 16 | Pending |
+| TRNS-01 | Phase 16 | Pending |
+| TRNS-02 | Phase 16 | Pending |
+| API-01 | Phase 17 | Pending |
+| API-02 | Phase 17 | Pending |
+| API-03 | Phase 17 | Pending |
+| API-04 | Phase 17 | Pending |
 
 **Coverage:**
-- v1.2 requirements: 24 total
-- Mapped to phases: 24
+- v1.2 requirements: 25 total
+- Mapped to phases: 25
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-15*
-*Last updated: 2026-02-15 after initial definition*
+*Last updated: 2026-02-15 after roadmap creation*

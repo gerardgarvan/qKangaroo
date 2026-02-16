@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-15)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Algorithmic identity proving — q-Zeilberger, creative telescoping, WZ certificates
+**Current focus:** Phase 13 — Polynomial Infrastructure (v1.2 Algorithmic Identity Proving)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements for v1.2
-Last activity: 2026-02-15 — Milestone v1.2 started
+Phase: 13 of 17 (Polynomial Infrastructure)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-15 — Roadmap created for v1.2
 
-Progress: [                                            ] 0%
+Progress: [================================              ] 67% (v1.0+v1.1 complete, v1.2 0/5 phases)
 
 ## v1.0 Performance Metrics
 
@@ -59,10 +59,11 @@ None.
 
 ### Blockers/Concerns
 
-All resolved. No active blockers.
+- Research flag: subresultant PRS coefficient growth for degree 5-30 polynomials needs empirical measurement during Phase 13
+- Research flag: qGFF implementation details may need deeper study from Koornwinder 1993 / Paule-Riese 1997 during Phase 14 planning
 
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: v1.2 milestone requirements definition
-Resume file: .planning/REQUIREMENTS.md
+Stopped at: v1.2 roadmap created, ready to plan Phase 13
+Resume file: .planning/ROADMAP.md
