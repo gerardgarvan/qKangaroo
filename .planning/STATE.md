@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.3 Documentation & Vignettes — phase 20 in progress (plans 02 and 03 of 3 complete).
+**Current focus:** v1.3 Documentation & Vignettes — phase 20 complete, ready for phase 21.
 
 ## Current Position
 
-Phase: 20 of 21 (New Vignettes & Migration)
-Plan: 3 of 3 (20-02 and 20-03 complete; 20-01 pending)
-Status: Plan 20-02 complete, plan 20-01 still to execute
-Last activity: 2026-02-17 — Completed 20-02 (identity proving notebook)
+Phase: 20 of 21 (New Vignettes & Migration) -- COMPLETE
+Plan: 3 of 3 (all plans complete)
+Status: Phase 20 complete, ready for phase 21
+Last activity: 2026-02-17 — Completed 20-01 (getting_started + series_analysis notebooks)
 
-Progress: [================================                  ] 65% (v1.3: phase 20 in progress)
+Progress: [========================================          ] 80% (v1.3: 3/4 phases complete, phase 20 done)
 
 ## Performance Metrics
 
@@ -56,7 +56,7 @@ Progress: [================================                  ] 65% (v1.3: phase 
 |-------|-------|-------|----------|
 | 18 - Docstring Enrichment | 4/4 | 26 min | 7 min |
 | 19 - Vignette Expansion | 3/3 | 20 min | 7 min |
-| 20 - New Vignettes & Migration | 2/3 | 10 min | 5 min |
+| 20 - New Vignettes & Migration | 3/3 | 19 min | 6 min |
 
 ## Accumulated Context
 
@@ -70,6 +70,8 @@ v1.2 decisions preserved in milestones/v1.2-ROADMAP.md.
 - 20-03: Corrected API signatures from plan draft to match actual dsl.rs exports
 - 20-02: q-Vandermonde as running example for identity proving notebook (first-order recurrence, clean pipeline)
 - 20-02: Fixed 3 plan parameter bugs: non-summable example, nonterminating RHS bases, transformation chain pair
+- 20-01: Used (q;q)_3 not (1;q)_3 for first aqprod demo to avoid zero from (1-1) factor
+- 20-01: Combined findhom/findpoly into single section with findpoly live demo
 
 ### Pending Todos
 
@@ -82,5 +84,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 20-02-PLAN.md (identity proving notebook). Plan 20-01 still pending.
-Resume file: .planning/phases/20-new-vignettes-migration/20-02-SUMMARY.md
+Stopped at: Completed 20-01-PLAN.md (getting_started + series_analysis notebooks). Phase 20 complete. Ready for phase 21.
+Resume file: .planning/phases/20-new-vignettes-migration/20-01-SUMMARY.md
