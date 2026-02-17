@@ -61,5 +61,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 24-02-PLAN.md (Phase 24 complete)
-Resume file: .planning/phases/24-parser-ast/24-02-SUMMARY.md
+Stopped at: Phase 25 context gathered. Ready to plan.
+Resume file: .planning/phases/25-evaluator-function-dispatch/25-CONTEXT.md
