@@ -85,6 +85,13 @@ Plans:
 
 **Requirements:** DOC-04, DOC-05, DOC-06, DOC-07, DOC-08
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 19-01-PLAN.md -- Expand partition_congruences.ipynb (rank/crank, prodmake, Dyson) and theta_identities.ipynb (triple product, quintuple, Winquist)
+- [ ] 19-02-PLAN.md -- Expand hypergeometric_summation.ipynb (all summation formulas, all Heine transforms, bilateral psi)
+- [ ] 19-03-PLAN.md -- Expand mock_theta_functions.ipynb (Appell-Lerch, g2/g3, orders) and bailey_chains.ipynb (multi-step chains, R-R, discover)
+
 **Scope:**
 - partition_congruences.ipynb: Add rank/crank, prodmake analysis, Dyson's conjecture
 - theta_identities.ipynb: Add Jacobi triple product, quintuple product, Winquist, relationships
@@ -101,10 +108,10 @@ Plans:
 **Requirements:** DOC-09, DOC-10, DOC-11, DOC-12, DOC-13
 
 **Scope:**
-- getting_started.ipynb: Zero to first identity for newcomers (install → session → q-Pochhammer → products → identity)
-- series_analysis.ipynb: prodmake → etamake → sift → findlincombo/findhom/findpoly → findcong pipeline
-- identity_proving.ipynb: q-Zeilberger → WZ certificate → verification → q-Petkovsek → prove_nonterminating
-- maple_migration.ipynb: Side-by-side Maple→Python for all 13 function groups, 30+ common operations
+- getting_started.ipynb: Zero to first identity for newcomers (install -> session -> q-Pochhammer -> products -> identity)
+- series_analysis.ipynb: prodmake -> etamake -> sift -> findlincombo/findhom/findpoly -> findcong pipeline
+- identity_proving.ipynb: q-Zeilberger -> WZ certificate -> verification -> q-Petkovsek -> prove_nonterminating
+- maple_migration.ipynb: Side-by-side Maple->Python for all 13 function groups, 30+ common operations
 
 **Dependencies:** Phase 18 (docstrings ready for notebook cross-references)
 
@@ -144,6 +151,6 @@ Plans:
 | 16. Extensions | v1.2 | 3/3 | Complete | 2026-02-16 |
 | 17. Python API & Documentation | v1.2 | 2/2 | Complete | 2026-02-16 |
 | 18. Docstring Enrichment | v1.3 | 4/4 | Complete | 2026-02-16 |
-| 19. Vignette Expansion | v1.3 | 0/? | Planned | - |
+| 19. Vignette Expansion | v1.3 | 0/3 | Planned | - |
 | 20. New Vignettes & Migration Guide | v1.3 | 0/? | Planned | - |
 | 21. Sphinx Site Polish | v1.3 | 0/? | Planned | - |
