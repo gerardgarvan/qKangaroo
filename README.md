@@ -44,6 +44,13 @@ print(t3)  # 1 + 2*q + 2*q^4 + 2*q^9 + 2*q^16 + O(q^20)
 python -c "from q_kangaroo import partition_count; assert partition_count(50) == 204226; print('q-Kangaroo is working!')"
 ```
 
+For a comprehensive check (including build prerequisites), run:
+
+```bash
+python check_install.py          # End-user checks
+python check_install.py --dev    # + build-from-source checks
+```
+
 ## Features
 
 - **q-Pochhammer symbols** -- finite, infinite, and bilateral products with exact rational coefficients
