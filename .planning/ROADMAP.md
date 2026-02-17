@@ -111,12 +111,12 @@ Plans:
   3. All 8 function groups work: q-Pochhammer/products, partitions, theta, series analysis, relation discovery, hypergeometric, mock theta/Bailey, and identity proving
   4. User types `f := etaq(1,1,20); g := etaq(2,1,20); f * g` and sees the product of two eta quotients
   5. Calling a function with wrong argument count or type prints a descriptive error message
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 25-01: Evaluator core, variable environment, and text output
-- [ ] 25-02: Function dispatch groups 1-4 (q-Pochhammer, partitions, theta, series analysis)
-- [ ] 25-03: Function dispatch groups 5-8 (relations, hypergeometric, mock theta/Bailey, identity proving)
+- [ ] 25-01-PLAN.md -- Evaluator core, variable environment, parser [...] extension, and text output formatting
+- [ ] 25-02-PLAN.md -- Function dispatch groups 1-4 (q-Pochhammer, partitions, theta, series analysis)
+- [ ] 25-03-PLAN.md -- Function dispatch groups 5-8 (relations, hypergeometric, mock theta/Bailey, identity proving)
 
 ### Phase 26: REPL Shell & Session
 **Goal**: Users have a polished interactive terminal experience with line editing, history, help, and session control
