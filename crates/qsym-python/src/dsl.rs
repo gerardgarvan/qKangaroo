@@ -2323,15 +2323,42 @@ fn parse_qmonomials(params: Vec<(i64, i64, i64)>) -> Vec<QMonomial> {
 ///
 /// Examples
 /// --------
+/// Euler's identity as a ${}_1\phi_0$:
+///
 /// >>> from q_kangaroo import QSession, phi
 /// >>> s = QSession()
-/// >>> result = phi(s, [(1,1,2)], [], 1, 1, 1, 20)  # _1phi0(q^2; -; q, q)
+/// >>> result = phi(s, [(1,1,1)], [], 1, 1, 0, 20)
+/// >>> # 1phi0(q; -; q, 1) = 1/(1-1)(1-q)... diverges; use terminating instead
+///
+/// A terminating ${}_2\phi_1$ (q-Vandermonde type):
+///
+/// >>> result = phi(s, [(1,1,-2), (1,1,1)], [(1,1,3)], 1, 1, 4, 20)
+/// >>> # 2phi1(q^{-2}, q; q^3; q, q^4) -- terminates after 3 terms
+///
+/// A ${}_1\phi_0$ series:
+///
+/// >>> result = phi(s, [(1,1,2)], [], 1, 1, 1, 20)  # 1phi0(q^2; -; q, q)
+///
+/// Notes
+/// -----
+/// The basic hypergeometric series is defined as:
+///
+/// ${}_r\phi_s(a_1,\ldots,a_r; b_1,\ldots,b_s; q, z) =
+///   \sum_{n=0}^{\infty}
+///   \frac{(a_1;q)_n \cdots (a_r;q)_n}{(b_1;q)_n \cdots (b_s;q)_n (q;q)_n}
+///   \left[(-1)^n q^{n(n-1)/2}\right]^{1+s-r} z^n$
+///
+/// Parameters are specified as q-monomials $(c \cdot q^p)$ via ``(num, den, power)``
+/// tuples. For example, ``(1, 1, 2)`` represents $q^2$ and ``(1, 2, 0)``
+/// represents $1/2$. DLMF 17.4.1.
 ///
 /// See Also
 /// --------
 /// psi : Bilateral hypergeometric series ${}_r\psi_s$.
 /// try_summation : Try closed-form summation formulas.
 /// heine1 : Heine's first transformation for ${}_2\phi_1$.
+/// q_gosper : q-Gosper indefinite summation algorithm.
+/// q_zeilberger : q-Zeilberger definite summation algorithm.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn phi(
@@ -2383,13 +2410,37 @@ pub fn phi(
 ///
 /// Examples
 /// --------
+/// Compute a bilateral ${}_1\psi_1$ series:
+///
 /// >>> from q_kangaroo import QSession, psi
 /// >>> s = QSession()
+/// >>> result = psi(s, [(1,1,1)], [(1,1,3)], 1, 1, 1, 20)
+/// >>> # 1psi1(q; q^3; q, q) sums over n = -inf..inf
+///
+/// A bilateral series with two upper/lower parameters:
+///
 /// >>> result = psi(s, [(1,1,2)], [(1,1,5)], 1, 1, 1, 20)
+///
+/// Notes
+/// -----
+/// The bilateral hypergeometric series sums over both positive and negative
+/// indices:
+///
+/// ${}_r\psi_s(a_1,\ldots,a_r; b_1,\ldots,b_s; q, z) =
+///   \sum_{n=-\infty}^{\infty}
+///   \frac{(a_1;q)_n \cdots (a_r;q)_n}{(b_1;q)_n \cdots (b_s;q)_n}
+///   \left[(-1)^n q^{n(n-1)/2}\right]^{s-r} z^n$
+///
+/// The Ramanujan ${}_1\psi_1$ summation is one of the most important bilateral
+/// identities, providing a closed-form product for the ${}_1\psi_1$ series.
+/// Negative-index terms are computed via explicit $q$-Pochhammer products with
+/// pole detection.
 ///
 /// See Also
 /// --------
 /// phi : Basic (unilateral) hypergeometric series ${}_r\phi_s$.
+/// try_summation : Try closed-form summation formulas.
+/// tripleprod : Jacobi triple product (related to ${}_1\psi_1$).
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn psi(
@@ -2442,14 +2493,37 @@ pub fn psi(
 ///
 /// Examples
 /// --------
+/// Try summation on a ${}_2\phi_1$ that matches the q-Gauss formula:
+///
 /// >>> from q_kangaroo import QSession, try_summation
 /// >>> s = QSession()
 /// >>> closed = try_summation(s, [(1,1,1),(1,1,2)], [(1,1,5)], 1, 1, 2, 30)
+/// >>> # Returns the closed-form product if q-Gauss applies, else None
+///
+/// A series that does not match any known formula returns ``None``:
+///
+/// >>> result = try_summation(s, [(1,1,1),(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+/// >>> # A 3phi1 -- no known summation formula applies
+///
+/// Notes
+/// -----
+/// Attempts six classical summation formulas in sequence:
+///
+/// 1. **q-Gauss** (DLMF 17.7.5): balanced ${}_2\phi_1$ with $z = c/(ab)$
+/// 2. **q-Vandermonde** (two forms, DLMF 17.6.2): terminating ${}_2\phi_1$
+/// 3. **q-Saalschutz** (DLMF 17.7.6): balanced terminating ${}_3\phi_2$
+/// 4. **q-Kummer**: ${}_2\phi_1$ with $q^2$-Pochhammer base
+/// 5. **q-Dixon** (DLMF 17.7.8): very-well-poised ${}_4\phi_3$
+///
+/// Returns the formula name and closed-form product if successful.
 ///
 /// See Also
 /// --------
 /// phi : Direct evaluation of ${}_r\phi_s$.
 /// heine1 : Heine's first transformation for ${}_2\phi_1$.
+/// heine2 : Heine's second transformation.
+/// heine3 : Heine's third transformation.
+/// q_gosper : Algorithmic indefinite summation.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn try_summation(
@@ -2508,15 +2582,32 @@ pub fn try_summation(
 ///
 /// Examples
 /// --------
+/// Apply Heine's first transformation to ${}_2\phi_1(q^2, q^3; q^5; q, q)$:
+///
 /// >>> from q_kangaroo import QSession, heine1
 /// >>> s = QSession()
 /// >>> prefactor, result = heine1(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+/// >>> # prefactor = (b;q)_inf * (az;q)_inf / ((c;q)_inf * (z;q)_inf)
+/// >>> # result = prefactor * 2phi1(c/b, z; az; q, b)
+///
+/// Notes
+/// -----
+/// Heine's first transformation (DLMF 17.6.1):
+///
+/// ${}_2\phi_1(a, b; c; q, z) =
+///   \frac{(b;q)_\infty(az;q)_\infty}{(c;q)_\infty(z;q)_\infty}
+///   \cdot {}_2\phi_1(c/b, z; az; q, b)$
+///
+/// Valid for $|z| < 1$, $|b| < 1$. The transformation exchanges the role of
+/// $z$ and $b$, often simplifying the convergence region or the parameter
+/// structure. This is the most commonly used Heine transformation.
 ///
 /// See Also
 /// --------
 /// heine2 : Heine's second transformation.
 /// heine3 : Heine's third transformation.
 /// phi : Direct evaluation of ${}_r\phi_s$.
+/// try_summation : Try closed-form summation formulas.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn heine1(
@@ -2581,14 +2672,31 @@ pub fn heine1(
 ///
 /// Examples
 /// --------
+/// Apply Heine's second transformation to ${}_2\phi_1(q^2, q^3; q^5; q, q)$:
+///
 /// >>> from q_kangaroo import QSession, heine2
 /// >>> s = QSession()
 /// >>> prefactor, result = heine2(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+/// >>> # prefactor = (c/b;q)_inf * (bz;q)_inf / ((c;q)_inf * (z;q)_inf)
+/// >>> # result = prefactor * 2phi1(abz/c, b; bz; q, c/b)
+///
+/// Notes
+/// -----
+/// Heine's second transformation:
+///
+/// ${}_2\phi_1(a, b; c; q, z) =
+///   \frac{(c/b;q)_\infty(bz;q)_\infty}{(c;q)_\infty(z;q)_\infty}
+///   \cdot {}_2\phi_1(abz/c, b; bz; q, c/b)$
+///
+/// This transformation keeps $b$ as an upper parameter while modifying the
+/// other parameters. Useful when the second transformation produces simpler
+/// parameters than the first.
 ///
 /// See Also
 /// --------
 /// heine1 : Heine's first transformation.
 /// heine3 : Heine's third transformation.
+/// phi : Direct evaluation of ${}_r\phi_s$.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn heine2(
@@ -2653,14 +2761,26 @@ pub fn heine2(
 ///
 /// Examples
 /// --------
+/// Apply Heine's third transformation to ${}_2\phi_1(q^2, q^3; q^5; q, q)$:
+///
 /// >>> from q_kangaroo import QSession, heine3
 /// >>> s = QSession()
 /// >>> prefactor, result = heine3(s, [(1,1,2),(1,1,3)], [(1,1,5)], 1, 1, 1, 30)
+/// >>> # result = prefactor * 2phi1(abz/c, c/b; c/(bz); q, z)
+///
+/// Notes
+/// -----
+/// Heine's third transformation is the composition of the first and second
+/// transformations. It provides a third equivalent ${}_2\phi_1$ representation,
+/// sometimes producing the simplest parameter set. Together with the first and
+/// second transformations, it gives a complete set of Heine-type transformations
+/// for ${}_2\phi_1$ series.
 ///
 /// See Also
 /// --------
 /// heine1 : Heine's first transformation.
 /// heine2 : Heine's second transformation.
+/// phi : Direct evaluation of ${}_r\phi_s$.
 #[pyfunction]
 #[pyo3(signature = (session, upper, lower, z_num, z_den, z_pow, order))]
 pub fn heine3(
@@ -2728,15 +2848,40 @@ pub fn heine3(
 ///
 /// Examples
 /// --------
+/// Prove that $\eta(5\tau)^6 = \eta(\tau)^6$ at level 5 (this will fail --
+/// it is a toy example; real identities require matching weight and level):
+///
 /// >>> from q_kangaroo import QSession, prove_eta_id
 /// >>> s = QSession()
 /// >>> result = prove_eta_id(s, [(5, 6)], [(1, 6)], 5)
+/// >>> result["status"]  # 'proved', 'not_modular', 'counterexample', etc.
+///
+/// Prove a genuine eta-quotient identity. The factors ``[(d, r)]`` encode
+/// $\prod_d \eta(d\tau)^r$. Both sides must have the same weight
+/// ($\frac{1}{2}\sum r_\delta$) and be valid modular forms at level $N$:
+///
+/// >>> result = prove_eta_id(s, [(1, 2), (2, -1)], [(1, 2), (2, -1)], 2)
 /// >>> result["status"]
 /// 'proved'
+///
+/// Notes
+/// -----
+/// Proves identities of the form
+/// $\prod_\delta \eta(\delta\tau)^{e_\delta} = \prod_\delta \eta(\delta\tau)^{f_\delta}$
+/// by expanding both sides as formal power series and comparing coefficients up
+/// to a Sturm bound. The Sturm bound guarantees that equality of sufficiently
+/// many coefficients implies the identity holds for all $q$, because the
+/// difference is a modular form of bounded weight with non-negative orders at
+/// all cusps.
+///
+/// The algorithm first checks modularity conditions (integer weight, character,
+/// cusp non-negativity), then compares series coefficients up to the Sturm bound
+/// $\lfloor kN/12 \prod_{p|N}(1+1/p) \rfloor$ where $k$ is the weight.
 ///
 /// See Also
 /// --------
 /// search_identities : Search the identity database.
+/// etaq : Construct eta-quotients as series.
 /// etamake : Express a series as an eta-quotient.
 #[pyfunction]
 #[pyo3(signature = (session, lhs_factors, rhs_factors, level))]
@@ -2817,14 +2962,36 @@ pub fn prove_eta_id(
 ///
 /// Examples
 /// --------
+/// Search by tag to find all classical identities:
+///
 /// >>> from q_kangaroo import search_identities
 /// >>> results = search_identities("classical", search_type="tag")
+/// >>> # Returns list of dicts with id, name, tags, functions, author, year
+///
+/// Search by function name to find identities involving eta:
+///
 /// >>> results = search_identities("eta", search_type="function")
+///
+/// Free-text pattern search:
+///
 /// >>> results = search_identities("partition", search_type="pattern")
+/// >>> for r in results:
+/// ...     print(r["name"], r.get("author", ""))
+///
+/// Notes
+/// -----
+/// Builds a basis of identities from the built-in database (or a custom
+/// TOML file) and searches for matches. The database includes classical
+/// identities (Euler, Jacobi, Ramanujan, Rogers-Ramanujan, etc.) with
+/// metadata: tags, involved functions, citations, and proof status.
+/// Use ``search_type="tag"`` for categorical search, ``"function"`` for
+/// identities involving a specific function, or ``"pattern"`` for free-text.
 ///
 /// See Also
 /// --------
 /// prove_eta_id : Prove an eta-quotient identity.
+/// etaq : Construct eta-quotients as series.
+/// findhom : Find homogeneous polynomial relations among series.
 #[pyfunction]
 #[pyo3(signature = (query, search_type = "pattern", db_path = None))]
 pub fn search_identities(
