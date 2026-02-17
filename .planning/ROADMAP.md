@@ -7,6 +7,7 @@
 - v1.2 Algorithmic Identity Proving - Phases 13-17 (shipped 2026-02-16)
 - v1.3 Documentation & Vignettes - Phases 18-21 (shipped 2026-02-16)
 - v1.4 Installation & Build Guide - Phases 22-23 (shipped 2026-02-17)
+- v1.5 Interactive REPL - Phases 24-28 (in progress)
 
 ## Phases
 
@@ -73,6 +74,91 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
 
 </details>
 
+### v1.5 Interactive REPL (In Progress)
+
+**Milestone Goal:** A standalone Rust executable providing an interactive REPL with Maple-style syntax, all 79 q-Kangaroo functions, variable assignment, LaTeX output, and save-to-file -- giving researchers a terminal-based Maple replacement for q-series computation.
+
+- [ ] **Phase 24: Parser & AST** - Maple-style expression parser with function calls, assignment, arithmetic, and literals
+- [ ] **Phase 25: Evaluator & Function Dispatch** - AST evaluator connecting all 79 functions to qsym-core with variable environment and text output
+- [ ] **Phase 26: REPL Shell & Session** - Interactive line-editing shell with history, tab completion, help system, and session configuration
+- [ ] **Phase 27: Output Commands & Polish** - LaTeX rendering and file save commands for computed results
+- [ ] **Phase 28: Binary Packaging** - Standalone executables for Windows and Linux with CI integration
+
+## Phase Details
+
+### Phase 24: Parser & AST
+**Goal**: Users can type Maple-style expressions and the system correctly parses them into an internal representation
+**Depends on**: Nothing (first phase of v1.5; depends only on existing qsym-core)
+**Requirements**: PARSE-01, PARSE-02, PARSE-03, PARSE-04
+**Success Criteria** (what must be TRUE):
+  1. Typing `aqprod(q,q,infinity,20)` parses into a function-call AST node with 4 arguments including the `infinity` keyword
+  2. Typing `f := etaq(1,1,20)` parses into an assignment AST node with variable name `f` and a function-call value
+  3. Typing `f + g`, `f - g`, `f * g`, `-f`, and `3*f` all parse into correct arithmetic AST nodes
+  4. Integer literals (`50`), rational literals (`3/4`), and the `infinity` keyword parse into their respective AST leaf nodes
+**Plans**: TBD
+
+Plans:
+- [ ] 24-01: Crate scaffold and AST definition
+- [ ] 24-02: Expression parser (function calls, assignment, arithmetic, literals)
+
+### Phase 25: Evaluator & Function Dispatch
+**Goal**: Users can call any of the 79 q-Kangaroo functions by name and see computed series output in the terminal
+**Depends on**: Phase 24
+**Requirements**: FUNC-01, FUNC-02, FUNC-03, FUNC-04, FUNC-05, FUNC-06, FUNC-07, FUNC-08, SESS-01, OUT-01
+**Success Criteria** (what must be TRUE):
+  1. User types `aqprod(q,q,infinity,20)` and sees the Euler function series printed as human-readable text (e.g., `1 - q - q^2 + q^5 + ... + O(q^20)`)
+  2. User types `f := partition_gf(30)` then `f` on the next line and sees the partition generating function -- variables persist across lines
+  3. All 8 function groups work: q-Pochhammer/products, partitions, theta, series analysis, relation discovery, hypergeometric, mock theta/Bailey, and identity proving
+  4. User types `f := etaq(1,1,20); g := etaq(2,1,20); f * g` and sees the product of two eta quotients
+  5. Calling a function with wrong argument count or type prints a descriptive error message
+**Plans**: TBD
+
+Plans:
+- [ ] 25-01: Evaluator core, variable environment, and text output
+- [ ] 25-02: Function dispatch groups 1-4 (q-Pochhammer, partitions, theta, series analysis)
+- [ ] 25-03: Function dispatch groups 5-8 (relations, hypergeometric, mock theta/Bailey, identity proving)
+
+### Phase 26: REPL Shell & Session
+**Goal**: Users have a polished interactive terminal experience with line editing, history, help, and session control
+**Depends on**: Phase 25
+**Requirements**: REPL-01, REPL-02, REPL-03, REPL-04, SESS-02, SESS-03
+**Success Criteria** (what must be TRUE):
+  1. User launches the executable and gets a prompt; up/down arrows recall previous commands; history persists after restart
+  2. User types `aq` then presses Tab and sees completion candidates (aqprod); typing `f` then Tab completes to defined variable names
+  3. User types `help` and sees a list of available functions; `help aqprod` shows the signature and a one-line description
+  4. User types a malformed expression and sees a descriptive parse error without the session crashing
+  5. User types `set precision 50` to change default truncation order; `clear` resets variables; `quit` exits cleanly
+**Plans**: TBD
+
+Plans:
+- [ ] 26-01: rustyline integration, history, and error recovery
+- [ ] 26-02: Tab completion, help system, and session commands (set precision, clear, quit)
+
+### Phase 27: Output Commands & Polish
+**Goal**: Users can extract computed results as LaTeX or save session work to files
+**Depends on**: Phase 26
+**Requirements**: OUT-02, OUT-03
+**Success Criteria** (what must be TRUE):
+  1. User types `latex` after a computation and sees LaTeX source for the last result; `latex f` outputs LaTeX for variable `f`
+  2. User types `save results.txt` and the session transcript or last result is written to a file on disk
+**Plans**: TBD
+
+Plans:
+- [ ] 27-01: LaTeX output command and save-to-file command
+
+### Phase 28: Binary Packaging
+**Goal**: Researchers can download and run a single executable on Windows or Linux without installing Rust
+**Depends on**: Phase 27
+**Requirements**: BIN-01, BIN-02
+**Success Criteria** (what must be TRUE):
+  1. `cargo build --release` in `crates/qsym-cli/` produces a standalone `.exe` for Windows (x86_64-pc-windows-gnu) that runs without a Rust toolchain
+  2. CI builds produce a Linux binary (x86_64-unknown-linux-gnu) that runs on a fresh Linux machine
+  3. The binary starts, shows a welcome banner, and enters the REPL -- all 79 functions callable
+**Plans**: TBD
+
+Plans:
+- [ ] 28-01: Release build configuration and CI workflow for binary artifacts
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -100,3 +186,8 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
 | 21. Sphinx Site Polish | v1.3 | 2/2 | Complete | 2026-02-16 |
 | 22. Installation Documentation | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 23. Verification & Cross-References | v1.4 | 2/2 | Complete | 2026-02-17 |
+| 24. Parser & AST | v1.5 | 0/2 | Not started | - |
+| 25. Evaluator & Function Dispatch | v1.5 | 0/3 | Not started | - |
+| 26. REPL Shell & Session | v1.5 | 0/2 | Not started | - |
+| 27. Output Commands & Polish | v1.5 | 0/1 | Not started | - |
+| 28. Binary Packaging | v1.5 | 0/1 | Not started | - |

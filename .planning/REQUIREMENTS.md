@@ -61,35 +61,35 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PARSE-01 | TBD | Pending |
-| PARSE-02 | TBD | Pending |
-| PARSE-03 | TBD | Pending |
-| PARSE-04 | TBD | Pending |
-| REPL-01 | TBD | Pending |
-| REPL-02 | TBD | Pending |
-| REPL-03 | TBD | Pending |
-| REPL-04 | TBD | Pending |
-| FUNC-01 | TBD | Pending |
-| FUNC-02 | TBD | Pending |
-| FUNC-03 | TBD | Pending |
-| FUNC-04 | TBD | Pending |
-| FUNC-05 | TBD | Pending |
-| FUNC-06 | TBD | Pending |
-| FUNC-07 | TBD | Pending |
-| FUNC-08 | TBD | Pending |
-| OUT-01 | TBD | Pending |
-| OUT-02 | TBD | Pending |
-| OUT-03 | TBD | Pending |
-| SESS-01 | TBD | Pending |
-| SESS-02 | TBD | Pending |
-| SESS-03 | TBD | Pending |
-| BIN-01 | TBD | Pending |
-| BIN-02 | TBD | Pending |
+| PARSE-01 | Phase 24 | Pending |
+| PARSE-02 | Phase 24 | Pending |
+| PARSE-03 | Phase 24 | Pending |
+| PARSE-04 | Phase 24 | Pending |
+| REPL-01 | Phase 26 | Pending |
+| REPL-02 | Phase 26 | Pending |
+| REPL-03 | Phase 26 | Pending |
+| REPL-04 | Phase 26 | Pending |
+| FUNC-01 | Phase 25 | Pending |
+| FUNC-02 | Phase 25 | Pending |
+| FUNC-03 | Phase 25 | Pending |
+| FUNC-04 | Phase 25 | Pending |
+| FUNC-05 | Phase 25 | Pending |
+| FUNC-06 | Phase 25 | Pending |
+| FUNC-07 | Phase 25 | Pending |
+| FUNC-08 | Phase 25 | Pending |
+| OUT-01 | Phase 25 | Pending |
+| OUT-02 | Phase 27 | Pending |
+| OUT-03 | Phase 27 | Pending |
+| SESS-01 | Phase 25 | Pending |
+| SESS-02 | Phase 26 | Pending |
+| SESS-03 | Phase 26 | Pending |
+| BIN-01 | Phase 28 | Pending |
+| BIN-02 | Phase 28 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-17*
