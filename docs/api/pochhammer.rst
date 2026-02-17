@@ -9,3 +9,9 @@ as formal power series with exact rational coefficients.
 .. autofunction:: q_kangaroo.aqprod
 
 .. autofunction:: q_kangaroo.qbin
+
+.. seealso::
+
+   :doc:`/examples/getting_started` -- Introduction to q-Pochhammer symbols and q-binomials
+
+   :doc:`/examples/maple_migration` -- Maple ``aqprod`` and ``qbin`` equivalents

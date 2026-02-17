@@ -20,3 +20,11 @@ equivalent ${}_2\phi_1$ representations.
 .. autofunction:: q_kangaroo.heine2
 
 .. autofunction:: q_kangaroo.heine3
+
+.. seealso::
+
+   :doc:`/examples/hypergeometric_summation` -- All summation formulas, Heine transforms, Sears, and Watson
+
+   :doc:`/examples/identity_proving` -- Using hypergeometric identities in proof workflows
+
+   :doc:`/examples/maple_migration` -- Maple ``qphihyper``, ``qpsihyper`` equivalents

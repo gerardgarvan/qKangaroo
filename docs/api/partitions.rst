@@ -20,3 +20,11 @@ the Dyson rank and Andrews--Garvan crank.
 .. autofunction:: q_kangaroo.rank_gf
 
 .. autofunction:: q_kangaroo.crank_gf
+
+.. seealso::
+
+   :doc:`/examples/partition_congruences` -- Ramanujan's congruences, rank, crank, and Dyson's conjecture
+
+   :doc:`/examples/getting_started` -- First steps with partition generating functions
+
+   :doc:`/examples/maple_migration` -- Maple partition function equivalents

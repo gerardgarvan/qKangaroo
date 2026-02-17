@@ -24,3 +24,11 @@ and ``sift`` extracts arithmetic subsequences.
 .. autofunction:: q_kangaroo.mprodmake
 
 .. autofunction:: q_kangaroo.qetamake
+
+.. seealso::
+
+   :doc:`/examples/series_analysis` -- Complete prodmake/etamake/sift/relation-discovery pipeline
+
+   :doc:`/examples/partition_congruences` -- Using sift and prodmake for congruence analysis
+
+   :doc:`/examples/maple_migration` -- Maple ``prodmake``, ``etamake``, ``sift`` equivalents

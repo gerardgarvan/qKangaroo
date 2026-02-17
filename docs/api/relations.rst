@@ -36,3 +36,11 @@ Modular and Structural
 .. autofunction:: q_kangaroo.findmaxind
 
 .. autofunction:: q_kangaroo.findprod
+
+.. seealso::
+
+   :doc:`/examples/series_analysis` -- Discovering relations with findlincombo, findhom, findpoly, findcong
+
+   :doc:`/examples/partition_congruences` -- Using findcong for partition congruences
+
+   :doc:`/examples/maple_migration` -- Maple ``findhom``, ``findprod``, ``findcong`` equivalents

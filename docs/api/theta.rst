@@ -11,3 +11,9 @@ transformation formulas.
 .. autofunction:: q_kangaroo.theta3
 
 .. autofunction:: q_kangaroo.theta4
+
+.. seealso::
+
+   :doc:`/examples/theta_identities` -- Theta function identities and relationships
+
+   :doc:`/examples/maple_migration` -- Maple ``theta2``, ``theta3``, ``theta4`` equivalents
