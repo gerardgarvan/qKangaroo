@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 24 of 28 (Parser & AST)
-Plan: 0 of 2 in current phase
-Status: Context gathered, ready to plan
-Last activity: 2026-02-17 -- Phase 24 context gathered (syntax fidelity, q variable, rationals, chaining)
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-02-17 -- Plan 24-01 complete (AST, Token, Span, Error types)
 
-Progress: [########################------] 78% (70/79 plans -- v1.0-v1.4 complete, v1.5 planned)
+Progress: [########################------] 79% (71/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -28,7 +28,7 @@ Progress: [########################------] 78% (70/79 plans -- v1.0-v1.4 complet
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 24 - Parser & AST | 0/2 | - | - |
+| 24 - Parser & AST | 1/2 | 2min | 2min |
 | 25 - Evaluator & Function Dispatch | 0/3 | - | - |
 | 26 - REPL Shell & Session | 0/2 | - | - |
 | 27 - Output Commands & Polish | 0/1 | - | - |
@@ -39,7 +39,12 @@ Progress: [########################------] 78% (70/79 plans -- v1.0-v1.4 complet
 ### Decisions
 
 All v1.0-v1.4 decisions logged in PROJECT.md Key Decisions table.
-No v1.5 decisions yet.
+
+v1.5 decisions:
+- qsym-cli depends only on qsym-core -- hand-written parser, no external libraries
+- AST nodes carry no span information (simplicity; can add Spanned<T> wrapper later)
+- q is a reserved keyword token (Token::Q), not treated as an identifier
+- BigInteger stored as String for arbitrary precision; evaluator converts to QInt
 
 ### Pending Todos
 
@@ -52,5 +57,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 24 context gathered. Ready to plan.
-Resume file: .planning/phases/24-parser-ast/24-CONTEXT.md
+Stopped at: Completed 24-01-PLAN.md
+Resume file: .planning/phases/24-parser-ast/24-01-SUMMARY.md
