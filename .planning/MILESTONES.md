@@ -89,3 +89,32 @@ See STATE.md Accumulated Context for full decision log.
 - +258 new Rust tests (578 -> 836)
 - Total project: 54 plans across 17 phases (v1.0 + v1.1 + v1.2)
 - Execution: 14 plans in ~124 min (avg 9 min/plan)
+
+## v1.3: Documentation & Vignettes (Complete)
+
+**Shipped:** 2026-02-16
+**Phases:** 18-21 (12 plans)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 18 | Docstring enrichment — all 79 DSL functions upgraded to research-quality with verified examples, DLMF references, cross-references, and mathematical notes |
+| 19 | Vignette expansion — 5 existing notebooks expanded from demos to comprehensive tutorials (partition congruences, theta identities, hypergeometric summation, mock theta functions, Bailey chains) |
+| 20 | New vignettes — 4 new notebooks created (getting started, series analysis, identity proving, Maple migration with 13-group translation guide) |
+| 21 | Sphinx site polish — audience-aware landing page, "Which Function Should I Use?" decision guide (79 functions), cross-links from all 13 API pages to relevant notebooks |
+
+### Key Accomplishments
+
+- Enriched all 79 function docstrings with research-quality examples and mathematical context
+- Expanded 5 existing notebooks from introductory demos to comprehensive tutorials
+- Created 4 new notebooks covering newcomer onboarding, analysis pipeline, identity proving workflow, and Maple migration
+- Built audience-aware Sphinx navigation with function decision guide and full API-to-notebook cross-linking
+- 9 total notebooks covering all 13 function groups with pre-computed outputs
+
+### Key Metrics
+
+- 16 v1.3 requirements: 16/16 complete
+- 209 files modified, +41,130 lines
+- 12 plans in ~70 min (avg 6 min/plan)
+- Total project: 66 plans across 21 phases (v1.0 + v1.1 + v1.2 + v1.3)

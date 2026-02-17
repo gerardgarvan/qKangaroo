@@ -10,22 +10,23 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ## Current State
 
-**v1.2 shipped.** The project now includes algorithmic identity proving:
+**v1.3 shipped.** The project now has research-quality documentation for every function:
 - `pip install q-kangaroo` works (Linux manylinux2014 + Windows MinGW wheels)
 - `import q_kangaroo` provides 79 DSL functions across 13 groups
-- Sphinx documentation site with API reference, getting-started guide, 5 example notebooks
+- All 79 functions have research-quality docstrings with verified examples, DLMF references, cross-references
+- 9 comprehensive tutorial notebooks (partition congruences, theta identities, hypergeometric summation, mock theta, Bailey chains, getting started, series analysis, identity proving, Maple migration)
+- Sphinx docs site with audience-aware navigation, function decision guide, API-to-notebook cross-linking
 - GitHub Actions CI (Rust + Python tests, Codecov coverage, wheel builds, OIDC PyPI publishing)
 - QExpr and QSeries render LaTeX in Jupyter notebooks
-- All 79 functions have NumPy-style docstrings with mathematical notation
 - q-Gosper, q-Zeilberger, WZ certificates for machine-proving q-hypergeometric identities
 - q-Petkovsek recurrence solver, nonterminating proofs, transformation chain discovery
 
 **Codebase:**
 - 18,686 lines Rust core (`crates/qsym-core/src/`)
 - 4,866 lines Python API (`crates/qsym-python/src/`)
-- 5,862+ lines documentation (`docs/`)
+- ~47,000 lines documentation (`docs/` including notebooks)
 - 836 Rust tests, 9 Python integration tests
-- 54 plans across 17 phases (v1.0 + v1.1 + v1.2)
+- 66 plans across 21 phases (v1.0 + v1.1 + v1.2 + v1.3)
 
 ## Requirements
 
@@ -50,14 +51,15 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - Chen-Hou-Mu nonterminating identity proofs -- v1.2
 - BFS transformation chain discovery over Heine/Sears/Watson catalog -- v1.2
 - Python API for all v1.2 algorithms (6 new DSL functions, Sphinx docs) -- v1.2
+- Docstring enrichment: All 79 functions upgraded to research-quality with verified examples and DLMF references -- v1.3
+- Maple migration guide: Side-by-side translation for all 13 function groups (35+ operations) -- v1.3
+- Revised core vignettes: 5 notebooks expanded from demos to comprehensive tutorials -- v1.3
+- New vignettes: Getting Started, Series Analysis, Identity Proving, Maple Migration notebooks -- v1.3
+- Sphinx site polish: Audience-aware landing page, function decision guide, API-to-notebook cross-links -- v1.3
 
 ### Active
 
-- Docstring enrichment: Upgrade all 79 function examples to research-quality with richer mathematical context -- v1.3
-- Maple migration guide: Side-by-side cheat sheet mapping Garvan's Maple functions to q_kangaroo equivalents -- v1.3
-- Revised core vignettes: Expand existing 5 notebooks with deeper examples, cross-references, and exercises -- v1.3
-- New vignettes: Getting Started tutorial, Series Analysis workflow, Identity Proving workflow -- v1.3
-- Sphinx site polish: Navigation improvements, landing page, cross-linking between API docs and vignettes -- v1.3
+(None -- planning next milestone)
 
 ### Future
 
@@ -112,4 +114,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Closure-from-template for prove_nonterminating | Declarative Python params, Rust builds closures; avoids FFI closure crossing | Good |
 
 ---
-*Last updated: 2026-02-16 after v1.2 milestone*
+*Last updated: 2026-02-16 after v1.3 milestone*
