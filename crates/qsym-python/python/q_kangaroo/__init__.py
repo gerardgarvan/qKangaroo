@@ -69,12 +69,12 @@ from q_kangaroo._q_kangaroo import (
     # Group 11: q-Gosper Algorithm
     q_gosper_fn as q_gosper,
     # Group 12: Algorithmic Summation
-    q_zeilberger_fn as q_zeilberger,
-    verify_wz_fn as verify_wz,
-    q_petkovsek_fn as q_petkovsek,
+    q_zeilberger,
+    verify_wz,
+    q_petkovsek,
     # Group 13: Identity Proving Extensions
-    prove_nonterminating_fn as prove_nonterminating,
-    find_transformation_chain_fn as find_transformation_chain,
+    prove_nonterminating,
+    find_transformation_chain,
 )
 
 __version__ = version()
