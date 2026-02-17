@@ -107,6 +107,13 @@ Plans:
 
 **Requirements:** DOC-09, DOC-10, DOC-11, DOC-12, DOC-13
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Create getting_started.ipynb (newcomer onboarding) and series_analysis.ipynb (analysis pipeline)
+- [ ] 20-02-PLAN.md -- Create identity_proving.ipynb (algorithmic proving workflow)
+- [ ] 20-03-PLAN.md -- Create maple_migration.ipynb (13-group migration guide) and update index.rst
+
 **Scope:**
 - getting_started.ipynb: Zero to first identity for newcomers (install -> session -> q-Pochhammer -> products -> identity)
 - series_analysis.ipynb: prodmake -> etamake -> sift -> findlincombo/findhom/findpoly -> findcong pipeline
@@ -152,5 +159,5 @@ Plans:
 | 17. Python API & Documentation | v1.2 | 2/2 | Complete | 2026-02-16 |
 | 18. Docstring Enrichment | v1.3 | 4/4 | Complete | 2026-02-16 |
 | 19. Vignette Expansion | v1.3 | 3/3 | Complete | 2026-02-16 |
-| 20. New Vignettes & Migration Guide | v1.3 | 0/? | Planned | - |
+| 20. New Vignettes & Migration Guide | v1.3 | 0/3 | Planned | - |
 | 21. Sphinx Site Polish | v1.3 | 0/? | Planned | - |
