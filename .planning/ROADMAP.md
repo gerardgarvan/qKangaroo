@@ -128,6 +128,12 @@ Plans:
 
 **Requirements:** DOC-14, DOC-15, DOC-16
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 21-01-PLAN.md -- Rewrite index.rst with audience navigation, create function_guide.rst decision page, enrich examples/index.rst
+- [ ] 21-02-PLAN.md -- Add cross-links from all 13 API pages to relevant vignettes
+
 **Scope:**
 - Rewrite index.rst with audience-aware navigation ("New to q-series?", "Switching from Maple?", "Looking for a specific function?")
 - Add cross-links from each API page to relevant vignettes
@@ -160,4 +166,4 @@ Plans:
 | 18. Docstring Enrichment | v1.3 | 4/4 | Complete | 2026-02-16 |
 | 19. Vignette Expansion | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 20. New Vignettes & Migration Guide | v1.3 | 3/3 | Complete | 2026-02-16 |
-| 21. Sphinx Site Polish | v1.3 | 0/? | Planned | - |
+| 21. Sphinx Site Polish | v1.3 | 0/2 | Planned | - |
