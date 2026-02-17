@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.3 Documentation & Vignettes — phase 20 in progress (plan 03 of 3 complete).
+**Current focus:** v1.3 Documentation & Vignettes — phase 20 in progress (plans 02 and 03 of 3 complete).
 
 ## Current Position
 
 Phase: 20 of 21 (New Vignettes & Migration)
-Plan: 3 of 3 (20-03 complete; 20-01 and 20-02 pending)
-Status: Plan 20-03 complete, plans 20-01/20-02 still to execute
-Last activity: 2026-02-17 — Completed 20-03 (maple migration notebook + index.rst)
+Plan: 3 of 3 (20-02 and 20-03 complete; 20-01 pending)
+Status: Plan 20-02 complete, plan 20-01 still to execute
+Last activity: 2026-02-17 — Completed 20-02 (identity proving notebook)
 
 Progress: [================================                  ] 65% (v1.3: phase 20 in progress)
 
@@ -56,7 +56,7 @@ Progress: [================================                  ] 65% (v1.3: phase 
 |-------|-------|-------|----------|
 | 18 - Docstring Enrichment | 4/4 | 26 min | 7 min |
 | 19 - Vignette Expansion | 3/3 | 20 min | 7 min |
-| 20 - New Vignettes & Migration | 1/3 | 6 min | 6 min |
+| 20 - New Vignettes & Migration | 2/3 | 10 min | 5 min |
 
 ## Accumulated Context
 
@@ -68,6 +68,8 @@ v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
 v1.2 decisions preserved in milestones/v1.2-ROADMAP.md.
 - 20-03: Listed all 9 notebooks in index.rst (series_analysis/identity_proving to be created by 20-01/20-02)
 - 20-03: Corrected API signatures from plan draft to match actual dsl.rs exports
+- 20-02: q-Vandermonde as running example for identity proving notebook (first-order recurrence, clean pipeline)
+- 20-02: Fixed 3 plan parameter bugs: non-summable example, nonterminating RHS bases, transformation chain pair
 
 ### Pending Todos
 
@@ -80,5 +82,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 20-03-PLAN.md (maple migration notebook + index.rst update). Plans 20-01 and 20-02 still pending.
-Resume file: .planning/phases/20-new-vignettes-migration/20-03-SUMMARY.md
+Stopped at: Completed 20-02-PLAN.md (identity proving notebook). Plan 20-01 still pending.
+Resume file: .planning/phases/20-new-vignettes-migration/20-02-SUMMARY.md
