@@ -95,11 +95,11 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
   2. Typing `f := etaq(1,1,20)` parses into an assignment AST node with variable name `f` and a function-call value
   3. Typing `f + g`, `f - g`, `f * g`, `-f`, and `3*f` all parse into correct arithmetic AST nodes
   4. Integer literals (`50`), rational literals (`3/4`), and the `infinity` keyword parse into their respective AST leaf nodes
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 24-01: Crate scaffold and AST definition
-- [ ] 24-02: Expression parser (function calls, assignment, arithmetic, literals)
+- [ ] 24-01-PLAN.md -- Crate scaffold and AST/Token/Error type definitions
+- [ ] 24-02-PLAN.md -- Lexer and Pratt parser with comprehensive tests
 
 ### Phase 25: Evaluator & Function Dispatch
 **Goal**: Users can call any of the 79 q-Kangaroo functions by name and see computed series output in the terminal
@@ -186,7 +186,7 @@ Plans:
 | 21. Sphinx Site Polish | v1.3 | 2/2 | Complete | 2026-02-16 |
 | 22. Installation Documentation | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 23. Verification & Cross-References | v1.4 | 2/2 | Complete | 2026-02-17 |
-| 24. Parser & AST | v1.5 | 0/2 | Not started | - |
+| 24. Parser & AST | v1.5 | 0/2 | Planned | - |
 | 25. Evaluator & Function Dispatch | v1.5 | 0/3 | Not started | - |
 | 26. REPL Shell & Session | v1.5 | 0/2 | Not started | - |
 | 27. Output Commands & Polish | v1.5 | 0/1 | Not started | - |
