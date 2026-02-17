@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.4 Installation & Build Guide -- COMPLETE
+**Current focus:** v1.4 archived. Planning next milestone.
 
 ## Current Position
 
@@ -71,7 +71,7 @@ Progress: [########################] 100% (70/70 plans -- all complete)
 ### Decisions
 
 All decisions logged in PROJECT.md Key Decisions table.
-v1.0-v1.3 decisions preserved in respective milestone files.
+v1.0-v1.4 decisions preserved in respective milestone files.
 
 ### Pending Todos
 
@@ -84,4 +84,4 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Re-executed 23-01-PLAN.md (check_install.py). Fixed __init__.py import names. All 70 plans across 23 phases shipped. v1.4 milestone complete.
+Stopped at: v1.4 milestone archived. All 70 plans across 23 phases shipped. Ready for next milestone.

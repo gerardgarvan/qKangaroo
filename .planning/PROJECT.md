@@ -10,7 +10,7 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ## Current State
 
-**v1.3 shipped.** The project now has research-quality documentation for every function:
+**v1.4 shipped.** The project now has complete installation documentation and verification tooling:
 - `pip install q-kangaroo` works (Linux manylinux2014 + Windows MinGW wheels)
 - `import q_kangaroo` provides 79 DSL functions across 13 groups
 - All 79 functions have research-quality docstrings with verified examples, DLMF references, cross-references
@@ -26,7 +26,8 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - 4,866 lines Python API (`crates/qsym-python/src/`)
 - ~47,000 lines documentation (`docs/` including notebooks)
 - 836 Rust tests, 9 Python integration tests
-- 66 plans across 21 phases (v1.0 + v1.1 + v1.2 + v1.3)
+- 70 plans across 23 phases (v1.0 + v1.1 + v1.2 + v1.3 + v1.4)
+- INSTALL.md (236 lines), check_install.py (238 lines)
 
 ## Requirements
 
@@ -56,12 +57,14 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - Revised core vignettes: 5 notebooks expanded from demos to comprehensive tutorials -- v1.3
 - New vignettes: Getting Started, Series Analysis, Identity Proving, Maple Migration notebooks -- v1.3
 - Sphinx site polish: Audience-aware landing page, function decision guide, API-to-notebook cross-links -- v1.3
+- Bulletproof installation instructions for pip-install users and build-from-source contributors -- v1.4
+- INSTALL.md at repo root + integrated Sphinx installation.rst -- v1.4
+- Build verification script (check_install.py) with end-user and --dev modes -- v1.4
+- README.md and Sphinx landing page cross-reference installation guide -- v1.4
 
 ### Active
 
-- Bulletproof installation instructions for both pip-install users and build-from-source contributors -- v1.4
-- INSTALL.md at repo root + integrated Sphinx installation.rst -- v1.4
-- Build verification script (check_install.py) to confirm setup works -- v1.4
+(No active requirements -- all milestones complete)
 
 ### Future
 
@@ -116,4 +119,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Closure-from-template for prove_nonterminating | Declarative Python params, Rust builds closures; avoids FFI closure crossing | Good |
 
 ---
-*Last updated: 2026-02-17 after v1.4 milestone start*
+*Last updated: 2026-02-17 after v1.4 milestone complete*

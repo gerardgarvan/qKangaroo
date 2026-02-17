@@ -118,3 +118,30 @@ See STATE.md Accumulated Context for full decision log.
 - 209 files modified, +41,130 lines
 - 12 plans in ~70 min (avg 6 min/plan)
 - Total project: 66 plans across 21 phases (v1.0 + v1.1 + v1.2 + v1.3)
+
+## v1.4: Installation & Build Guide (Complete)
+
+**Shipped:** 2026-02-17
+**Phases:** 22-23 (4 plans)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 22 | Installation documentation -- INSTALL.md (236 lines) with pip install, Linux/Cygwin build-from-source, and 6-entry troubleshooting; installation.rst (329 lines) Sphinx mirror with RST directives |
+| 23 | Verification & cross-references -- check_install.py (238 lines) with 4 end-user + 5 --dev checks; README.md and index.rst cross-references to installation guide |
+
+### Key Accomplishments
+
+- Complete INSTALL.md covering pip install, Linux build, Cygwin/Windows build (MinGW GMP + GNU Rust target), and troubleshooting
+- Sphinx installation.rst mirror with 31 code-block directives, note/warning/tip admonitions
+- check_install.py verification script with colored pass/fail output for 9 checks (4 end-user + 5 --dev)
+- README.md and Sphinx landing page cross-reference installation guide from all entry points
+- Fixed __init__.py stale import names (5 Phase 16 functions with _fn suffixes)
+
+### Key Metrics
+
+- 9 v1.4 requirements: 9/9 complete
+- 17 commits, 20 files modified, +2,041 lines
+- 4 plans in ~8 min (avg 2 min/plan)
+- Total project: 70 plans across 23 phases (v1.0 + v1.1 + v1.2 + v1.3 + v1.4)
