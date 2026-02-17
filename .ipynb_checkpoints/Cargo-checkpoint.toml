@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/qsym-core", "crates/qsym-python"]
+resolver = "2"

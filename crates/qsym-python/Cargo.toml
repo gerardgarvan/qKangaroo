@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.85"
 
 [lib]
-name = "_qsymbolic"
+name = "_q_kangaroo"
 crate-type = ["cdylib"]
 
 [dependencies]

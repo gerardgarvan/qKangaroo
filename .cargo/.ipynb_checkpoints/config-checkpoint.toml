@@ -1,0 +1,6 @@
+[env]
+PKG_CONFIG_PATH = "C:/mingw64-gcc/mingw64/lib/pkgconfig"
+C_INCLUDE_PATH = "C:/mingw64-gcc/mingw64/include"
+LIBRARY_PATH = "C:/mingw64-gcc/mingw64/lib"
+CFLAGS = "-IC:/mingw64-gcc/mingw64/include"
+LDFLAGS = "-LC:/mingw64-gcc/mingw64/lib"

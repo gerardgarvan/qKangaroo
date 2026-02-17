@@ -1,7 +1,7 @@
 """
 Integration test: replicate a Garvan-style q-series identity discovery workflow.
 
-This test demonstrates the full Q-Symbolic Python API by:
+This test demonstrates the full q-Kangaroo Python API by:
 1. Computing series from named products and partition functions
 2. Using relation discovery to find identities
 3. Verifying identities by series comparison
@@ -21,7 +21,7 @@ def test_euler_identity():
     The partition generating function IS the inverse Euler product.
     We verify by computing both sides independently and checking coefficient agreement.
     """
-    from qsymbolic import QSession, partition_gf, aqprod
+    from q_kangaroo import QSession, partition_gf, aqprod
 
     s = QSession()
     order = 50
@@ -48,7 +48,7 @@ def test_jacobi_triple_product():
     theta3(q) = (q^2;q^2)_inf * (-q;q^2)_inf * (-q;q^2)_inf
     = sum_{n=-inf}^{inf} q^{n^2}
     """
-    from qsymbolic import QSession, theta3
+    from q_kangaroo import QSession, theta3
 
     s = QSession()
     order = 30
@@ -80,7 +80,7 @@ def test_findlincombo_identity():
 
     Build the product series, then verify it equals the constant 1.
     """
-    from qsymbolic import QSession, partition_gf, aqprod
+    from q_kangaroo import QSession, partition_gf, aqprod
 
     s = QSession()
     order = 30
@@ -106,7 +106,7 @@ def test_prodmake_roundtrip():
     Start with etaq(1, 1, q, N) = (q;q)_inf = prod_{n=1}^{inf} (1-q^n)
     Expand to series, then use prodmake to recover the factors.
     """
-    from qsymbolic import QSession, etaq, prodmake
+    from q_kangaroo import QSession, etaq, prodmake
 
     s = QSession()
     order = 30
@@ -137,7 +137,7 @@ def test_batch_parameter_scan():
     """
     Test batch generation: scan etaq over a parameter grid.
     """
-    from qsymbolic import QSession
+    from q_kangaroo import QSession
 
     s = QSession()
 
@@ -157,7 +157,7 @@ def test_single_generate():
     """
     Test the single generate() convenience method.
     """
-    from qsymbolic import QSession, etaq
+    from q_kangaroo import QSession, etaq
 
     s = QSession()
 
@@ -176,7 +176,7 @@ def test_symbols_and_expressions():
     """
     Test the symbolic expression API: create, combine, render.
     """
-    from qsymbolic import QSession
+    from q_kangaroo import QSession
 
     s = QSession()
     q_a_n = s.symbols("q a n")
@@ -214,7 +214,7 @@ def test_distinct_odd_euler_identity():
 
     i.e., distinct_parts_gf = odd_parts_gf
     """
-    from qsymbolic import QSession, distinct_parts_gf, odd_parts_gf
+    from q_kangaroo import QSession, distinct_parts_gf, odd_parts_gf
 
     s = QSession()
     order = 40
@@ -240,7 +240,7 @@ def test_hypergeometric_identity_verification():
     Using a=q (1,1,1), b=q^2 (1,1,2), c=q^5 (1,1,5):
     z = c/(ab) = q^5 / (q * q^2) = q^2 = (1,1,2)
     """
-    from qsymbolic import QSession, phi, try_summation
+    from q_kangaroo import QSession, phi, try_summation
     from fractions import Fraction
 
     s = QSession()
