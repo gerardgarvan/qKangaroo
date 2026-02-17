@@ -5,7 +5,7 @@
 - v1.0 Core Engine - Phases 1-8 (shipped 2026-02-14)
 - v1.1 Polish & Publish - Phases 9-12 (shipped 2026-02-15)
 - v1.2 Algorithmic Identity Proving - Phases 13-17 (shipped 2026-02-16)
-- v1.3 Documentation & Vignettes - Phases 18-21 (in progress)
+- v1.3 Documentation & Vignettes - Phases 18-21 (shipped 2026-02-16)
 
 ## Phases
 
@@ -55,7 +55,7 @@ See `.planning/milestones/v1.2-ROADMAP.md` for details.
 - [x] Phase 18: Docstring Enrichment (4/4 plans) -- 2026-02-16
 - [x] Phase 19: Vignette Expansion (3/3 plans) -- 2026-02-16
 - [x] Phase 20: New Vignettes & Migration Guide (3/3 plans) -- 2026-02-16
-- [ ] Phase 21: Sphinx Site Polish
+- [x] Phase 21: Sphinx Site Polish (2/2 plans) -- 2026-02-16
 
 #### Phase 18: Docstring Enrichment
 
@@ -166,4 +166,4 @@ Plans:
 | 18. Docstring Enrichment | v1.3 | 4/4 | Complete | 2026-02-16 |
 | 19. Vignette Expansion | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 20. New Vignettes & Migration Guide | v1.3 | 3/3 | Complete | 2026-02-16 |
-| 21. Sphinx Site Polish | v1.3 | 0/2 | Planned | - |
+| 21. Sphinx Site Polish | v1.3 | 2/2 | Complete | 2026-02-16 |
