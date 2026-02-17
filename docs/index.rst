@@ -12,6 +12,13 @@ proving -- all accessible from Python via a clean API.
 Getting Started
 ---------------
 
+.. important:: **First time installing?**
+
+   Follow the step-by-step installation guide for pip install, building from
+   source, and troubleshooting common issues.
+
+   :doc:`installation`
+
 .. tip:: **New to q-series?**
 
    Start with our step-by-step tutorial that takes you from installation to
