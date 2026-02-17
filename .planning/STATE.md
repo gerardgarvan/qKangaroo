@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.4 Installation & Build Guide -- Phase 22 (Installation Documentation)
+**Current focus:** v1.4 Installation & Build Guide -- Phase 23 (Build Guide)
 
 ## Current Position
 
-Phase: 22 of 23 (Installation Documentation)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-17 -- Completed 22-01 (INSTALL.md)
+Phase: 23 of 23 (Build Guide)
+Plan: 1 of ? in current phase
+Status: Ready
+Last activity: 2026-02-17 -- Completed 22-02 (installation.rst)
 
-Progress: [####################..] 96% (67/70 plans -- 67 complete, 3 remaining in v1.4)
+Progress: [######################.] 97% (68/70 plans -- 68 complete, 2 remaining in v1.4)
 
 ## Performance Metrics
 
@@ -63,7 +63,7 @@ Progress: [####################..] 96% (67/70 plans -- 67 complete, 3 remaining 
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 22 - Installation Documentation | 1/2 | 1 min | 1 min |
+| 22 - Installation Documentation | 2/2 | 2 min | 1 min |
 
 ## Accumulated Context
 
@@ -83,4 +83,4 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 22-01-PLAN.md (INSTALL.md). Ready for 22-02.
+Stopped at: Completed 22-02-PLAN.md (installation.rst). Phase 22 complete. Ready for phase 23.
