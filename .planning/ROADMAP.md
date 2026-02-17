@@ -95,8 +95,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 23-01-PLAN.md -- check_install.py with end-user and --dev verification
-- [ ] 23-02-PLAN.md -- README.md and index.rst cross-reference updates
+- [x] 23-01-PLAN.md -- check_install.py with end-user and --dev verification
+- [x] 23-02-PLAN.md -- README.md and index.rst cross-reference updates
 
 ## Progress
 
@@ -124,4 +124,4 @@ Plans:
 | 20. New Vignettes & Migration Guide | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 21. Sphinx Site Polish | v1.3 | 2/2 | Complete | 2026-02-16 |
 | 22. Installation Documentation | v1.4 | 2/2 | Complete | 2026-02-17 |
-| 23. Verification & Cross-References | v1.4 | 0/2 | Not started | - |
+| 23. Verification & Cross-References | v1.4 | 2/2 | Complete | 2026-02-17 |
