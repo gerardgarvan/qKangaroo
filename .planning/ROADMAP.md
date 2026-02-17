@@ -92,11 +92,11 @@ Plans:
   2. Running `python check_install.py --dev` additionally checks Rust, cargo, maturin, GMP headers, and C compiler availability
   3. README.md contains a clear pointer to INSTALL.md for anyone looking for build instructions
   4. The Sphinx landing page (index.rst) links to the new installation guide so docs readers find it immediately
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 23-01: check_install.py with end-user and --dev verification
-- [ ] 23-02: README.md and index.rst cross-reference updates
+- [ ] 23-01-PLAN.md -- check_install.py with end-user and --dev verification
+- [ ] 23-02-PLAN.md -- README.md and index.rst cross-reference updates
 
 ## Progress
 
