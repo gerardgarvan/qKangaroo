@@ -73,6 +73,8 @@ v1.2 decisions preserved in milestones/v1.2-ROADMAP.md.
 - 20-02: Fixed 3 plan parameter bugs: non-summable example, nonterminating RHS bases, transformation chain pair
 - 20-01: Used (q;q)_3 not (1;q)_3 for first aqprod demo to avoid zero from (1-1) factor
 - 21-02: Absolute :doc: paths (/examples/name) for cross-links, seealso after all autofunction directives
+- 21-01: Tip/note/seealso admonitions for audience paths; function guide organized by task type not implementation group
+- 21-01: Sears/Watson transforms noted as internal to try_summation/find_transformation_chain (not separate Python DSL exports)
 - 20-01: Combined findhom/findpoly into single section with findpoly live demo
 
 ### Pending Todos
@@ -86,5 +88,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 21-02-PLAN.md (API cross-links). Phase 21 complete. v1.3 milestone complete.
-Resume file: .planning/phases/21-sphinx-site-polish/21-02-SUMMARY.md
+Stopped at: Completed 21-01-PLAN.md (landing page, function guide, examples gallery). Both phase 21 plans complete.
+Resume file: .planning/phases/21-sphinx-site-polish/21-01-SUMMARY.md
