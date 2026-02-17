@@ -78,7 +78,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
 
 **Milestone Goal:** A standalone Rust executable providing an interactive REPL with Maple-style syntax, all 79 q-Kangaroo functions, variable assignment, LaTeX output, and save-to-file -- giving researchers a terminal-based Maple replacement for q-series computation.
 
-- [ ] **Phase 24: Parser & AST** - Maple-style expression parser with function calls, assignment, arithmetic, and literals
+- [x] **Phase 24: Parser & AST** - Maple-style expression parser with function calls, assignment, arithmetic, and literals
 - [ ] **Phase 25: Evaluator & Function Dispatch** - AST evaluator connecting all 79 functions to qsym-core with variable environment and text output
 - [ ] **Phase 26: REPL Shell & Session** - Interactive line-editing shell with history, tab completion, help system, and session configuration
 - [ ] **Phase 27: Output Commands & Polish** - LaTeX rendering and file save commands for computed results
@@ -98,8 +98,8 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
 **Plans:** 2 plans
 
 Plans:
-- [ ] 24-01-PLAN.md -- Crate scaffold and AST/Token/Error type definitions
-- [ ] 24-02-PLAN.md -- Lexer and Pratt parser with comprehensive tests
+- [x] 24-01-PLAN.md -- Crate scaffold and AST/Token/Error type definitions
+- [x] 24-02-PLAN.md -- Lexer and Pratt parser with comprehensive tests
 
 ### Phase 25: Evaluator & Function Dispatch
 **Goal**: Users can call any of the 79 q-Kangaroo functions by name and see computed series output in the terminal
@@ -186,7 +186,7 @@ Plans:
 | 21. Sphinx Site Polish | v1.3 | 2/2 | Complete | 2026-02-16 |
 | 22. Installation Documentation | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 23. Verification & Cross-References | v1.4 | 2/2 | Complete | 2026-02-17 |
-| 24. Parser & AST | v1.5 | 0/2 | Planned | - |
+| 24. Parser & AST | v1.5 | 2/2 | Complete | 2026-02-17 |
 | 25. Evaluator & Function Dispatch | v1.5 | 0/3 | Not started | - |
 | 26. REPL Shell & Session | v1.5 | 0/2 | Not started | - |
 | 27. Output Commands & Polish | v1.5 | 0/1 | Not started | - |

@@ -61,10 +61,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PARSE-01 | Phase 24 | Pending |
-| PARSE-02 | Phase 24 | Pending |
-| PARSE-03 | Phase 24 | Pending |
-| PARSE-04 | Phase 24 | Pending |
+| PARSE-01 | Phase 24 | Complete |
+| PARSE-02 | Phase 24 | Complete |
+| PARSE-03 | Phase 24 | Complete |
+| PARSE-04 | Phase 24 | Complete |
 | REPL-01 | Phase 26 | Pending |
 | REPL-02 | Phase 26 | Pending |
 | REPL-03 | Phase 26 | Pending |
