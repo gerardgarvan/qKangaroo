@@ -16,14 +16,7 @@ pip install q-kangaroo
 
 **Requirements:** Python 3.9+. GMP library is bundled in pre-built wheels.
 
-> **Note:** q-Kangaroo is in pre-release. To install from source:
->
-> ```bash
-> git clone https://github.com/OWNER/q-kangaroo.git
-> cd q-kangaroo/crates/qsym-python
-> pip install maturin
-> maturin develop --release
-> ```
+For build-from-source instructions, platform-specific guides, and troubleshooting, see [INSTALL.md](INSTALL.md).
 
 ## Quick Start
 
