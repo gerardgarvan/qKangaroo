@@ -5,13 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.3 milestone archived. Planning next milestone.
+**Current focus:** v1.4 Installation & Build Guide — defining requirements.
 
 ## Current Position
 
-Phase: 21 of 21 — all milestones complete (v1.0 + v1.1 + v1.2 + v1.3)
-Status: v1.3 archived, ready for next milestone
-Last activity: 2026-02-16 — Archived v1.3 milestone
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements for v1.4
+Last activity: 2026-02-17 — Milestone v1.4 started
 
 ## Performance Metrics
 
@@ -76,5 +77,5 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-16
-Stopped at: Archived v1.3 milestone. All 4 milestones complete.
+Last session: 2026-02-17
+Stopped at: Starting v1.4 milestone — defining requirements.

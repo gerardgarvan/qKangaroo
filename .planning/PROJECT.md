@@ -59,7 +59,9 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-(None -- planning next milestone)
+- Bulletproof installation instructions for both pip-install users and build-from-source contributors -- v1.4
+- INSTALL.md at repo root + integrated Sphinx installation.rst -- v1.4
+- Build verification script (check_install.py) to confirm setup works -- v1.4
 
 ### Future
 
@@ -114,4 +116,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Closure-from-template for prove_nonterminating | Declarative Python params, Rust builds closures; avoids FFI closure crossing | Good |
 
 ---
-*Last updated: 2026-02-16 after v1.3 milestone*
+*Last updated: 2026-02-17 after v1.4 milestone start*
