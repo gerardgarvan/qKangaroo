@@ -11,3 +11,11 @@ pattern.
 .. autofunction:: q_kangaroo.prove_eta_id
 
 .. autofunction:: q_kangaroo.search_identities
+
+.. seealso::
+
+   :doc:`/examples/identity_proving` -- Proving identities with q-Zeilberger and WZ certificates
+
+   :doc:`/examples/theta_identities` -- Eta-quotient identities for theta functions
+
+   :doc:`/examples/maple_migration` -- Maple identity proving equivalents

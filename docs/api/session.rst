@@ -9,3 +9,7 @@ For quick interactive use, see also :func:`q_kangaroo.get_default_session`.
 .. autoclass:: q_kangaroo.QSession
    :members:
    :undoc-members:
+
+.. seealso::
+
+   :doc:`/examples/getting_started` -- Creating sessions and computing your first series

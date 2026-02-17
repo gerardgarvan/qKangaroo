@@ -8,3 +8,7 @@ simplification, and LaTeX rendering for Jupyter notebooks.
 .. autoclass:: q_kangaroo.QExpr
    :members:
    :undoc-members:
+
+.. seealso::
+
+   :doc:`/examples/getting_started` -- Working with symbolic expressions

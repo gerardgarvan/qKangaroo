@@ -12,3 +12,9 @@ via ``series[k]``, and LaTeX rendering in Jupyter notebooks via
 .. autoclass:: q_kangaroo.QSeries
    :members:
    :undoc-members:
+
+.. seealso::
+
+   :doc:`/examples/getting_started` -- Working with formal power series
+
+   :doc:`/examples/series_analysis` -- Analyzing and reverse-engineering series

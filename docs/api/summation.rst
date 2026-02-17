@@ -22,3 +22,11 @@ hypergeometric series.
 .. autofunction:: q_kangaroo.prove_nonterminating
 
 .. autofunction:: q_kangaroo.find_transformation_chain
+
+.. seealso::
+
+   :doc:`/examples/identity_proving` -- Complete algorithmic proving workflow with q-Zeilberger and WZ
+
+   :doc:`/examples/hypergeometric_summation` -- Summation formulas and transformation chains
+
+   :doc:`/examples/maple_migration` -- Maple ``qgosper``, ``qzeil`` equivalents

@@ -91,3 +91,11 @@ iterating yields a chain of increasingly complex identities.
 .. autofunction:: q_kangaroo.bailey_chain
 
 .. autofunction:: q_kangaroo.bailey_discover
+
+.. seealso::
+
+   :doc:`/examples/mock_theta_functions` -- Mock theta functions, Appell-Lerch connection, universal g2/g3
+
+   :doc:`/examples/bailey_chains` -- Bailey pairs, lemma, chains, and discovery
+
+   :doc:`/examples/maple_migration` -- Maple mock theta and Bailey chain equivalents
