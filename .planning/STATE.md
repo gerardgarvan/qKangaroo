@@ -2,17 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-16)
+See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.4 Installation & Build Guide — defining requirements.
+**Current focus:** v1.4 Installation & Build Guide -- Phase 22 (Installation Documentation)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements for v1.4
-Last activity: 2026-02-17 — Milestone v1.4 started
+Phase: 22 of 23 (Installation Documentation)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-02-17 -- Roadmap created for v1.4
+
+Progress: [####################..] 91% (66/70 plans -- 66 complete from v1.0-v1.3, 4 planned for v1.4)
 
 ## Performance Metrics
 
@@ -62,10 +64,7 @@ Last activity: 2026-02-17 — Milestone v1.4 started
 ### Decisions
 
 All decisions logged in PROJECT.md Key Decisions table.
-v1.0 decisions preserved in MILESTONES.md.
-v1.1 decisions preserved in milestones/v1.1-ROADMAP.md.
-v1.2 decisions preserved in milestones/v1.2-ROADMAP.md.
-v1.3 decisions preserved in milestones/v1.3-ROADMAP.md.
+v1.0-v1.3 decisions preserved in respective milestone files.
 
 ### Pending Todos
 
@@ -78,4 +77,4 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Starting v1.4 milestone — defining requirements.
+Stopped at: v1.4 roadmap created. Ready to plan Phase 22.

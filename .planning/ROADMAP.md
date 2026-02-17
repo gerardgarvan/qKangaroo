@@ -6,6 +6,7 @@
 - v1.1 Polish & Publish - Phases 9-12 (shipped 2026-02-15)
 - v1.2 Algorithmic Identity Proving - Phases 13-17 (shipped 2026-02-16)
 - v1.3 Documentation & Vignettes - Phases 18-21 (shipped 2026-02-16)
+- v1.4 Installation & Build Guide - Phases 22-23
 
 ## Phases
 
@@ -62,6 +63,41 @@ See `.planning/milestones/v1.3-ROADMAP.md` for details.
 
 </details>
 
+### v1.4 Installation & Build Guide
+
+**Milestone Goal:** Bulletproof installation instructions for both end users (pip install) and contributors (build from source), with a verification script to confirm the setup works.
+
+#### Phase 22: Installation Documentation
+**Goal**: Users have complete, self-contained installation instructions for every supported platform and workflow
+**Depends on**: Nothing (documentation-only, no code dependencies)
+**Requirements**: INST-01, INST-02, INST-03, INST-04, INST-05
+**Success Criteria** (what must be TRUE):
+  1. A user on any supported platform can follow INSTALL.md from scratch to a working `import q_kangaroo` without consulting any other document
+  2. A contributor on Cygwin/Windows can follow the build-from-source section to compile the Rust crate and run `maturin develop` successfully
+  3. A contributor on Linux can follow the build-from-source section to compile and install from source successfully
+  4. A user encountering a common failure (GMP not found, wrong Rust target, DLL loading error) finds the solution in the troubleshooting section
+  5. The Sphinx-rendered installation.rst page contains the same detail as INSTALL.md, properly formatted with RST directives
+**Plans**: TBD
+
+Plans:
+- [ ] 22-01: INSTALL.md with pip install + build-from-source + troubleshooting
+- [ ] 22-02: installation.rst Sphinx page mirroring INSTALL.md content
+
+#### Phase 23: Verification & Cross-References
+**Goal**: Users can verify their installation works and discover the installation guide from every entry point
+**Depends on**: Phase 22 (cross-references point to content from Phase 22; verification script validates the installation path)
+**Requirements**: VRFY-01, VRFY-02, XREF-01, XREF-02
+**Success Criteria** (what must be TRUE):
+  1. Running `python check_install.py` prints pass/fail for Python version, import, GMP loading, and basic computation
+  2. Running `python check_install.py --dev` additionally checks Rust, cargo, maturin, GMP headers, and C compiler availability
+  3. README.md contains a clear pointer to INSTALL.md for anyone looking for build instructions
+  4. The Sphinx landing page (index.rst) links to the new installation guide so docs readers find it immediately
+**Plans**: TBD
+
+Plans:
+- [ ] 23-01: check_install.py with end-user and --dev verification
+- [ ] 23-02: README.md and index.rst cross-reference updates
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -87,3 +123,5 @@ See `.planning/milestones/v1.3-ROADMAP.md` for details.
 | 19. Vignette Expansion | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 20. New Vignettes & Migration Guide | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 21. Sphinx Site Polish | v1.3 | 2/2 | Complete | 2026-02-16 |
+| 22. Installation Documentation | v1.4 | 0/2 | Not started | - |
+| 23. Verification & Cross-References | v1.4 | 0/2 | Not started | - |

@@ -36,20 +36,20 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INST-01 | TBD | Pending |
-| INST-02 | TBD | Pending |
-| INST-03 | TBD | Pending |
-| INST-04 | TBD | Pending |
-| INST-05 | TBD | Pending |
-| VRFY-01 | TBD | Pending |
-| VRFY-02 | TBD | Pending |
-| XREF-01 | TBD | Pending |
-| XREF-02 | TBD | Pending |
+| INST-01 | Phase 22 | Pending |
+| INST-02 | Phase 22 | Pending |
+| INST-03 | Phase 22 | Pending |
+| INST-04 | Phase 22 | Pending |
+| INST-05 | Phase 22 | Pending |
+| VRFY-01 | Phase 23 | Pending |
+| VRFY-02 | Phase 23 | Pending |
+| XREF-01 | Phase 23 | Pending |
+| XREF-02 | Phase 23 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 9 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 9
+- Mapped to phases: 9
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-17*
