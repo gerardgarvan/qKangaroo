@@ -1,0 +1,11 @@
+[package]
+name = "qsym-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "q-kangaroo"
+path = "src/main.rs"
+
+[dependencies]
+qsym-core = { path = "../qsym-core" }
