@@ -54,7 +54,7 @@ See `.planning/milestones/v1.2-ROADMAP.md` for details.
 
 - [x] Phase 18: Docstring Enrichment (4/4 plans) -- 2026-02-16
 - [x] Phase 19: Vignette Expansion (3/3 plans) -- 2026-02-16
-- [ ] Phase 20: New Vignettes & Migration Guide
+- [x] Phase 20: New Vignettes & Migration Guide (3/3 plans) -- 2026-02-16
 - [ ] Phase 21: Sphinx Site Polish
 
 #### Phase 18: Docstring Enrichment
@@ -159,5 +159,5 @@ Plans:
 | 17. Python API & Documentation | v1.2 | 2/2 | Complete | 2026-02-16 |
 | 18. Docstring Enrichment | v1.3 | 4/4 | Complete | 2026-02-16 |
 | 19. Vignette Expansion | v1.3 | 3/3 | Complete | 2026-02-16 |
-| 20. New Vignettes & Migration Guide | v1.3 | 0/3 | Planned | - |
+| 20. New Vignettes & Migration Guide | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 21. Sphinx Site Polish | v1.3 | 0/? | Planned | - |
