@@ -3073,6 +3073,24 @@ fn qmonomial_from_tuple(num: i64, den: i64, pow: i64) -> QMonomial {
 /// >>> from q_kangaroo import QSession, mock_theta_f3
 /// >>> s = QSession()
 /// >>> f3 = mock_theta_f3(s, 20)
+/// >>> # 1 + q - 2*q^2 + 3*q^3 - 3*q^4 + 3*q^5 - 5*q^6 + ...
+///
+/// Notes
+/// -----
+/// $f(q) = \sum_{n \ge 0} \frac{q^{n^2}}{(-q;q)_n^2}$.
+///
+/// The most famous mock theta function, appearing in Ramanujan's last letter
+/// to Hardy (January 1920). One of Ramanujan's original third-order mock
+/// theta functions. Third-order mock theta functions transform like modular
+/// forms of weight 1/2 up to a non-holomorphic correction (Zwegers, 2002).
+///
+/// See Also
+/// --------
+/// mock_theta_phi3 : Third-order $\phi(q)$.
+/// mock_theta_psi3 : Third-order $\psi(q)$.
+/// mock_theta_chi3 : Third-order $\chi(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
+/// bailey_discover : Bailey pair representation.
 #[pyfunction]
 pub fn mock_theta_f3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3095,6 +3113,28 @@ pub fn mock_theta_f3(session: &QSession, truncation_order: i64) -> PyResult<QSer
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_phi3
+/// >>> s = QSession()
+/// >>> phi3 = mock_theta_phi3(s, 20)
+/// >>> # 1 + q + q^2 + 2*q^3 + 2*q^4 + 2*q^5 + ...
+///
+/// Notes
+/// -----
+/// $\phi(q) = \sum_{n \ge 0} \frac{q^{n^2}}{(-q^2;q^2)_n}$.
+///
+/// One of Ramanujan's original third-order mock theta functions from his
+/// 1920 letter to Hardy. Third-order mock theta functions transform like
+/// modular forms of weight 1/2 up to a non-holomorphic correction
+/// (Zwegers, 2002).
+///
+/// See Also
+/// --------
+/// mock_theta_f3 : Third-order $f(q)$.
+/// mock_theta_psi3 : Third-order $\psi(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_phi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3117,6 +3157,28 @@ pub fn mock_theta_phi3(session: &QSession, truncation_order: i64) -> PyResult<QS
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_psi3
+/// >>> s = QSession()
+/// >>> psi3 = mock_theta_psi3(s, 20)
+/// >>> # q + q^2 + q^3 + 2*q^4 + 2*q^5 + 2*q^6 + ...
+///
+/// Notes
+/// -----
+/// $\psi(q) = \sum_{n \ge 1} \frac{q^{n^2}}{(q;q^2)_n}$.
+///
+/// One of Ramanujan's original third-order mock theta functions from his
+/// 1920 letter to Hardy. Note the summation starts at $n=1$.
+/// Third-order mock theta functions transform like modular forms of
+/// weight 1/2 up to a non-holomorphic correction (Zwegers, 2002).
+///
+/// See Also
+/// --------
+/// mock_theta_f3 : Third-order $f(q)$.
+/// mock_theta_phi3 : Third-order $\phi(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_psi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3139,6 +3201,29 @@ pub fn mock_theta_psi3(session: &QSession, truncation_order: i64) -> PyResult<QS
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_chi3
+/// >>> s = QSession()
+/// >>> chi3 = mock_theta_chi3(s, 20)
+/// >>> # 1 + q + 2*q^2 + 2*q^3 + 3*q^4 + ...
+///
+/// Notes
+/// -----
+/// $\chi(q) = \sum_{n \ge 0} \frac{q^{n^2} (-q;q)_n}{(-q^3;q^3)_n}$.
+///
+/// One of Ramanujan's original third-order mock theta functions from his
+/// 1920 letter to Hardy. The denominator involves a cyclotomic factor
+/// $(1 - q^k + q^{2k})$ at each step. Third-order mock theta functions
+/// transform like modular forms of weight 1/2 up to a non-holomorphic
+/// correction (Zwegers, 2002).
+///
+/// See Also
+/// --------
+/// mock_theta_f3 : Third-order $f(q)$.
+/// mock_theta_omega3 : Third-order $\omega(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_chi3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3161,6 +3246,29 @@ pub fn mock_theta_chi3(session: &QSession, truncation_order: i64) -> PyResult<QS
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_omega3
+/// >>> s = QSession()
+/// >>> omega3 = mock_theta_omega3(s, 20)
+/// >>> # 1 + 2*q^2 + 3*q^4 + 4*q^6 + ...
+///
+/// Notes
+/// -----
+/// $\omega(q) = \sum_{n \ge 0} \frac{q^{2n(n+1)}}{(q;q^2)_{n+1}^2}$.
+///
+/// One of Ramanujan's original third-order mock theta functions from his
+/// 1920 letter to Hardy. The exponents $2n(n+1)$ are always even, so
+/// $\omega(q)$ has support only on even powers. Third-order mock theta
+/// functions transform like modular forms of weight 1/2 up to a
+/// non-holomorphic correction (Zwegers, 2002).
+///
+/// See Also
+/// --------
+/// mock_theta_nu3 : Third-order $\nu(q)$.
+/// mock_theta_chi3 : Third-order $\chi(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_omega3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3183,6 +3291,28 @@ pub fn mock_theta_omega3(session: &QSession, truncation_order: i64) -> PyResult<
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_nu3
+/// >>> s = QSession()
+/// >>> nu3 = mock_theta_nu3(s, 20)
+/// >>> # 1 + q^2 - q^3 + 2*q^4 + ...
+///
+/// Notes
+/// -----
+/// $\nu(q) = \sum_{n \ge 0} \frac{q^{n(n+1)}}{(-q;q^2)_{n+1}}$.
+///
+/// One of Ramanujan's original third-order mock theta functions from his
+/// 1920 letter to Hardy. Third-order mock theta functions transform like
+/// modular forms of weight 1/2 up to a non-holomorphic correction
+/// (Zwegers, 2002).
+///
+/// See Also
+/// --------
+/// mock_theta_omega3 : Third-order $\omega(q)$.
+/// mock_theta_f3 : Third-order $f(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_nu3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3205,6 +3335,29 @@ pub fn mock_theta_nu3(session: &QSession, truncation_order: i64) -> PyResult<QSe
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_rho3
+/// >>> s = QSession()
+/// >>> rho3 = mock_theta_rho3(s, 20)
+/// >>> # 1 + q^2 + q^4 + 2*q^6 + ...
+///
+/// Notes
+/// -----
+/// $\rho(q) = \sum_{n \ge 0} \frac{q^{2n(n+1)}}{(q;q^2)_{n+1}(1+q^{2n+1}+q^{2(2n+1)})}$.
+///
+/// One of Ramanujan's original third-order mock theta functions from his
+/// 1920 letter to Hardy. The denominator contains the cyclotomic factor
+/// $(1 + q^m + q^{2m})$ which distinguishes it from the other third-order
+/// functions. Third-order mock theta functions transform like modular forms
+/// of weight 1/2 up to a non-holomorphic correction (Zwegers, 2002).
+///
+/// See Also
+/// --------
+/// mock_theta_omega3 : Third-order $\omega(q)$.
+/// mock_theta_chi3 : Third-order $\chi(q)$ (also has cyclotomic factor).
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_rho3(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3227,6 +3380,27 @@ pub fn mock_theta_rho3(session: &QSession, truncation_order: i64) -> PyResult<QS
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_f0_5
+/// >>> s = QSession()
+/// >>> f0 = mock_theta_f0_5(s, 20)
+/// >>> # 1 + q + q^2 + q^3 + 2*q^4 + ...
+///
+/// Notes
+/// -----
+/// $f_0(q) = \sum_{n \ge 0} \frac{q^{n^2}}{(-q;q)_n}$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $f_0$ and $f_1$ form a companion pair.
+///
+/// See Also
+/// --------
+/// mock_theta_f1_5 : Companion $f_1(q)$.
+/// mock_theta_phi0_5 : Fifth-order $\phi_0(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3249,6 +3423,27 @@ pub fn mock_theta_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QS
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_f1_5
+/// >>> s = QSession()
+/// >>> f1 = mock_theta_f1_5(s, 20)
+/// >>> # q^2 + q^3 + q^4 + q^5 + 2*q^6 + ...
+///
+/// Notes
+/// -----
+/// $f_1(q) = \sum_{n \ge 1} \frac{q^{n(n+1)}}{(-q;q)_n}$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $f_1$ is the companion of $f_0$.
+///
+/// See Also
+/// --------
+/// mock_theta_f0_5 : Companion $f_0(q)$.
+/// mock_theta_phi1_5 : Fifth-order $\phi_1(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3271,6 +3466,28 @@ pub fn mock_theta_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QS
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_cap_f0_5
+/// >>> s = QSession()
+/// >>> F0 = mock_theta_cap_f0_5(s, 20)
+/// >>> # 1 + q^2 + q^4 + q^6 + q^8 + ...
+///
+/// Notes
+/// -----
+/// $F_0(q) = \sum_{n \ge 0} \frac{q^{2n^2}}{(q;q^2)_n}$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $F_0$ and $F_1$ form a companion pair with even-indexed
+/// exponents.
+///
+/// See Also
+/// --------
+/// mock_theta_cap_f1_5 : Companion $F_1(q)$.
+/// mock_theta_f0_5 : Fifth-order $f_0(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_cap_f0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3293,6 +3510,27 @@ pub fn mock_theta_cap_f0_5(session: &QSession, truncation_order: i64) -> PyResul
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_cap_f1_5
+/// >>> s = QSession()
+/// >>> F1 = mock_theta_cap_f1_5(s, 20)
+/// >>> # 1 + q^2 + q^4 + q^6 + ...
+///
+/// Notes
+/// -----
+/// $F_1(q) = \sum_{n \ge 0} \frac{q^{2n(n+1)}}{(q;q^2)_{n+1}}$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $F_1$ is the companion of $F_0$.
+///
+/// See Also
+/// --------
+/// mock_theta_cap_f0_5 : Companion $F_0(q)$.
+/// mock_theta_f1_5 : Fifth-order $f_1(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_cap_f1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3315,6 +3553,27 @@ pub fn mock_theta_cap_f1_5(session: &QSession, truncation_order: i64) -> PyResul
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_phi0_5
+/// >>> s = QSession()
+/// >>> phi0 = mock_theta_phi0_5(s, 20)
+/// >>> # 1 + q + q^2 + 2*q^3 + ...
+///
+/// Notes
+/// -----
+/// $\phi_0(q) = \sum_{n \ge 0} q^{n^2} (-q;q^2)_n$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $\phi_0$ and $\phi_1$ form a companion pair.
+///
+/// See Also
+/// --------
+/// mock_theta_phi1_5 : Companion $\phi_1(q)$.
+/// mock_theta_psi0_5 : Fifth-order $\psi_0(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_phi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3337,6 +3596,27 @@ pub fn mock_theta_phi0_5(session: &QSession, truncation_order: i64) -> PyResult<
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_phi1_5
+/// >>> s = QSession()
+/// >>> phi1 = mock_theta_phi1_5(s, 20)
+/// >>> # q + q^2 + 2*q^3 + 2*q^4 + ...
+///
+/// Notes
+/// -----
+/// $\phi_1(q) = \sum_{n \ge 0} q^{(n+1)^2} (-q;q^2)_n$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $\phi_1$ is the companion of $\phi_0$.
+///
+/// See Also
+/// --------
+/// mock_theta_phi0_5 : Companion $\phi_0(q)$.
+/// mock_theta_psi1_5 : Fifth-order $\psi_1(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_phi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3359,6 +3639,28 @@ pub fn mock_theta_phi1_5(session: &QSession, truncation_order: i64) -> PyResult<
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_psi0_5
+/// >>> s = QSession()
+/// >>> psi0 = mock_theta_psi0_5(s, 20)
+/// >>> # 1 + q + q^2 + q^3 + 2*q^4 + ...
+///
+/// Notes
+/// -----
+/// $\psi_0(q) = \sum_{n \ge 0} q^{n(n+1)/2} (-q;q)_n$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $\psi_0$ and $\psi_1$ form a companion pair with triangular
+/// number exponents.
+///
+/// See Also
+/// --------
+/// mock_theta_psi1_5 : Companion $\psi_1(q)$.
+/// mock_theta_chi0_5 : Fifth-order $\chi_0(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_psi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3381,6 +3683,27 @@ pub fn mock_theta_psi0_5(session: &QSession, truncation_order: i64) -> PyResult<
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_psi1_5
+/// >>> s = QSession()
+/// >>> psi1 = mock_theta_psi1_5(s, 20)
+/// >>> # q + q^2 + q^3 + 2*q^4 + ...
+///
+/// Notes
+/// -----
+/// $\psi_1(q) = \sum_{n \ge 1} q^{n(n+1)/2} (-q;q)_{n-1}$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $\psi_1$ is the companion of $\psi_0$.
+///
+/// See Also
+/// --------
+/// mock_theta_psi0_5 : Companion $\psi_0(q)$.
+/// mock_theta_chi1_5 : Fifth-order $\chi_1(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_psi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3403,6 +3726,28 @@ pub fn mock_theta_psi1_5(session: &QSession, truncation_order: i64) -> PyResult<
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_chi0_5
+/// >>> s = QSession()
+/// >>> chi0 = mock_theta_chi0_5(s, 20)
+/// >>> # 1 + q + 2*q^2 + 2*q^3 + ...
+///
+/// Notes
+/// -----
+/// $\chi_0(q) = \sum_{n \ge 0} \frac{q^n (-q;q)_n}{(q;q^2)_{n+1}}$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $\chi_0$ and $\chi_1$ form a companion pair. Internally
+/// computed via $q \to -q$ substitution composition.
+///
+/// See Also
+/// --------
+/// mock_theta_chi1_5 : Companion $\chi_1(q)$.
+/// mock_theta_f0_5 : Fifth-order $f_0(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_chi0_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3425,6 +3770,28 @@ pub fn mock_theta_chi0_5(session: &QSession, truncation_order: i64) -> PyResult<
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_chi1_5
+/// >>> s = QSession()
+/// >>> chi1 = mock_theta_chi1_5(s, 20)
+/// >>> # 1 + q + q^2 + 2*q^3 + ...
+///
+/// Notes
+/// -----
+/// $\chi_1(q) = \sum_{n \ge 0} \frac{q^n (-q;q)_n}{(q;q^2)_{n+1}}$.
+///
+/// One of Ramanujan's fifth-order mock theta functions. The ten fifth-order
+/// functions split into two groups of five, related by Watson's (1936)
+/// analysis. $\chi_1$ is the companion of $\chi_0$. Internally
+/// computed via $q \to -q$ substitution composition.
+///
+/// See Also
+/// --------
+/// mock_theta_chi0_5 : Companion $\chi_0(q)$.
+/// mock_theta_f1_5 : Fifth-order $f_1(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
 #[pyfunction]
 pub fn mock_theta_chi1_5(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3447,6 +3814,29 @@ pub fn mock_theta_chi1_5(session: &QSession, truncation_order: i64) -> PyResult<
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_cap_f0_7
+/// >>> s = QSession()
+/// >>> F0_7 = mock_theta_cap_f0_7(s, 20)
+/// >>> # 1 + q + q^2 + q^3 + 2*q^4 + ...
+///
+/// Notes
+/// -----
+/// $F_0(q) = \sum_{n \ge 0} \frac{q^{n^2}}{(q^n;q)_n}$.
+///
+/// Seventh-order mock theta function, first studied systematically by
+/// Selberg and later by Andrews (1986). Connected to affine Lie algebra
+/// characters. Uses per-term $q$-Pochhammer evaluation with shifted base
+/// (cannot use incremental accumulation).
+///
+/// See Also
+/// --------
+/// mock_theta_cap_f1_7 : Seventh-order $F_1(q)$.
+/// mock_theta_cap_f2_7 : Seventh-order $F_2(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
+/// bailey_discover : Bailey pair representation.
 #[pyfunction]
 pub fn mock_theta_cap_f0_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3469,6 +3859,28 @@ pub fn mock_theta_cap_f0_7(session: &QSession, truncation_order: i64) -> PyResul
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_cap_f1_7
+/// >>> s = QSession()
+/// >>> F1_7 = mock_theta_cap_f1_7(s, 20)
+/// >>> # q + q^2 + q^3 + q^4 + 2*q^5 + ...
+///
+/// Notes
+/// -----
+/// $F_1(q) = \sum_{n \ge 1} \frac{q^{n^2}}{(q^n;q)_n}$.
+///
+/// Seventh-order mock theta function, first studied systematically by
+/// Selberg and later by Andrews (1986). Connected to affine Lie algebra
+/// characters. Note the summation starts at $n=1$.
+///
+/// See Also
+/// --------
+/// mock_theta_cap_f0_7 : Seventh-order $F_0(q)$.
+/// mock_theta_cap_f2_7 : Seventh-order $F_2(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
+/// bailey_discover : Bailey pair representation.
 #[pyfunction]
 pub fn mock_theta_cap_f1_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3491,6 +3903,28 @@ pub fn mock_theta_cap_f1_7(session: &QSession, truncation_order: i64) -> PyResul
 /// -------
 /// QSeries
 ///     The mock theta function as a formal power series.
+///
+/// Examples
+/// --------
+/// >>> from q_kangaroo import QSession, mock_theta_cap_f2_7
+/// >>> s = QSession()
+/// >>> F2_7 = mock_theta_cap_f2_7(s, 20)
+/// >>> # 1 + q + q^2 + 2*q^3 + ...
+///
+/// Notes
+/// -----
+/// $F_2(q) = \sum_{n \ge 0} \frac{q^{n(n+1)}}{(q^{n+1};q)_{n+1}}$.
+///
+/// Seventh-order mock theta function, first studied systematically by
+/// Selberg and later by Andrews (1986). Connected to affine Lie algebra
+/// characters. The exponents $n(n+1)$ are oblong numbers.
+///
+/// See Also
+/// --------
+/// mock_theta_cap_f0_7 : Seventh-order $F_0(q)$.
+/// mock_theta_cap_f1_7 : Seventh-order $F_1(q)$.
+/// appell_lerch_m : Appell-Lerch sum connection.
+/// bailey_discover : Bailey pair representation.
 #[pyfunction]
 pub fn mock_theta_cap_f2_7(session: &QSession, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3527,14 +3961,35 @@ pub fn mock_theta_cap_f2_7(session: &QSession, truncation_order: i64) -> PyResul
 ///
 /// Examples
 /// --------
+/// Compute the Appell-Lerch sum $m(q^3, q, q^2)$:
+///
 /// >>> from q_kangaroo import QSession, appell_lerch_m
 /// >>> s = QSession()
 /// >>> result = appell_lerch_m(s, 3, 2, 20)
+/// >>> # Returns the bilateral sum as a formal power series
+///
+/// The Appell-Lerch sum connects to mock theta functions. For example,
+/// the third-order mock theta function $f(q)$ can be expressed via
+/// Appell-Lerch sums.
+///
+/// Notes
+/// -----
+/// The Appell-Lerch sum is defined as:
+///
+/// $m(x,q,z) = \frac{1}{j(z;q)} \sum_{n=-\infty}^{\infty}
+///   \frac{(-1)^n q^{n(n-1)/2} z^n}{1 - xzq^{n-1}}$
+///
+/// This function is central to the theory of mock theta functions
+/// (Zwegers, 2002). Many mock theta functions can be expressed as linear
+/// combinations of Appell-Lerch sums plus theta functions. For integer
+/// parameters, $j(z;q) = 0$, so this returns the raw bilateral sum
+/// without the $j$-division.
 ///
 /// See Also
 /// --------
-/// universal_mock_theta_g2 : Universal mock theta function $g_2$.
-/// universal_mock_theta_g3 : Universal mock theta function $g_3$.
+/// universal_mock_theta_g2 : Zwegers $g_2$ function.
+/// universal_mock_theta_g3 : Zwegers $g_3$ function.
+/// mock_theta_f3 : Third-order $f(q)$ (expressible via Appell-Lerch).
 #[pyfunction]
 pub fn appell_lerch_m(session: &QSession, a_pow: i64, z_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
     let mut inner = session.inner.lock().map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -3570,13 +4025,24 @@ pub fn appell_lerch_m(session: &QSession, a_pow: i64, z_pow: i64, truncation_ord
 ///
 /// Examples
 /// --------
+/// Compute $g_2(q^3, q)$:
+///
 /// >>> from q_kangaroo import QSession, universal_mock_theta_g2
 /// >>> s = QSession()
 /// >>> result = universal_mock_theta_g2(s, 3, 20)
+/// >>> # Returns the g2 function as a formal power series
+///
+/// Notes
+/// -----
+/// The Zwegers $g_2$ function is a building block for the universal mock
+/// theta function. Used in the non-holomorphic completion of mock theta
+/// functions, which restores modular transformation properties at the cost
+/// of holomorphicity. Computed via a positive-exponent algebraic identity
+/// to avoid FPS negative-power limitations.
 ///
 /// See Also
 /// --------
-/// universal_mock_theta_g3 : Universal mock theta function $g_3$.
+/// universal_mock_theta_g3 : Companion $g_3$ function.
 /// appell_lerch_m : Appell-Lerch bilateral sum.
 #[pyfunction]
 pub fn universal_mock_theta_g2(session: &QSession, a_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
@@ -3618,13 +4084,23 @@ pub fn universal_mock_theta_g2(session: &QSession, a_pow: i64, truncation_order:
 ///
 /// Examples
 /// --------
+/// Compute $g_3(q^3, q)$:
+///
 /// >>> from q_kangaroo import QSession, universal_mock_theta_g3
 /// >>> s = QSession()
 /// >>> result = universal_mock_theta_g3(s, 3, 20)
+/// >>> # Returns the g3 function as a formal power series
+///
+/// Notes
+/// -----
+/// The Zwegers $g_3$ function is the companion to $g_2$, another building
+/// block for the universal mock theta function. Together with $g_2$, it
+/// provides the non-holomorphic corrections needed to complete mock theta
+/// functions into harmonic Maass forms.
 ///
 /// See Also
 /// --------
-/// universal_mock_theta_g2 : Universal mock theta function $g_2$.
+/// universal_mock_theta_g2 : Companion $g_2$ function.
 /// appell_lerch_m : Appell-Lerch bilateral sum.
 #[pyfunction]
 pub fn universal_mock_theta_g3(session: &QSession, a_pow: i64, truncation_order: i64) -> PyResult<QSeries> {
@@ -3680,15 +4156,38 @@ pub fn universal_mock_theta_g3(session: &QSession, a_pow: i64, truncation_order:
 ///
 /// Examples
 /// --------
+/// Verify the weak Bailey lemma with the Rogers-Ramanujan pair at $a=1$:
+///
 /// >>> from q_kangaroo import QSession, bailey_weak_lemma
 /// >>> s = QSession()
 /// >>> lhs, rhs = bailey_weak_lemma(s, "rogers-ramanujan", 1, 1, 0, 10, 20)
+/// >>> # Both sides should agree -- this yields the first Rogers-Ramanujan identity
+///
+/// With the unit pair at $a = q^2$:
+///
+/// >>> lhs, rhs = bailey_weak_lemma(s, "unit", 1, 1, 2, 8, 20)
+///
+/// Notes
+/// -----
+/// The weak Bailey lemma: if $(\alpha_n, \beta_n)$ is a Bailey pair
+/// relative to $a$, then
+///
+/// $\sum_{n \ge 0} q^{n^2} a^n \beta_n
+///   = \frac{1}{(aq;q)_\infty} \sum_{n \ge 0} q^{n^2} a^n \alpha_n$
+///
+/// With the Rogers-Ramanujan pair at $a=1$, this yields the first
+/// Rogers-Ramanujan identity:
+/// $\sum_{n \ge 0} \frac{q^{n^2}}{(q;q)_n} = \prod_{n \ge 0} \frac{1}{(1-q^{5n+1})(1-q^{5n+4})}$.
+///
+/// Mock theta functions also arise from Bailey pairs, connecting the
+/// Bailey machinery to the Zwegers theory.
 ///
 /// See Also
 /// --------
 /// bailey_apply_lemma : Apply the full Bailey lemma.
 /// bailey_chain : Iterative Bailey chain.
 /// bailey_discover : Automated Bailey pair discovery.
+/// mock_theta_f3 : Mock theta functions arise from Bailey pairs.
 #[pyfunction]
 #[pyo3(signature = (session, pair_name, a_num, a_den, a_pow, max_n, truncation_order))]
 pub fn bailey_weak_lemma(
@@ -3753,14 +4252,30 @@ pub fn bailey_weak_lemma(
 ///
 /// Examples
 /// --------
+/// Apply the lemma to the unit pair with $a = q^2$, $b = q/2$, $c = q/3$:
+///
 /// >>> from q_kangaroo import QSession, bailey_apply_lemma
 /// >>> s = QSession()
 /// >>> result = bailey_apply_lemma(s, "unit", (1,1,2), (1,2,1), (1,3,1), 4, 15)
+/// >>> result["name"]  # Name of the derived pair
+///
+/// Notes
+/// -----
+/// The (full) Bailey lemma transforms $(\alpha_n, \beta_n)$ relative to $a$
+/// into a new pair $(\alpha'_n, \beta'_n)$ via parameters $b$, $c$:
+///
+/// $\beta'_n = \sum_{j=0}^{n}
+///   \frac{(b;q)_j (c;q)_j (aq/bc)^j}{(q;q)_{n-j} (aq/b;q)_n (aq/c;q)_n}
+///   \beta_j$
+///
+/// Iterating produces a Bailey chain, generating increasingly complex
+/// $q$-series identities from simple seed pairs.
 ///
 /// See Also
 /// --------
 /// bailey_weak_lemma : Weak Bailey lemma.
 /// bailey_chain : Iterative Bailey chain.
+/// bailey_discover : Automated discovery.
 #[pyfunction]
 #[pyo3(signature = (session, pair_name, a, b, c, max_n, truncation_order))]
 pub fn bailey_apply_lemma(
@@ -3836,15 +4351,32 @@ pub fn bailey_apply_lemma(
 ///
 /// Examples
 /// --------
+/// Build a depth-2 Bailey chain from the unit pair:
+///
 /// >>> from q_kangaroo import QSession, bailey_chain
 /// >>> s = QSession()
 /// >>> chain = bailey_chain(s, "unit", (1,1,2), (1,2,1), (1,3,1), 2, 4, 15)
-/// >>> len(chain)
+/// >>> len(chain)  # 3 pairs: original + 2 derived
 /// 3
+/// >>> chain[0]["index"]  # 0 = seed pair
+/// 0
+///
+/// The Rogers-Ramanujan identities arise as depth-1 chains from the unit
+/// pair with appropriate parameter specializations.
+///
+/// Notes
+/// -----
+/// Iterates the Bailey lemma $k$ times from a seed pair, producing
+/// increasingly complex identities. Each step in the chain transforms
+/// $(\alpha_n, \beta_n) \to (\alpha'_n, \beta'_n)$ using the same
+/// parameters $b$, $c$. The Rogers-Ramanujan identities arise as
+/// depth-1 chains from the unit pair. Deeper chains produce Andrews-Gordon
+/// type identities and other multi-sum Rogers-Ramanujan generalizations.
 ///
 /// See Also
 /// --------
 /// bailey_apply_lemma : Single application of the Bailey lemma.
+/// bailey_weak_lemma : Verify both sides of weak lemma.
 /// bailey_discover : Automated Bailey pair discovery.
 #[pyfunction]
 #[pyo3(name = "bailey_chain", signature = (session, pair_name, a, b, c, depth, max_n, truncation_order))]
@@ -3921,15 +4453,34 @@ pub fn bailey_chain_fn(
 ///
 /// Examples
 /// --------
-/// >>> from q_kangaroo import QSession, bailey_discover
+/// Discover whether a relationship between two series has a Bailey pair
+/// explanation:
+///
+/// >>> from q_kangaroo import QSession, bailey_discover, bailey_weak_lemma
 /// >>> s = QSession()
+/// >>> lhs, rhs = bailey_weak_lemma(s, "rogers-ramanujan", 1, 1, 0, 10, 20)
 /// >>> result = bailey_discover(s, lhs, rhs, (1,1,0), 2, 20)
-/// >>> result["found"]
+/// >>> result["found"]  # True -- rediscovers the Rogers-Ramanujan pair
+/// True
+///
+/// Notes
+/// -----
+/// Automated discovery proceeds in three stages:
+///
+/// 1. **Trivial equality**: checks if LHS $=$ RHS directly
+/// 2. **Weak lemma matching**: tests each database pair with the weak Bailey lemma
+/// 3. **Chain depth search**: iterates the Bailey lemma up to ``max_chain_depth``
+///    steps, checking if any chain from a database pair produces a match
+///
+/// Returns the construction path if found (pair name, chain depth). The
+/// database contains 3 canonical pairs: Unit, Rogers-Ramanujan, and
+/// q-Binomial.
 ///
 /// See Also
 /// --------
 /// bailey_chain : Iterative Bailey chain.
 /// bailey_weak_lemma : Weak Bailey lemma verification.
+/// bailey_apply_lemma : Single lemma application.
 #[pyfunction]
 #[pyo3(name = "bailey_discover", signature = (session, lhs, rhs, a, max_chain_depth, truncation_order))]
 pub fn bailey_discover_fn(
