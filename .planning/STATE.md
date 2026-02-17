@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.3 Documentation & Vignettes — phase 18 complete, ready for phase 19.
+**Current focus:** v1.3 Documentation & Vignettes — phase 19 in progress.
 
 ## Current Position
 
-Phase: 18 of 21 (Docstring Enrichment) -- COMPLETE
-Plan: 4 of 4 (all plans complete)
-Status: Phase 18 complete, ready for phase 19
-Last activity: 2026-02-17 — Completed 18-04 (Groups 11-13 docstring enrichment, all 79 functions done)
+Phase: 19 of 21 (Vignette Expansion) -- IN PROGRESS
+Plan: 3 of 3 (plans 1 and 3 complete, plan 2 pending)
+Status: Phase 19 plan 3 complete, plan 2 remaining
+Last activity: 2026-02-17 — Completed 19-03 (mock theta & Bailey chains notebook expansion)
 
-Progress: [================                                  ] 25% (v1.3: 1/4 phases, 4/4 plans in phase 18)
+Progress: [========================                          ] 50% (v1.3: 2/4 phases in progress, 19-01 + 19-03 complete)
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [================                                  ] 25% (v1.3: 1/4 ph
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 18 - Docstring Enrichment | 4/4 | 26 min | 7 min |
+| 19 - Vignette Expansion | 2/3 | 7 min | 4 min |
 
 ## Accumulated Context
 
@@ -76,5 +77,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 18-04-PLAN.md (Groups 11-13 docstring enrichment). Phase 18 complete. Ready for phase 19.
-Resume file: .planning/phases/18-docstring-enrichment/18-04-SUMMARY.md
+Stopped at: Completed 19-03-PLAN.md (mock theta & Bailey chains notebook expansion). Phase 19 plan 2 remaining.
+Resume file: .planning/phases/19-vignette-expansion/19-03-SUMMARY.md
