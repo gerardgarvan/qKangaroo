@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.3 Documentation & Vignettes — phase 19 in progress.
+**Current focus:** v1.3 Documentation & Vignettes — phase 19 complete, ready for phase 20.
 
 ## Current Position
 
-Phase: 19 of 21 (Vignette Expansion) -- IN PROGRESS
-Plan: 3 of 3 (plans 1 and 3 complete, plan 2 pending)
-Status: Phase 19 plan 3 complete, plan 2 remaining
-Last activity: 2026-02-17 — Completed 19-03 (mock theta & Bailey chains notebook expansion)
+Phase: 19 of 21 (Vignette Expansion) -- COMPLETE
+Plan: 3 of 3 (all plans complete)
+Status: Phase 19 complete, ready for phase 20
+Last activity: 2026-02-17 — Completed 19-02 (hypergeometric summation notebook expansion)
 
-Progress: [========================                          ] 50% (v1.3: 2/4 phases in progress, 19-01 + 19-03 complete)
+Progress: [==============================                    ] 60% (v1.3: 2/4 phases complete, phase 19 done)
 
 ## Performance Metrics
 
@@ -55,7 +55,7 @@ Progress: [========================                          ] 50% (v1.3: 2/4 ph
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 18 - Docstring Enrichment | 4/4 | 26 min | 7 min |
-| 19 - Vignette Expansion | 2/3 | 16 min | 8 min |
+| 19 - Vignette Expansion | 3/3 | 20 min | 7 min |
 
 ## Accumulated Context
 
@@ -77,5 +77,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 19-01-PLAN.md (partition & theta notebook expansion) and 19-03-PLAN.md. Phase 19 plan 2 remaining.
-Resume file: .planning/phases/19-vignette-expansion/19-01-SUMMARY.md
+Stopped at: Completed 19-02-PLAN.md (hypergeometric summation notebook expansion). Phase 19 complete. Ready for phase 20.
+Resume file: .planning/phases/19-vignette-expansion/19-02-SUMMARY.md
