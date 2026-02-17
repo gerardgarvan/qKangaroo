@@ -77,11 +77,11 @@ See `.planning/milestones/v1.3-ROADMAP.md` for details.
   3. A contributor on Linux can follow the build-from-source section to compile and install from source successfully
   4. A user encountering a common failure (GMP not found, wrong Rust target, DLL loading error) finds the solution in the troubleshooting section
   5. The Sphinx-rendered installation.rst page contains the same detail as INSTALL.md, properly formatted with RST directives
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 22-01: INSTALL.md with pip install + build-from-source + troubleshooting
-- [ ] 22-02: installation.rst Sphinx page mirroring INSTALL.md content
+- [ ] 22-01-PLAN.md -- INSTALL.md with pip install, build-from-source (Linux + Cygwin/Windows), and troubleshooting
+- [ ] 22-02-PLAN.md -- installation.rst Sphinx page mirroring INSTALL.md content
 
 #### Phase 23: Verification & Cross-References
 **Goal**: Users can verify their installation works and discover the installation guide from every entry point
@@ -123,5 +123,5 @@ Plans:
 | 19. Vignette Expansion | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 20. New Vignettes & Migration Guide | v1.3 | 3/3 | Complete | 2026-02-16 |
 | 21. Sphinx Site Polish | v1.3 | 2/2 | Complete | 2026-02-16 |
-| 22. Installation Documentation | v1.4 | 0/2 | Not started | - |
+| 22. Installation Documentation | v1.4 | 0/2 | Planned | - |
 | 23. Verification & Cross-References | v1.4 | 0/2 | Not started | - |
