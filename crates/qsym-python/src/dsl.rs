@@ -1603,16 +1603,33 @@ pub fn qetamake(py: Python<'_>, series: &QSeries, max_n: i64) -> PyResult<PyObje
 ///
 /// Examples
 /// --------
-/// >>> from q_kangaroo import QSession, etaq, findlincombo
+/// Build an eta-quotient basis and express ``partition_gf`` as a linear
+/// combination. Since $\sum p(n)q^n = 1/(q;q)_\infty$, the partition
+/// generating function equals ``etaq(s, 1, -1, N)`` (exponent $-1$):
+///
+/// >>> from q_kangaroo import QSession, partition_gf, etaq, findlincombo
 /// >>> s = QSession()
-/// >>> f = etaq(s, 1, 1, 30)
-/// >>> result = findlincombo(f, [f], 0)
+/// >>> N = 50
+/// >>> pgf = partition_gf(s, N)
+/// >>> basis = [etaq(s, 1, -1, N)]  # 1/(q;q)_inf
+/// >>> result = findlincombo(pgf, basis, 0)
 /// >>> result  # [Fraction(1, 1)]
+///
+/// Use ``topshift`` to ignore anomalous leading terms when searching
+/// for relations among series with different leading behavior.
+///
+/// Notes
+/// -----
+/// Uses exact RREF (row reduction) over $\mathbb{Q}$ to find coefficients.
+/// The ``topshift`` parameter allows ignoring leading coefficients that may be
+/// anomalous or differ between series due to truncation effects.
 ///
 /// See Also
 /// --------
 /// findhom : Homogeneous polynomial relations among series.
 /// findhomcombo : Express target as a homogeneous combination.
+/// findlincombomodp : Modular version (faster, avoids coefficient explosion).
+/// sift : Extract arithmetic subsequences for targeted relation searches.
 #[pyfunction]
 pub fn findlincombo(
     py: Python<'_>,
@@ -1652,14 +1669,29 @@ pub fn findlincombo(
 ///
 /// Examples
 /// --------
+/// Search for degree-2 relations among eta-quotients at level 5. The
+/// monomials of degree 2 in two variables are $f_0^2, f_0 f_1, f_1^2$:
+///
 /// >>> from q_kangaroo import QSession, etaq, findhom
 /// >>> s = QSession()
-/// >>> rels = findhom([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 2, 0)
+/// >>> f0 = etaq(s, 1, 5, 50)  # (q;q^5)_inf
+/// >>> f1 = etaq(s, 2, 5, 50)  # (q^2;q^5)_inf
+/// >>> rels = findhom([f0, f1], 2, 0)
+/// >>> # Each relation [a, b, c] means a*f0^2 + b*f0*f1 + c*f1^2 = 0
+///
+/// Notes
+/// -----
+/// Generates all monomials of degree $d$ in the given series, builds a
+/// coefficient matrix from the series products, and finds the null space
+/// via RREF. Returns all independent relations. The number of monomials
+/// grows as $\binom{k+d-1}{d}$ where $k$ is the number of series.
 ///
 /// See Also
 /// --------
-/// findnonhom : Non-homogeneous polynomial relations.
+/// findnonhom : Non-homogeneous polynomial relations (mixed degrees).
 /// findpoly : Polynomial relation $P(x, y) = 0$ between two series.
+/// findhomcombo : Express a target as a homogeneous combination.
+/// findhommodp : Modular version (faster for large coefficients).
 #[pyfunction]
 pub fn findhom(
     py: Python<'_>,
@@ -1702,9 +1734,20 @@ pub fn findhom(
 ///
 /// Examples
 /// --------
+/// Search for a polynomial relation between two eta-quotients:
+///
 /// >>> from q_kangaroo import QSession, etaq, findpoly
 /// >>> s = QSession()
-/// >>> result = findpoly(etaq(s, 1, 5, 50), etaq(s, 2, 5, 50), 3, 3, 0)
+/// >>> x = etaq(s, 1, 5, 80)  # (q;q^5)_inf
+/// >>> y = etaq(s, 2, 5, 80)  # (q^2;q^5)_inf
+/// >>> result = findpoly(x, y, 3, 3, 0)
+/// >>> # If found, result["coefficients"][i][j] is the coeff of x^i * y^j
+///
+/// Notes
+/// -----
+/// Searches for a bivariate polynomial $P(x,y) = \sum_{i,j} c_{ij} x^i y^j = 0$
+/// by setting up a linear system from the series coefficients. The search space
+/// has $(d_x + 1)(d_y + 1)$ unknowns, so sufficient series terms are needed.
 ///
 /// See Also
 /// --------
@@ -1752,19 +1795,35 @@ pub fn findpoly(
 ///     - ``"residue"`` (int): the residue $b$.
 ///     - ``"divisor"`` (int): the divisor $r$ such that $r | a(mn + b)$ for all $n$.
 ///
-/// Notes
-/// -----
-/// This function does NOT take a ``topshift`` parameter.
-///
 /// Examples
 /// --------
+/// Discover Ramanujan's partition congruences automatically:
+///
 /// >>> from q_kangaroo import QSession, partition_gf, findcong
 /// >>> s = QSession()
 /// >>> congs = findcong(partition_gf(s, 200), [5, 7, 11])
+/// >>> # Discovers:
+/// >>> #   {"modulus": 5, "residue": 4, "divisor": 5}   -- p(5n+4) = 0 mod 5
+/// >>> #   {"modulus": 7, "residue": 5, "divisor": 7}   -- p(7n+5) = 0 mod 7
+/// >>> #   {"modulus": 11, "residue": 6, "divisor": 11} -- p(11n+6) = 0 mod 11
+///
+/// These are Ramanujan's three celebrated congruences (1919), the starting
+/// point of the theory of partition congruences.
+///
+/// Notes
+/// -----
+/// Automatically sifts the series at each residue class modulo $m$, then
+/// checks which residue classes have all coefficients divisible by $m$.
+/// This is the automated tool for discovering Ramanujan-type congruences.
+/// Does NOT take a ``topshift`` parameter. Provide enough series terms
+/// (at least $m \times$ desired check depth) for reliable detection.
 ///
 /// See Also
 /// --------
 /// sift : Extract arithmetic subsequences manually.
+/// partition_gf : Partition generating function (classic target).
+/// findlincombo : Express congruence witnesses as linear combinations.
+/// partition_count : Verify individual congruences numerically.
 #[pyfunction]
 pub fn findcong(py: Python<'_>, series: &QSeries, moduli: Vec<i64>) -> PyResult<PyObject> {
     let result = qseries::findcong(&series.fps, &moduli);
@@ -1802,9 +1861,22 @@ pub fn findcong(py: Python<'_>, series: &QSeries, moduli: Vec<i64>) -> PyResult<
 ///
 /// Examples
 /// --------
+/// Search for all polynomial relations of degree at most 2 among eta products.
+/// Unlike ``findhom``, this includes the constant (degree 0) and linear
+/// (degree 1) monomials alongside degree-2 monomials:
+///
 /// >>> from q_kangaroo import QSession, etaq, findnonhom
 /// >>> s = QSession()
-/// >>> rels = findnonhom([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 2, 0)
+/// >>> f0 = etaq(s, 1, 5, 50)
+/// >>> f1 = etaq(s, 2, 5, 50)
+/// >>> rels = findnonhom([f0, f1], 2, 0)
+/// >>> # Relation vectors cover monomials: [1, f0, f1, f0^2, f0*f1, f1^2]
+///
+/// Notes
+/// -----
+/// The monomial list includes all degrees from 0 (constant) through $d$.
+/// For $k$ series at degree $d$, this is $\sum_{j=0}^{d} \binom{k+j-1}{j}$
+/// monomials -- larger than ``findhom`` which uses only exact degree $d$.
 ///
 /// See Also
 /// --------
@@ -1846,14 +1918,24 @@ pub fn findnonhom(
 ///
 /// Examples
 /// --------
+/// Express a target as a degree-2 combination. With a single basis series $f$,
+/// the degree-2 monomial is just $f^2$, so this checks if target $= c \cdot f^2$:
+///
 /// >>> from q_kangaroo import QSession, etaq, findhomcombo
 /// >>> s = QSession()
-/// >>> result = findhomcombo(etaq(s, 1, 5, 30), [etaq(s, 1, 5, 30)], 1, 0)
+/// >>> f = etaq(s, 1, 1, 50)
+/// >>> target = etaq(s, 1, 2, 50)  # (q;q^2)_inf
+/// >>> result = findhomcombo(target, [f], 1, 0)
+/// >>> # Returns [Fraction(1, 1)] since target = 1 * f at degree 1
+///
+/// With multiple basis series, degree-$d$ monomials include all products
+/// of $d$ factors chosen from the basis (with repetition).
 ///
 /// See Also
 /// --------
 /// findlincombo : Linear (degree 1) combination.
 /// findnonhomcombo : Non-homogeneous combination.
+/// findhom : Find all homogeneous relations (without a target).
 #[pyfunction]
 pub fn findhomcombo(
     py: Python<'_>,
@@ -1894,14 +1976,23 @@ pub fn findhomcombo(
 ///
 /// Examples
 /// --------
+/// Express a target as a combination that may include a constant term,
+/// linear terms, and quadratic terms:
+///
 /// >>> from q_kangaroo import QSession, etaq, findnonhomcombo
 /// >>> s = QSession()
-/// >>> result = findnonhomcombo(etaq(s, 1, 5, 30), [etaq(s, 1, 5, 30)], 2, 0)
+/// >>> target = etaq(s, 1, 5, 50)
+/// >>> basis = [etaq(s, 1, 5, 50)]
+/// >>> result = findnonhomcombo(target, basis, 2, 0)
+/// >>> # Monomial order: [1, f, f^2]. Returns coefficients for each.
+///
+/// This is more flexible than ``findhomcombo`` when the relationship
+/// involves mixed degrees (e.g., $\text{target} = a + b \cdot f + c \cdot f^2$).
 ///
 /// See Also
 /// --------
-/// findhomcombo : Homogeneous combination.
-/// findlincombo : Linear combination.
+/// findhomcombo : Homogeneous combination (single degree only).
+/// findlincombo : Linear combination (degree 1 special case).
 #[pyfunction]
 pub fn findnonhomcombo(
     py: Python<'_>,
@@ -1947,9 +2038,24 @@ pub fn findnonhomcombo(
 ///
 /// Examples
 /// --------
+/// Express $(q;q)_\infty$ as a linear combination of itself mod 7:
+///
 /// >>> from q_kangaroo import QSession, etaq, findlincombomodp
 /// >>> s = QSession()
-/// >>> result = findlincombomodp(etaq(s, 1, 1, 30), [etaq(s, 1, 1, 30)], 7, 0)
+/// >>> f = etaq(s, 1, 1, 50)
+/// >>> result = findlincombomodp(f, [f], 7, 0)
+/// >>> result  # [1] -- coefficient 1 mod 7
+///
+/// Useful when exact rational coefficients become very large (e.g.,
+/// searching for congruences among eta-quotients at high levels) and
+/// modular arithmetic suffices.
+///
+/// Notes
+/// -----
+/// Uses modular arithmetic over $\mathbb{Z}/p\mathbb{Z}$ with Fermat inverse
+/// ($a^{-1} = a^{p-2} \bmod p$). Faster than exact arithmetic and avoids
+/// coefficient explosion that can occur with ``findlincombo`` on series
+/// with large rational coefficients.
 ///
 /// See Also
 /// --------
@@ -1989,14 +2095,26 @@ pub fn findlincombomodp(
 ///
 /// Examples
 /// --------
+/// Search for degree-2 relations among eta products modulo 7:
+///
 /// >>> from q_kangaroo import QSession, etaq, findhommodp
 /// >>> s = QSession()
-/// >>> rels = findhommodp([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 7, 2, 0)
+/// >>> f0 = etaq(s, 1, 5, 50)
+/// >>> f1 = etaq(s, 2, 5, 50)
+/// >>> rels = findhommodp([f0, f1], 7, 2, 0)
+/// >>> # Each relation [a, b, c] means a*f0^2 + b*f0*f1 + c*f1^2 = 0 mod 7
+///
+/// Notes
+/// -----
+/// The modular version is useful when exact rational coefficients become
+/// unwieldy. Relations found mod $p$ may or may not lift to exact relations
+/// over $\mathbb{Q}$, but they reveal structural constraints.
 ///
 /// See Also
 /// --------
 /// findhom : Exact rational version.
 /// findlincombomodp : Linear combination mod $p$.
+/// findhomcombomodp : Express a target as a homogeneous combination mod $p$.
 #[pyfunction]
 pub fn findhommodp(
     _py: Python<'_>,
@@ -2034,13 +2152,18 @@ pub fn findhommodp(
 ///
 /// Examples
 /// --------
+/// Express a target as a degree-1 combination mod 7:
+///
 /// >>> from q_kangaroo import QSession, etaq, findhomcombomodp
 /// >>> s = QSession()
-/// >>> result = findhomcombomodp(etaq(s, 1, 5, 30), [etaq(s, 1, 5, 30)], 7, 1, 0)
+/// >>> f = etaq(s, 1, 5, 50)
+/// >>> result = findhomcombomodp(f, [f], 7, 1, 0)
+/// >>> result  # [1] -- coefficient 1 mod 7
 ///
 /// See Also
 /// --------
 /// findhomcombo : Exact rational version.
+/// findhommodp : Find all homogeneous relations mod $p$.
 #[pyfunction]
 pub fn findhomcombomodp(
     _py: Python<'_>,
@@ -2072,13 +2195,30 @@ pub fn findhomcombomodp(
 ///
 /// Examples
 /// --------
+/// Given a collection of eta-quotients, find which are linearly independent:
+///
 /// >>> from q_kangaroo import QSession, etaq, findmaxind
 /// >>> s = QSession()
-/// >>> indices = findmaxind([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 0)
+/// >>> N = 50
+/// >>> series = [etaq(s, 1, 5, N), etaq(s, 2, 5, N), etaq(s, 3, 5, N)]
+/// >>> indices = findmaxind(series, 0)
+/// >>> # Returns indices of a maximal linearly independent subset.
+/// >>> # The remaining series are linear combinations of these.
+///
+/// This is a prerequisite step before using ``findlincombo``: first reduce
+/// a large candidate set to its independent core, then search for relations.
+///
+/// Notes
+/// -----
+/// Uses inline Gaussian elimination to find pivot columns, identifying a
+/// maximal linearly independent subset. The remaining series are redundant
+/// (expressible as linear combinations of the independent ones). Use this
+/// to trim a large basis before more expensive relation searches.
 ///
 /// See Also
 /// --------
-/// findlincombo : Test if a series is a combination of others.
+/// findlincombo : Express a series as a combination of others.
+/// findhom : Find polynomial relations among series.
 #[pyfunction]
 pub fn findmaxind(series_list: Vec<PyRef<'_, QSeries>>, topshift: i64) -> Vec<usize> {
     let fps_refs = extract_fps_refs(&series_list);
@@ -2105,19 +2245,32 @@ pub fn findmaxind(series_list: Vec<PyRef<'_, QSeries>>, topshift: i64) -> Vec<us
 /// list[list[int]]
 ///     Coefficient vectors for combinations that have nice product forms.
 ///
-/// Notes
-/// -----
-/// This function does NOT take a ``topshift`` parameter.
-///
 /// Examples
 /// --------
+/// Search for integer combinations of eta products that have nice
+/// infinite product forms:
+///
 /// >>> from q_kangaroo import QSession, etaq, findprod
 /// >>> s = QSession()
-/// >>> results = findprod([etaq(s, 1, 5, 30), etaq(s, 2, 5, 30)], 2, 10)
+/// >>> f0 = etaq(s, 1, 5, 50)
+/// >>> f1 = etaq(s, 2, 5, 50)
+/// >>> results = findprod([f0, f1], 2, 10)
+/// >>> # Each result [a, b] means a*f0 + b*f1 has a nice product form.
+/// >>> # Combinations like [1, 0] and [0, 1] (the inputs) always appear.
+///
+/// Notes
+/// -----
+/// Brute-force search over integer exponent vectors $[-M, M]^k$. Tests each
+/// candidate exponent vector by computing the product via prodmake and
+/// comparing. Exponential in the number of candidates -- use small candidate
+/// lists and small ``max_coeff`` values. Does NOT take a ``topshift``
+/// parameter.
 ///
 /// See Also
 /// --------
 /// prodmake : Decompose a single series into product form.
+/// etamake : Express as eta-quotient (after finding a combination).
+/// findlincombo : Linear combination search (exact, not brute-force).
 #[pyfunction]
 pub fn findprod(
     _py: Python<'_>,
