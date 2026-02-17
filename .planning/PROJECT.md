@@ -64,7 +64,7 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-(No active requirements -- all milestones complete)
+- Interactive REPL as standalone Rust executable — Maple-style syntax, all 79 functions, variables, LaTeX output -- v1.5
 
 ### Future
 
@@ -119,4 +119,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Closure-from-template for prove_nonterminating | Declarative Python params, Rust builds closures; avoids FFI closure crossing | Good |
 
 ---
-*Last updated: 2026-02-17 after v1.4 milestone complete*
+*Last updated: 2026-02-17 after v1.5 milestone start*

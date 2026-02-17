@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.4 archived. Planning next milestone.
+**Current focus:** v1.5 Interactive REPL — defining requirements
 
 ## Current Position
 
@@ -84,4 +84,4 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: v1.4 milestone archived. All 70 plans across 23 phases shipped. Ready for next milestone.
+Stopped at: v1.5 milestone started. Defining requirements for interactive REPL.
