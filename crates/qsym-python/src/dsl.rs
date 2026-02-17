@@ -4546,11 +4546,41 @@ pub fn bailey_discover_fn(
 ///
 /// Examples
 /// --------
+/// Summable case -- the q-Vandermonde sum ${}_{2}\phi_{1}(q^{-3}, q^2; q^3; q, q^4)$:
+///
 /// >>> from q_kangaroo import q_gosper
-/// >>> # q-Vandermonde: 2phi1(q^{-3}, q^2; q^3; q, q^4)
 /// >>> result = q_gosper([(1,1,-3), (1,1,2)], [(1,1,3)], 1, 1, 4, 2, 1)
 /// >>> result["summable"]
 /// True
+/// >>> result["certificate"]  # rational function certificate f(x)/g(x)
+/// '...'
+///
+/// Non-summable case -- when no q-hypergeometric antidifference exists:
+///
+/// >>> result = q_gosper([(1,1,1), (1,1,2)], [(1,1,5)], 1, 1, 1, 2, 1)
+/// >>> result["summable"]
+/// False
+///
+/// If summable, the sum $\sum_{k=0}^{n} t_k$ can be expressed as a
+/// q-hypergeometric antidifference $z_{n+1} - z_0$ where $t_k = z_{k+1} - z_k$.
+///
+/// Notes
+/// -----
+/// The q-Gosper algorithm (Paule, 1995) determines whether a q-hypergeometric
+/// term $t_k$ has a q-hypergeometric antidifference $z_k$ such that
+/// $t_k = z_{k+1} - z_k$. This is the q-analog of Gosper's algorithm for
+/// ordinary hypergeometric summation.
+///
+/// The algorithm factors the ratio $t_{k+1}/t_k = a(k) \cdot b(k+1) / (b(k) \cdot c(k))$
+/// into coprime polynomials $a$, $b$, $c$ satisfying a key divisibility
+/// condition, then solves a functional equation for the certificate polynomial.
+/// Requires a concrete $q$ value (not symbolic).
+///
+/// See Also
+/// --------
+/// phi : Evaluate q-hypergeometric series.
+/// q_zeilberger : Definite summation via creative telescoping.
+/// try_summation : Closed-form evaluation via classical summation formulas.
 #[pyfunction]
 #[pyo3(signature = (upper, lower, z_num, z_den, z_pow, q_num, q_den))]
 pub fn q_gosper_fn(
@@ -4593,9 +4623,9 @@ pub fn q_gosper_fn(
 
 /// Run the q-Zeilberger creative telescoping algorithm for definite q-hypergeometric summation.
 ///
-/// Given a q-hypergeometric series `F(n,k)` defined by upper/lower parameters and argument,
-/// finds a linear recurrence `c_0*S(n) + c_1*S(n+1) + ... + c_d*S(n+d) = 0` for
-/// the definite sum `S(n) = sum_k F(n,k)`, along with a WZ proof certificate.
+/// Given a q-hypergeometric series $F(n,k)$ defined by upper/lower parameters and argument,
+/// finds a linear recurrence $c_0 S(n) + c_1 S(n+1) + \ldots + c_d S(n+d) = 0$ for
+/// the definite sum $S(n) = \sum_k F(n,k)$, along with a WZ proof certificate.
 ///
 /// Parameters
 /// ----------
@@ -4633,19 +4663,44 @@ pub fn q_gosper_fn(
 ///
 /// Examples
 /// --------
+/// Complete workflow -- find a recurrence for the q-Vandermonde sum:
+///
 /// >>> from q_kangaroo import q_zeilberger
-/// >>> # q-Vandermonde: 2phi1(q^{-5}, q^2; q^3; q, q^4) at n=5, q=2
+/// >>> # 2phi1(q^{-5}, q^2; q^3; q, q^4) at n=5, q=2
 /// >>> result = q_zeilberger([(1,1,-5), (1,1,2)], [(1,1,3)], 1, 1, 4, 5, 2, 1, 3)
 /// >>> result["found"]
 /// True
-/// >>> result["order"]
+/// >>> result["order"]  # first-order recurrence: c_0*S(n) + c_1*S(n+1) = 0
 /// 1
+/// >>> len(result["coefficients"])  # [c_0, c_1] -- ratio S(n+1)/S(n) is determined
+/// 2
+/// >>> result["certificate"]  # WZ proof certificate R(n,k)
+/// '...'
+///
+/// The recurrence coefficients $[c_0, c_1]$ for a first-order recurrence mean
+/// $S(n+1)/S(n) = -c_0/c_1$, giving a closed-form ratio for consecutive sums.
+///
+/// Notes
+/// -----
+/// The q-Zeilberger algorithm (Koornwinder, 1993) performs creative telescoping
+/// to find a linear recurrence for the definite sum $S(n) = \sum_k F(n,k)$
+/// where $F$ is q-hypergeometric in both $n$ and $k$.
+///
+/// Returns the recurrence coefficients $[c_0, \ldots, c_d]$ and a WZ proof
+/// certificate $R(n,k)$ -- a rational function satisfying the telescoping
+/// identity. The recurrence order $d$ is searched incrementally from 1.
+/// Requires a concrete $q$ value (not symbolic).
+///
+/// The algorithm uses q-Gosper internally as a subroutine: at each candidate
+/// order $d$, it attempts to express the creative telescoping remainder as
+/// a q-Gosper-summable term.
 ///
 /// See Also
 /// --------
 /// q_gosper : Indefinite q-hypergeometric summation (inner subroutine).
 /// verify_wz : Independent verification of the WZ certificate.
 /// q_petkovsek : Solve the recurrence for closed-form solutions.
+/// phi : Evaluate q-hypergeometric series.
 #[pyfunction]
 #[pyo3(name = "q_zeilberger", signature = (upper, lower, z_num, z_den, z_pow, n_val, q_num, q_den, max_order, n_param_indices=None, n_is_in_argument=None))]
 pub fn q_zeilberger_fn(
@@ -4745,11 +4800,35 @@ pub fn q_zeilberger_fn(
 ///
 /// Examples
 /// --------
+/// Verify the q-Vandermonde identity with a computer-checked WZ proof:
+///
 /// >>> from q_kangaroo import verify_wz
-/// >>> # Verify q-Vandermonde at n=5, q=2
+/// >>> # 2phi1(q^{-5}, q^2; q^3; q, q^4) at n=5, q=2, check 20 evaluation points
 /// >>> result = verify_wz([(1,1,-5), (1,1,2)], [(1,1,3)], 1, 1, 4, 5, 2, 1, 3, 20)
-/// >>> result["verified"]
+/// >>> result["verified"]  # certificate passes all evaluation checks
 /// True
+/// >>> result["order"]  # recurrence order from q-Zeilberger
+/// 1
+///
+/// The verification is independent of how the certificate was found: it
+/// checks the telescoping identity at concrete evaluation points, providing
+/// a computer-verified proof of the summation identity.
+///
+/// Notes
+/// -----
+/// Independently verifies a WZ proof certificate by checking the telescoping
+/// identity
+///
+/// $$F(n+1,k) - F(n,k) = G(n,k+1) - G(n,k)$$
+///
+/// where $G(n,k) = R(n,k) \cdot F(n,k)$ and $R(n,k)$ is the WZ certificate
+/// rational function. This provides a computer-verified proof of the
+/// summation identity, independent of how the certificate was found
+/// (Wilf-Zeilberger, 1992).
+///
+/// The verification evaluates both sides of the telescoping identity at
+/// ``max_k`` concrete points and checks exact rational equality. This
+/// gives a rigorous proof (not a numerical approximation).
 ///
 /// See Also
 /// --------
@@ -4820,7 +4899,7 @@ pub fn verify_wz_fn(
 
 /// Solve a q-hypergeometric recurrence for closed-form solutions.
 ///
-/// Given recurrence coefficients ``c_0*S(n) + c_1*S(n+1) + ... + c_d*S(n+d) = 0``
+/// Given recurrence coefficients $c_0 S(n) + c_1 S(n+1) + \ldots + c_d S(n+d) = 0$
 /// (typically from :func:`q_zeilberger`), finds all q-hypergeometric solutions
 /// and optionally decomposes them into q-Pochhammer product forms.
 ///
@@ -4849,18 +4928,42 @@ pub fn verify_wz_fn(
 ///
 /// Examples
 /// --------
+/// Complete algorithmic pipeline -- find recurrence, then solve for closed form:
+///
 /// >>> from q_kangaroo import q_zeilberger, q_petkovsek
+/// >>> # Step 1: q-Zeilberger finds recurrence for q-Vandermonde
 /// >>> result = q_zeilberger([(1,1,-5), (1,1,2)], [(1,1,3)], 1, 1, 4, 5, 2, 1, 3)
+/// >>> result["found"]
+/// True
+/// >>> # Step 2: q-Petkovsek recovers closed form from recurrence
 /// >>> if result["found"]:
 /// ...     coeffs = [(c.numerator, c.denominator) for c in result["coefficients"]]
 /// ...     solutions = q_petkovsek(coeffs, 2, 1)
 /// ...     len(solutions) >= 1
 /// True
 ///
+/// Each solution's ``ratio`` gives $y(n+1)/y(n)$, and if ``has_closed_form``
+/// is True, the solution is expressed as $y(n) = s \cdot q^{c \binom{n}{2}}
+/// \cdot \prod (q^{a_i}; q)_n / \prod (q^{b_j}; q)_n$ with explicit factors.
+///
+/// Notes
+/// -----
+/// The q-Petkovsek algorithm (Petkovsek, 1992; Abramov-Paule-Petkovsek, 1998)
+/// finds q-hypergeometric solutions of linear q-recurrences with polynomial
+/// coefficients. Given a recurrence $c_0(q^n) y(n) + c_1(q^n) y(n+1)
+/// + \ldots = 0$, the algorithm finds all solutions of the form
+///
+/// $$y(n) = r^n \prod_i \frac{(q^{a_i}; q)_n}{(q^{b_j}; q)_n}$$
+///
+/// This completes the algorithmic pipeline: q-Zeilberger finds the
+/// recurrence, q-Petkovsek solves it to recover a closed-form expression
+/// as a ratio of q-Pochhammer products.
+///
 /// See Also
 /// --------
 /// q_zeilberger : Find recurrence coefficients from a q-hypergeometric sum.
 /// q_gosper : Indefinite q-hypergeometric summation.
+/// phi : Evaluate q-hypergeometric series.
 #[pyfunction]
 #[pyo3(name = "q_petkovsek", signature = (coefficients, q_num, q_den))]
 pub fn q_petkovsek_fn(
@@ -5011,21 +5114,46 @@ fn pochhammer_scalar_val(q_val: &QRat, base_power: i64, n: i64) -> QRat {
 ///
 /// Examples
 /// --------
+/// Prove the q-Gauss summation (DLMF 17.6.1) in its nonterminating form:
+///
+/// $${}_{2}\phi_{1}(a, b; c; q, c/(ab)) = \frac{(c/a; q)_\infty (c/b; q)_\infty}{(c; q)_\infty (c/(ab); q)_\infty}$$
+///
+/// With $a = q$, $b = q^{-n}$, $c = q^3$:
+///
 /// >>> from q_kangaroo import prove_nonterminating
-/// >>> # Prove the q-Gauss summation (nonterminating form):
-/// >>> # 2phi1(a, b; c; q, c/(ab)) = (c/a; q)_inf * (c/b; q)_inf / ((c; q)_inf * (c/(ab); q)_inf)
-/// >>> # Specialized: upper_fixed=[(1,1,1)], n_param_offset=2, lower=[(1,1,3)],
-/// >>> # z_pow_offset=2, rhs_numer_bases=[2, 1], rhs_denom_bases=[3, 0]
 /// >>> result = prove_nonterminating(
 /// ...     [(1, 1, 1)], 2, [(1, 1, 3)], 2,
 /// ...     [2, 1], [3, 0], 2, 1, 5, 3)
 /// >>> result["proved"]
 /// True
+/// >>> result["recurrence_order"]  # both sides satisfy this recurrence
+/// 1
+/// >>> result["initial_conditions_checked"]  # matching initial values
+/// 1
+///
+/// Notes
+/// -----
+/// Implements the Chen-Hou-Mu (2010) method for proving nonterminating
+/// q-hypergeometric identities. The approach:
+///
+/// 1. **Specialization:** Replace a parameter $a \to q^{-n}$ to reduce the
+///    nonterminating identity to a family of terminating identities indexed by $n$.
+/// 2. **Recurrence:** Apply q-Zeilberger to the terminating LHS to find a
+///    recurrence $\sum c_i S(n+i) = 0$.
+/// 3. **Verification:** Check that the RHS (a ratio of q-Pochhammer products)
+///    satisfies the same recurrence, and that enough initial conditions match.
+///
+/// The proof is valid because if two q-hypergeometric sequences satisfy the
+/// same recurrence and agree on sufficiently many initial values, they are
+/// identical for all $n$, and the original nonterminating identity follows
+/// by analytic continuation ($n \to \infty$).
 ///
 /// See Also
 /// --------
+/// phi : Evaluate q-hypergeometric series.
 /// q_zeilberger : Find recurrence via creative telescoping.
-/// q_gosper : Indefinite q-hypergeometric summation.
+/// try_summation : Classical closed-form summation formulas.
+/// find_transformation_chain : Connect equivalent hypergeometric forms.
 #[pyfunction]
 #[pyo3(name = "prove_nonterminating", signature = (upper_fixed, n_param_offset, lower, z_pow_offset, rhs_numer_bases, rhs_denom_bases, q_num, q_den, n_test, max_order))]
 pub fn prove_nonterminating_fn(
@@ -5142,25 +5270,53 @@ pub fn prove_nonterminating_fn(
 /// -------
 /// dict
 ///     On success: ``{"found": True, "steps": list[dict], "total_prefactor": QSeries}``
-///     where each step dict has ``"name"`` (str) and ``"prefactor"`` (QSeries).
+///     where each step dict has ``"name"`` (str), ``"prefactor"`` (QSeries),
+///     ``"upper"``, ``"lower"``, and ``"argument"`` describing the resulting series.
 ///     On failure: ``{"found": False, "max_depth": int}``.
 ///
 /// Examples
 /// --------
+/// Find a transformation chain connecting two equivalent ${}_{2}\phi_{1}$ forms:
+///
 /// >>> from q_kangaroo import QSession, find_transformation_chain
 /// >>> s = QSession()
-/// >>> # Search for a chain from 2phi1(a,b;c;q,z) to a transformed form
 /// >>> result = find_transformation_chain(
 /// ...     s,
-/// ...     [(1,1,1), (1,1,2)], [(1,1,3)], 1, 1, 1,  # source
-/// ...     [(1,1,3), (1,1,1)], [(1,1,2)], 1, 1, 1,   # target
+/// ...     [(1,1,1), (1,1,2)], [(1,1,3)], 1, 1, 1,  # source: 2phi1(q, q^2; q^3; q, q)
+/// ...     [(1,1,3), (1,1,1)], [(1,1,2)], 1, 1, 1,   # target: 2phi1(q^3, q; q^2; q, q)
 /// ...     3, 20)
+/// >>> if result["found"]:
+/// ...     for step in result["steps"]:
+/// ...         print(step["name"])  # e.g., "heine1", "heine2", etc.
+///
+/// Each step in the chain names a known transformation and provides its
+/// infinite product prefactor as a ``QSeries``, along with the resulting
+/// series parameters.
+///
+/// Notes
+/// -----
+/// Searches for a sequence of known q-hypergeometric transformations
+/// connecting two given series. The transformation catalog includes:
+///
+/// - **Heine 1/2/3:** Three classical transformations of ${}_{2}\phi_{1}$
+///   (DLMF 17.6.2-17.6.4), each with an infinite product prefactor.
+/// - **Sears:** Four-term transformation for balanced terminating
+///   ${}_{4}\phi_{3}$ (DLMF 17.7.2).
+/// - **Watson:** Very-well-poised ${}_{8}\phi_{7}$ to ${}_{4}\phi_{3}$
+///   reduction (DLMF 17.9.16).
+///
+/// Uses breadth-first search over the transformation graph. At each node,
+/// all applicable transformations are tried, and the resulting series is
+/// compared to the target via FPS truncation. The ``total_prefactor``
+/// accumulates the product of all step prefactors.
 ///
 /// See Also
 /// --------
 /// heine1 : Heine's first transformation.
 /// heine2 : Heine's second transformation.
 /// heine3 : Heine's third transformation.
+/// prove_nonterminating : Prove identities via Chen-Hou-Mu specialization.
+/// phi : Evaluate q-hypergeometric series.
 #[pyfunction]
 #[pyo3(name = "find_transformation_chain", signature = (session, source_upper, source_lower, source_z_num, source_z_den, source_z_pow, target_upper, target_lower, target_z_num, target_z_den, target_z_pow, max_depth, order))]
 pub fn find_transformation_chain_fn(
