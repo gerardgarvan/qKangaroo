@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.5 Interactive REPL -- Phase 24 (Parser & AST)
+**Current focus:** v1.5 Interactive REPL -- Phase 25 (Evaluator & Function Dispatch)
 
 ## Current Position
 
-Phase: 24 of 28 (Parser & AST)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-17 -- Plan 24-01 complete (AST, Token, Span, Error types)
+Phase: 25 of 28 (Evaluator & Function Dispatch)
+Plan: 0 of 3 in current phase
+Status: Ready
+Last activity: 2026-02-17 -- Phase 24 complete (Parser & AST: lexer + Pratt parser, 68 tests)
 
-Progress: [########################------] 79% (71/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [########################------] 81% (72/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -28,7 +28,7 @@ Progress: [########################------] 79% (71/79 plans -- v1.0-v1.4 complet
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 24 - Parser & AST | 1/2 | 2min | 2min |
+| 24 - Parser & AST | 2/2 | 5min | 2.5min |
 | 25 - Evaluator & Function Dispatch | 0/3 | - | - |
 | 26 - REPL Shell & Session | 0/2 | - | - |
 | 27 - Output Commands & Polish | 0/1 | - | - |
@@ -45,6 +45,10 @@ v1.5 decisions:
 - AST nodes carry no span information (simplicity; can add Spanned<T> wrapper later)
 - q is a reserved keyword token (Token::Q), not treated as an identifier
 - BigInteger stored as String for arbitrary precision; evaluator converts to QInt
+- Binding powers: := (2,1) < +/- (3,4) < */ (5,6) < unary- (7) < ^ (9,10) < funcall (11)
+- Non-associative ^ enforced via post-parse check (error if chained)
+- Function call as postfix operator requiring Variable lhs
+- Empty statements (;;) silently skipped
 
 ### Pending Todos
 
@@ -57,5 +61,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 24-01-PLAN.md
-Resume file: .planning/phases/24-parser-ast/24-01-SUMMARY.md
+Stopped at: Completed 24-02-PLAN.md (Phase 24 complete)
+Resume file: .planning/phases/24-parser-ast/24-02-SUMMARY.md
