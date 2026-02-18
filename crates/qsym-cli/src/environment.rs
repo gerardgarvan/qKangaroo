@@ -53,6 +53,17 @@ impl Environment {
     pub fn get_var(&self, name: &str) -> Option<&Value> {
         self.variables.get(name)
     }
+
+    /// Reset the environment to its initial state.
+    ///
+    /// Clears all variables, resets `last_result` to `None`, and restores
+    /// `default_order` to 20. Does **not** reset the symbol registry
+    /// (`sym_q` must remain valid).
+    pub fn reset(&mut self) {
+        self.variables.clear();
+        self.last_result = None;
+        self.default_order = 20;
+    }
 }
 
 impl Default for Environment {
@@ -101,5 +112,42 @@ mod tests {
     fn last_result_initially_none() {
         let env = Environment::new();
         assert!(env.last_result.is_none());
+    }
+
+    #[test]
+    fn reset_clears_variables() {
+        let mut env = Environment::new();
+        env.set_var("x", Value::Integer(QInt::from(42i64)));
+        env.set_var("y", Value::Integer(QInt::from(99i64)));
+        assert_eq!(env.variables.len(), 2);
+        env.reset();
+        assert!(env.variables.is_empty());
+    }
+
+    #[test]
+    fn reset_clears_last_result() {
+        let mut env = Environment::new();
+        env.last_result = Some(Value::Integer(QInt::from(7i64)));
+        env.reset();
+        assert!(env.last_result.is_none());
+    }
+
+    #[test]
+    fn reset_restores_default_order() {
+        let mut env = Environment::new();
+        env.default_order = 50;
+        env.reset();
+        assert_eq!(env.default_order, 20);
+    }
+
+    #[test]
+    fn reset_preserves_sym_q() {
+        let mut env = Environment::new();
+        let q_before = env.sym_q;
+        env.set_var("x", Value::Integer(QInt::from(1i64)));
+        env.default_order = 100;
+        env.reset();
+        assert_eq!(env.sym_q, q_before);
+        assert_eq!(env.symbols.name(env.sym_q), "q");
     }
 }
