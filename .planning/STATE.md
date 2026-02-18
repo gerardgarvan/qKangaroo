@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.5 Interactive REPL -- Phase 26 (REPL Shell & Session)
+**Current focus:** v1.5 Interactive REPL -- Phase 27 (Output Commands & Polish)
 
 ## Current Position
 
-Phase: 26 of 28 (REPL Shell & Session)
-Plan: 1 of 2 in current phase
+Phase: 27 of 28 (Output Commands & Polish)
+Plan: 1 of 1 in current phase
 Status: In Progress
-Last activity: 2026-02-18 -- Plan 26-01 complete (REPL shell with rustyline, commands, history, error recovery)
+Last activity: 2026-02-18 -- Plan 26-02 complete (tab completion + help system for REPL)
 
-Progress: [############################--] 96% (76/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [#############################-] 97% (77/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -30,7 +30,7 @@ Progress: [############################--] 96% (76/79 plans -- v1.0-v1.4 complet
 |-------|-------|-------|----------|
 | 24 - Parser & AST | 2/2 | 5min | 2.5min |
 | 25 - Evaluator & Function Dispatch | 3/3 | 20min | 6.7min |
-| 26 - REPL Shell & Session | 1/2 | 4min | 4min |
+| 26 - REPL Shell & Session | 2/2 | 12min | 6min |
 | 27 - Output Commands & Polish | 0/1 | - | - |
 | 28 - Binary Packaging | 0/1 | - | - |
 
@@ -66,6 +66,9 @@ v1.5 decisions:
 - Commands intercepted before parser; lines with := always pass through
 - History file next to executable (.q_kangaroo_history)
 - home crate pinned to 0.5.11 for Rust 1.85 compatibility
+- complete_inner() extracted from Completer for testability (rustyline Context is pub(crate))
+- Static FUNC_HELP array of 81 entries for zero-allocation help lookup
+- Commands section lists latex/save as "coming soon" per CONTEXT.md locked decision
 
 ### Pending Todos
 
@@ -78,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 26-01-PLAN.md. Ready for 26-02.
+Stopped at: Completed 26-02-PLAN.md. Phase 26 complete. Ready for Phase 27.
 Resume file: N/A
