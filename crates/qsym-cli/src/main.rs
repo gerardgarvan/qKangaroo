@@ -24,12 +24,27 @@ fn print_banner() {
     let version = env!("CARGO_PKG_VERSION");
     println!(
         r#"
-      /\
-     /  \     q-Kangaroo v{}
-    | q> |    Symbolic q-series computation
-    |    |
-    /|  |\    Type 'help' for commands, 'quit' to exit
-   (_|  |_)
+                                      /)
+                                    '  \
+                                   /    \
+                                 /'    q \
+                               /'         \        q-Kangaroo v{}
+                          _.-'      /`-.   )       Symbolic q-series computation
+               __.-'"""""'         /    `-'
+             /'                   (  _._           Type 'help' for commands
+            /       __      (       ___ \          'quit' to exit
+          /'          \      \.____/   \_)
+         /             \   \  |
+        /   __          |   \_)
+       |   /  \_        |  _/
+       |  /     )      / /'
+      .' |    _/      /_/
+      |  |  /'     __/'
+      |  |  \    /'
+      |  |   \   \
+     /  /     \   \
+  __/' _/       \  `----.
+ (___/'          `------'
 "#,
         version
     );
