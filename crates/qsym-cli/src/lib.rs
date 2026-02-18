@@ -8,4 +8,5 @@ pub mod help;
 pub mod lexer;
 pub mod parser;
 pub mod repl;
+pub mod script;
 pub mod token;

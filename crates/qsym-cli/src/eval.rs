@@ -40,6 +40,8 @@ pub enum Value {
     Pair(Box<Value>, Box<Value>),
     /// Boolean value.
     Bool(bool),
+    /// String value (for filenames, etc.).
+    String(String),
     /// None/null (try_summation returns None on failure).
     None,
     /// The infinity keyword.
@@ -57,6 +59,7 @@ impl Value {
             Value::Dict(_) => "dict",
             Value::Pair(_, _) => "pair",
             Value::Bool(_) => "bool",
+            Value::String(_) => "string",
             Value::None => "none",
             Value::Infinity => "infinity",
         }
@@ -585,9 +588,7 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
 
         AstNode::Infinity => Ok(Value::Infinity),
 
-        AstNode::StringLit(_) => Err(EvalError::Other(
-            "string literals not yet supported in expressions".to_string(),
-        )),
+        AstNode::StringLit(s) => Ok(Value::String(s.clone())),
 
         AstNode::LastResult => match &env.last_result {
             Some(val) => Ok(val.clone()),

@@ -36,6 +36,7 @@ pub fn format_value(val: &Value) -> String {
         Value::Dict(entries) => format_dict(entries),
         Value::Pair(a, b) => format!("({}, {})", format_value(a), format_value(b)),
         Value::Bool(b) => if *b { "true".to_string() } else { "false".to_string() },
+        Value::String(s) => s.clone(),
         Value::None => "NONE".to_string(),
         Value::Infinity => "infinity".to_string(),
     }
@@ -132,6 +133,7 @@ pub fn format_latex(val: &Value) -> String {
                 "\\text{false}".to_string()
             }
         }
+        Value::String(s) => format!("\\text{{{}}}", s),
         Value::None => "\\text{NONE}".to_string(),
         Value::Infinity => "\\infty".to_string(),
     }
