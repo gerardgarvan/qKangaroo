@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.5 Interactive REPL -- Phase 25 (Evaluator & Function Dispatch)
+**Current focus:** v1.5 Interactive REPL -- Phase 26 (REPL Shell & Session)
 
 ## Current Position
 
-Phase: 25 of 28 (Evaluator & Function Dispatch)
-Plan: 2 of 3 in current phase
+Phase: 26 of 28 (REPL Shell & Session)
+Plan: 1 of 2 in current phase
 Status: In Progress
-Last activity: 2026-02-18 -- Plan 25-02 complete (dispatch groups 1-4: 25 functions, 181 tests)
+Last activity: 2026-02-18 -- Phase 25 complete (all 81 functions dispatched, 213 tests)
 
-Progress: [##########################----] 84% (74/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [###########################---] 86% (76/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -29,7 +29,7 @@ Progress: [##########################----] 84% (74/79 plans -- v1.0-v1.4 complet
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 24 - Parser & AST | 2/2 | 5min | 2.5min |
-| 25 - Evaluator & Function Dispatch | 2/3 | 11min | 5.5min |
+| 25 - Evaluator & Function Dispatch | 3/3 | 20min | 6.7min |
 | 26 - REPL Shell & Session | 0/2 | - | - |
 | 27 - Output Commands & Polish | 0/1 | - | - |
 | 28 - Binary Packaging | 0/1 | - | - |
@@ -56,6 +56,12 @@ v1.5 decisions:
 - partition_count returns Value::Integer by extracting QRat numerator (always integer-valued)
 - Analysis result structs converted to Value::Dict with string keys for REPL display
 - expect_args/expect_args_range auto-populate signature from get_signature()
+- Bailey pairs use integer codes (0=Unit, 1=RR, 2=QBinomial) -- no string literals in REPL
+- prove_nonterminating returns error directing to Python API (requires closures)
+- search_identities uses integer-coded search types (0=all, 1-8=by tag codes)
+- Heine/sears/watson transforms return Pair(prefactor, evaluated_result)
+- verify_wz is self-contained: runs q_zeilberger first then verifies
+- Strings in Dict values encoded as Value::List of char code integers
 
 ### Pending Todos
 
@@ -68,5 +74,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 25-02-PLAN.md (dispatch groups 1-4: 25 functions). Ready for 25-03 (remaining function groups).
-Resume file: .planning/phases/25-evaluator-function-dispatch/25-02-SUMMARY.md
+Stopped at: Completed 25-03-PLAN.md (Phase 25 complete -- all 81 functions dispatched). Ready for Phase 26.
+Resume file: .planning/phases/25-evaluator-function-dispatch/25-03-SUMMARY.md
