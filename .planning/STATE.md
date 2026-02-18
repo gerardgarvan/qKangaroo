@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 26 of 28 (REPL Shell & Session)
-Plan: 0 of 2 in current phase
-Status: Ready
-Last activity: 2026-02-17 -- Phase 25 complete (Evaluator & Function Dispatch: 81 functions dispatched, 213 tests)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-02-18 -- Plan 26-01 complete (REPL shell with rustyline, commands, history, error recovery)
 
-Progress: [############################--] 95% (75/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [############################--] 96% (76/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -30,7 +30,7 @@ Progress: [############################--] 95% (75/79 plans -- v1.0-v1.4 complet
 |-------|-------|-------|----------|
 | 24 - Parser & AST | 2/2 | 5min | 2.5min |
 | 25 - Evaluator & Function Dispatch | 3/3 | 20min | 6.7min |
-| 26 - REPL Shell & Session | 0/2 | - | - |
+| 26 - REPL Shell & Session | 1/2 | 4min | 4min |
 | 27 - Output Commands & Polish | 0/1 | - | - |
 | 28 - Binary Packaging | 0/1 | - | - |
 
@@ -62,6 +62,10 @@ v1.5 decisions:
 - Bailey pairs use integer codes (0=Unit, 1=RR, 2=QBinomial)
 - Heine/sears/watson transforms return Pair(prefactor, evaluated_result)
 - verify_wz is self-contained: runs q_zeilberger first then verifies
+- rustyline 17.0 with derive feature for REPL line editing
+- Commands intercepted before parser; lines with := always pass through
+- History file next to executable (.q_kangaroo_history)
+- home crate pinned to 0.5.11 for Rust 1.85 compatibility
 
 ### Pending Todos
 
@@ -73,6 +77,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Phase 25 complete. Ready for Phase 26.
+Last session: 2026-02-18
+Stopped at: Completed 26-01-PLAN.md. Ready for 26-02.
 Resume file: N/A
