@@ -75,7 +75,11 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-(None -- all planned milestones complete)
+- Standalone .exe with static GMP linking (zero DLL dependencies) -- v1.6
+- Script file execution (`q-kangaroo script.qk`) for non-interactive batch mode -- v1.6
+- Error handling hardening with clear messages for all failure modes -- v1.6
+- Comprehensive LaTeX-typeset PDF manual covering all 81 functions -- v1.6
+- CLI UX polish (--help, pipe support, exit codes, first-run guidance) -- v1.6
 
 ### Future
 
@@ -134,4 +138,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Bundle MinGW DLLs (not static GMP) | Simpler build; static linking deferred as separate project | Good |
 
 ---
-*Last updated: 2026-02-18 after v1.5 milestone completion*
+*Last updated: 2026-02-18 after v1.6 milestone start*
