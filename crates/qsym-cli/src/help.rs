@@ -737,8 +737,8 @@ const FUNC_HELP: &[FuncHelp] = &[
 pub fn function_help(name: &str) -> Option<String> {
     FUNC_HELP.iter().find(|h| h.name == name).map(|h| {
         format!(
-            "{}{}\n\n  {}\n\n  Example:\n    {}\n    {}",
-            h.name, h.signature, h.description, h.example, h.example_output
+            "{}\n\n  {}\n\n  Example:\n    {}\n    {}",
+            h.signature, h.description, h.example, h.example_output
         )
     })
 }
