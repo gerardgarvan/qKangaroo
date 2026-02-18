@@ -887,6 +887,15 @@ fn series_pow(fps: &FormalPowerSeries, n: i64) -> FormalPowerSeries {
 // Function dispatch
 // ---------------------------------------------------------------------------
 
+/// Helper macro for dispatching mock theta functions (all take 1 arg: order).
+macro_rules! dispatch_mock_theta {
+    ($func:ident, $name:expr, $args:expr, $env:expr) => {{
+        expect_args($name, $args, 1)?;
+        let order = extract_i64($name, $args, 0)?;
+        Ok(Value::Series(qseries::$func($env.sym_q, order)))
+    }};
+}
+
 /// Dispatch a function call by name.
 ///
 /// Resolves aliases, then matches against the canonical function name.
@@ -1474,7 +1483,269 @@ pub fn dispatch(
         }
 
         // =================================================================
-        // Unknown function -- filled in by Task 2 for groups 7-8
+        // Group 7: Mock Theta / Appell-Lerch / Bailey (FUNC-07) -- 27 functions
+        // =================================================================
+
+        // 20 mock theta functions (all take 1 arg: order)
+        "mock_theta_f3" => dispatch_mock_theta!(mock_theta_f3, name, args, env),
+        "mock_theta_phi3" => dispatch_mock_theta!(mock_theta_phi3, name, args, env),
+        "mock_theta_psi3" => dispatch_mock_theta!(mock_theta_psi3, name, args, env),
+        "mock_theta_chi3" => dispatch_mock_theta!(mock_theta_chi3, name, args, env),
+        "mock_theta_omega3" => dispatch_mock_theta!(mock_theta_omega3, name, args, env),
+        "mock_theta_nu3" => dispatch_mock_theta!(mock_theta_nu3, name, args, env),
+        "mock_theta_rho3" => dispatch_mock_theta!(mock_theta_rho3, name, args, env),
+        "mock_theta_f0_5" => dispatch_mock_theta!(mock_theta_f0_5, name, args, env),
+        "mock_theta_f1_5" => dispatch_mock_theta!(mock_theta_f1_5, name, args, env),
+        "mock_theta_cap_f0_5" => dispatch_mock_theta!(mock_theta_cap_f0_5, name, args, env),
+        "mock_theta_cap_f1_5" => dispatch_mock_theta!(mock_theta_cap_f1_5, name, args, env),
+        "mock_theta_phi0_5" => dispatch_mock_theta!(mock_theta_phi0_5, name, args, env),
+        "mock_theta_phi1_5" => dispatch_mock_theta!(mock_theta_phi1_5, name, args, env),
+        "mock_theta_psi0_5" => dispatch_mock_theta!(mock_theta_psi0_5, name, args, env),
+        "mock_theta_psi1_5" => dispatch_mock_theta!(mock_theta_psi1_5, name, args, env),
+        "mock_theta_chi0_5" => dispatch_mock_theta!(mock_theta_chi0_5, name, args, env),
+        "mock_theta_chi1_5" => dispatch_mock_theta!(mock_theta_chi1_5, name, args, env),
+        "mock_theta_cap_f0_7" => dispatch_mock_theta!(mock_theta_cap_f0_7, name, args, env),
+        "mock_theta_cap_f1_7" => dispatch_mock_theta!(mock_theta_cap_f1_7, name, args, env),
+        "mock_theta_cap_f2_7" => dispatch_mock_theta!(mock_theta_cap_f2_7, name, args, env),
+
+        // Appell-Lerch (3 functions)
+
+        "appell_lerch_m" => {
+            // appell_lerch_m(a_pow, z_pow, order)
+            expect_args(name, args, 3)?;
+            let a_pow = extract_i64(name, args, 0)?;
+            let z_pow = extract_i64(name, args, 1)?;
+            let order = extract_i64(name, args, 2)?;
+            let result = qseries::appell_lerch_m(a_pow, z_pow, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "universal_mock_theta_g2" => {
+            // g2(a_pow, order)
+            expect_args(name, args, 2)?;
+            let a_pow = extract_i64(name, args, 0)?;
+            let order = extract_i64(name, args, 1)?;
+            let result = qseries::universal_mock_theta_g2(a_pow, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "universal_mock_theta_g3" => {
+            // g3(a_pow, order)
+            expect_args(name, args, 2)?;
+            let a_pow = extract_i64(name, args, 0)?;
+            let order = extract_i64(name, args, 1)?;
+            let result = qseries::universal_mock_theta_g3(a_pow, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        // Bailey (4 functions)
+
+        "bailey_weak_lemma" => {
+            // bailey_weak_lemma(pair_code, a_num, a_den, a_pow, max_n, order)
+            // pair_code: 0=Unit, 1=RogersRamanujan, 2=QBinomial
+            expect_args(name, args, 6)?;
+            let pair_code = extract_i64(name, args, 0)?;
+            let a = extract_monomial(name, args, 1)?;
+            let max_n = extract_i64(name, args, 4)?;
+            let order = extract_i64(name, args, 5)?;
+            let db = qseries::BaileyDatabase::new();
+            let pair = get_bailey_pair_by_code(name, &db, pair_code)?;
+            let (lhs, rhs) = qseries::weak_bailey_lemma(&pair, &a, max_n, env.sym_q, order);
+            Ok(Value::Pair(Box::new(Value::Series(lhs)), Box::new(Value::Series(rhs))))
+        }
+
+        "bailey_apply_lemma" => {
+            // bailey_apply_lemma(pair_code, a_n, a_d, a_p, b_n, b_d, b_p, c_n, c_d, c_p, max_n, order)
+            expect_args(name, args, 12)?;
+            let pair_code = extract_i64(name, args, 0)?;
+            let a = extract_monomial(name, args, 1)?;
+            let b = extract_monomial(name, args, 4)?;
+            let c = extract_monomial(name, args, 7)?;
+            let max_n = extract_i64(name, args, 10)?;
+            let order = extract_i64(name, args, 11)?;
+            let db = qseries::BaileyDatabase::new();
+            let pair = get_bailey_pair_by_code(name, &db, pair_code)?;
+            let result = qseries::bailey_lemma(&pair, &a, &b, &c, max_n, env.sym_q, order);
+            Ok(bailey_pair_to_value(&result))
+        }
+
+        "bailey_chain" => {
+            // bailey_chain(pair_code, a_n, a_d, a_p, b_n, b_d, b_p, c_n, c_d, c_p, depth, max_n, order)
+            expect_args(name, args, 13)?;
+            let pair_code = extract_i64(name, args, 0)?;
+            let a = extract_monomial(name, args, 1)?;
+            let b = extract_monomial(name, args, 4)?;
+            let c = extract_monomial(name, args, 7)?;
+            let depth = extract_i64(name, args, 10)? as usize;
+            let max_n = extract_i64(name, args, 11)?;
+            let order = extract_i64(name, args, 12)?;
+            let db = qseries::BaileyDatabase::new();
+            let pair = get_bailey_pair_by_code(name, &db, pair_code)?;
+            let chain = qseries::bailey_chain(&pair, &a, &b, &c, depth, max_n, env.sym_q, order);
+            Ok(Value::List(chain.iter().map(|p| bailey_pair_to_value(p)).collect()))
+        }
+
+        "bailey_discover" => {
+            // bailey_discover(lhs, rhs, a_num, a_den, a_pow, max_depth, order)
+            expect_args(name, args, 7)?;
+            let lhs = extract_series(name, args, 0)?;
+            let rhs = extract_series(name, args, 1)?;
+            let a = extract_monomial(name, args, 2)?;
+            let max_depth = extract_i64(name, args, 5)? as usize;
+            let order = extract_i64(name, args, 6)?;
+            let db = qseries::BaileyDatabase::new();
+            let result = qseries::bailey_discover(&lhs, &rhs, &db, &a, max_depth, env.sym_q, order);
+            Ok(discovery_result_to_value(&result))
+        }
+
+        // =================================================================
+        // Group 8: Identity Proving (FUNC-08) -- 8 functions
+        // =================================================================
+
+        "prove_eta_id" => {
+            // prove_eta_id(terms_list, level)
+            // terms_list: [[coeff_n, coeff_d, [[delta1, exp1], [delta2, exp2], ...]], ...]
+            expect_args(name, args, 2)?;
+            let identity = extract_eta_identity(name, args)?;
+            let result = qseries::prove_eta_identity(&identity);
+            Ok(proof_result_to_value(&result))
+        }
+
+        "search_identities" => {
+            // search_identities(search_type, query_code)
+            // search_type: 0=all entries, 1=by_tag(code), 2=by_function(code)
+            // Without string support, returns all entries for type 0.
+            expect_args(name, args, 1)?;
+            let search_type = extract_i64(name, args, 0)?;
+            let db = qseries::IdentityDatabase::new();
+            let tag_map: &[&str] = &[
+                "classical", "partition", "theta", "eta", "mock_theta",
+                "ramanujan", "jacobi", "euler",
+            ];
+            match search_type {
+                0 => {
+                    // Return all entries
+                    Ok(Value::List(
+                        db.entries().iter().map(|e| identity_entry_to_value(e)).collect(),
+                    ))
+                }
+                code if code >= 1 && (code as usize - 1) < tag_map.len() => {
+                    let tag = tag_map[(code - 1) as usize];
+                    let results = db.search_by_tag(tag);
+                    Ok(Value::List(
+                        results.iter().map(|e| identity_entry_to_value(e)).collect(),
+                    ))
+                }
+                _ => {
+                    Ok(Value::List(vec![]))
+                }
+            }
+        }
+
+        // Algorithmic summation (Pattern K)
+
+        "q_gosper" => {
+            // q_gosper(upper_list, lower_list, z_num, z_den, z_pow, q_num, q_den)
+            expect_args(name, args, 7)?;
+            let upper = extract_monomial_list(name, args, 0)?;
+            let lower = extract_monomial_list(name, args, 1)?;
+            let z_num = extract_i64(name, args, 2)?;
+            let z_den = extract_i64(name, args, 3)?;
+            let z_pow = extract_i64(name, args, 4)?;
+            let q_num = extract_i64(name, args, 5)?;
+            let q_den = extract_i64(name, args, 6)?;
+            let z = QMonomial::new(QRat::from((z_num, z_den)), z_pow);
+            let series = HypergeometricSeries { upper, lower, argument: z };
+            let q_val = QRat::from((q_num, q_den));
+            let result = qseries::q_gosper(&series, &q_val);
+            Ok(q_gosper_result_to_value(&result))
+        }
+
+        "q_zeilberger" => {
+            // q_zeilberger(upper_list, lower_list, z_num, z_den, z_pow, n, q_num, q_den, max_order)
+            expect_args(name, args, 9)?;
+            let upper = extract_monomial_list(name, args, 0)?;
+            let lower = extract_monomial_list(name, args, 1)?;
+            let z_num = extract_i64(name, args, 2)?;
+            let z_den = extract_i64(name, args, 3)?;
+            let z_pow = extract_i64(name, args, 4)?;
+            let n = extract_i64(name, args, 5)?;
+            let q_num = extract_i64(name, args, 6)?;
+            let q_den = extract_i64(name, args, 7)?;
+            let max_order = extract_i64(name, args, 8)? as usize;
+            let z = QMonomial::new(QRat::from((z_num, z_den)), z_pow);
+            let series = HypergeometricSeries { upper, lower, argument: z };
+            let q_val = QRat::from((q_num, q_den));
+            let (n_param_indices, n_is_in_argument) = qseries::detect_n_params(&series, n, &q_val);
+            let result = qseries::q_zeilberger(&series, n, &q_val, max_order, &n_param_indices, n_is_in_argument);
+            Ok(q_zeilberger_result_to_value(&result))
+        }
+
+        "verify_wz" => {
+            // verify_wz requires the recurrence result from q_zeilberger, which is complex.
+            // For simplicity: verify_wz(upper_list, lower_list, z_num, z_den, z_pow, n, q_num, q_den, max_order, max_k)
+            expect_args(name, args, 10)?;
+            let upper = extract_monomial_list(name, args, 0)?;
+            let lower = extract_monomial_list(name, args, 1)?;
+            let z_num = extract_i64(name, args, 2)?;
+            let z_den = extract_i64(name, args, 3)?;
+            let z_pow = extract_i64(name, args, 4)?;
+            let n = extract_i64(name, args, 5)?;
+            let q_num = extract_i64(name, args, 6)?;
+            let q_den = extract_i64(name, args, 7)?;
+            let max_order = extract_i64(name, args, 8)? as usize;
+            let max_k = extract_i64(name, args, 9)? as usize;
+            let z = QMonomial::new(QRat::from((z_num, z_den)), z_pow);
+            let series = HypergeometricSeries { upper, lower, argument: z };
+            let q_val = QRat::from((q_num, q_den));
+            let (n_param_indices, n_is_in_argument) = qseries::detect_n_params(&series, n, &q_val);
+            // First run Zeilberger to get the recurrence + certificate
+            let zresult = qseries::q_zeilberger(&series, n, &q_val, max_order, &n_param_indices, n_is_in_argument);
+            match zresult {
+                qseries::QZeilbergerResult::Recurrence(ref zr) => {
+                    let verified = qseries::verify_wz_certificate(
+                        &series, n, &q_val, &zr.coefficients, &zr.certificate,
+                        &n_param_indices, n_is_in_argument, max_k,
+                    );
+                    Ok(Value::Dict(vec![
+                        ("verified".to_string(), Value::Bool(verified)),
+                        ("recurrence".to_string(), q_zeilberger_result_to_value(&zresult)),
+                    ]))
+                }
+                qseries::QZeilbergerResult::NoRecurrence => {
+                    Ok(Value::Dict(vec![
+                        ("verified".to_string(), Value::Bool(false)),
+                        ("reason".to_string(), Value::List(
+                            "no recurrence found".chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+                        )),
+                    ]))
+                }
+            }
+        }
+
+        "q_petkovsek" => {
+            // q_petkovsek(coeff_list, q_num, q_den)
+            expect_args(name, args, 3)?;
+            let coefficients = extract_qrat_list(name, args, 0)?;
+            let q_num = extract_i64(name, args, 1)?;
+            let q_den = extract_i64(name, args, 2)?;
+            let q_val = QRat::from((q_num, q_den));
+            let results = qseries::q_petkovsek(&coefficients, &q_val);
+            Ok(Value::List(
+                results.iter().map(|r| q_petkovsek_result_to_value(r)).collect(),
+            ))
+        }
+
+        // Nonterminating (Pattern L)
+
+        "prove_nonterminating" => {
+            Err(EvalError::Other(
+                "prove_nonterminating requires closure arguments; use the Python API for this function".to_string(),
+            ))
+        }
+
+        // =================================================================
+        // Unknown function
         // =================================================================
         _ => {
             let suggestions = find_similar_names(&canonical);
@@ -1617,6 +1888,317 @@ fn transformation_chain_result_to_value(r: &qseries::TransformationChainResult) 
     }
 }
 
+/// Look up a Bailey pair from the database by integer code.
+///
+/// Codes: 0=Unit, 1=RogersRamanujan, 2=QBinomial.
+fn get_bailey_pair_by_code(
+    name: &str,
+    db: &qseries::BaileyDatabase,
+    code: i64,
+) -> Result<qseries::BaileyPair, EvalError> {
+    let pair_name = match code {
+        0 => "unit",
+        1 => "rogers-ramanujan",
+        2 => "q-binomial",
+        _ => {
+            return Err(EvalError::ArgType {
+                function: name.to_string(),
+                arg_index: 0,
+                expected: "pair code (0=Unit, 1=RogersRamanujan, 2=QBinomial)",
+                got: format!("{}", code),
+            });
+        }
+    };
+    let results = db.search_by_name(pair_name);
+    results.first()
+        .map(|p| (*p).clone())
+        .ok_or_else(|| EvalError::Other(format!("{}: pair '{}' not found in database", name, pair_name)))
+}
+
+/// Extract an `EtaIdentity` from args: (terms_list, level).
+///
+/// terms_list: `[[coeff_n, coeff_d, [[delta1, exp1], [delta2, exp2], ...]], ...]`
+fn extract_eta_identity(name: &str, args: &[Value]) -> Result<qseries::EtaIdentity, EvalError> {
+    let level = extract_i64(name, args, 1)?;
+    match &args[0] {
+        Value::List(terms) => {
+            let mut result = Vec::with_capacity(terms.len());
+            for (i, term) in terms.iter().enumerate() {
+                match term {
+                    Value::List(inner) if inner.len() == 3 => {
+                        // inner = [coeff_num, coeff_den, [[delta, exp], ...]]
+                        let cn = match &inner[0] {
+                            Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: 0,
+                                expected: "eta identity terms",
+                                got: format!("integer too large in term {}", i),
+                            })?,
+                            other => return Err(EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: 0,
+                                expected: "eta identity terms",
+                                got: format!("{} in term {} position 0", other.type_name(), i),
+                            }),
+                        };
+                        let cd = match &inner[1] {
+                            Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: 0,
+                                expected: "eta identity terms",
+                                got: format!("integer too large in term {}", i),
+                            })?,
+                            other => return Err(EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: 0,
+                                expected: "eta identity terms",
+                                got: format!("{} in term {} position 1", other.type_name(), i),
+                            }),
+                        };
+                        let coeff = QRat::from((cn, cd));
+                        let factors_list = match &inner[2] {
+                            Value::List(fl) => fl,
+                            other => return Err(EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: 0,
+                                expected: "list of [delta, exp] pairs",
+                                got: format!("{} in term {} position 2", other.type_name(), i),
+                            }),
+                        };
+                        let mut factors = std::collections::BTreeMap::new();
+                        for (j, factor) in factors_list.iter().enumerate() {
+                            match factor {
+                                Value::List(pair) if pair.len() == 2 => {
+                                    let delta = match &pair[0] {
+                                        Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                                            function: name.to_string(),
+                                            arg_index: 0,
+                                            expected: "eta identity terms",
+                                            got: format!("integer too large in factor ({},{})", i, j),
+                                        })?,
+                                        other => return Err(EvalError::ArgType {
+                                            function: name.to_string(),
+                                            arg_index: 0,
+                                            expected: "eta identity terms",
+                                            got: format!("{} in factor ({},{}) position 0", other.type_name(), i, j),
+                                        }),
+                                    };
+                                    let exp = match &pair[1] {
+                                        Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                                            function: name.to_string(),
+                                            arg_index: 0,
+                                            expected: "eta identity terms",
+                                            got: format!("integer too large in factor ({},{})", i, j),
+                                        })?,
+                                        other => return Err(EvalError::ArgType {
+                                            function: name.to_string(),
+                                            arg_index: 0,
+                                            expected: "eta identity terms",
+                                            got: format!("{} in factor ({},{}) position 1", other.type_name(), i, j),
+                                        }),
+                                    };
+                                    factors.insert(delta, exp);
+                                }
+                                other => return Err(EvalError::ArgType {
+                                    function: name.to_string(),
+                                    arg_index: 0,
+                                    expected: "list of [delta, exp] pairs",
+                                    got: format!("{} in factors ({},{})", other.type_name(), i, j),
+                                }),
+                            }
+                        }
+                        let eta_expr = qseries::EtaExpression::new(factors, level);
+                        result.push((coeff, eta_expr));
+                    }
+                    other => return Err(EvalError::ArgType {
+                        function: name.to_string(),
+                        arg_index: 0,
+                        expected: "list of [coeff_n, coeff_d, [[delta, exp], ...]] terms",
+                        got: format!("{} at position {}", other.type_name(), i),
+                    }),
+                }
+            }
+            Ok(qseries::EtaIdentity::new(result, level))
+        }
+        other => Err(EvalError::ArgType {
+            function: name.to_string(),
+            arg_index: 0,
+            expected: "list of eta identity terms",
+            got: other.type_name().to_string(),
+        }),
+    }
+}
+
+/// Convert a `QGosperResult` to `Value::Dict`.
+fn q_gosper_result_to_value(r: &qseries::QGosperResult) -> Value {
+    match r {
+        qseries::QGosperResult::Summable { certificate } => {
+            let n_deg = match certificate.numer.degree() {
+                Some(d) => Value::Integer(QInt::from(d as i64)),
+                None => Value::None,
+            };
+            let d_deg = match certificate.denom.degree() {
+                Some(d) => Value::Integer(QInt::from(d as i64)),
+                None => Value::None,
+            };
+            Value::Dict(vec![
+                ("summable".to_string(), Value::Bool(true)),
+                ("certificate_numer_degree".to_string(), n_deg),
+                ("certificate_denom_degree".to_string(), d_deg),
+            ])
+        }
+        qseries::QGosperResult::NotSummable => {
+            Value::Dict(vec![
+                ("summable".to_string(), Value::Bool(false)),
+            ])
+        }
+    }
+}
+
+/// Convert a `QZeilbergerResult` to `Value::Dict`.
+fn q_zeilberger_result_to_value(r: &qseries::QZeilbergerResult) -> Value {
+    match r {
+        qseries::QZeilbergerResult::Recurrence(zr) => {
+            Value::Dict(vec![
+                ("found".to_string(), Value::Bool(true)),
+                ("order".to_string(), Value::Integer(QInt::from(zr.order as i64))),
+                ("coefficients".to_string(), Value::List(
+                    zr.coefficients.iter().map(|c| Value::Rational(c.clone())).collect(),
+                )),
+            ])
+        }
+        qseries::QZeilbergerResult::NoRecurrence => {
+            Value::Dict(vec![
+                ("found".to_string(), Value::Bool(false)),
+            ])
+        }
+    }
+}
+
+/// Convert a `QPetkovsekResult` to `Value::Dict`.
+fn q_petkovsek_result_to_value(r: &qseries::QPetkovsekResult) -> Value {
+    let mut entries = vec![
+        ("ratio".to_string(), Value::Rational(r.ratio.clone())),
+    ];
+    if let Some(ref cf) = r.closed_form {
+        entries.push(("has_closed_form".to_string(), Value::Bool(true)));
+        entries.push(("scalar".to_string(), Value::Rational(cf.scalar.clone())));
+        entries.push(("q_power_coeff".to_string(), Value::Integer(QInt::from(cf.q_power_coeff))));
+        entries.push(("numer_factors".to_string(), Value::Integer(QInt::from(cf.numer_factors.len() as i64))));
+        entries.push(("denom_factors".to_string(), Value::Integer(QInt::from(cf.denom_factors.len() as i64))));
+    } else {
+        entries.push(("has_closed_form".to_string(), Value::Bool(false)));
+    }
+    Value::Dict(entries)
+}
+
+/// Convert a `ProofResult` to `Value::Dict`.
+fn proof_result_to_value(r: &qseries::ProofResult) -> Value {
+    match r {
+        qseries::ProofResult::Proved { level, cusp_orders, sturm_bound, verification_terms } => {
+            let cusps = Value::List(
+                cusp_orders.iter()
+                    .map(|(c, ord)| Value::Dict(vec![
+                        ("cusp".to_string(), Value::List(vec![
+                            Value::Integer(QInt::from(c.numer)),
+                            Value::Integer(QInt::from(c.denom)),
+                        ])),
+                        ("order".to_string(), Value::Rational(ord.clone())),
+                    ]))
+                    .collect(),
+            );
+            Value::Dict(vec![
+                ("proved".to_string(), Value::Bool(true)),
+                ("level".to_string(), Value::Integer(QInt::from(*level))),
+                ("cusp_orders".to_string(), cusps),
+                ("sturm_bound".to_string(), Value::Integer(QInt::from(*sturm_bound))),
+                ("verification_terms".to_string(), Value::Integer(QInt::from(*verification_terms))),
+            ])
+        }
+        qseries::ProofResult::NotModular { failed_conditions } => {
+            Value::Dict(vec![
+                ("proved".to_string(), Value::Bool(false)),
+                ("reason".to_string(), Value::List(
+                    failed_conditions.iter()
+                        .map(|s| Value::List(s.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect()))
+                        .collect(),
+                )),
+            ])
+        }
+        qseries::ProofResult::NegativeOrder { cusp, order } => {
+            Value::Dict(vec![
+                ("proved".to_string(), Value::Bool(false)),
+                ("negative_order_cusp".to_string(), Value::List(vec![
+                    Value::Integer(QInt::from(cusp.numer)),
+                    Value::Integer(QInt::from(cusp.denom)),
+                ])),
+                ("order".to_string(), Value::Rational(order.clone())),
+            ])
+        }
+        qseries::ProofResult::CounterExample { coefficient_index, expected, actual } => {
+            Value::Dict(vec![
+                ("proved".to_string(), Value::Bool(false)),
+                ("counter_example_at".to_string(), Value::Integer(QInt::from(*coefficient_index))),
+                ("expected".to_string(), Value::Rational(expected.clone())),
+                ("actual".to_string(), Value::Rational(actual.clone())),
+            ])
+        }
+    }
+}
+
+/// Convert a `DiscoveryResult` to `Value::Dict`.
+fn discovery_result_to_value(r: &qseries::DiscoveryResult) -> Value {
+    let mut entries = vec![
+        ("found".to_string(), Value::Bool(r.found)),
+        ("chain_depth".to_string(), Value::Integer(QInt::from(r.chain_depth as i64))),
+    ];
+    if let Some(ref pn) = r.pair_name {
+        entries.push(("pair_name".to_string(), Value::List(
+            pn.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+        )));
+    }
+    entries.push(("verification".to_string(), Value::List(
+        r.verification.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+    )));
+    Value::Dict(entries)
+}
+
+/// Convert a `BaileyPair` to `Value::Dict` (summary only).
+fn bailey_pair_to_value(p: &qseries::BaileyPair) -> Value {
+    Value::Dict(vec![
+        ("name".to_string(), Value::List(
+            p.name.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+        )),
+        ("tags".to_string(), Value::List(
+            p.tags.iter().map(|t| Value::List(
+                t.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+            )).collect(),
+        )),
+    ])
+}
+
+/// Convert an `IdentityEntry` to `Value::Dict`.
+fn identity_entry_to_value(e: &qseries::IdentityEntry) -> Value {
+    Value::Dict(vec![
+        ("id".to_string(), Value::List(
+            e.id.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+        )),
+        ("name".to_string(), Value::List(
+            e.name.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+        )),
+        ("tags".to_string(), Value::List(
+            e.tags.iter().map(|t| Value::List(
+                t.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+            )).collect(),
+        )),
+        ("functions".to_string(), Value::List(
+            e.functions.iter().map(|f| Value::List(
+                f.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+            )).collect(),
+        )),
+    ])
+}
+
 // ---------------------------------------------------------------------------
 // Function signatures for error messages
 // ---------------------------------------------------------------------------
@@ -1677,6 +2259,27 @@ fn get_signature(name: &str) -> String {
         "sears_transform" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
         "watson_transform" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
         "find_transformation_chain" => "(src_upper, src_lower, src_z_n, src_z_d, src_z_p, tgt_upper, tgt_lower, tgt_z_n, tgt_z_d, tgt_z_p, max_depth, order)".to_string(),
+        // Group 7: Mock Theta / Appell-Lerch / Bailey
+        "mock_theta_f3" | "mock_theta_phi3" | "mock_theta_psi3" | "mock_theta_chi3" |
+        "mock_theta_omega3" | "mock_theta_nu3" | "mock_theta_rho3" |
+        "mock_theta_f0_5" | "mock_theta_f1_5" | "mock_theta_cap_f0_5" | "mock_theta_cap_f1_5" |
+        "mock_theta_phi0_5" | "mock_theta_phi1_5" | "mock_theta_psi0_5" | "mock_theta_psi1_5" |
+        "mock_theta_chi0_5" | "mock_theta_chi1_5" |
+        "mock_theta_cap_f0_7" | "mock_theta_cap_f1_7" | "mock_theta_cap_f2_7" => "(order)".to_string(),
+        "appell_lerch_m" => "(a_pow, z_pow, order)".to_string(),
+        "universal_mock_theta_g2" | "universal_mock_theta_g3" => "(a_pow, order)".to_string(),
+        "bailey_weak_lemma" => "(pair_code, a_num, a_den, a_pow, max_n, order)".to_string(),
+        "bailey_apply_lemma" => "(pair_code, a_n, a_d, a_p, b_n, b_d, b_p, c_n, c_d, c_p, max_n, order)".to_string(),
+        "bailey_chain" => "(pair_code, a_n, a_d, a_p, b_n, b_d, b_p, c_n, c_d, c_p, depth, max_n, order)".to_string(),
+        "bailey_discover" => "(lhs, rhs, a_num, a_den, a_pow, max_depth, order)".to_string(),
+        // Group 8: Identity Proving
+        "prove_eta_id" => "(terms_list, level)".to_string(),
+        "search_identities" => "(search_type)".to_string(),
+        "q_gosper" => "(upper_list, lower_list, z_num, z_den, z_pow, q_num, q_den)".to_string(),
+        "q_zeilberger" => "(upper_list, lower_list, z_num, z_den, z_pow, n, q_num, q_den, max_order)".to_string(),
+        "verify_wz" => "(upper_list, lower_list, z_num, z_den, z_pow, n, q_num, q_den, max_order, max_k)".to_string(),
+        "q_petkovsek" => "(coeff_list, q_num, q_den)".to_string(),
+        "prove_nonterminating" => "(requires Python API)".to_string(),
         _ => String::new(),
     }
 }
@@ -2943,5 +3546,524 @@ mod tests {
         let stmts2 = parse("qdegree(%)").unwrap();
         let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
         assert!(matches!(result, Value::Integer(_)));
+    }
+
+    // --- Dispatch: Group 5 (Relation Discovery) ---
+
+    #[test]
+    fn dispatch_findlincombo_returns_list_or_none() {
+        let mut env = make_env();
+        // Build two simple series: partition_gf and etaq(1,1,20)
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let etq = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let candidates = Value::List(vec![pgf.clone(), etq.clone()]);
+        let args = vec![pgf, candidates, Value::Integer(QInt::from(5i64))];
+        let val = dispatch("findlincombo", &args, &mut env).unwrap();
+        // Should find a combination (first basis is identical to target)
+        match val {
+            Value::List(coeffs) => {
+                assert_eq!(coeffs.len(), 2);
+                // First coefficient should be 1 (target == first basis element)
+            }
+            Value::None => {} // also acceptable depending on truncation
+            other => panic!("expected List or None, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn dispatch_findhom_returns_matrix() {
+        let mut env = make_env();
+        let e1 = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let series_list = Value::List(vec![e1]);
+        let args = vec![
+            series_list,
+            Value::Integer(QInt::from(2i64)),  // degree
+            Value::Integer(QInt::from(5i64)),  // topshift
+        ];
+        let val = dispatch("findhom", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::List(_)));
+    }
+
+    #[test]
+    fn dispatch_findcong_returns_list_of_dicts() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(50i64))], &mut env).unwrap();
+        let moduli = Value::List(vec![
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(7i64)),
+        ]);
+        let val = dispatch("findcong", &[pgf, moduli], &mut env).unwrap();
+        if let Value::List(congruences) = val {
+            // Should find at least the p(5n+4) congruence
+            assert!(!congruences.is_empty(), "expected at least one congruence");
+            // Each entry should be a dict
+            for cong in &congruences {
+                if let Value::Dict(entries) = cong {
+                    let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+                    assert!(keys.contains(&"modulus"));
+                    assert!(keys.contains(&"residue"));
+                    assert!(keys.contains(&"divisor"));
+                } else {
+                    panic!("expected Dict in congruences list, got {:?}", cong);
+                }
+            }
+        } else {
+            panic!("expected List, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_findmaxind_returns_list() {
+        let mut env = make_env();
+        let e1 = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let e2 = dispatch("etaq", &[
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let list = Value::List(vec![e1, e2]);
+        let args = vec![list, Value::Integer(QInt::from(5i64))];
+        let val = dispatch("findmaxind", &args, &mut env).unwrap();
+        if let Value::List(indices) = val {
+            assert!(!indices.is_empty());
+        } else {
+            panic!("expected List, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_findpoly_returns_dict_or_none() {
+        let mut env = make_env();
+        let e1 = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let e2 = dispatch("etaq", &[
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let args = vec![
+            e1, e2,
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("findpoly", &args, &mut env).unwrap();
+        // Could be Dict (found relation) or None (no relation in that degree)
+        match &val {
+            Value::Dict(_) | Value::None => {}
+            other => panic!("expected Dict or None, got {:?}", other),
+        }
+    }
+
+    // --- Dispatch: Group 6 (Hypergeometric) ---
+
+    #[test]
+    fn dispatch_phi_returns_series() {
+        let mut env = make_env();
+        // phi([[1,1,0]], [], 1, 1, 1, 20) = 1_phi_0(1; ; q) = 1/(1-q)^1 up to truncation
+        let upper = Value::List(vec![
+            Value::List(vec![
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(0i64)),
+            ]),
+        ]);
+        let lower = Value::List(vec![]);
+        let args = vec![
+            upper, lower,
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("phi", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_try_summation_returns_series_or_none() {
+        let mut env = make_env();
+        // Simple phi that may or may not match a summation formula
+        let upper = Value::List(vec![
+            Value::List(vec![
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(0i64)),
+            ]),
+        ]);
+        let lower = Value::List(vec![]);
+        let args = vec![
+            upper, lower,
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("try_summation", &args, &mut env).unwrap();
+        match val {
+            Value::Series(_) | Value::None => {}
+            other => panic!("expected Series or None, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn dispatch_phi_wrong_args() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(1i64))];
+        let err = dispatch("phi", &args, &mut env).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("phi expects 6 arguments"), "got: {}", msg);
+    }
+
+    // --- Dispatch: Group 7 (Mock Theta / Appell-Lerch / Bailey) ---
+
+    #[test]
+    fn dispatch_mock_theta_f3_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("mock_theta_f3", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // f3 starts with 1 + q + ...
+            assert!(!fps.is_zero());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_mock_theta_phi3_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("mock_theta_phi3", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_mock_theta_rho3_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("mock_theta_rho3", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_mock_theta_f0_5_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("mock_theta_f0_5", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_mock_theta_cap_f0_7_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("mock_theta_cap_f0_7", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_all_20_mock_theta_functions() {
+        let mut env = make_env();
+        let mock_theta_names = [
+            "mock_theta_f3", "mock_theta_phi3", "mock_theta_psi3", "mock_theta_chi3",
+            "mock_theta_omega3", "mock_theta_nu3", "mock_theta_rho3",
+            "mock_theta_f0_5", "mock_theta_f1_5",
+            "mock_theta_cap_f0_5", "mock_theta_cap_f1_5",
+            "mock_theta_phi0_5", "mock_theta_phi1_5",
+            "mock_theta_psi0_5", "mock_theta_psi1_5",
+            "mock_theta_chi0_5", "mock_theta_chi1_5",
+            "mock_theta_cap_f0_7", "mock_theta_cap_f1_7", "mock_theta_cap_f2_7",
+        ];
+        for &fname in &mock_theta_names {
+            let args = vec![Value::Integer(QInt::from(15i64))];
+            let val = dispatch(fname, &args, &mut env);
+            assert!(
+                val.is_ok(),
+                "mock theta function {} failed: {:?}",
+                fname,
+                val.unwrap_err()
+            );
+            assert!(
+                matches!(val.unwrap(), Value::Series(_)),
+                "mock theta function {} did not return Series",
+                fname
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_appell_lerch_m_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(2i64)),   // a_pow
+            Value::Integer(QInt::from(3i64)),   // z_pow
+            Value::Integer(QInt::from(20i64)),  // order
+        ];
+        let val = dispatch("appell_lerch_m", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_g2_alias_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(3i64)),   // a_pow
+            Value::Integer(QInt::from(20i64)),  // order
+        ];
+        let val = dispatch("g2", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_g3_alias_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(3i64)),   // a_pow
+            Value::Integer(QInt::from(20i64)),  // order
+        ];
+        let val = dispatch("g3", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_bailey_weak_lemma_returns_pair() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(0i64)),   // pair_code: 0=Unit
+            Value::Integer(QInt::from(1i64)),   // a_num
+            Value::Integer(QInt::from(1i64)),   // a_den
+            Value::Integer(QInt::from(1i64)),   // a_pow (a = q)
+            Value::Integer(QInt::from(3i64)),   // max_n
+            Value::Integer(QInt::from(20i64)),  // order
+        ];
+        let val = dispatch("bailey_weak_lemma", &args, &mut env).unwrap();
+        if let Value::Pair(lhs, rhs) = val {
+            assert!(matches!(*lhs, Value::Series(_)));
+            assert!(matches!(*rhs, Value::Series(_)));
+        } else {
+            panic!("expected Pair, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_bailey_discover_returns_dict() {
+        let mut env = make_env();
+        // Create two identical series, discover should find trivial match
+        let e1 = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let e2 = e1.clone();
+        let args = vec![
+            e1, e2,
+            Value::Integer(QInt::from(1i64)),   // a_num
+            Value::Integer(QInt::from(1i64)),   // a_den
+            Value::Integer(QInt::from(0i64)),   // a_pow (a = 1)
+            Value::Integer(QInt::from(2i64)),   // max_depth
+            Value::Integer(QInt::from(20i64)),  // order
+        ];
+        let val = dispatch("bailey_discover", &args, &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"found"));
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    // --- Dispatch: Group 8 (Identity Proving) ---
+
+    #[test]
+    fn dispatch_search_identities_returns_list() {
+        let mut env = make_env();
+        // search_type=0 returns all entries
+        let args = vec![Value::Integer(QInt::from(0i64))];
+        let val = dispatch("search_identities", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::List(_)));
+    }
+
+    #[test]
+    fn dispatch_prove_nonterminating_returns_error() {
+        let mut env = make_env();
+        let err = dispatch("prove_nonterminating", &[], &mut env).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("Python API"), "got: {}", msg);
+    }
+
+    #[test]
+    fn dispatch_q_gosper_returns_dict() {
+        let mut env = make_env();
+        // Simple 1phi0: summand is (a;q)_k * z^k / (q;q)_k
+        let upper = Value::List(vec![
+            Value::List(vec![
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(-2i64)),  // a = q^{-2} (terminates)
+            ]),
+        ]);
+        let lower = Value::List(vec![]);
+        let args = vec![
+            upper, lower,
+            Value::Integer(QInt::from(1i64)),   // z_num
+            Value::Integer(QInt::from(1i64)),   // z_den
+            Value::Integer(QInt::from(1i64)),   // z_pow
+            Value::Integer(QInt::from(1i64)),   // q_num
+            Value::Integer(QInt::from(2i64)),   // q_den (q=1/2)
+        ];
+        let val = dispatch("q_gosper", &args, &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"summable"));
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_q_petkovsek_returns_list() {
+        let mut env = make_env();
+        // Simple recurrence: S(n+1) = (1/2) * S(n) -> coefficients [1, -1/2]
+        let coeffs = Value::List(vec![
+            Value::Rational(QRat::from((1i64, 1i64))),
+            Value::Rational(QRat::from((-1i64, 2i64))),
+        ]);
+        let args = vec![
+            coeffs,
+            Value::Integer(QInt::from(1i64)),   // q_num
+            Value::Integer(QInt::from(2i64)),   // q_den
+        ];
+        let val = dispatch("q_petkovsek", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::List(_)));
+    }
+
+    // --- Comprehensive integration tests ---
+
+    #[test]
+    fn integration_mock_theta_f3() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("mock_theta_f3(20)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        assert!(matches!(result, Value::Series(_)));
+    }
+
+    #[test]
+    fn integration_unknown_function_with_suggestions() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("etaq2(20)").unwrap();
+        let err = eval_stmt(&stmts[0], &mut env).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("unknown function"), "got: {}", msg);
+        assert!(msg.contains("etaq"), "expected suggestion 'etaq' in: {}", msg);
+    }
+
+    #[test]
+    fn integration_wrong_arg_count_error() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("etaq(1)").unwrap();
+        let err = eval_stmt(&stmts[0], &mut env).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("etaq expects 3 arguments"), "got: {}", msg);
+    }
+
+    #[test]
+    fn integration_maple_alias_numbpart() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("numbpart(50)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result);
+        assert_eq!(text, "204226");
+    }
+
+    #[test]
+    fn integration_list_syntax() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("[1, 2, 3]").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        if let Value::List(items) = result {
+            assert_eq!(items.len(), 3);
+        } else {
+            panic!("expected List");
+        }
+    }
+
+    #[test]
+    fn integration_series_arithmetic() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("f := etaq(1,1,20)").unwrap();
+        eval_stmt(&stmts[0], &mut env).unwrap();
+        let stmts2 = parse("g := etaq(2,1,20)").unwrap();
+        eval_stmt(&stmts2[0], &mut env).unwrap();
+        let stmts3 = parse("f * g").unwrap();
+        let result = eval_stmt(&stmts3[0], &mut env).unwrap().unwrap();
+        assert!(matches!(result, Value::Series(_)));
+    }
+
+    #[test]
+    fn integration_format_etaq_starts_with_1() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("etaq(1,1,20)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result);
+        assert!(text.starts_with("1"), "expected output starting with '1', got: {}", text);
+        assert!(text.contains("q"), "expected 'q' in: {}", text);
+    }
+
+    #[test]
+    fn integration_percent_42() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("42").unwrap();
+        eval_stmt(&stmts[0], &mut env).unwrap();
+        let stmts2 = parse("%").unwrap();
+        let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result);
+        assert_eq!(text, "42");
+    }
+
+    /// Verify that the ALL_FUNCTION_NAMES array has the expected count.
+    #[test]
+    fn function_count_verification() {
+        // Count unique function names
+        let count = ALL_FUNCTION_NAMES.len();
+        // 7 (Group 1) + 7 (Group 2) + 3 (Group 3) + 9 (Group 4)
+        // + 12 (Group 5) + 8+2 (Group 6: 6 heine/phi/psi + sears + watson + find_chain)
+        // + 23 (Group 7: 20 mock + 3 appell/g)
+        // + 4 (Bailey)
+        // + 4 (q_gosper, q_zeil, verify_wz, q_petkovsek)
+        // + 2 (prove_nonterminating, find_transformation_chain)
+        // + 2 (prove_eta_id, search_identities)
+        // = should be near 79
+        assert!(
+            count >= 75,
+            "expected at least 75 function names in ALL_FUNCTION_NAMES, got {}",
+            count
+        );
     }
 }
