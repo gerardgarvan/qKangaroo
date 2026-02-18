@@ -50,6 +50,8 @@ pub enum AstNode {
         name: String,
         args: Vec<AstNode>,
     },
+    /// List literal: `[expr1, expr2, ...]`.
+    List(Vec<AstNode>),
     /// Variable assignment: `name := value`.
     Assign {
         name: String,

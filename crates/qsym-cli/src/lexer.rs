@@ -38,6 +38,8 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             b'%' => Some(Token::Percent),
             b'(' => Some(Token::LParen),
             b')' => Some(Token::RParen),
+            b'[' => Some(Token::LBracket),
+            b']' => Some(Token::RBracket),
             b',' => Some(Token::Comma),
             b';' => Some(Token::Semi),
             _ => None,

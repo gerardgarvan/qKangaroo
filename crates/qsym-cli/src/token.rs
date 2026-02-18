@@ -34,6 +34,10 @@ pub enum Token {
     LParen,
     /// `)`
     RParen,
+    /// `[`
+    LBracket,
+    /// `]`
+    RBracket,
     /// `,`
     Comma,
     /// `;` statement terminator (print result).

@@ -173,6 +173,22 @@ impl Parser {
                 self.expect(&Token::RParen, "')' to close grouping")?;
                 inner
             }
+            Token::LBracket => {
+                self.advance();
+                // Parse comma-separated list items (reuse arg_list pattern)
+                let items = if *self.peek() == Token::RBracket {
+                    Vec::new()
+                } else {
+                    let mut items = vec![self.expr_bp(0)?];
+                    while *self.peek() == Token::Comma {
+                        self.advance(); // consume comma
+                        items.push(self.expr_bp(0)?);
+                    }
+                    items
+                };
+                self.expect(&Token::RBracket, "']' to close list")?;
+                AstNode::List(items)
+            }
             _ => {
                 let span = self.peek_span();
                 let found = token_name(self.peek());
@@ -316,6 +332,8 @@ fn token_name(token: &Token) -> String {
         Token::Percent => "'%'".to_string(),
         Token::LParen => "'('".to_string(),
         Token::RParen => "')'".to_string(),
+        Token::LBracket => "'['".to_string(),
+        Token::RBracket => "']'".to_string(),
         Token::Comma => "','".to_string(),
         Token::Semi => "';'".to_string(),
         Token::Colon => "':'".to_string(),
@@ -770,5 +788,107 @@ mod tests {
         // "f @ g" has unknown char at position 2
         let err = parse("f @ g").unwrap_err();
         assert_eq!(err.span.start, 2);
+    }
+
+    // =======================================================
+    // PARSE-05: List literals
+    // =======================================================
+
+    #[test]
+    fn test_list_integers() {
+        let node = parse_expr("[1, 2, 3]");
+        assert_eq!(
+            node,
+            AstNode::List(vec![
+                AstNode::Integer(1),
+                AstNode::Integer(2),
+                AstNode::Integer(3),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_list_variables() {
+        let node = parse_expr("[f, g]");
+        assert_eq!(
+            node,
+            AstNode::List(vec![
+                AstNode::Variable("f".to_string()),
+                AstNode::Variable("g".to_string()),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_empty_list() {
+        let node = parse_expr("[]");
+        assert_eq!(node, AstNode::List(vec![]));
+    }
+
+    #[test]
+    fn test_nested_list() {
+        let node = parse_expr("[[1, 2], [3, 4]]");
+        assert_eq!(
+            node,
+            AstNode::List(vec![
+                AstNode::List(vec![AstNode::Integer(1), AstNode::Integer(2)]),
+                AstNode::List(vec![AstNode::Integer(3), AstNode::Integer(4)]),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_list_as_function_arg() {
+        let node = parse_expr("findlincombo(target, [f, g], 20)");
+        assert_eq!(
+            node,
+            AstNode::FuncCall {
+                name: "findlincombo".to_string(),
+                args: vec![
+                    AstNode::Variable("target".to_string()),
+                    AstNode::List(vec![
+                        AstNode::Variable("f".to_string()),
+                        AstNode::Variable("g".to_string()),
+                    ]),
+                    AstNode::Integer(20),
+                ],
+            }
+        );
+    }
+
+    #[test]
+    fn test_list_single_element() {
+        let node = parse_expr("[42]");
+        assert_eq!(node, AstNode::List(vec![AstNode::Integer(42)]));
+    }
+
+    #[test]
+    fn test_list_with_expressions() {
+        let node = parse_expr("[1 + 2, 3 * 4]");
+        assert_eq!(
+            node,
+            AstNode::List(vec![
+                AstNode::BinOp {
+                    op: BinOp::Add,
+                    lhs: Box::new(AstNode::Integer(1)),
+                    rhs: Box::new(AstNode::Integer(2)),
+                },
+                AstNode::BinOp {
+                    op: BinOp::Mul,
+                    lhs: Box::new(AstNode::Integer(3)),
+                    rhs: Box::new(AstNode::Integer(4)),
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn test_list_missing_rbracket() {
+        let err = parse("[1, 2").unwrap_err();
+        assert!(
+            err.message.contains("']'"),
+            "got: {}",
+            err.message
+        );
     }
 }
