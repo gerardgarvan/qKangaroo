@@ -123,12 +123,12 @@ Plans:
   3. User can run `q-kangaroo -c "qpoch(a,q,5)"` to evaluate a single expression and exit
   4. User can run `q-kangaroo --help` to see a usage summary listing all flags and file argument syntax
   5. User can run `read("file.qk")` in the REPL to execute a script file within the current session
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 30-01: TBD
-- [ ] 30-02: TBD
-- [ ] 30-03: TBD
+- [ ] 30-01-PLAN.md -- Extend lexer/parser/AST with comments, newlines, strings; create script.rs execution engine
+- [ ] 30-02-PLAN.md -- Refactor main.rs with CLI argument parsing, mode dispatch, and read() function
+- [ ] 30-03-PLAN.md -- Subprocess integration tests for all CLI modes and flags
 
 ### Phase 31: Error Hardening & Exit Codes
 **Goal**: Users get clear, actionable error messages and scripts/tools can rely on distinct exit codes for every failure mode
@@ -194,6 +194,6 @@ Plans:
 | 27. Output Commands & Polish | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 28. Binary Packaging | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 29. Static Linking | v1.6 | 2/2 | Complete | 2026-02-18 |
-| 30. Script Execution & CLI Flags | v1.6 | 0/TBD | Not started | - |
+| 30. Script Execution & CLI Flags | v1.6 | 0/3 | Not started | - |
 | 31. Error Hardening & Exit Codes | v1.6 | 0/TBD | Not started | - |
 | 32. PDF Reference Manual | v1.6 | 0/TBD | Not started | - |
