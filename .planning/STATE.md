@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 31 - Error Hardening & Exit Codes (v1.6 CLI Hardening & Manual)
+**Current focus:** Phase 32 - PDF Reference Manual (v1.6 CLI Hardening & Manual)
 
 ## Current Position
 
-Phase: 31 of 32 (Error Hardening & Exit Codes)
-Plan: 2 of 2 in current phase (PHASE COMPLETE)
-Status: Phase 31 complete
-Last activity: 2026-02-18 -- Completed 31-02 (error hardening integration tests)
+Phase: 32 of 32 (PDF Reference Manual)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-18 -- Phase 31 complete (error hardening & exit codes), advancing to Phase 32
 
 Progress: [===========================...] 86/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete)
 

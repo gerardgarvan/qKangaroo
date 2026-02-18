@@ -94,7 +94,7 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
 
 - [x] **Phase 29: Static Linking** - Self-contained binary with zero DLL dependencies -- 2026-02-18
 - [x] **Phase 30: Script Execution & CLI Flags** - Non-interactive batch mode and argument handling -- 2026-02-18
-- [ ] **Phase 31: Error Hardening & Exit Codes** (1/2 plans) - Robust diagnostics and machine-readable exit status
+- [x] **Phase 31: Error Hardening & Exit Codes** - Robust diagnostics and machine-readable exit status -- 2026-02-18
 - [ ] **Phase 32: PDF Reference Manual** - Comprehensive typeset documentation for all 81 functions
 
 ## Phase Details
@@ -144,7 +144,7 @@ Plans:
 
 Plans:
 - [x] 31-01-PLAN.md -- Error infrastructure: ScriptResult variants, multiline error rendering, panic translation, REPL --help
-- [ ] 31-02-PLAN.md -- Integration tests for all 12 requirement IDs (EXIT-01 through EXIT-07, ERR-01 through ERR-05)
+- [x] 31-02-PLAN.md -- Integration tests for all 12 requirement IDs (EXIT-01 through EXIT-07, ERR-01 through ERR-05)
 
 ### Phase 32: PDF Reference Manual
 **Goal**: Users have a comprehensive, professionally typeset PDF reference manual covering all 81 functions
@@ -195,5 +195,5 @@ Plans:
 | 28. Binary Packaging | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 29. Static Linking | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 30. Script Execution & CLI Flags | v1.6 | 3/3 | Complete | 2026-02-18 |
-| 31. Error Hardening & Exit Codes | v1.6 | 0/2 | Not started | - |
+| 31. Error Hardening & Exit Codes | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 32. PDF Reference Manual | v1.6 | 0/TBD | Not started | - |

@@ -33,21 +33,21 @@ Requirements for v1.6 CLI Hardening & Manual. Each maps to roadmap phases.
 
 ### Exit Codes
 
-- [ ] **EXIT-01**: Exit code 0 on success
-- [ ] **EXIT-02**: Exit code 1 on evaluation error in batch mode
-- [ ] **EXIT-03**: Exit code 2 on usage error (bad flags)
-- [ ] **EXIT-04**: Exit code 65 on parse error in script input
-- [ ] **EXIT-05**: Exit code 66 on file not found
-- [ ] **EXIT-06**: Exit code 70 on caught panic (internal error)
-- [ ] **EXIT-07**: Exit code 74 on I/O error
+- [x] **EXIT-01**: Exit code 0 on success
+- [x] **EXIT-02**: Exit code 1 on evaluation error in batch mode
+- [x] **EXIT-03**: Exit code 2 on usage error (bad flags)
+- [x] **EXIT-04**: Exit code 65 on parse error in script input
+- [x] **EXIT-05**: Exit code 66 on file not found
+- [x] **EXIT-06**: Exit code 70 on caught panic (internal error)
+- [x] **EXIT-07**: Exit code 74 on I/O error
 
 ### Error Handling
 
-- [ ] **ERR-01**: Script errors include `filename:line:col` context
-- [ ] **ERR-02**: Common qsym-core panics are translated to human-readable messages
-- [ ] **ERR-03**: File I/O errors display OS error message (not found, permission denied, etc.)
-- [ ] **ERR-04**: Scripts fail-fast on first error (stop execution); REPL continues on error
-- [ ] **ERR-05**: `read()` in REPL continues on error (matches interactive behavior)
+- [x] **ERR-01**: Script errors include `filename:line:col` context
+- [x] **ERR-02**: Common qsym-core panics are translated to human-readable messages
+- [x] **ERR-03**: File I/O errors display OS error message (not found, permission denied, etc.)
+- [x] **ERR-04**: Scripts fail-fast on first error (stop execution); REPL continues on error
+- [x] **ERR-05**: `read()` in REPL continues on error (matches interactive behavior)
 
 ### Documentation
 
@@ -103,18 +103,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXEC-04 | Phase 30 | Complete |
 | EXEC-05 | Phase 30 | Complete |
 | EXEC-06 | Phase 30 | Complete |
-| EXIT-01 | Phase 31 | Pending |
-| EXIT-02 | Phase 31 | Pending |
-| EXIT-03 | Phase 31 | Pending |
-| EXIT-04 | Phase 31 | Pending |
-| EXIT-05 | Phase 31 | Pending |
-| EXIT-06 | Phase 31 | Pending |
-| EXIT-07 | Phase 31 | Pending |
-| ERR-01 | Phase 31 | Pending |
-| ERR-02 | Phase 31 | Pending |
-| ERR-03 | Phase 31 | Pending |
-| ERR-04 | Phase 31 | Pending |
-| ERR-05 | Phase 31 | Pending |
+| EXIT-01 | Phase 31 | Complete |
+| EXIT-02 | Phase 31 | Complete |
+| EXIT-03 | Phase 31 | Complete |
+| EXIT-04 | Phase 31 | Complete |
+| EXIT-05 | Phase 31 | Complete |
+| EXIT-06 | Phase 31 | Complete |
+| EXIT-07 | Phase 31 | Complete |
+| ERR-01 | Phase 31 | Complete |
+| ERR-02 | Phase 31 | Complete |
+| ERR-03 | Phase 31 | Complete |
+| ERR-04 | Phase 31 | Complete |
+| ERR-05 | Phase 31 | Complete |
 | DOC-01 | Phase 32 | Pending |
 | DOC-02 | Phase 32 | Pending |
 | DOC-03 | Phase 32 | Pending |
