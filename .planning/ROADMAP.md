@@ -80,7 +80,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
 
 - [x] **Phase 24: Parser & AST** - Maple-style expression parser with function calls, assignment, arithmetic, and literals
 - [x] **Phase 25: Evaluator & Function Dispatch** - AST evaluator connecting all 79 functions to qsym-core with variable environment and text output
-- [ ] **Phase 26: REPL Shell & Session** - Interactive line-editing shell with history, tab completion, help system, and session configuration
+- [x] **Phase 26: REPL Shell & Session** - Interactive line-editing shell with history, tab completion, help system, and session configuration
 - [ ] **Phase 27: Output Commands & Polish** - LaTeX rendering and file save commands for computed results
 - [ ] **Phase 28: Binary Packaging** - Standalone executables for Windows and Linux with CI integration
 
@@ -131,8 +131,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 26-01-PLAN.md -- Rustyline REPL loop with history, session commands, multi-line input, and error recovery
-- [ ] 26-02-PLAN.md -- Tab completion (functions, commands, variables) and help system (8 categories, 81 functions)
+- [x] 26-01-PLAN.md -- Rustyline REPL loop with history, session commands, multi-line input, and error recovery
+- [x] 26-02-PLAN.md -- Tab completion (functions, commands, variables) and help system (8 categories, 81 functions)
 
 ### Phase 27: Output Commands & Polish
 **Goal**: Users can extract computed results as LaTeX or save session work to files
@@ -188,6 +188,6 @@ Plans:
 | 23. Verification & Cross-References | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 24. Parser & AST | v1.5 | 2/2 | Complete | 2026-02-17 |
 | 25. Evaluator & Function Dispatch | v1.5 | 3/3 | Complete | 2026-02-17 |
-| 26. REPL Shell & Session | v1.5 | 0/2 | Not started | - |
+| 26. REPL Shell & Session | v1.5 | 2/2 | Complete | 2026-02-17 |
 | 27. Output Commands & Polish | v1.5 | 0/1 | Not started | - |
 | 28. Binary Packaging | v1.5 | 0/1 | Not started | - |

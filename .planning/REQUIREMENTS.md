@@ -14,10 +14,10 @@
 
 ## REPL
 
-- [ ] **REPL-01**: Interactive REPL with line editing, up/down history navigation, and persistent history file
-- [ ] **REPL-02**: Tab completion for function names and variable names
-- [ ] **REPL-03**: Help system (help, help function_name) with function signatures and descriptions
-- [ ] **REPL-04**: Parse/runtime errors print descriptive messages without crashing the session
+- [x] **REPL-01**: Interactive REPL with line editing, up/down history navigation, and persistent history file
+- [x] **REPL-02**: Tab completion for function names and variable names
+- [x] **REPL-03**: Help system (help, help function_name) with function signatures and descriptions
+- [x] **REPL-04**: Parse/runtime errors print descriptive messages without crashing the session
 
 ## Functions
 
@@ -39,8 +39,8 @@
 ## Session
 
 - [x] **SESS-01**: Variables persist across lines within a session (f := ...; g := ...; f*g)
-- [ ] **SESS-02**: Configurable truncation order (set precision N changes default series terms)
-- [ ] **SESS-03**: clear resets variables/session, quit/exit exits cleanly
+- [x] **SESS-02**: Configurable truncation order (set precision N changes default series terms)
+- [x] **SESS-03**: clear resets variables/session, quit/exit exits cleanly
 
 ## Binary
 
@@ -65,10 +65,10 @@
 | PARSE-02 | Phase 24 | Complete |
 | PARSE-03 | Phase 24 | Complete |
 | PARSE-04 | Phase 24 | Complete |
-| REPL-01 | Phase 26 | Pending |
-| REPL-02 | Phase 26 | Pending |
-| REPL-03 | Phase 26 | Pending |
-| REPL-04 | Phase 26 | Pending |
+| REPL-01 | Phase 26 | Complete |
+| REPL-02 | Phase 26 | Complete |
+| REPL-03 | Phase 26 | Complete |
+| REPL-04 | Phase 26 | Complete |
 | FUNC-01 | Phase 25 | Complete |
 | FUNC-02 | Phase 25 | Complete |
 | FUNC-03 | Phase 25 | Complete |
@@ -81,8 +81,8 @@
 | OUT-02 | Phase 27 | Pending |
 | OUT-03 | Phase 27 | Pending |
 | SESS-01 | Phase 25 | Complete |
-| SESS-02 | Phase 26 | Pending |
-| SESS-03 | Phase 26 | Pending |
+| SESS-02 | Phase 26 | Complete |
+| SESS-03 | Phase 26 | Complete |
 | BIN-01 | Phase 28 | Pending |
 | BIN-02 | Phase 28 | Pending |
 

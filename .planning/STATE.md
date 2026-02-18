@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 27 of 28 (Output Commands & Polish)
-Plan: 1 of 1 in current phase
-Status: In Progress
-Last activity: 2026-02-18 -- Plan 26-02 complete (tab completion + help system for REPL)
+Plan: 0 of 1 in current phase
+Status: Ready
+Last activity: 2026-02-17 -- Phase 26 complete (REPL Shell & Session: rustyline, tab completion, help system, 267 tests)
 
 Progress: [#############################-] 97% (77/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
@@ -41,7 +41,7 @@ Progress: [#############################-] 97% (77/79 plans -- v1.0-v1.4 complet
 All v1.0-v1.4 decisions logged in PROJECT.md Key Decisions table.
 
 v1.5 decisions:
-- qsym-cli depends only on qsym-core -- hand-written parser, no external libraries
+- qsym-cli depends only on qsym-core -- hand-written parser, no external libraries (except rustyline for REPL)
 - AST nodes carry no span information (simplicity; can add Spanned<T> wrapper later)
 - q is a reserved keyword token (Token::Q), not treated as an identifier
 - BigInteger stored as String for arbitrary precision; evaluator converts to QInt
@@ -56,19 +56,16 @@ v1.5 decisions:
 - Levenshtein fuzzy matching for "did you mean" suggestions on unknown functions
 - Panic catching via catch_unwind(AssertUnwindSafe(...)) for rug type safety
 - prove_nonterminating returns informative error (requires closures, Python-only)
-- partition_count returns Value::Integer by extracting QRat numerator
-- Analysis result structs converted to Value::Dict with string keys for REPL display
-- expect_args/expect_args_range auto-populate signature from get_signature()
-- Bailey pairs use integer codes (0=Unit, 1=RR, 2=QBinomial)
-- Heine/sears/watson transforms return Pair(prefactor, evaluated_result)
-- verify_wz is self-contained: runs q_zeilberger first then verifies
 - rustyline 17.0 with derive feature for REPL line editing
-- Commands intercepted before parser; lines with := always pass through
+- CompletionType::Circular (zsh-style Tab cycling)
+- Auto-insert ( after function name completion
+- Paren-counting Validator for multi-line input
+- Commands intercepted before parser; lines with := always pass through to parser
 - History file next to executable (.q_kangaroo_history)
+- help system: 8 categories, 81 function entries, Commands section
 - home crate pinned to 0.5.11 for Rust 1.85 compatibility
-- complete_inner() extracted from Completer for testability (rustyline Context is pub(crate))
-- Static FUNC_HELP array of 81 entries for zero-allocation help lookup
-- Commands section lists latex/save as "coming soon" per CONTEXT.md locked decision
+- complete_inner() extracted from Completer for testability
+- Static FUNC_HELP array for zero-allocation help lookup
 
 ### Pending Todos
 
@@ -80,6 +77,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Completed 26-02-PLAN.md. Phase 26 complete. Ready for Phase 27.
+Last session: 2026-02-17
+Stopped at: Phase 26 complete. Ready for Phase 27.
 Resume file: N/A
