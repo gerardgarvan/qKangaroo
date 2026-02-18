@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (18,600+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, and machine-assisted identity proving that Garvan's packages don't cover.
+An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (18,600+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) and an interactive REPL (`q-kangaroo` standalone executable, 8,200+ lines) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, and machine-assisted identity proving that Garvan's packages don't cover.
 
 ## Core Value
 
@@ -10,24 +10,33 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ## Current State
 
-**v1.4 shipped.** The project now has complete installation documentation and verification tooling:
-- `pip install q-kangaroo` works (Linux manylinux2014 + Windows MinGW wheels)
-- `import q_kangaroo` provides 79 DSL functions across 13 groups
-- All 79 functions have research-quality docstrings with verified examples, DLMF references, cross-references
-- 9 comprehensive tutorial notebooks (partition congruences, theta identities, hypergeometric summation, mock theta, Bailey chains, getting started, series analysis, identity proving, Maple migration)
-- Sphinx docs site with audience-aware navigation, function decision guide, API-to-notebook cross-linking
-- GitHub Actions CI (Rust + Python tests, Codecov coverage, wheel builds, OIDC PyPI publishing)
-- QExpr and QSeries render LaTeX in Jupyter notebooks
+**v1.5 shipped.** The project now provides two access paths for researchers:
+
+**Python API** (`pip install q-kangaroo`):
+- 79 DSL functions across 13 groups with research-quality docstrings
+- QSession/QExpr/QSeries with Jupyter LaTeX rendering
+- 9 comprehensive tutorial notebooks
+- Sphinx docs site with audience-aware navigation and function decision guide
+
+**Interactive REPL** (`q-kangaroo` standalone executable):
+- Maple-style syntax with hand-written Pratt parser
+- All 81 canonical function names + 16 Maple aliases
+- Tab completion (auto-paren), 8-category help system, persistent history
+- LaTeX output and save-to-file commands
+- 1.4MB release-optimized binary (LTO+strip) for Windows and Linux
+
+**Infrastructure:**
+- GitHub Actions CI (Rust + Python tests, Codecov, wheel builds, OIDC PyPI publishing, CLI binary releases)
 - q-Gosper, q-Zeilberger, WZ certificates for machine-proving q-hypergeometric identities
 - q-Petkovsek recurrence solver, nonterminating proofs, transformation chain discovery
 
 **Codebase:**
 - 18,686 lines Rust core (`crates/qsym-core/src/`)
+- 8,241 lines CLI (`crates/qsym-cli/src/`)
 - 4,866 lines Python API (`crates/qsym-python/src/`)
 - ~47,000 lines documentation (`docs/` including notebooks)
-- 836 Rust tests, 9 Python integration tests
-- 70 plans across 23 phases (v1.0 + v1.1 + v1.2 + v1.3 + v1.4)
-- INSTALL.md (236 lines), check_install.py (238 lines)
+- 836 Rust core tests + 294 CLI tests + 9 Python integration tests
+- 79 plans across 28 phases (v1.0 + v1.1 + v1.2 + v1.3 + v1.4 + v1.5)
 
 ## Requirements
 
@@ -61,10 +70,12 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - INSTALL.md at repo root + integrated Sphinx installation.rst -- v1.4
 - Build verification script (check_install.py) with end-user and --dev modes -- v1.4
 - README.md and Sphinx landing page cross-reference installation guide -- v1.4
+- Interactive REPL: Maple-style parser, all 81 functions, tab completion, help system, LaTeX output, save-to-file -- v1.5
+- Standalone executables: Windows (.exe + DLLs) and Linux binaries with CI release workflow -- v1.5
 
 ### Active
 
-- Interactive REPL as standalone Rust executable — Maple-style syntax, all 79 functions, variables, LaTeX output -- v1.5
+(None -- all planned milestones complete)
 
 ### Future
 
@@ -78,6 +89,7 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - conda-forge recipe
 - Web playground / WASM
 - Versioned documentation
+- Script file execution (non-interactive batch mode for REPL)
 
 ### Out of Scope
 
@@ -92,8 +104,8 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ## Constraints
 
-- **Tech stack**: Rust (core engine) + Python (user API via PyO3 0.23), maturin for packaging
-- **Package name**: `q-kangaroo` on PyPI, `q_kangaroo` for Python import
+- **Tech stack**: Rust (core engine + CLI) + Python (user API via PyO3 0.23), maturin for packaging
+- **Package name**: `q-kangaroo` on PyPI, `q_kangaroo` for Python import, `q-kangaroo` CLI binary
 - **Platforms**: Linux + Windows (MinGW/GMP) for CI; macOS deferred
 - **Build**: Windows requires MinGW GCC + pre-built GMP at `C:/mingw64-gcc/mingw64/`
 - **ABI**: Stable ABI (abi3) for cross-version Python support (3.9+)
@@ -117,6 +129,9 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Direct term-value creative telescoping | Avoids polynomial key equation evaluation; handles terminating series | Good |
 | BFS for transformation chains | Shortest-path guarantee; DFS could miss shorter paths | Good |
 | Closure-from-template for prove_nonterminating | Declarative Python params, Rust builds closures; avoids FFI closure crossing | Good |
+| Hand-written Pratt parser for REPL | No external parser libraries; qsym-cli depends only on qsym-core + rustyline | Good |
+| LTO + strip + codegen-units=1 | 4.5MB -> 1.4MB binary size for distribution | Good |
+| Bundle MinGW DLLs (not static GMP) | Simpler build; static linking deferred as separate project | Good |
 
 ---
-*Last updated: 2026-02-17 after v1.5 milestone start*
+*Last updated: 2026-02-18 after v1.5 milestone completion*

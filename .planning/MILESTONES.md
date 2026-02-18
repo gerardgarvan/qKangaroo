@@ -145,3 +145,34 @@ See STATE.md Accumulated Context for full decision log.
 - 17 commits, 20 files modified, +2,041 lines
 - 4 plans in ~8 min (avg 2 min/plan)
 - Total project: 70 plans across 23 phases (v1.0 + v1.1 + v1.2 + v1.3 + v1.4)
+
+## v1.5: Interactive REPL (Complete)
+
+**Shipped:** 2026-02-18
+**Phases:** 24-28 (9 plans, 294 CLI tests)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 24 | Parser & AST -- Maple-style Pratt parser with function calls, assignment (:=), arithmetic, infinity keyword, q reserved, 17-variant token enum, 10-variant AstNode |
+| 25 | Evaluator & Function Dispatch -- AST walker with Value enum (9 variants), all 81 canonical function names dispatched to qsym-core, 16 Maple aliases, Levenshtein fuzzy matching, panic catching |
+| 26 | REPL Shell & Session -- rustyline line editing, persistent history, multi-line paren-counting, session commands (set precision/clear/quit), tab completion (81 functions + auto-paren), 8-category help system |
+| 27 | Output Commands & Polish -- LaTeX rendering for all Value types (ported from qsym-python FPS-level), latex and save REPL commands |
+| 28 | Binary Packaging -- Release profile (LTO+strip, 4.5MB->1.4MB), cli-release.yml CI workflow (Linux tar.gz + Windows zip with 5 DLLs), --version flag |
+
+### Key Accomplishments
+
+- Hand-written Pratt parser with Maple-style syntax -- no external parser libraries
+- Full function evaluator dispatching all 81 canonical names across 8 groups to qsym-core
+- Interactive REPL with rustyline, persistent history, multi-line input, and session commands
+- Tab completion for 81 functions (auto-paren) + 8-category help system with per-function docs
+- LaTeX output command and save-to-file command for computed results
+- Release-optimized 1.4MB standalone executable with CI workflow for Windows + Linux distribution
+
+### Key Metrics
+
+- 24 v1.5 requirements: 24/24 complete
+- 8,241 lines qsym-cli source (13 Rust files)
+- 23 feature commits, 9 plans in ~45 min (avg 5 min/plan)
+- Total project: 79 plans across 28 phases (v1.0 + v1.1 + v1.2 + v1.3 + v1.4 + v1.5)
