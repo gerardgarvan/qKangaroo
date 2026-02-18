@@ -79,7 +79,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
 **Milestone Goal:** A standalone Rust executable providing an interactive REPL with Maple-style syntax, all 79 q-Kangaroo functions, variable assignment, LaTeX output, and save-to-file -- giving researchers a terminal-based Maple replacement for q-series computation.
 
 - [x] **Phase 24: Parser & AST** - Maple-style expression parser with function calls, assignment, arithmetic, and literals
-- [ ] **Phase 25: Evaluator & Function Dispatch** - AST evaluator connecting all 79 functions to qsym-core with variable environment and text output
+- [x] **Phase 25: Evaluator & Function Dispatch** - AST evaluator connecting all 79 functions to qsym-core with variable environment and text output
 - [ ] **Phase 26: REPL Shell & Session** - Interactive line-editing shell with history, tab completion, help system, and session configuration
 - [ ] **Phase 27: Output Commands & Polish** - LaTeX rendering and file save commands for computed results
 - [ ] **Phase 28: Binary Packaging** - Standalone executables for Windows and Linux with CI integration
@@ -114,9 +114,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 25-01-PLAN.md -- Evaluator core, variable environment, parser [...] extension, and text output formatting
-- [ ] 25-02-PLAN.md -- Function dispatch groups 1-4 (q-Pochhammer, partitions, theta, series analysis)
-- [ ] 25-03-PLAN.md -- Function dispatch groups 5-8 (relations, hypergeometric, mock theta/Bailey, identity proving)
+- [x] 25-01-PLAN.md -- Evaluator core, variable environment, parser [...] extension, and text output formatting
+- [x] 25-02-PLAN.md -- Function dispatch groups 1-4 (q-Pochhammer, partitions, theta, series analysis)
+- [x] 25-03-PLAN.md -- Function dispatch groups 5-8 (relations, hypergeometric, mock theta/Bailey, identity proving)
 
 ### Phase 26: REPL Shell & Session
 **Goal**: Users have a polished interactive terminal experience with line editing, history, help, and session control
@@ -187,7 +187,7 @@ Plans:
 | 22. Installation Documentation | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 23. Verification & Cross-References | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 24. Parser & AST | v1.5 | 2/2 | Complete | 2026-02-17 |
-| 25. Evaluator & Function Dispatch | v1.5 | 0/3 | Not started | - |
+| 25. Evaluator & Function Dispatch | v1.5 | 3/3 | Complete | 2026-02-17 |
 | 26. REPL Shell & Session | v1.5 | 0/2 | Not started | - |
 | 27. Output Commands & Polish | v1.5 | 0/1 | Not started | - |
 | 28. Binary Packaging | v1.5 | 0/1 | Not started | - |

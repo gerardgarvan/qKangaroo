@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 26 of 28 (REPL Shell & Session)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-02-18 -- Phase 25 complete (all 81 functions dispatched, 213 tests)
+Plan: 0 of 2 in current phase
+Status: Ready
+Last activity: 2026-02-17 -- Phase 25 complete (Evaluator & Function Dispatch: 81 functions dispatched, 213 tests)
 
-Progress: [###########################---] 86% (76/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [############################--] 95% (75/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -49,19 +49,19 @@ v1.5 decisions:
 - Non-associative ^ enforced via post-parse check (error if chained)
 - Function call as postfix operator requiring Variable lhs
 - Empty statements (;;) silently skipped
+- Value enum: 9 variants (Series, Integer, Rational, List, Dict, Pair, Bool, None, Infinity)
 - Series + Integer promotes integer to constant FPS (matches Maple behavior)
-- Integer / Integer produces Rational (exact arithmetic for mathematicians)
-- rug added as direct dependency to qsym-cli for BigInteger parsing
-- Dispatch stub returns UnknownFunction with fuzzy suggestions -- Plans 02/03 fill in
-- partition_count returns Value::Integer by extracting QRat numerator (always integer-valued)
+- Integer / Integer produces Rational (exact arithmetic)
+- 16 Maple aliases (case-insensitive): numbpart→partition_count, qphihyper→phi, etc.
+- Levenshtein fuzzy matching for "did you mean" suggestions on unknown functions
+- Panic catching via catch_unwind(AssertUnwindSafe(...)) for rug type safety
+- prove_nonterminating returns informative error (requires closures, Python-only)
+- partition_count returns Value::Integer by extracting QRat numerator
 - Analysis result structs converted to Value::Dict with string keys for REPL display
 - expect_args/expect_args_range auto-populate signature from get_signature()
-- Bailey pairs use integer codes (0=Unit, 1=RR, 2=QBinomial) -- no string literals in REPL
-- prove_nonterminating returns error directing to Python API (requires closures)
-- search_identities uses integer-coded search types (0=all, 1-8=by tag codes)
+- Bailey pairs use integer codes (0=Unit, 1=RR, 2=QBinomial)
 - Heine/sears/watson transforms return Pair(prefactor, evaluated_result)
 - verify_wz is self-contained: runs q_zeilberger first then verifies
-- Strings in Dict values encoded as Value::List of char code integers
 
 ### Pending Todos
 
@@ -73,6 +73,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Completed 25-03-PLAN.md (Phase 25 complete -- all 81 functions dispatched). Ready for Phase 26.
-Resume file: .planning/phases/25-evaluator-function-dispatch/25-03-SUMMARY.md
+Last session: 2026-02-17
+Stopped at: Phase 25 complete. Ready for Phase 26.
+Resume file: N/A

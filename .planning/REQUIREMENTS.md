@@ -21,24 +21,24 @@
 
 ## Functions
 
-- [ ] **FUNC-01**: q-Pochhammer and product functions (aqprod, etaq, jacprod, tripleprod, quinprod, winquist) with Maple-compatible names
-- [ ] **FUNC-02**: Partition functions (partition_count, partition_gf, rank_gf, crank_gf, restricted partitions)
-- [ ] **FUNC-03**: Theta functions (theta2, theta3, theta4)
-- [ ] **FUNC-04**: Series analysis functions (prodmake, etamake, jacprodmake, mprodmake, sift, qfactor, qetamake)
-- [ ] **FUNC-05**: Relation discovery functions (findlincombo, findhom, findpoly, findcong, findnonhom, findmaxind, findprod, and modp variants)
-- [ ] **FUNC-06**: Hypergeometric functions (phi, psi, try_summation, heine1/2/3, sears_transform, watson_transform)
-- [ ] **FUNC-07**: Mock theta (20 functions), Appell-Lerch (bilateral, g2, g3), and Bailey chain functions
-- [ ] **FUNC-08**: Identity proving and algorithmic functions (q_gosper, q_zeilberger, verify_wz, q_petkovsek, prove_nonterminating, find_transformation_chain)
+- [x] **FUNC-01**: q-Pochhammer and product functions (aqprod, etaq, jacprod, tripleprod, quinprod, winquist) with Maple-compatible names
+- [x] **FUNC-02**: Partition functions (partition_count, partition_gf, rank_gf, crank_gf, restricted partitions)
+- [x] **FUNC-03**: Theta functions (theta2, theta3, theta4)
+- [x] **FUNC-04**: Series analysis functions (prodmake, etamake, jacprodmake, mprodmake, sift, qfactor, qetamake)
+- [x] **FUNC-05**: Relation discovery functions (findlincombo, findhom, findpoly, findcong, findnonhom, findmaxind, findprod, and modp variants)
+- [x] **FUNC-06**: Hypergeometric functions (phi, psi, try_summation, heine1/2/3, sears_transform, watson_transform)
+- [x] **FUNC-07**: Mock theta (20 functions), Appell-Lerch (bilateral, g2, g3), and Bailey chain functions
+- [x] **FUNC-08**: Identity proving and algorithmic functions (q_gosper, q_zeilberger, verify_wz, q_petkovsek, prove_nonterminating, find_transformation_chain)
 
 ## Output
 
-- [ ] **OUT-01**: Default text output showing series in human-readable format (1 - q - q^2 + q^5 + O(q^20))
+- [x] **OUT-01**: Default text output showing series in human-readable format (1 - q - q^2 + q^5 + O(q^20))
 - [ ] **OUT-02**: latex command outputs LaTeX for the last result or a named variable
 - [ ] **OUT-03**: save filename writes results or session transcript to a file
 
 ## Session
 
-- [ ] **SESS-01**: Variables persist across lines within a session (f := ...; g := ...; f*g)
+- [x] **SESS-01**: Variables persist across lines within a session (f := ...; g := ...; f*g)
 - [ ] **SESS-02**: Configurable truncation order (set precision N changes default series terms)
 - [ ] **SESS-03**: clear resets variables/session, quit/exit exits cleanly
 
@@ -69,18 +69,18 @@
 | REPL-02 | Phase 26 | Pending |
 | REPL-03 | Phase 26 | Pending |
 | REPL-04 | Phase 26 | Pending |
-| FUNC-01 | Phase 25 | Pending |
-| FUNC-02 | Phase 25 | Pending |
-| FUNC-03 | Phase 25 | Pending |
-| FUNC-04 | Phase 25 | Pending |
-| FUNC-05 | Phase 25 | Pending |
-| FUNC-06 | Phase 25 | Pending |
-| FUNC-07 | Phase 25 | Pending |
-| FUNC-08 | Phase 25 | Pending |
-| OUT-01 | Phase 25 | Pending |
+| FUNC-01 | Phase 25 | Complete |
+| FUNC-02 | Phase 25 | Complete |
+| FUNC-03 | Phase 25 | Complete |
+| FUNC-04 | Phase 25 | Complete |
+| FUNC-05 | Phase 25 | Complete |
+| FUNC-06 | Phase 25 | Complete |
+| FUNC-07 | Phase 25 | Complete |
+| FUNC-08 | Phase 25 | Complete |
+| OUT-01 | Phase 25 | Complete |
 | OUT-02 | Phase 27 | Pending |
 | OUT-03 | Phase 27 | Pending |
-| SESS-01 | Phase 25 | Pending |
+| SESS-01 | Phase 25 | Complete |
 | SESS-02 | Phase 26 | Pending |
 | SESS-03 | Phase 26 | Pending |
 | BIN-01 | Phase 28 | Pending |
