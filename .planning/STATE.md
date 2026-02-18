@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 25 of 28 (Evaluator & Function Dispatch)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-02-18 -- Plan 25-01 complete (evaluator core: Value enum, arithmetic, environment, panic catching, 141 tests)
+Last activity: 2026-02-18 -- Plan 25-02 complete (dispatch groups 1-4: 25 functions, 181 tests)
 
-Progress: [#########################-----] 82% (73/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [##########################----] 84% (74/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -29,7 +29,7 @@ Progress: [#########################-----] 82% (73/79 plans -- v1.0-v1.4 complet
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 24 - Parser & AST | 2/2 | 5min | 2.5min |
-| 25 - Evaluator & Function Dispatch | 1/3 | 7min | 7min |
+| 25 - Evaluator & Function Dispatch | 2/3 | 11min | 5.5min |
 | 26 - REPL Shell & Session | 0/2 | - | - |
 | 27 - Output Commands & Polish | 0/1 | - | - |
 | 28 - Binary Packaging | 0/1 | - | - |
@@ -53,6 +53,9 @@ v1.5 decisions:
 - Integer / Integer produces Rational (exact arithmetic for mathematicians)
 - rug added as direct dependency to qsym-cli for BigInteger parsing
 - Dispatch stub returns UnknownFunction with fuzzy suggestions -- Plans 02/03 fill in
+- partition_count returns Value::Integer by extracting QRat numerator (always integer-valued)
+- Analysis result structs converted to Value::Dict with string keys for REPL display
+- expect_args/expect_args_range auto-populate signature from get_signature()
 
 ### Pending Todos
 
@@ -65,5 +68,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 25-01-PLAN.md (evaluator core). Ready for 25-02 (function dispatch).
-Resume file: .planning/phases/25-evaluator-function-dispatch/25-01-SUMMARY.md
+Stopped at: Completed 25-02-PLAN.md (dispatch groups 1-4: 25 functions). Ready for 25-03 (remaining function groups).
+Resume file: .planning/phases/25-evaluator-function-dispatch/25-02-SUMMARY.md
