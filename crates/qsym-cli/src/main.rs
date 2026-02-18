@@ -357,6 +357,12 @@ fn run_interactive(quiet: bool, verbose: bool) {
 // ---------------------------------------------------------------------------
 
 fn main() -> ExitCode {
+    // Suppress the default panic hook output. Panics from qsym-core are caught
+    // by catch_unwind in eval_stmt_safe and translated to user-friendly messages.
+    // Without this, the raw "thread 'main' panicked at ..." text leaks to stderr
+    // before our translated message, violating ERR-02.
+    std::panic::set_hook(Box::new(|_| {}));
+
     match parse_args() {
         Err(msg) => {
             eprintln!("q-kangaroo: {}", msg);

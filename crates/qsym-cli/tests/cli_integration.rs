@@ -483,3 +483,313 @@ fn version_exits_before_stdin() {
     assert_eq!(code, 0);
     assert!(stdout.contains("q-kangaroo"));
 }
+
+// ===========================================================================
+// EXIT-01: Exit code 0 on success (explicit requirement label)
+// ===========================================================================
+
+#[test]
+fn exit_01_success_exit_code() {
+    let (code, stdout, _) = run(&["-c", "1 + 1"]);
+    assert_eq!(code, 0, "EXIT-01: success should exit 0");
+    assert_eq!(stdout.trim(), "2");
+}
+
+// ===========================================================================
+// EXIT-02: Exit code 1 on evaluation error in batch mode
+// ===========================================================================
+
+#[test]
+fn exit_02_eval_error_exit_code() {
+    let (code, _, stderr) = run(&["-c", "undefined_var"]);
+    assert_eq!(code, 1, "EXIT-02: eval error should exit 1");
+    assert!(stderr.contains("undefined variable"));
+}
+
+#[test]
+fn exit_02_eval_error_in_script() {
+    let tmp = write_temp_script("qk_test_exit02.qk", "x := 1:\nundefined_var");
+    let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 1, "EXIT-02: script eval error should exit 1");
+    assert!(stderr.contains("undefined variable"));
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ===========================================================================
+// EXIT-03: Exit code 2 on usage error (explicit label)
+// ===========================================================================
+
+#[test]
+fn exit_03_usage_error_exit_code() {
+    let (code, _, stderr) = run(&["--bogus"]);
+    assert_eq!(code, 2, "EXIT-03: unknown flag should exit 2");
+    assert!(stderr.contains("unknown option"));
+    assert!(stderr.contains("--help"), "should suggest --help");
+}
+
+// ===========================================================================
+// EXIT-04: Exit code 65 on parse error in script input
+// ===========================================================================
+
+#[test]
+fn exit_04_parse_error_exit_code() {
+    let (code, _, stderr) = run(&["-c", "1 + + 2"]);
+    assert_eq!(code, 65, "EXIT-04: parse error should exit 65");
+    assert!(stderr.contains("parse error"));
+}
+
+#[test]
+fn exit_04_parse_error_in_script() {
+    let tmp = write_temp_script("qk_test_exit04.qk", "1 + + 2");
+    let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 65, "EXIT-04: script parse error should exit 65");
+    assert!(stderr.contains("parse error"));
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ===========================================================================
+// EXIT-05: Exit code 66 on file not found
+// ===========================================================================
+
+#[test]
+fn exit_05_file_not_found_exit_code() {
+    let (code, _, stderr) = run(&["nonexistent_script_exit05.qk"]);
+    assert_eq!(code, 66, "EXIT-05: file not found should exit 66");
+    assert!(
+        stderr.contains("file not found"),
+        "EXIT-05: stderr should contain 'file not found', got: {}",
+        stderr
+    );
+    // ERR-03: Should include OS error message
+    // Windows: "The system cannot find the file specified" or similar
+    // Unix: "No such file or directory"
+    assert!(
+        stderr.contains("os error") || stderr.contains("No such file"),
+        "EXIT-05/ERR-03: should include OS error message, got: {}",
+        stderr
+    );
+}
+
+// ===========================================================================
+// EXIT-06: Exit code 70 on caught panic
+// ===========================================================================
+
+#[test]
+fn exit_06_panic_invert_zero_constant() {
+    // q*etaq(1,1,5) starts at q^1 so inverting it panics
+    let tmp = write_temp_script("qk_test_exit06.qk", "1/(q * etaq(1,1,5))");
+    let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 70, "EXIT-06: caught panic should exit 70");
+    // ERR-02: Should show translated message, not raw assert text.
+    // The panic hook suppresses the raw "thread 'main' panicked at ..." output.
+    assert!(
+        !stderr.contains("Cannot invert series with zero constant term"),
+        "ERR-02: should show translated message, not raw panic. Got: {}",
+        stderr
+    );
+    assert!(
+        stderr.contains("cannot invert") || stderr.contains("constant term is zero"),
+        "ERR-02: should show friendly version of the panic. Got: {}",
+        stderr
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn exit_06_division_by_zero_panic() {
+    let (code, _, stderr) = run(&["-c", "1/0"]);
+    assert_eq!(code, 70, "EXIT-06: division by zero panic should exit 70");
+    assert!(
+        stderr.contains("division by zero"),
+        "should contain 'division by zero', got: {}",
+        stderr
+    );
+    // Should NOT contain raw Rust panic prefix
+    assert!(
+        !stderr.contains("thread 'main' panicked"),
+        "ERR-02: raw panic output should be suppressed, got: {}",
+        stderr
+    );
+}
+
+// ===========================================================================
+// EXIT-07: Exit code 74 on I/O error
+// ===========================================================================
+
+#[test]
+fn exit_07_io_error_directory_as_file() {
+    // Reading a directory as a file produces an I/O error (not NotFound)
+    // On Windows this gives "Access is denied" with exit 74
+    let (code, _, stderr) = run(&["."]);
+    assert!(
+        code == 74 || code == 66 || code == 1,
+        "EXIT-07: I/O error reading directory should exit 74 (or 66 on some platforms), got: {}",
+        code
+    );
+    assert!(!stderr.is_empty(), "should produce an error message");
+}
+
+// ===========================================================================
+// ERR-01: Script errors include filename:line:col context
+// ===========================================================================
+
+#[test]
+fn err_01_parse_error_shows_filename_line_col() {
+    let tmp = write_temp_script(
+        "qk_test_err01_parse.qk",
+        "x := 1:\ny := 2:\n1 + + 3",
+    );
+    let path_str = tmp.to_str().unwrap();
+    let (code, _, stderr) = run(&[path_str]);
+    assert_eq!(code, 65);
+    // Should contain filename:line:col format
+    assert!(
+        stderr.contains(":3:"),
+        "ERR-01: parse error on line 3 should show ':3:' in error, got: {}",
+        stderr
+    );
+    assert!(
+        stderr.contains("parse error"),
+        "ERR-01: should contain 'parse error', got: {}",
+        stderr
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn err_01_eval_error_shows_filename_line() {
+    let tmp = write_temp_script(
+        "qk_test_err01_eval.qk",
+        "x := 1:\ny := 2:\nz := 3:\nw := 4:\nundefined_var",
+    );
+    let path_str = tmp.to_str().unwrap();
+    let (code, _, stderr) = run(&[path_str]);
+    assert_eq!(code, 1);
+    // Should contain filename:line format (line 5 has the error)
+    assert!(
+        stderr.contains(":5:"),
+        "ERR-01: eval error on line 5 should show ':5:' in error, got: {}",
+        stderr
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn err_01_first_line_error() {
+    let tmp = write_temp_script("qk_test_err01_first.qk", "undefined_var");
+    let path_str = tmp.to_str().unwrap();
+    let (code, _, stderr) = run(&[path_str]);
+    assert_eq!(code, 1);
+    assert!(
+        stderr.contains(":1:"),
+        "ERR-01: error on line 1 should show ':1:', got: {}",
+        stderr
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ===========================================================================
+// ERR-02: Panic messages translated to human-readable
+// (Also covered by exit_06_panic_invert_zero_constant above)
+// ===========================================================================
+
+#[test]
+fn err_02_division_by_zero_translated() {
+    let tmp = write_temp_script("qk_test_err02_div.qk", "1/0");
+    let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 70, "division by zero should exit 70");
+    // Should say "division by zero" (translated, not "QRat division by zero")
+    assert!(
+        stderr.contains("division by zero"),
+        "ERR-02: should contain 'division by zero', got: {}",
+        stderr
+    );
+    // Should NOT contain internal type prefixes
+    assert!(
+        !stderr.contains("QRat"),
+        "ERR-02: should not contain internal type name 'QRat', got: {}",
+        stderr
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ===========================================================================
+// ERR-03: File I/O errors display OS error message
+// (Also covered by exit_05_file_not_found_exit_code above)
+// ===========================================================================
+
+#[test]
+fn err_03_file_error_includes_os_message() {
+    let (code, _, stderr) = run(&["nonexistent_file_abc123.qk"]);
+    assert_eq!(code, 66);
+    // OS error message should be included (Windows says "The system cannot find
+    // the file specified" / Unix says "No such file or directory")
+    assert!(
+        stderr.len() > 30,
+        "ERR-03: error should include OS message, got short stderr: {}",
+        stderr
+    );
+    // Should contain the OS error indicator
+    assert!(
+        stderr.contains("os error") || stderr.contains("No such file"),
+        "ERR-03: should include OS-level error detail, got: {}",
+        stderr
+    );
+}
+
+// ===========================================================================
+// ERR-04: Scripts fail-fast on first error; REPL continues
+// ===========================================================================
+
+#[test]
+fn err_04_script_fail_fast() {
+    // Two errors in script separated by ';' -- only the first should appear.
+    // Use ';' to suppress output and create separate statements.
+    let tmp = write_temp_script(
+        "qk_test_err04.qk",
+        "x := 1:\nundefined_a;\nundefined_b",
+    );
+    let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_ne!(code, 0, "should fail on first error");
+    // Should mention undefined_a but NOT undefined_b
+    assert!(
+        stderr.contains("undefined_a"),
+        "ERR-04: should report first error (undefined_a), got: {}",
+        stderr
+    );
+    assert!(
+        !stderr.contains("undefined_b"),
+        "ERR-04: should NOT report second error (undefined_b) due to fail-fast, got: {}",
+        stderr
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ===========================================================================
+// ERR-05: read() in REPL continues on error; read() error message quality
+// ===========================================================================
+
+#[test]
+fn err_05_read_nonexistent_shows_file_not_found() {
+    let expr = r#"read("/nonexistent/file.qk")"#;
+    let (code, _, stderr) = run(&["-c", expr]);
+    assert_ne!(code, 0);
+    // Should show "file not found" not "computation failed"
+    assert!(
+        stderr.contains("file not found"),
+        "ERR-05: read() of nonexistent file should show 'file not found', got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn err_05_read_error_not_computation_failed() {
+    // read() file errors should NOT say "computation failed"
+    let expr = r#"read("/no/such/file.qk")"#;
+    let (_, _, stderr) = run(&["-c", expr]);
+    assert!(
+        !stderr.contains("computation failed"),
+        "ERR-05: read() file error should NOT say 'computation failed', got: {}",
+        stderr
+    );
+}
