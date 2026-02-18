@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 30 of 32 (Script Execution & CLI Flags)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-02-18 -- 30-01 complete (script execution engine)
+Last activity: 2026-02-18 -- 30-02 complete (CLI argument parsing & mode dispatch)
 
-Progress: [========================......] 83/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29-30 in progress)
+Progress: [========================......] 84/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29-30 in progress)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 82
+- Total plans completed: 83
 - Total phases: 29 complete, 3 remaining
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
@@ -31,6 +31,7 @@ Progress: [========================......] 83/TBD plans (v1.0-v1.5 complete, v1.
 | 29-01 | Static GMP Linking | 100min | 2 | 2 |
 | 29-02 | CI Release Workflow | 2min | 2 | 1 |
 | 30-01 | Script Execution Engine | 5min | 2 | 8 |
+| 30-02 | CLI Arg Parsing & Mode Dispatch | 5min | 2 | 3 |
 
 ## Accumulated Context
 
@@ -39,6 +40,9 @@ Progress: [========================......] 83/TBD plans (v1.0-v1.5 complete, v1.
 All v1.0-v1.5 decisions logged in PROJECT.md Key Decisions table.
 
 v1.6-relevant decisions:
+- Phase 30-02: Hand-written argument parser (no clap) consistent with zero-external-deps philosophy
+- Phase 30-02: read() function propagates script errors via EvalError::Panic
+- Phase 30-02: CommandResult::ReadFile defers execution to main loop (needs env + verbose)
 - Phase 30-01: Sysexits-compatible exit codes (0=success, 1=eval-error, 2=usage, 65=parse-error, 66=file-not-found, 70=panic)
 - Phase 30-01: Script engine uses fail-fast semantics (stops on first error)
 - Phase 30-01: String escape sequences limited to \\, \", \n, \t
@@ -63,5 +67,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 30-01-PLAN.md (script execution engine)
+Stopped at: Completed 30-02-PLAN.md (CLI argument parsing & mode dispatch)
 Resume file: N/A
