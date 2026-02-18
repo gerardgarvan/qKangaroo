@@ -4,10 +4,12 @@
 //! arithmetic on [`Value`] types, catches panics from qsym-core, and
 //! dispatches function calls.
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use qsym_core::number::{QInt, QRat};
+use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
 use qsym_core::series::arithmetic;
 use qsym_core::series::FormalPowerSeries;
 
@@ -167,7 +169,7 @@ pub fn expect_args(name: &str, args: &[Value], expected: usize) -> Result<(), Ev
             function: name.to_string(),
             expected: format!("{}", expected),
             got: args.len(),
-            signature: String::new(),
+            signature: get_signature(name),
         });
     }
     Ok(())
@@ -189,7 +191,7 @@ pub fn expect_args_range(
                 format!("{}-{}", min, max)
             },
             got: args.len(),
-            signature: String::new(),
+            signature: get_signature(name),
         });
     }
     Ok(())
@@ -662,27 +664,424 @@ fn series_pow(fps: &FormalPowerSeries, n: i64) -> FormalPowerSeries {
 }
 
 // ---------------------------------------------------------------------------
-// Function dispatch (stub for Plans 02/03)
+// Function dispatch
 // ---------------------------------------------------------------------------
 
 /// Dispatch a function call by name.
 ///
-/// This is a stub that handles alias resolution and fuzzy matching.
-/// Plans 02 and 03 will replace the body with the full dispatch table
-/// for all 79 functions.
+/// Resolves aliases, then matches against the canonical function name.
+/// Groups 1-4 (25 functions) are implemented; Plan 03 fills in groups 5+.
 pub fn dispatch(
     name: &str,
-    _args: &[Value],
-    _env: &mut Environment,
+    args: &[Value],
+    env: &mut Environment,
 ) -> Result<Value, EvalError> {
     let canonical = resolve_alias(name);
 
-    // For now, all functions are unknown (Plans 02/03 fill in dispatch)
-    let suggestions = find_similar_names(&canonical);
-    Err(EvalError::UnknownFunction {
-        name: name.to_string(),
-        suggestions,
-    })
+    match canonical.as_str() {
+        // =================================================================
+        // Group 1: q-Pochhammer and Products (FUNC-01) -- 7 functions
+        // =================================================================
+
+        "aqprod" => {
+            // aqprod(coeff_num, coeff_den, power, n_or_infinity, order)
+            expect_args(name, args, 5)?;
+            let cn = extract_i64(name, args, 0)?;
+            let cd = extract_i64(name, args, 1)?;
+            let power = extract_i64(name, args, 2)?;
+            let poch_order = match &args[3] {
+                Value::Infinity => PochhammerOrder::Infinite,
+                _ => {
+                    let n = extract_i64(name, args, 3)?;
+                    PochhammerOrder::Finite(n)
+                }
+            };
+            let order = extract_i64(name, args, 4)?;
+            let monomial = QMonomial::new(QRat::from((cn, cd)), power);
+            let result = qseries::aqprod(&monomial, env.sym_q, poch_order, order);
+            Ok(Value::Series(result))
+        }
+
+        "qbin" => {
+            // qbin(n, k, order)
+            expect_args(name, args, 3)?;
+            let n = extract_i64(name, args, 0)?;
+            let k = extract_i64(name, args, 1)?;
+            let order = extract_i64(name, args, 2)?;
+            let result = qseries::qbin(n, k, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "etaq" => {
+            // etaq(b, t, order)
+            expect_args(name, args, 3)?;
+            let b = extract_i64(name, args, 0)?;
+            let t = extract_i64(name, args, 1)?;
+            let order = extract_i64(name, args, 2)?;
+            let result = qseries::etaq(b, t, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "jacprod" => {
+            // jacprod(a, b, order)
+            expect_args(name, args, 3)?;
+            let a = extract_i64(name, args, 0)?;
+            let b = extract_i64(name, args, 1)?;
+            let order = extract_i64(name, args, 2)?;
+            let result = qseries::jacprod(a, b, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "tripleprod" => {
+            // tripleprod(coeff_num, coeff_den, power, order)
+            expect_args(name, args, 4)?;
+            let cn = extract_i64(name, args, 0)?;
+            let cd = extract_i64(name, args, 1)?;
+            let power = extract_i64(name, args, 2)?;
+            let order = extract_i64(name, args, 3)?;
+            let monomial = QMonomial::new(QRat::from((cn, cd)), power);
+            let result = qseries::tripleprod(&monomial, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "quinprod" => {
+            // quinprod(coeff_num, coeff_den, power, order)
+            expect_args(name, args, 4)?;
+            let cn = extract_i64(name, args, 0)?;
+            let cd = extract_i64(name, args, 1)?;
+            let power = extract_i64(name, args, 2)?;
+            let order = extract_i64(name, args, 3)?;
+            let monomial = QMonomial::new(QRat::from((cn, cd)), power);
+            let result = qseries::quinprod(&monomial, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "winquist" => {
+            // winquist(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)
+            expect_args(name, args, 7)?;
+            let a_cn = extract_i64(name, args, 0)?;
+            let a_cd = extract_i64(name, args, 1)?;
+            let a_p = extract_i64(name, args, 2)?;
+            let b_cn = extract_i64(name, args, 3)?;
+            let b_cd = extract_i64(name, args, 4)?;
+            let b_p = extract_i64(name, args, 5)?;
+            let order = extract_i64(name, args, 6)?;
+            let a = QMonomial::new(QRat::from((a_cn, a_cd)), a_p);
+            let b = QMonomial::new(QRat::from((b_cn, b_cd)), b_p);
+            let result = qseries::winquist(&a, &b, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        // =================================================================
+        // Group 2: Partitions (FUNC-02) -- 7 functions
+        // =================================================================
+
+        "partition_count" => {
+            // partition_count(n)
+            expect_args(name, args, 1)?;
+            let n = extract_i64(name, args, 0)?;
+            let result = qseries::partition_count(n);
+            // partition_count returns QRat (always integer-valued)
+            Ok(Value::Integer(QInt(result.0.numer().clone())))
+        }
+
+        "partition_gf" => {
+            // partition_gf(order)
+            expect_args(name, args, 1)?;
+            let order = extract_i64(name, args, 0)?;
+            let result = qseries::partition_gf(env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "distinct_parts_gf" => {
+            // distinct_parts_gf(order)
+            expect_args(name, args, 1)?;
+            let order = extract_i64(name, args, 0)?;
+            let result = qseries::distinct_parts_gf(env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "odd_parts_gf" => {
+            // odd_parts_gf(order)
+            expect_args(name, args, 1)?;
+            let order = extract_i64(name, args, 0)?;
+            let result = qseries::odd_parts_gf(env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "bounded_parts_gf" => {
+            // bounded_parts_gf(max_part, order)
+            expect_args(name, args, 2)?;
+            let max_part = extract_i64(name, args, 0)?;
+            let order = extract_i64(name, args, 1)?;
+            let result = qseries::bounded_parts_gf(max_part, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "rank_gf" => {
+            // rank_gf(z_num, z_den, order)
+            expect_args(name, args, 3)?;
+            let z_num = extract_i64(name, args, 0)?;
+            let z_den = extract_i64(name, args, 1)?;
+            let order = extract_i64(name, args, 2)?;
+            let z = QRat::from((z_num, z_den));
+            let result = qseries::rank_gf(&z, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "crank_gf" => {
+            // crank_gf(z_num, z_den, order)
+            expect_args(name, args, 3)?;
+            let z_num = extract_i64(name, args, 0)?;
+            let z_den = extract_i64(name, args, 1)?;
+            let order = extract_i64(name, args, 2)?;
+            let z = QRat::from((z_num, z_den));
+            let result = qseries::crank_gf(&z, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        // =================================================================
+        // Group 3: Theta Functions (FUNC-03) -- 3 functions
+        // =================================================================
+
+        "theta2" => {
+            expect_args(name, args, 1)?;
+            let order = extract_i64(name, args, 0)?;
+            let result = qseries::theta2(env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "theta3" => {
+            expect_args(name, args, 1)?;
+            let order = extract_i64(name, args, 0)?;
+            let result = qseries::theta3(env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "theta4" => {
+            expect_args(name, args, 1)?;
+            let order = extract_i64(name, args, 0)?;
+            let result = qseries::theta4(env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        // =================================================================
+        // Group 4: Series Analysis (FUNC-04) -- 9 functions
+        // =================================================================
+
+        "sift" => {
+            // sift(series, m, j)
+            expect_args(name, args, 3)?;
+            let fps = extract_series(name, args, 0)?;
+            let m = extract_i64(name, args, 1)?;
+            let j = extract_i64(name, args, 2)?;
+            let result = qseries::sift(&fps, m, j);
+            Ok(Value::Series(result))
+        }
+
+        "qdegree" => {
+            // qdegree(series)
+            expect_args(name, args, 1)?;
+            let fps = extract_series(name, args, 0)?;
+            match qseries::qdegree(&fps) {
+                Some(d) => Ok(Value::Integer(QInt::from(d))),
+                None => Ok(Value::None),
+            }
+        }
+
+        "lqdegree" => {
+            // lqdegree(series)
+            expect_args(name, args, 1)?;
+            let fps = extract_series(name, args, 0)?;
+            match qseries::lqdegree(&fps) {
+                Some(d) => Ok(Value::Integer(QInt::from(d))),
+                None => Ok(Value::None),
+            }
+        }
+
+        "prodmake" => {
+            // prodmake(series, max_n)
+            expect_args(name, args, 2)?;
+            let fps = extract_series(name, args, 0)?;
+            let max_n = extract_i64(name, args, 1)?;
+            let result = qseries::prodmake(&fps, max_n);
+            Ok(infinite_product_form_to_value(&result))
+        }
+
+        "etamake" => {
+            // etamake(series, max_n)
+            expect_args(name, args, 2)?;
+            let fps = extract_series(name, args, 0)?;
+            let max_n = extract_i64(name, args, 1)?;
+            let result = qseries::etamake(&fps, max_n);
+            Ok(eta_quotient_to_value(&result))
+        }
+
+        "jacprodmake" => {
+            // jacprodmake(series, max_n)
+            expect_args(name, args, 2)?;
+            let fps = extract_series(name, args, 0)?;
+            let max_n = extract_i64(name, args, 1)?;
+            let result = qseries::jacprodmake(&fps, max_n);
+            Ok(jacobi_product_form_to_value(&result))
+        }
+
+        "mprodmake" => {
+            // mprodmake(series, max_n)
+            expect_args(name, args, 2)?;
+            let fps = extract_series(name, args, 0)?;
+            let max_n = extract_i64(name, args, 1)?;
+            let result = qseries::mprodmake(&fps, max_n);
+            Ok(btreemap_i64_to_value(&result))
+        }
+
+        "qetamake" => {
+            // qetamake(series, max_n)
+            expect_args(name, args, 2)?;
+            let fps = extract_series(name, args, 0)?;
+            let max_n = extract_i64(name, args, 1)?;
+            let result = qseries::qetamake(&fps, max_n);
+            Ok(q_eta_form_to_value(&result))
+        }
+
+        "qfactor" => {
+            // qfactor(series)
+            expect_args(name, args, 1)?;
+            let fps = extract_series(name, args, 0)?;
+            let result = qseries::qfactor(&fps);
+            Ok(q_factorization_to_value(&result))
+        }
+
+        // =================================================================
+        // Unknown function (Plan 03 fills in groups 5+)
+        // =================================================================
+        _ => {
+            let suggestions = find_similar_names(&canonical);
+            Err(EvalError::UnknownFunction {
+                name: name.to_string(),
+                suggestions,
+            })
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Conversion helpers (analysis result types -> Value::Dict)
+// ---------------------------------------------------------------------------
+
+/// Convert an `InfiniteProductForm` to `Value::Dict`.
+fn infinite_product_form_to_value(ipf: &qseries::InfiniteProductForm) -> Value {
+    let mut exp_entries: Vec<(String, Value)> = Vec::new();
+    for (&n, r) in &ipf.exponents {
+        exp_entries.push((n.to_string(), Value::Rational(r.clone())));
+    }
+    Value::Dict(vec![
+        ("exponents".to_string(), Value::Dict(exp_entries)),
+        ("terms_used".to_string(), Value::Integer(QInt::from(ipf.terms_used))),
+    ])
+}
+
+/// Convert an `EtaQuotient` to `Value::Dict`.
+fn eta_quotient_to_value(eq: &qseries::EtaQuotient) -> Value {
+    let mut factor_entries: Vec<(String, Value)> = Vec::new();
+    for (&d, &r_d) in &eq.factors {
+        factor_entries.push((d.to_string(), Value::Integer(QInt::from(r_d))));
+    }
+    Value::Dict(vec![
+        ("factors".to_string(), Value::Dict(factor_entries)),
+        ("q_shift".to_string(), Value::Rational(eq.q_shift.clone())),
+    ])
+}
+
+/// Convert a `JacobiProductForm` to `Value::Dict`.
+fn jacobi_product_form_to_value(jpf: &qseries::JacobiProductForm) -> Value {
+    let mut factor_entries: Vec<(String, Value)> = Vec::new();
+    for (&(a, b), &exp) in &jpf.factors {
+        factor_entries.push((
+            format!("({},{})", a, b),
+            Value::Integer(QInt::from(exp)),
+        ));
+    }
+    Value::Dict(vec![
+        ("factors".to_string(), Value::Dict(factor_entries)),
+        ("scalar".to_string(), Value::Rational(jpf.scalar.clone())),
+        ("is_exact".to_string(), Value::Bool(jpf.is_exact)),
+    ])
+}
+
+/// Convert a `BTreeMap<i64, i64>` (mprodmake result) to `Value::Dict`.
+fn btreemap_i64_to_value(m: &BTreeMap<i64, i64>) -> Value {
+    let mut entries: Vec<(String, Value)> = Vec::new();
+    for (&n, &exp) in m {
+        entries.push((n.to_string(), Value::Integer(QInt::from(exp))));
+    }
+    Value::Dict(entries)
+}
+
+/// Convert a `QEtaForm` to `Value::Dict`.
+fn q_eta_form_to_value(qef: &qseries::QEtaForm) -> Value {
+    let mut factor_entries: Vec<(String, Value)> = Vec::new();
+    for (&d, &r_d) in &qef.factors {
+        factor_entries.push((d.to_string(), Value::Integer(QInt::from(r_d))));
+    }
+    Value::Dict(vec![
+        ("factors".to_string(), Value::Dict(factor_entries)),
+        ("q_shift".to_string(), Value::Rational(qef.q_shift.clone())),
+    ])
+}
+
+/// Convert a `QFactorization` to `Value::Dict`.
+fn q_factorization_to_value(qf: &qseries::QFactorization) -> Value {
+    let mut factor_entries: Vec<(String, Value)> = Vec::new();
+    for (&i, &mult) in &qf.factors {
+        factor_entries.push((i.to_string(), Value::Integer(QInt::from(mult))));
+    }
+    Value::Dict(vec![
+        ("scalar".to_string(), Value::Rational(qf.scalar.clone())),
+        ("factors".to_string(), Value::Dict(factor_entries)),
+        ("is_exact".to_string(), Value::Bool(qf.is_exact)),
+    ])
+}
+
+// ---------------------------------------------------------------------------
+// Function signatures for error messages
+// ---------------------------------------------------------------------------
+
+/// Return the human-readable signature for a function, used in error messages.
+fn get_signature(name: &str) -> String {
+    match name {
+        // Group 1: q-Pochhammer and Products
+        "aqprod" => "(coeff_num, coeff_den, power, n_or_infinity, order)".to_string(),
+        "qbin" => "(n, k, order)".to_string(),
+        "etaq" => "(b, t, order)".to_string(),
+        "jacprod" => "(a, b, order)".to_string(),
+        "tripleprod" => "(coeff_num, coeff_den, power, order)".to_string(),
+        "quinprod" => "(coeff_num, coeff_den, power, order)".to_string(),
+        "winquist" => "(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)".to_string(),
+        // Group 2: Partitions
+        "partition_count" => "(n)".to_string(),
+        "partition_gf" => "(order)".to_string(),
+        "distinct_parts_gf" => "(order)".to_string(),
+        "odd_parts_gf" => "(order)".to_string(),
+        "bounded_parts_gf" => "(max_part, order)".to_string(),
+        "rank_gf" => "(z_num, z_den, order)".to_string(),
+        "crank_gf" => "(z_num, z_den, order)".to_string(),
+        // Group 3: Theta Functions
+        "theta2" => "(order)".to_string(),
+        "theta3" => "(order)".to_string(),
+        "theta4" => "(order)".to_string(),
+        // Group 4: Series Analysis
+        "sift" => "(series, m, j)".to_string(),
+        "qdegree" => "(series)".to_string(),
+        "lqdegree" => "(series)".to_string(),
+        "prodmake" => "(series, max_n)".to_string(),
+        "etamake" => "(series, max_n)".to_string(),
+        "jacprodmake" => "(series, max_n)".to_string(),
+        "mprodmake" => "(series, max_n)".to_string(),
+        "qetamake" => "(series, max_n)".to_string(),
+        "qfactor" => "(series)".to_string(),
+        _ => String::new(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1362,5 +1761,243 @@ mod tests {
     fn extract_bool_ok() {
         let args = vec![Value::Bool(true)];
         assert_eq!(extract_bool("test", &args, 0).unwrap(), true);
+    }
+
+    // --- Dispatch: Group 1 (q-Pochhammer and Products) ---
+
+    #[test]
+    fn dispatch_etaq_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("etaq", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // etaq(1,1,20) = (q;q)_inf = 1 - q - q^2 + q^5 + q^7 - ...
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), -QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_aqprod_with_infinity() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),  // coeff_num
+            Value::Integer(QInt::from(1i64)),  // coeff_den
+            Value::Integer(QInt::from(1i64)),  // power
+            Value::Infinity,                    // n = infinity
+            Value::Integer(QInt::from(10i64)), // order
+        ];
+        let val = dispatch("aqprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_aqprod_finite() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(3i64)),  // n = 3
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("aqprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_qbin_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("qbin", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_jacprod_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("jacprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_tripleprod_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("tripleprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_quinprod_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("quinprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    // --- Dispatch: Group 2 (Partitions) ---
+
+    #[test]
+    fn dispatch_partition_count_5() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(5i64))];
+        let val = dispatch("partition_count", &args, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(7i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_partition_count_50() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(50i64))];
+        let val = dispatch("partition_count", &args, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(204226i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_partition_gf_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("partition_gf", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // p(0) = 1, p(1) = 1, p(2) = 2, p(3) = 3, p(4) = 5, p(5) = 7
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::one());
+            assert_eq!(fps.coeff(5), QRat::from((7i64, 1i64)));
+        } else {
+            panic!("expected Series");
+        }
+    }
+
+    #[test]
+    fn dispatch_distinct_parts_gf_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("distinct_parts_gf", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_odd_parts_gf_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("odd_parts_gf", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_bounded_parts_gf_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("bounded_parts_gf", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_rank_gf_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("rank_gf", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_crank_gf_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("crank_gf", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    // --- Dispatch: Error handling ---
+
+    #[test]
+    fn dispatch_wrong_arg_count_etaq() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(1i64))];
+        let err = dispatch("etaq", &args, &mut env).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("etaq expects 3 arguments"), "got: {}", msg);
+        assert!(msg.contains("(b, t, order)"), "got: {}", msg);
+    }
+
+    #[test]
+    fn dispatch_wrong_arg_type_etaq() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Bool(true),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let err = dispatch("etaq", &args, &mut env).unwrap_err();
+        assert!(matches!(err, EvalError::ArgType { .. }));
+    }
+
+    #[test]
+    fn dispatch_wrong_arg_count_aqprod() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(1i64))];
+        let err = dispatch("aqprod", &args, &mut env).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("aqprod expects 5 arguments"), "got: {}", msg);
+        assert!(msg.contains("(coeff_num, coeff_den, power, n_or_infinity, order)"), "got: {}", msg);
+    }
+
+    // --- Dispatch: Alias resolution ---
+
+    #[test]
+    fn dispatch_numbpart_alias() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(5i64))];
+        let val = dispatch("numbpart", &args, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(7i64));
+        } else {
+            panic!("expected Integer");
+        }
     }
 }
