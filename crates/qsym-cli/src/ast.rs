@@ -33,6 +33,8 @@ pub enum AstNode {
     Q,
     /// The `infinity` keyword.
     Infinity,
+    /// String literal value.
+    StringLit(String),
     /// `%` reference to last result.
     LastResult,
     /// Variable reference by name.

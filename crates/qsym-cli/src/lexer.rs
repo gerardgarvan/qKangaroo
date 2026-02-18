@@ -22,9 +22,50 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
     while pos < bytes.len() {
         let b = bytes[pos];
 
-        // Skip whitespace (space and tab; newlines won't appear in REPL single-line input)
-        if b == b' ' || b == b'\t' {
+        // Skip whitespace (space, tab, newline, carriage return)
+        if b == b' ' || b == b'\t' || b == b'\n' || b == b'\r' {
             pos += 1;
+            continue;
+        }
+
+        // Skip # line comments
+        if b == b'#' {
+            while pos < bytes.len() && bytes[pos] != b'\n' {
+                pos += 1;
+            }
+            continue;
+        }
+
+        // String literals (double-quoted)
+        if b == b'"' {
+            let start = pos;
+            pos += 1; // skip opening quote
+            let mut value = String::new();
+            while pos < bytes.len() && bytes[pos] != b'"' {
+                if bytes[pos] == b'\\' && pos + 1 < bytes.len() {
+                    match bytes[pos + 1] {
+                        b'\\' => { value.push('\\'); pos += 2; }
+                        b'"' => { value.push('"'); pos += 2; }
+                        b'n' => { value.push('\n'); pos += 2; }
+                        b't' => { value.push('\t'); pos += 2; }
+                        _ => { value.push(bytes[pos] as char); pos += 1; }
+                    }
+                } else {
+                    value.push(bytes[pos] as char);
+                    pos += 1;
+                }
+            }
+            if pos >= bytes.len() {
+                return Err(ParseError::new(
+                    "unterminated string literal".to_string(),
+                    Span::new(start, pos),
+                ));
+            }
+            pos += 1; // skip closing quote
+            tokens.push(SpannedToken {
+                token: Token::StringLit(value),
+                span: Span::new(start, pos),
+            });
             continue;
         }
 
@@ -303,5 +344,54 @@ mod tests {
     fn test_whitespace_handling() {
         let toks = tokens("  q  ");
         assert_eq!(toks, vec![Token::Q, Token::Eof]);
+    }
+
+    #[test]
+    fn test_comment_skipping() {
+        let toks = tokens("1 + 2 # this is ignored");
+        assert_eq!(toks, vec![Token::Integer(1), Token::Plus, Token::Integer(2), Token::Eof]);
+    }
+
+    #[test]
+    fn test_comment_full_line() {
+        let toks = tokens("# comment\n1");
+        assert_eq!(toks, vec![Token::Integer(1), Token::Eof]);
+    }
+
+    #[test]
+    fn test_newline_as_whitespace() {
+        let toks = tokens("1\n+\n2");
+        assert_eq!(toks, vec![Token::Integer(1), Token::Plus, Token::Integer(2), Token::Eof]);
+    }
+
+    #[test]
+    fn test_string_literal() {
+        let toks = tokens(r#""hello""#);
+        assert_eq!(toks, vec![Token::StringLit("hello".to_string()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_string_escape_quote() {
+        let toks = tokens(r#""say \"hi\"""#);
+        assert_eq!(toks, vec![Token::StringLit("say \"hi\"".to_string()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_string_unterminated() {
+        let err = tokenize(r#""hello"#).unwrap_err();
+        assert!(err.message.contains("unterminated"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn test_comment_after_string() {
+        let toks = tokens(r#""file.qk" # comment"#);
+        assert_eq!(toks, vec![Token::StringLit("file.qk".to_string()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_multiline_expression() {
+        let toks = tokens("aqprod(\n  q,q,\n  infinity,20\n)");
+        let expected = tokens("aqprod(q,q,infinity,20)");
+        assert_eq!(toks, expected);
     }
 }

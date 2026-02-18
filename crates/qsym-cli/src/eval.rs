@@ -585,6 +585,10 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
 
         AstNode::Infinity => Ok(Value::Infinity),
 
+        AstNode::StringLit(_) => Err(EvalError::Other(
+            "string literals not yet supported in expressions".to_string(),
+        )),
+
         AstNode::LastResult => match &env.last_result {
             Some(val) => Ok(val.clone()),
             None => Err(EvalError::NoLastResult),

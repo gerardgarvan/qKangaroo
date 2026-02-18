@@ -157,6 +157,11 @@ impl Parser {
                 self.advance();
                 AstNode::LastResult
             }
+            Token::StringLit(ref s) => {
+                let s = s.clone();
+                self.advance();
+                AstNode::StringLit(s)
+            }
             Token::Ident(ref name) => {
                 let name = name.clone();
                 self.advance();
@@ -337,6 +342,7 @@ fn token_name(token: &Token) -> String {
         Token::Comma => "','".to_string(),
         Token::Semi => "';'".to_string(),
         Token::Colon => "':'".to_string(),
+        Token::StringLit(s) => format!("string \"{}\"", s),
         Token::Eof => "end of input".to_string(),
     }
 }
@@ -889,6 +895,28 @@ mod tests {
             err.message.contains("']'"),
             "got: {}",
             err.message
+        );
+    }
+
+    // =======================================================
+    // PARSE-06: String literals
+    // =======================================================
+
+    #[test]
+    fn test_string_literal_parse() {
+        let node = parse_expr(r#""file.qk""#);
+        assert_eq!(node, AstNode::StringLit("file.qk".to_string()));
+    }
+
+    #[test]
+    fn test_string_in_function_call() {
+        let node = parse_expr(r#"read("file.qk")"#);
+        assert_eq!(
+            node,
+            AstNode::FuncCall {
+                name: "read".to_string(),
+                args: vec![AstNode::StringLit("file.qk".to_string())],
+            }
         );
     }
 }

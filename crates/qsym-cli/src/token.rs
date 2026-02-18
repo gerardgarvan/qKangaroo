@@ -16,6 +16,8 @@ pub enum Token {
     Q,
     /// Identifier: function names (aqprod, etaq, ETAR) and user variables (f, g).
     Ident(String),
+    /// Double-quoted string literal.
+    StringLit(String),
     /// `+`
     Plus,
     /// `-`
