@@ -9,3 +9,4 @@ path = "src/main.rs"
 
 [dependencies]
 qsym-core = { path = "../qsym-core" }
+rug = "1.28"
