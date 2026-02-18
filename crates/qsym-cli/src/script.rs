@@ -23,6 +23,8 @@ pub const EXIT_PARSE_ERROR: u8 = 65;
 pub const EXIT_FILE_NOT_FOUND: u8 = 66;
 /// Caught panic from qsym-core.
 pub const EXIT_PANIC: u8 = 70;
+/// I/O error (permission denied, disk full, etc.).
+pub const EXIT_IO_ERROR: u8 = 74;
 
 // ---------------------------------------------------------------------------
 // ScriptResult
@@ -38,6 +40,10 @@ pub enum ScriptResult {
     EvalError(String),
     /// A caught panic.
     Panic(String),
+    /// Script file not found (exit code 66).
+    FileNotFound(String),
+    /// I/O error reading file (exit code 74).
+    IoError(String),
 }
 
 impl ScriptResult {
@@ -48,6 +54,8 @@ impl ScriptResult {
             ScriptResult::ParseError(_) => EXIT_PARSE_ERROR,
             ScriptResult::EvalError(_) => EXIT_EVAL_ERROR,
             ScriptResult::Panic(_) => EXIT_PANIC,
+            ScriptResult::FileNotFound(_) => EXIT_FILE_NOT_FOUND,
+            ScriptResult::IoError(_) => EXIT_IO_ERROR,
         }
     }
 
@@ -58,37 +66,96 @@ impl ScriptResult {
             ScriptResult::ParseError(msg) => Some(msg),
             ScriptResult::EvalError(msg) => Some(msg),
             ScriptResult::Panic(msg) => Some(msg),
+            ScriptResult::FileNotFound(msg) => Some(msg),
+            ScriptResult::IoError(msg) => Some(msg),
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// execute_source
+// Statement line tracking
+// ---------------------------------------------------------------------------
+
+/// Find the byte offset of the first token in each statement.
+///
+/// Statements are separated by `;` or `:` tokens. Returns a `Vec<usize>`
+/// where entry `i` is the byte offset of the first token in statement `i`.
+fn compute_stmt_starts(source: &str) -> Vec<usize> {
+    let tokens = match crate::lexer::tokenize(source) {
+        Ok(t) => t,
+        Err(_) => return vec![0],
+    };
+    let mut starts = Vec::new();
+    let mut expect_start = true;
+    for st in &tokens {
+        if st.token == crate::token::Token::Eof {
+            break;
+        }
+        if expect_start {
+            starts.push(st.span.start);
+            expect_start = false;
+        }
+        if matches!(st.token, crate::token::Token::Semi | crate::token::Token::Colon) {
+            expect_start = true;
+        }
+    }
+    if starts.is_empty() {
+        starts.push(0);
+    }
+    starts
+}
+
+/// Compute the 1-indexed source line number for statement `stmt_idx`.
+fn compute_stmt_line(source: &str, _stmts: &[crate::ast::Stmt], stmt_idx: usize) -> usize {
+    let starts = compute_stmt_starts(source);
+    let offset = starts.get(stmt_idx).copied().unwrap_or(0);
+    crate::error::byte_offset_to_line_col(source, offset).0
+}
+
+// ---------------------------------------------------------------------------
+// execute_source / execute_source_with_context
 // ---------------------------------------------------------------------------
 
 /// Execute a source string containing one or more statements.
+///
+/// Thin wrapper around [`execute_source_with_context()`] with no filename.
+pub fn execute_source(
+    source: &str,
+    env: &mut Environment,
+    verbose: bool,
+) -> ScriptResult {
+    execute_source_with_context(source, env, verbose, None)
+}
+
+/// Execute a source string with optional filename context for error messages.
 ///
 /// Parses the entire source (comments and newlines handled by the lexer)
 /// and evaluates each statement. Results of non-suppressed statements
 /// (those with `;` or implicit terminator) are printed to stdout.
 ///
 /// If `verbose` is true, per-statement timing is printed to stderr.
+/// If `filename` is `Some`, parse errors show `filename:line:col` and eval
+/// errors show `filename:line`.
 ///
 /// Stops on the first error (fail-fast).
-pub fn execute_source(
+pub fn execute_source_with_context(
     source: &str,
     env: &mut Environment,
     verbose: bool,
+    filename: Option<&str>,
 ) -> ScriptResult {
-    // The lexer handles # comments and \n as whitespace, and the parser
-    // splits statements on ; and : terminators. So we can pass the entire
-    // source to parse() directly.
     let stmts = match crate::parser::parse(source) {
         Ok(stmts) => stmts,
-        Err(e) => return ScriptResult::ParseError(e.render(source)),
+        Err(e) => {
+            let msg = match filename {
+                Some(f) => e.render_for_file(source, f),
+                None => e.render(source),
+            };
+            return ScriptResult::ParseError(msg);
+        }
     };
 
-    for stmt in &stmts {
+    for (stmt_idx, stmt) in stmts.iter().enumerate() {
         let start = if verbose {
             Some(std::time::Instant::now())
         } else {
@@ -108,7 +175,14 @@ pub fn execute_source(
                 }
             }
             Err(e) => {
-                let msg = format!("{}", e);
+                let base_msg = format!("{}", e);
+                let msg = match filename {
+                    Some(f) => {
+                        let line = compute_stmt_line(source, &stmts, stmt_idx);
+                        format!("{}:{}: {}", f, line, base_msg)
+                    }
+                    None => base_msg,
+                };
                 return if matches!(e, eval::EvalError::Panic(_)) {
                     ScriptResult::Panic(msg)
                 } else {
@@ -127,16 +201,26 @@ pub fn execute_source(
 
 /// Execute a script file by path.
 ///
-/// Reads the entire file into memory and passes it to [`execute_source()`].
-/// Returns `ScriptResult::EvalError` if the file cannot be read.
+/// Reads the entire file into memory and passes it to
+/// [`execute_source_with_context()`] with the filename for error context.
+///
+/// Returns `ScriptResult::FileNotFound` (exit 66) if the file does not exist,
+/// or `ScriptResult::IoError` (exit 74) for other I/O failures.
 pub fn execute_file(
     path: &str,
     env: &mut Environment,
     verbose: bool,
 ) -> ScriptResult {
     match std::fs::read_to_string(path) {
-        Ok(source) => execute_source(&source, env, verbose),
-        Err(e) => ScriptResult::EvalError(format!("cannot read '{}': {}", path, e)),
+        Ok(source) => execute_source_with_context(&source, env, verbose, Some(path)),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => {
+                ScriptResult::FileNotFound(format!("file not found: '{}': {}", path, e))
+            }
+            _ => {
+                ScriptResult::IoError(format!("cannot read '{}': {}", path, e))
+            }
+        },
     }
 }
 
@@ -196,9 +280,9 @@ mod tests {
     fn test_execute_file_not_found() {
         let mut env = Environment::new();
         let result = execute_file("/nonexistent/path/script.qk", &mut env, false);
-        assert!(matches!(result, ScriptResult::EvalError(_)));
-        if let ScriptResult::EvalError(msg) = result {
-            assert!(msg.contains("cannot read"));
+        assert!(matches!(result, ScriptResult::FileNotFound(_)));
+        if let ScriptResult::FileNotFound(msg) = result {
+            assert!(msg.contains("file not found"));
         }
     }
 
@@ -208,6 +292,28 @@ mod tests {
         assert_eq!(ScriptResult::ParseError("x".into()).exit_code(), 65);
         assert_eq!(ScriptResult::EvalError("x".into()).exit_code(), 1);
         assert_eq!(ScriptResult::Panic("x".into()).exit_code(), 70);
+    }
+
+    #[test]
+    fn test_exit_code_file_not_found() {
+        assert_eq!(
+            ScriptResult::FileNotFound("file not found".into()).exit_code(),
+            66
+        );
+    }
+
+    #[test]
+    fn test_exit_code_io_error() {
+        assert_eq!(
+            ScriptResult::IoError("permission denied".into()).exit_code(),
+            74
+        );
+    }
+
+    #[test]
+    fn test_error_message_variants() {
+        assert!(ScriptResult::FileNotFound("msg".into()).error_message().is_some());
+        assert!(ScriptResult::IoError("msg".into()).error_message().is_some());
     }
 
     #[test]

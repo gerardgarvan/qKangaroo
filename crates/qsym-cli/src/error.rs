@@ -44,6 +44,38 @@ impl ParseError {
             col_display, self.message, source, spaces
         )
     }
+
+    /// Render for a script file: shows filename:line:col prefix with caret.
+    ///
+    /// For multiline sources, extracts just the offending line and computes
+    /// the column within that line.
+    pub fn render_for_file(&self, source: &str, filename: &str) -> String {
+        let (line, col) = byte_offset_to_line_col(source, self.span.start);
+        let source_line = source.lines().nth(line - 1).unwrap_or("");
+        let spaces = " ".repeat(col - 1 + 2); // 2 for "  " prefix
+        format!(
+            "{}:{}:{}: parse error: {}\n  {}\n{}^",
+            filename, line, col, self.message, source_line, spaces
+        )
+    }
+}
+
+/// Convert a byte offset to 1-indexed (line, col).
+pub fn byte_offset_to_line_col(source: &str, offset: usize) -> (usize, usize) {
+    let mut line = 1;
+    let mut col = 1;
+    for (i, ch) in source.char_indices() {
+        if i >= offset {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
 }
 
 impl fmt::Display for ParseError {
@@ -111,5 +143,46 @@ mod tests {
         assert_eq!(err.message, "msg");
         assert_eq!(err.span.start, 3);
         assert_eq!(err.span.end, 5);
+    }
+
+    #[test]
+    fn byte_offset_to_line_col_start() {
+        assert_eq!(byte_offset_to_line_col("abc\ndef", 0), (1, 1));
+    }
+
+    #[test]
+    fn byte_offset_to_line_col_second_line_start() {
+        assert_eq!(byte_offset_to_line_col("abc\ndef", 4), (2, 1));
+    }
+
+    #[test]
+    fn byte_offset_to_line_col_second_line_middle() {
+        assert_eq!(byte_offset_to_line_col("abc\ndef", 5), (2, 2));
+    }
+
+    #[test]
+    fn byte_offset_to_line_col_end_of_first_line() {
+        assert_eq!(byte_offset_to_line_col("abc\ndef", 3), (1, 4));
+    }
+
+    #[test]
+    fn render_for_file_multiline() {
+        // Error on line 2, column 1 (byte offset 4)
+        let err = ParseError::new("unexpected token", Span::new(4, 5));
+        let rendered = err.render_for_file("abc\n!def", "script.qk");
+        assert_eq!(
+            rendered,
+            "script.qk:2:1: parse error: unexpected token\n  !def\n  ^"
+        );
+    }
+
+    #[test]
+    fn render_for_file_first_line() {
+        let err = ParseError::new("expected ')'", Span::new(2, 3));
+        let rendered = err.render_for_file("f(!)", "test.qk");
+        assert_eq!(
+            rendered,
+            "test.qk:1:3: parse error: expected ')'\n  f(!)\n    ^"
+        );
     }
 }

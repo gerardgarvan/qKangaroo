@@ -1760,13 +1760,19 @@ pub fn dispatch(
                     match crate::script::execute_file(path, env, false) {
                         crate::script::ScriptResult::Success => Ok(Value::None),
                         crate::script::ScriptResult::ParseError(msg) => {
-                            Err(EvalError::Panic(msg))
+                            Err(EvalError::Other(msg))
                         }
                         crate::script::ScriptResult::EvalError(msg) => {
-                            Err(EvalError::Panic(msg))
+                            Err(EvalError::Other(msg))
                         }
                         crate::script::ScriptResult::Panic(msg) => {
                             Err(EvalError::Panic(msg))
+                        }
+                        crate::script::ScriptResult::FileNotFound(msg) => {
+                            Err(EvalError::Other(msg))
+                        }
+                        crate::script::ScriptResult::IoError(msg) => {
+                            Err(EvalError::Other(msg))
                         }
                     }
                 }
