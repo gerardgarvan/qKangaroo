@@ -128,11 +128,11 @@ Plans:
   3. User types `help` and sees a list of available functions; `help aqprod` shows the signature and a one-line description
   4. User types a malformed expression and sees a descriptive parse error without the session crashing
   5. User types `set precision 50` to change default truncation order; `clear` resets variables; `quit` exits cleanly
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 26-01: rustyline integration, history, and error recovery
-- [ ] 26-02: Tab completion, help system, and session commands (set precision, clear, quit)
+- [ ] 26-01-PLAN.md -- Rustyline REPL loop with history, session commands, multi-line input, and error recovery
+- [ ] 26-02-PLAN.md -- Tab completion (functions, commands, variables) and help system (8 categories, 81 functions)
 
 ### Phase 27: Output Commands & Polish
 **Goal**: Users can extract computed results as LaTeX or save session work to files
