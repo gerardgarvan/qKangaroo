@@ -187,7 +187,7 @@ fn dashdash_separator() {
     assert_ne!(code, 0);
     // Should try to open the file, not treat -nonexistent.qk as a flag
     assert!(
-        stderr.contains("cannot read"),
+        stderr.contains("file not found") || stderr.contains("cannot read"),
         "should attempt to read file, got stderr: {}",
         stderr
     );
@@ -288,10 +288,10 @@ fn script_file_no_banner() {
 #[test]
 fn script_file_not_found() {
     let (code, _, stderr) = run(&["/nonexistent/path/script.qk"]);
-    assert_ne!(code, 0);
+    assert_eq!(code, 66, "expected exit code 66 for file not found, got {}", code);
     assert!(
-        stderr.contains("cannot read"),
-        "expected 'cannot read', got stderr: {}",
+        stderr.contains("file not found"),
+        "expected 'file not found', got stderr: {}",
         stderr
     );
 }

@@ -534,10 +534,54 @@ pub fn eval_stmt(stmt: &Stmt, env: &mut Environment) -> Result<Option<Value>, Ev
     }
 }
 
+/// Translate common qsym-core panic messages to human-readable text.
+///
+/// Uses `contains()` for robustness against minor wording changes.
+/// Falls back to the raw message if no translation matches.
+fn translate_panic_message(raw: &str) -> String {
+    if raw.contains("Cannot invert series with zero constant term") {
+        return "cannot invert a series whose constant term is zero (the series \
+                starts at q^k with k > 0; try shifting or extracting the leading \
+                power first)"
+            .to_string();
+    }
+    if raw.contains("division by zero") || raw.contains("Division by zero") {
+        return "division by zero".to_string();
+    }
+    if raw.contains("Cannot invert zero") {
+        return "cannot invert zero".to_string();
+    }
+    if raw.contains("index out of bounds") {
+        return "index out of bounds".to_string();
+    }
+    // Strip "thread '<name>' panicked at '<msg>'" prefix if present
+    // (shouldn't happen with catch_unwind, but defensive)
+    if raw.contains("panicked at") {
+        // Format: "thread 'main' panicked at 'actual message', file:line:col"
+        // or: "thread 'main' panicked at actual message"
+        if let Some(at_pos) = raw.find("panicked at ") {
+            let after = &raw[at_pos + "panicked at ".len()..];
+            // Strip surrounding quotes if present
+            let msg = after.trim_start_matches('\'').trim_end_matches('\'');
+            // Strip trailing ", file:line:col" if present
+            let msg = if let Some(comma_pos) = msg.rfind(", ") {
+                &msg[..comma_pos]
+            } else {
+                msg
+            };
+            // Recursively translate the extracted message
+            return translate_panic_message(msg);
+        }
+    }
+    raw.to_string()
+}
+
 /// Evaluate a statement with panic catching.
 ///
 /// Wraps [`eval_stmt`] in `catch_unwind` with `AssertUnwindSafe`.
 /// On panic, extracts the message and returns `EvalError::Panic`.
+/// Panic messages are translated to human-friendly text via
+/// [`translate_panic_message`].
 ///
 /// `AssertUnwindSafe` is safe here because after a panic the environment's
 /// variables may have partial updates but the rug heap is not corrupted.
@@ -555,7 +599,7 @@ pub fn eval_stmt_safe(stmt: &Stmt, env: &mut Environment) -> Result<Option<Value
             } else {
                 "internal computation error".to_string()
             };
-            Err(EvalError::Panic(msg))
+            Err(EvalError::Panic(translate_panic_message(&msg)))
         }
     }
 }
@@ -2872,8 +2916,8 @@ mod tests {
         match result {
             Err(EvalError::Panic(msg)) => {
                 assert!(
-                    msg.contains("zero constant term"),
-                    "expected panic about zero constant term, got: {}",
+                    msg.contains("constant term is zero"),
+                    "expected translated panic about constant term, got: {}",
                     msg
                 );
             }
@@ -4110,5 +4154,53 @@ mod tests {
             "expected at least 75 function names in ALL_FUNCTION_NAMES, got {}",
             count
         );
+    }
+
+    // --- Panic message translation ---
+
+    #[test]
+    fn translate_panic_zero_constant_term() {
+        let translated = translate_panic_message(
+            "Cannot invert series with zero constant term",
+        );
+        assert!(translated.contains("cannot invert a series"));
+        assert!(translated.contains("constant term is zero"));
+    }
+
+    #[test]
+    fn translate_panic_division_by_zero() {
+        let translated = translate_panic_message("QRat division by zero");
+        assert_eq!(translated, "division by zero");
+    }
+
+    #[test]
+    fn translate_panic_division_by_zero_uppercase() {
+        let translated = translate_panic_message("Division by zero in rational");
+        assert_eq!(translated, "division by zero");
+    }
+
+    #[test]
+    fn translate_panic_cannot_invert_zero() {
+        let translated = translate_panic_message("Cannot invert zero");
+        assert_eq!(translated, "cannot invert zero");
+    }
+
+    #[test]
+    fn translate_panic_index_out_of_bounds() {
+        let translated = translate_panic_message("index out of bounds: the len is 5 but the index is 10");
+        assert_eq!(translated, "index out of bounds");
+    }
+
+    #[test]
+    fn translate_panic_unknown_passes_through() {
+        let translated = translate_panic_message("some unknown error");
+        assert_eq!(translated, "some unknown error");
+    }
+
+    #[test]
+    fn translate_panic_thread_prefix_stripped() {
+        let translated = translate_panic_message("thread 'main' panicked at 'attempt to divide by zero'");
+        // Should strip the thread prefix
+        assert!(!translated.contains("thread 'main'"));
     }
 }

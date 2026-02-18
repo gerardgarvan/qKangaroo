@@ -264,6 +264,16 @@ fn run_interactive(quiet: bool, verbose: bool) {
                     continue;
                 }
 
+                // Handle CLI-style flags typed at REPL prompt (UAT feedback)
+                if trimmed == "--help" || trimmed == "-h" {
+                    print_usage();
+                    continue;
+                }
+                if trimmed == "--version" || trimmed == "-V" {
+                    println!("q-kangaroo {}", env!("CARGO_PKG_VERSION"));
+                    continue;
+                }
+
                 // Command dispatch (before parser)
                 if let Some(cmd) = parse_command(trimmed) {
                     match execute_command(cmd, &mut env) {
