@@ -37,7 +37,7 @@ impl ReplHelper {
     pub fn new() -> Self {
         Self {
             function_names: Self::canonical_function_names(),
-            command_names: vec!["help", "quit", "exit", "clear", "set"],
+            command_names: vec!["help", "quit", "exit", "clear", "set", "latex", "save"],
             var_names: Vec::new(),
         }
     }
@@ -335,5 +335,21 @@ mod tests {
     #[test]
     fn validator_bracket_incomplete() {
         assert!(ReplHelper::is_incomplete("f([1, 2"));
+    }
+
+    #[test]
+    fn complete_latex_command() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("lat", 3);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"latex"), "should complete 'lat' to 'latex'");
+    }
+
+    #[test]
+    fn complete_save_command() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("sav", 3);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"save"), "should complete 'sav' to 'save'");
     }
 }

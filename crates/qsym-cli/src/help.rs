@@ -101,8 +101,8 @@ Commands:
   set precision N   - set default truncation order (currently: 20)
   clear             - reset all variables, %, and precision
   quit / exit       - exit the REPL (also Ctrl-D)
-  latex [expr]      - show LaTeX for last result or expression (coming soon)
-  save filename     - save result to file (coming soon)",
+  latex [var]       - show LaTeX for last result or a variable
+  save filename     - save last result to a file",
     )
 }
 
@@ -892,6 +892,17 @@ mod tests {
             81,
             "FUNC_HELP should have exactly 81 entries, got {}",
             FUNC_HELP.len()
+        );
+    }
+
+    #[test]
+    fn help_shows_latex_without_coming_soon() {
+        let text = general_help();
+        assert!(text.contains("latex"), "help should mention latex command");
+        assert!(text.contains("save"), "help should mention save command");
+        assert!(
+            !text.contains("coming soon"),
+            "help should not contain 'coming soon'"
         );
     }
 }
