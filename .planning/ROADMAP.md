@@ -155,11 +155,15 @@ Plans:
   2. The manual includes a CLI usage section documenting all flags, script execution, exit codes, and error messages
   3. The manual includes worked examples and a Maple migration quick-reference
   4. Running `q-kangaroo --help` mentions the PDF manual by name
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] 32-01: TBD
-- [ ] 32-02: TBD
+- [ ] 32-01-PLAN.md -- Typst project infrastructure, templates, and introductory chapters (00-04)
+- [ ] 32-02-PLAN.md -- Function reference: Products, Partitions, Theta, Series Analysis (26 functions)
+- [ ] 32-03-PLAN.md -- Function reference: Relations, Hypergeometric (21 functions)
+- [ ] 32-04-PLAN.md -- Function reference: Mock Theta/Bailey, Identity Proving (34 functions)
+- [ ] 32-05-PLAN.md -- Worked Examples, Maple Migration, and Index chapters
+- [ ] 32-06-PLAN.md -- CI workflow for PDF compilation and --help update
 
 ## Progress
 
@@ -196,4 +200,4 @@ Plans:
 | 29. Static Linking | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 30. Script Execution & CLI Flags | v1.6 | 3/3 | Complete | 2026-02-18 |
 | 31. Error Hardening & Exit Codes | v1.6 | 2/2 | Complete | 2026-02-18 |
-| 32. PDF Reference Manual | v1.6 | 0/TBD | Not started | - |
+| 32. PDF Reference Manual | v1.6 | 0/6 | Not started | - |
