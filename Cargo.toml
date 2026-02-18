@@ -1,3 +1,8 @@
 [workspace]
 members = ["crates/qsym-core", "crates/qsym-python", "crates/qsym-cli"]
 resolver = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = "symbols"
