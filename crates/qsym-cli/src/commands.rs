@@ -6,6 +6,7 @@
 //! the parser.
 
 use crate::environment::Environment;
+use crate::format::format_latex;
 use crate::help;
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,10 @@ pub enum Command {
     Clear,
     /// Exit the REPL.
     Quit,
+    /// Show LaTeX for last result (None) or a named variable (Some(name)).
+    Latex(Option<String>),
+    /// Save last result to a file.
+    Save(String),
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +119,32 @@ pub fn parse_command(line: &str) -> Option<Command> {
                 None
             }
         }
+        "latex" => {
+            // "latex" or "latex varname" but not "latex(x)" (function call)
+            if trimmed.contains('(') {
+                return None;
+            }
+            if words.len() == 1 {
+                Some(Command::Latex(None))
+            } else if words.len() == 2 {
+                Some(Command::Latex(Some(words[1].to_string())))
+            } else {
+                None
+            }
+        }
+        "save" => {
+            // "save filename" but not "save := 5" or "save(x)"
+            if trimmed.contains('(') {
+                return None;
+            }
+            if words.len() == 1 {
+                Some(Command::Save(String::new()))
+            } else if words.len() == 2 {
+                Some(Command::Save(words[1].to_string()))
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
@@ -145,7 +176,30 @@ pub fn execute_command(cmd: Command, env: &mut Environment) -> CommandResult {
                 topic
             )),
         },
+        Command::Latex(None) => match &env.last_result {
+            Some(val) => CommandResult::Output(format_latex(val)),
+            None => CommandResult::Output(
+                "No result to display. Evaluate an expression first.".to_string(),
+            ),
+        },
+        Command::Latex(Some(name)) => match env.get_var(&name) {
+            Some(val) => CommandResult::Output(format_latex(val)),
+            None => CommandResult::Output(format!("Unknown variable '{}'.", name)),
+        },
+        Command::Save(filename) => save_to_file(&filename, env),
     }
+}
+
+// ---------------------------------------------------------------------------
+// save_to_file (stub -- fully implemented in Task 3)
+// ---------------------------------------------------------------------------
+
+/// Save the last result to a file.
+fn save_to_file(filename: &str, _env: &Environment) -> CommandResult {
+    if filename.is_empty() {
+        return CommandResult::Output("Usage: save filename".to_string());
+    }
+    CommandResult::Output(format!("Error: save not yet implemented for '{}'", filename))
 }
 
 // ---------------------------------------------------------------------------
@@ -336,5 +390,86 @@ mod tests {
         let mut env = Environment::new();
         let result = execute_command(Command::Help(Some("aqprod".to_string())), &mut env);
         assert!(matches!(result, CommandResult::Output(_)));
+    }
+
+    // -- latex command parse tests -------------------------------------------
+
+    #[test]
+    fn parse_latex_bare() {
+        assert_eq!(parse_command("latex"), Some(Command::Latex(None)));
+    }
+
+    #[test]
+    fn parse_latex_var() {
+        assert_eq!(
+            parse_command("latex f"),
+            Some(Command::Latex(Some("f".into())))
+        );
+    }
+
+    #[test]
+    fn parse_latex_case_insensitive() {
+        assert_eq!(parse_command("LATEX"), Some(Command::Latex(None)));
+    }
+
+    #[test]
+    fn parse_latex_function_passthrough() {
+        assert_eq!(parse_command("latex(x)"), None);
+    }
+
+    // -- save command parse tests -------------------------------------------
+
+    #[test]
+    fn parse_save_filename() {
+        assert_eq!(
+            parse_command("save results.txt"),
+            Some(Command::Save("results.txt".into()))
+        );
+    }
+
+    #[test]
+    fn parse_save_no_filename() {
+        assert_eq!(parse_command("save"), Some(Command::Save("".into())));
+    }
+
+    #[test]
+    fn parse_save_assignment_passthrough() {
+        assert_eq!(parse_command("save := 5"), None);
+    }
+
+    // -- latex command execute tests -----------------------------------------
+
+    #[test]
+    fn execute_latex_no_result() {
+        let mut env = Environment::new();
+        let result = execute_command(Command::Latex(None), &mut env);
+        assert!(matches!(result, CommandResult::Output(ref s) if s.contains("No result")));
+    }
+
+    #[test]
+    fn execute_latex_with_last_result() {
+        use qsym_core::number::QInt;
+        use crate::eval::Value;
+        let mut env = Environment::new();
+        env.last_result = Some(Value::Integer(QInt::from(42i64)));
+        let result = execute_command(Command::Latex(None), &mut env);
+        assert_eq!(result, CommandResult::Output("42".to_string()));
+    }
+
+    #[test]
+    fn execute_latex_var() {
+        use qsym_core::number::QInt;
+        use crate::eval::Value;
+        let mut env = Environment::new();
+        env.set_var("f", Value::Integer(QInt::from(7i64)));
+        let result = execute_command(Command::Latex(Some("f".into())), &mut env);
+        assert_eq!(result, CommandResult::Output("7".to_string()));
+    }
+
+    #[test]
+    fn execute_latex_unknown_var() {
+        let mut env = Environment::new();
+        let result = execute_command(Command::Latex(Some("xyz".into())), &mut env);
+        assert!(matches!(result, CommandResult::Output(ref s) if s.contains("Unknown variable")));
     }
 }
