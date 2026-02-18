@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.5 Interactive REPL -- Phase 27 (Output Commands & Polish)
+**Current focus:** v1.5 Interactive REPL -- Phase 28 (Binary Packaging)
 
 ## Current Position
 
-Phase: 27 of 28 (Output Commands & Polish)
+Phase: 28 of 28 (Binary Packaging)
 Plan: 0 of 1 in current phase
 Status: Ready
-Last activity: 2026-02-17 -- Phase 26 complete (REPL Shell & Session: rustyline, tab completion, help system, 267 tests)
+Last activity: 2026-02-18 -- Phase 27 complete (Output Commands & Polish: latex/save commands, 294 tests)
 
-Progress: [#############################-] 97% (77/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [#############################-] 99% (78/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -31,7 +31,7 @@ Progress: [#############################-] 97% (77/79 plans -- v1.0-v1.4 complet
 | 24 - Parser & AST | 2/2 | 5min | 2.5min |
 | 25 - Evaluator & Function Dispatch | 3/3 | 20min | 6.7min |
 | 26 - REPL Shell & Session | 2/2 | 12min | 6min |
-| 27 - Output Commands & Polish | 0/1 | - | - |
+| 27 - Output Commands & Polish | 1/1 | 5min | 5min |
 | 28 - Binary Packaging | 0/1 | - | - |
 
 ## Accumulated Context
@@ -66,6 +66,8 @@ v1.5 decisions:
 - home crate pinned to 0.5.11 for Rust 1.85 compatibility
 - complete_inner() extracted from Completer for testability
 - Static FUNC_HELP array for zero-allocation help lookup
+- format_latex ported from qsym-python FPS-level (not qsym-core Expr-level)
+- save command writes format_value plain text output, not LaTeX
 
 ### Pending Todos
 
@@ -77,6 +79,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Phase 26 complete. Ready for Phase 27.
+Last session: 2026-02-18
+Stopped at: Phase 27 complete. Ready for Phase 28.
 Resume file: N/A
