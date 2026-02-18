@@ -9,9 +9,9 @@ Requirements for v1.6 CLI Hardening & Manual. Each maps to roadmap phases.
 
 ### Build Infrastructure
 
-- [ ] **BUILD-01**: Binary has zero DLL dependencies (static GMP/MPFR/MPC linking)
-- [ ] **BUILD-02**: CI workflow builds from bundled GMP source (no pre-installed system libs)
-- [ ] **BUILD-03**: Release archive contains only the executable (no DLL files)
+- [x] **BUILD-01**: Binary has zero DLL dependencies (static GMP/MPFR/MPC linking)
+- [x] **BUILD-02**: CI workflow builds from bundled GMP source (no pre-installed system libs)
+- [x] **BUILD-03**: Release archive contains only the executable (no DLL files)
 
 ### CLI Flags
 
@@ -88,9 +88,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUILD-01 | Phase 29 | Pending |
-| BUILD-02 | Phase 29 | Pending |
-| BUILD-03 | Phase 29 | Pending |
+| BUILD-01 | Phase 29 | Complete |
+| BUILD-02 | Phase 29 | Complete |
+| BUILD-03 | Phase 29 | Complete |
 | CLI-01 | Phase 30 | Pending |
 | CLI-02 | Phase 30 | Pending |
 | CLI-03 | Phase 30 | Pending |

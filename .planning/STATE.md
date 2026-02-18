@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 29 - Static Linking (v1.6 CLI Hardening & Manual)
+**Current focus:** Phase 30 - Script Execution & CLI Flags (v1.6 CLI Hardening & Manual)
 
 ## Current Position
 
-Phase: 29 of 32 (Static Linking)
-Plan: 2 of 2 in current phase (both complete)
-Status: Phase 29 complete
-Last activity: 2026-02-18 -- Completed 29-01 (static GMP linking) and 29-02 (CI release workflow)
+Phase: 30 of 32 (Script Execution & CLI Flags)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-18 -- Phase 29 complete (static linking), advancing to Phase 30
 
 Progress: [========================......] 82/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29 complete)
 
@@ -20,8 +20,8 @@ Progress: [========================......] 82/TBD plans (v1.0-v1.5 complete, v1.
 
 ### Cumulative Summary
 
-- Total plans completed: 82
-- Total phases: 28 complete + Phase 29 complete, remaining planned
+- Total plans completed: 81
+- Total phases: 29 complete, 3 remaining
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
 - Total execution time: ~8 hours

@@ -92,7 +92,7 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
 
 **Milestone Goal:** Make q-Kangaroo a fully self-contained, production-quality command-line tool with zero DLL dependencies, script execution, robust error handling, and a comprehensive PDF reference manual.
 
-- [ ] **Phase 29: Static Linking** - Self-contained binary with zero DLL dependencies
+- [x] **Phase 29: Static Linking** - Self-contained binary with zero DLL dependencies -- 2026-02-18
 - [ ] **Phase 30: Script Execution & CLI Flags** - Non-interactive batch mode and argument handling
 - [ ] **Phase 31: Error Hardening & Exit Codes** - Robust diagnostics and machine-readable exit status
 - [ ] **Phase 32: PDF Reference Manual** - Comprehensive typeset documentation for all 81 functions
@@ -110,8 +110,8 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 29-01-PLAN.md -- Enable static GMP/MPFR/MPC linking and verify locally
-- [ ] 29-02-PLAN.md -- Rewrite CI workflow for static builds and single-file archives
+- [x] 29-01-PLAN.md -- Enable static GMP/MPFR/MPC linking and verify locally
+- [x] 29-02-PLAN.md -- Rewrite CI workflow for static builds and single-file archives
 
 ### Phase 30: Script Execution & CLI Flags
 **Goal**: Users can run q-Kangaroo non-interactively via script files, piped input, or command-line expressions
@@ -193,7 +193,7 @@ Plans:
 | 26. REPL Shell & Session | v1.5 | 2/2 | Complete | 2026-02-18 |
 | 27. Output Commands & Polish | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 28. Binary Packaging | v1.5 | 1/1 | Complete | 2026-02-18 |
-| 29. Static Linking | v1.6 | 0/2 | In progress | - |
+| 29. Static Linking | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 30. Script Execution & CLI Flags | v1.6 | 0/TBD | Not started | - |
 | 31. Error Hardening & Exit Codes | v1.6 | 0/TBD | Not started | - |
 | 32. PDF Reference Manual | v1.6 | 0/TBD | Not started | - |
