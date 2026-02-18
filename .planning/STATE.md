@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 
 ## Current Position
 
-Phase: 30 of 32 (Script Execution & CLI Flags)
-Plan: 2 of 3 in current phase
-Status: Executing
-Last activity: 2026-02-18 -- 30-02 complete (CLI argument parsing & mode dispatch)
+Phase: 30 of 32 (Script Execution & CLI Flags) -- COMPLETE
+Plan: 3 of 3 in current phase (all complete)
+Status: Phase complete
+Last activity: 2026-02-18 -- 30-03 complete (CLI integration tests)
 
-Progress: [========================......] 84/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29-30 in progress)
+Progress: [=========================.....] 85/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29-30 complete)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 83
-- Total phases: 29 complete, 3 remaining
+- Total plans completed: 84
+- Total phases: 30 complete, 2 remaining
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
 - Total execution time: ~8 hours
@@ -32,6 +32,7 @@ Progress: [========================......] 84/TBD plans (v1.0-v1.5 complete, v1.
 | 29-02 | CI Release Workflow | 2min | 2 | 1 |
 | 30-01 | Script Execution Engine | 5min | 2 | 8 |
 | 30-02 | CLI Arg Parsing & Mode Dispatch | 5min | 2 | 3 |
+| 30-03 | CLI Integration Tests | 2min | 1 | 1 |
 
 ## Accumulated Context
 
@@ -40,6 +41,8 @@ Progress: [========================......] 84/TBD plans (v1.0-v1.5 complete, v1.
 All v1.0-v1.5 decisions logged in PROJECT.md Key Decisions table.
 
 v1.6-relevant decisions:
+- Phase 30-03: Integration tests use env!(CARGO_BIN_EXE_q-kangaroo) for binary path resolution
+- Phase 30-03: Windows backslash escaping in read() test paths via replace('\\', '\\\\')
 - Phase 30-02: Hand-written argument parser (no clap) consistent with zero-external-deps philosophy
 - Phase 30-02: read() function propagates script errors via EvalError::Panic
 - Phase 30-02: CommandResult::ReadFile defers execution to main loop (needs env + verbose)
@@ -67,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 30-02-PLAN.md (CLI argument parsing & mode dispatch)
+Stopped at: Completed 30-03-PLAN.md (CLI integration tests) -- Phase 30 complete
 Resume file: N/A
