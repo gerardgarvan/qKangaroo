@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 29 of 32 (Static Linking)
-Plan: 2 of 2 in current phase
+Plan: 2 of 2 in current phase (both complete)
 Status: Phase 29 complete
-Last activity: 2026-02-18 -- Completed 29-02 (CI release workflow)
+Last activity: 2026-02-18 -- Completed 29-01 (static GMP linking) and 29-02 (CI release workflow)
 
-Progress: [========================......] 81/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29 complete)
+Progress: [========================......] 82/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29 complete)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 81
+- Total plans completed: 82
 - Total phases: 28 complete + Phase 29 complete, remaining planned
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
@@ -28,6 +28,7 @@ Progress: [========================......] 81/TBD plans (v1.0-v1.5 complete, v1.
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 29-01 | Static GMP Linking | 100min | 2 | 2 |
 | 29-02 | CI Release Workflow | 2min | 2 | 1 |
 
 ## Accumulated Context
@@ -37,6 +38,9 @@ Progress: [========================......] 81/TBD plans (v1.0-v1.5 complete, v1.
 All v1.0-v1.5 decisions logged in PROJECT.md Key Decisions table.
 
 v1.6-relevant decisions:
+- Phase 29-01: Remove use-system-libs feature entirely for static GMP/MPFR/MPC linking
+- Phase 29-01: Clear .cargo/config.toml completely to prevent accidental dynamic linking
+- Phase 29-01: Pre-build static GMP/MPFR/MPC for Cygwin local dev via gmp-mpfr-sys cache
 - Phase 29-02: Run cargo from MSYS2 shell on Windows CI for full build tool compatibility
 - Phase 29-02: Cache gmp-mpfr-sys build artifacts in platform-specific directories
 - Phase 29-02: Use objdump/ldd as CI gates to prevent dependency regressions
@@ -55,5 +59,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 29-02-PLAN.md (CI release workflow for static builds)
+Stopped at: Completed 29-01-PLAN.md (static GMP linking) and 29-02-PLAN.md (CI release workflow)
 Resume file: N/A
