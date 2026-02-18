@@ -62,36 +62,46 @@ jobs:
         shell: bash
         run: git config --global core.autocrlf input
       - uses: actions/checkout@v4
-      - name: Setup MSYS2 with MinGW GMP
+      - name: Setup MSYS2 with build tools
         id: msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: false
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-gmp mingw-w64-x86_64-mpfr mingw-w64-x86_64-mpc
+          install: diffutils m4 make mingw-w64-x86_64-gcc
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-gnu
-      - name: Add MinGW to PATH
-        shell: bash
-        run: echo "D:/a/_temp/msys64/mingw64/bin" >> $GITHUB_PATH
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            C:/Users/runneradmin/AppData/Local/gmp-mpfr-sys
+            target
+          key: windows-release-${{ hashFiles('**/Cargo.lock') }}
       - name: Build release binary
-        shell: bash
-        env:
-          LIBRARY_PATH: D:/a/_temp/msys64/mingw64/lib
-          C_INCLUDE_PATH: D:/a/_temp/msys64/mingw64/include
-        run: cargo build --release -p qsym-cli --target x86_64-pc-windows-gnu
-      - name: Package Windows binary with DLLs
         shell: msys2 {0}
         run: |
-          mkdir -p dist/q-kangaroo-windows
-          cp target/x86_64-pc-windows-gnu/release/q-kangaroo.exe dist/q-kangaroo-windows/
-          cp /mingw64/bin/libgmp-10.dll dist/q-kangaroo-windows/
-          cp /mingw64/bin/libmpfr-6.dll dist/q-kangaroo-windows/
-          cp /mingw64/bin/libmpc-3.dll dist/q-kangaroo-windows/
-          cp /mingw64/bin/libgcc_s_seh-1.dll dist/q-kangaroo-windows/
-          cp /mingw64/bin/libwinpthread-1.dll dist/q-kangaroo-windows/
-          cd dist && 7z a q-kangaroo-windows-x86_64.zip q-kangaroo-windows/
+          export PATH="$PATH:/c/Users/runneradmin/.cargo/bin"
+          cargo build --release -p qsym-cli --target x86_64-pc-windows-gnu
+      - name: Verify no non-system DLL dependencies
+        shell: msys2 {0}
+        run: |
+          echo "DLL dependencies:"
+          objdump -p target/x86_64-pc-windows-gnu/release/q-kangaroo.exe | grep "DLL Name"
+          echo "---"
+          if objdump -p target/x86_64-pc-windows-gnu/release/q-kangaroo.exe | grep "DLL Name" | grep -qi "libgmp\|libmpfr\|libmpc\|libgcc\|libwinpthread"; then
+            echo "ERROR: Binary has non-system DLL dependencies!"
+            exit 1
+          fi
+          echo "OK: No non-system DLL dependencies"
+      - name: Package Windows binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/x86_64-pc-windows-gnu/release/q-kangaroo.exe dist/
+          cd dist && 7z a q-kangaroo-windows-x86_64.zip q-kangaroo.exe
       - uses: actions/upload-artifact@v4
         with:
           name: binary-windows
