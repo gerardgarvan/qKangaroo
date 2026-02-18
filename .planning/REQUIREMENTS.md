@@ -88,13 +88,45 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| BUILD-01 | Phase 29 | Pending |
+| BUILD-02 | Phase 29 | Pending |
+| BUILD-03 | Phase 29 | Pending |
+| CLI-01 | Phase 30 | Pending |
+| CLI-02 | Phase 30 | Pending |
+| CLI-03 | Phase 30 | Pending |
+| CLI-04 | Phase 30 | Pending |
+| CLI-05 | Phase 30 | Pending |
+| CLI-06 | Phase 30 | Pending |
+| EXEC-01 | Phase 30 | Pending |
+| EXEC-02 | Phase 30 | Pending |
+| EXEC-03 | Phase 30 | Pending |
+| EXEC-04 | Phase 30 | Pending |
+| EXEC-05 | Phase 30 | Pending |
+| EXEC-06 | Phase 30 | Pending |
+| EXIT-01 | Phase 31 | Pending |
+| EXIT-02 | Phase 31 | Pending |
+| EXIT-03 | Phase 31 | Pending |
+| EXIT-04 | Phase 31 | Pending |
+| EXIT-05 | Phase 31 | Pending |
+| EXIT-06 | Phase 31 | Pending |
+| EXIT-07 | Phase 31 | Pending |
+| ERR-01 | Phase 31 | Pending |
+| ERR-02 | Phase 31 | Pending |
+| ERR-03 | Phase 31 | Pending |
+| ERR-04 | Phase 31 | Pending |
+| ERR-05 | Phase 31 | Pending |
+| DOC-01 | Phase 32 | Pending |
+| DOC-02 | Phase 32 | Pending |
+| DOC-03 | Phase 32 | Pending |
+| DOC-04 | Phase 32 | Pending |
+| DOC-05 | Phase 32 | Pending |
+| DOC-06 | Phase 32 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-18 after initial definition*
+*Last updated: 2026-02-18 after roadmap creation*

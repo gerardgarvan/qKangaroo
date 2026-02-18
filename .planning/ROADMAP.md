@@ -8,6 +8,7 @@
 - v1.3 Documentation & Vignettes - Phases 18-21 (shipped 2026-02-16)
 - v1.4 Installation & Build Guide - Phases 22-23 (shipped 2026-02-17)
 - v1.5 Interactive REPL - Phases 24-28 (shipped 2026-02-18)
+- v1.6 CLI Hardening & Manual - Phases 29-32 (in progress)
 
 ## Phases
 
@@ -87,6 +88,79 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
 
 </details>
 
+### v1.6 CLI Hardening & Manual (In Progress)
+
+**Milestone Goal:** Make q-Kangaroo a fully self-contained, production-quality command-line tool with zero DLL dependencies, script execution, robust error handling, and a comprehensive PDF reference manual.
+
+- [ ] **Phase 29: Static Linking** - Self-contained binary with zero DLL dependencies
+- [ ] **Phase 30: Script Execution & CLI Flags** - Non-interactive batch mode and argument handling
+- [ ] **Phase 31: Error Hardening & Exit Codes** - Robust diagnostics and machine-readable exit status
+- [ ] **Phase 32: PDF Reference Manual** - Comprehensive typeset documentation for all 81 functions
+
+## Phase Details
+
+### Phase 29: Static Linking
+**Goal**: Users download a single executable file with zero external dependencies
+**Depends on**: Nothing (first phase of v1.6; changes build infrastructure only)
+**Requirements**: BUILD-01, BUILD-02, BUILD-03
+**Success Criteria** (what must be TRUE):
+  1. Running `q-kangaroo --version` works on a clean Windows machine with no DLLs in the directory or PATH
+  2. The GitHub release archive for Windows contains exactly one file: the .exe (no DLL files)
+  3. CI builds from bundled GMP/MPFR/MPC source without requiring pre-installed system libraries
+**Plans**: TBD
+
+Plans:
+- [ ] 29-01: TBD
+- [ ] 29-02: TBD
+
+### Phase 30: Script Execution & CLI Flags
+**Goal**: Users can run q-Kangaroo non-interactively via script files, piped input, or command-line expressions
+**Depends on**: Phase 29 (builds against static-linked binary infrastructure)
+**Requirements**: CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06, EXEC-01, EXEC-02, EXEC-03, EXEC-04, EXEC-05, EXEC-06
+**Success Criteria** (what must be TRUE):
+  1. User can run `q-kangaroo script.qk` to execute a file containing `#` comments and multi-line statements, then the process exits
+  2. User can run `echo "1+1" | q-kangaroo` and see the result with no banner or prompt
+  3. User can run `q-kangaroo -c "qpoch(a,q,5)"` to evaluate a single expression and exit
+  4. User can run `q-kangaroo --help` to see a usage summary listing all flags and file argument syntax
+  5. User can run `read("file.qk")` in the REPL to execute a script file within the current session
+**Plans**: TBD
+
+Plans:
+- [ ] 30-01: TBD
+- [ ] 30-02: TBD
+- [ ] 30-03: TBD
+
+### Phase 31: Error Hardening & Exit Codes
+**Goal**: Users get clear, actionable error messages and scripts/tools can rely on distinct exit codes for every failure mode
+**Depends on**: Phase 30 (script mode and CLI flags must exist for exit codes and error context to apply)
+**Requirements**: EXIT-01, EXIT-02, EXIT-03, EXIT-04, EXIT-05, EXIT-06, EXIT-07, ERR-01, ERR-02, ERR-03, ERR-04, ERR-05
+**Success Criteria** (what must be TRUE):
+  1. Running a script with a typo on line 5 produces an error showing `script.qk:5:` with a human-readable message, then exits with code 1
+  2. Running `q-kangaroo nonexistent.qk` prints "file not found" with the OS error message and exits with code 66
+  3. Running `q-kangaroo --bogus` prints a clear "unknown flag" message with `--help` suggestion and exits with code 2
+  4. A script that triggers a qsym-core panic displays a translated human-readable message (not a Rust panic backtrace) and exits with code 70
+  5. In the REPL, errors print a message but the session continues; in scripts, the first error stops execution
+**Plans**: TBD
+
+Plans:
+- [ ] 31-01: TBD
+- [ ] 31-02: TBD
+
+### Phase 32: PDF Reference Manual
+**Goal**: Users have a comprehensive, professionally typeset PDF reference manual covering all 81 functions
+**Depends on**: Phase 31 (documents final CLI flags, script mode, error messages, and exit codes)
+**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06
+**Success Criteria** (what must be TRUE):
+  1. A PDF file exists in the GitHub release archive alongside the binary, covering all 81 functions with mathematical definitions
+  2. The manual includes a CLI usage section documenting all flags, script execution, exit codes, and error messages
+  3. The manual includes worked examples and a Maple migration quick-reference
+  4. Running `q-kangaroo --help` mentions the PDF manual by name
+**Plans**: TBD
+
+Plans:
+- [ ] 32-01: TBD
+- [ ] 32-02: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -119,3 +193,7 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
 | 26. REPL Shell & Session | v1.5 | 2/2 | Complete | 2026-02-18 |
 | 27. Output Commands & Polish | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 28. Binary Packaging | v1.5 | 1/1 | Complete | 2026-02-18 |
+| 29. Static Linking | v1.6 | 0/TBD | Not started | - |
+| 30. Script Execution & CLI Flags | v1.6 | 0/TBD | Not started | - |
+| 31. Error Hardening & Exit Codes | v1.6 | 0/TBD | Not started | - |
+| 32. PDF Reference Manual | v1.6 | 0/TBD | Not started | - |
