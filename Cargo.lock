@@ -347,6 +347,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "qsym-cli"
+version = "0.1.0"
+dependencies = [
+ "qsym-core",
+ "rug",
+]
+
+[[package]]
 name = "qsym-core"
 version = "0.1.0"
 dependencies = [

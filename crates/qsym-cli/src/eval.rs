@@ -10,6 +10,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use qsym_core::number::{QInt, QRat};
 use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
+use qsym_core::qseries::{HypergeometricSeries, BilateralHypergeometricSeries};
 use qsym_core::series::arithmetic;
 use qsym_core::series::FormalPowerSeries;
 
@@ -290,6 +291,225 @@ pub fn extract_bool(name: &str, args: &[Value], index: usize) -> Result<bool, Ev
             got: other.type_name().to_string(),
         }),
     }
+}
+
+/// Extract a list of i64 values from args at `index`.
+pub fn extract_i64_list(
+    name: &str,
+    args: &[Value],
+    index: usize,
+) -> Result<Vec<i64>, EvalError> {
+    match &args[index] {
+        Value::List(items) => {
+            let mut result = Vec::with_capacity(items.len());
+            for (i, item) in items.iter().enumerate() {
+                match item {
+                    Value::Integer(n) => {
+                        let v = n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                            function: name.to_string(),
+                            arg_index: index,
+                            expected: "list of integers (fits in i64)",
+                            got: format!("integer too large at position {}", i),
+                        })?;
+                        result.push(v);
+                    }
+                    other => {
+                        return Err(EvalError::ArgType {
+                            function: name.to_string(),
+                            arg_index: index,
+                            expected: "list of integers",
+                            got: format!("list containing {} at position {}", other.type_name(), i),
+                        });
+                    }
+                }
+            }
+            Ok(result)
+        }
+        other => Err(EvalError::ArgType {
+            function: name.to_string(),
+            arg_index: index,
+            expected: "list of integers",
+            got: other.type_name().to_string(),
+        }),
+    }
+}
+
+/// Extract a list of QRat values from args at `index`.
+pub fn extract_qrat_list(
+    name: &str,
+    args: &[Value],
+    index: usize,
+) -> Result<Vec<QRat>, EvalError> {
+    match &args[index] {
+        Value::List(items) => {
+            let mut result = Vec::with_capacity(items.len());
+            for (i, item) in items.iter().enumerate() {
+                match item {
+                    Value::Integer(n) => result.push(QRat::from(n.clone())),
+                    Value::Rational(r) => result.push(r.clone()),
+                    other => {
+                        return Err(EvalError::ArgType {
+                            function: name.to_string(),
+                            arg_index: index,
+                            expected: "list of numbers",
+                            got: format!("list containing {} at position {}", other.type_name(), i),
+                        });
+                    }
+                }
+            }
+            Ok(result)
+        }
+        other => Err(EvalError::ArgType {
+            function: name.to_string(),
+            arg_index: index,
+            expected: "list of numbers",
+            got: other.type_name().to_string(),
+        }),
+    }
+}
+
+/// Extract a list of QMonomials from args at `index`.
+///
+/// Each element must be a `Value::List` of exactly 3 integers: [num, den, power].
+/// Builds `QMonomial::new(QRat::from((num, den)), power)` for each.
+pub fn extract_monomial_list(
+    name: &str,
+    args: &[Value],
+    index: usize,
+) -> Result<Vec<QMonomial>, EvalError> {
+    match &args[index] {
+        Value::List(items) => {
+            let mut result = Vec::with_capacity(items.len());
+            for (i, item) in items.iter().enumerate() {
+                match item {
+                    Value::List(inner) if inner.len() == 3 => {
+                        let sub = inner;
+                        let num = match &sub[0] {
+                            Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: index,
+                                expected: "list of [num, den, power] triples",
+                                got: format!("integer too large in triple {}", i),
+                            })?,
+                            other => {
+                                return Err(EvalError::ArgType {
+                                    function: name.to_string(),
+                                    arg_index: index,
+                                    expected: "list of [num, den, power] triples",
+                                    got: format!("{} in triple {} position 0", other.type_name(), i),
+                                });
+                            }
+                        };
+                        let den = match &sub[1] {
+                            Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: index,
+                                expected: "list of [num, den, power] triples",
+                                got: format!("integer too large in triple {}", i),
+                            })?,
+                            other => {
+                                return Err(EvalError::ArgType {
+                                    function: name.to_string(),
+                                    arg_index: index,
+                                    expected: "list of [num, den, power] triples",
+                                    got: format!("{} in triple {} position 1", other.type_name(), i),
+                                });
+                            }
+                        };
+                        let power = match &sub[2] {
+                            Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::ArgType {
+                                function: name.to_string(),
+                                arg_index: index,
+                                expected: "list of [num, den, power] triples",
+                                got: format!("integer too large in triple {}", i),
+                            })?,
+                            other => {
+                                return Err(EvalError::ArgType {
+                                    function: name.to_string(),
+                                    arg_index: index,
+                                    expected: "list of [num, den, power] triples",
+                                    got: format!("{} in triple {} position 2", other.type_name(), i),
+                                });
+                            }
+                        };
+                        result.push(QMonomial::new(QRat::from((num, den)), power));
+                    }
+                    other => {
+                        return Err(EvalError::ArgType {
+                            function: name.to_string(),
+                            arg_index: index,
+                            expected: "list of [num, den, power] triples",
+                            got: format!("{} at position {} (expected 3-element list)", other.type_name(), i),
+                        });
+                    }
+                }
+            }
+            Ok(result)
+        }
+        other => Err(EvalError::ArgType {
+            function: name.to_string(),
+            arg_index: index,
+            expected: "list of [num, den, power] triples",
+            got: other.type_name().to_string(),
+        }),
+    }
+}
+
+/// Build a `HypergeometricSeries` from standard 6-arg pattern:
+/// (upper_list, lower_list, z_num, z_den, z_pow, order).
+///
+/// Returns the series struct and the truncation order.
+fn build_hypergeometric(
+    name: &str,
+    args: &[Value],
+) -> Result<(HypergeometricSeries, i64), EvalError> {
+    expect_args(name, args, 6)?;
+    let upper = extract_monomial_list(name, args, 0)?;
+    let lower = extract_monomial_list(name, args, 1)?;
+    let z_num = extract_i64(name, args, 2)?;
+    let z_den = extract_i64(name, args, 3)?;
+    let z_pow = extract_i64(name, args, 4)?;
+    let order = extract_i64(name, args, 5)?;
+    let z = QMonomial::new(QRat::from((z_num, z_den)), z_pow);
+    let series = HypergeometricSeries {
+        upper,
+        lower,
+        argument: z,
+    };
+    Ok((series, order))
+}
+
+/// Build a `BilateralHypergeometricSeries` from standard 6-arg pattern.
+fn build_bilateral(
+    name: &str,
+    args: &[Value],
+) -> Result<(BilateralHypergeometricSeries, i64), EvalError> {
+    expect_args(name, args, 6)?;
+    let upper = extract_monomial_list(name, args, 0)?;
+    let lower = extract_monomial_list(name, args, 1)?;
+    let z_num = extract_i64(name, args, 2)?;
+    let z_den = extract_i64(name, args, 3)?;
+    let z_pow = extract_i64(name, args, 4)?;
+    let order = extract_i64(name, args, 5)?;
+    let z = QMonomial::new(QRat::from((z_num, z_den)), z_pow);
+    let series = BilateralHypergeometricSeries {
+        upper,
+        lower,
+        argument: z,
+    };
+    Ok((series, order))
+}
+
+/// Build a `QMonomial` from 3 consecutive args at offset.
+fn extract_monomial(
+    name: &str,
+    args: &[Value],
+    offset: usize,
+) -> Result<QMonomial, EvalError> {
+    let num = extract_i64(name, args, offset)?;
+    let den = extract_i64(name, args, offset + 1)?;
+    let power = extract_i64(name, args, offset + 2)?;
+    Ok(QMonomial::new(QRat::from((num, den)), power))
 }
 
 // ---------------------------------------------------------------------------
@@ -953,7 +1173,308 @@ pub fn dispatch(
         }
 
         // =================================================================
-        // Unknown function (Plan 03 fills in groups 5+)
+        // Group 5: Relation Discovery (FUNC-05) -- 15 functions
+        // =================================================================
+
+        // Pattern D: target + list of candidates
+
+        "findlincombo" => {
+            // findlincombo(target, [candidates...], topshift)
+            expect_args(name, args, 3)?;
+            let target = extract_series(name, args, 0)?;
+            let candidates = extract_series_list(name, args, 1)?;
+            let topshift = extract_i64(name, args, 2)?;
+            let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
+            match qseries::findlincombo(&target, &refs, topshift) {
+                Some(coeffs) => Ok(Value::List(coeffs.into_iter().map(Value::Rational).collect())),
+                None => Ok(Value::None),
+            }
+        }
+
+        "findhomcombo" => {
+            // findhomcombo(target, [candidates...], degree, topshift)
+            expect_args(name, args, 4)?;
+            let target = extract_series(name, args, 0)?;
+            let candidates = extract_series_list(name, args, 1)?;
+            let degree = extract_i64(name, args, 2)?;
+            let topshift = extract_i64(name, args, 3)?;
+            let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
+            match qseries::findhomcombo(&target, &refs, degree, topshift) {
+                Some(coeffs) => Ok(Value::List(coeffs.into_iter().map(Value::Rational).collect())),
+                None => Ok(Value::None),
+            }
+        }
+
+        "findnonhomcombo" => {
+            // findnonhomcombo(target, [candidates...], degree, topshift)
+            expect_args(name, args, 4)?;
+            let target = extract_series(name, args, 0)?;
+            let candidates = extract_series_list(name, args, 1)?;
+            let degree = extract_i64(name, args, 2)?;
+            let topshift = extract_i64(name, args, 3)?;
+            let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
+            match qseries::findnonhomcombo(&target, &refs, degree, topshift) {
+                Some(coeffs) => Ok(Value::List(coeffs.into_iter().map(Value::Rational).collect())),
+                None => Ok(Value::None),
+            }
+        }
+
+        "findlincombomodp" => {
+            // findlincombomodp(target, [candidates...], p, topshift)
+            expect_args(name, args, 4)?;
+            let target = extract_series(name, args, 0)?;
+            let candidates = extract_series_list(name, args, 1)?;
+            let p = extract_i64(name, args, 2)?;
+            let topshift = extract_i64(name, args, 3)?;
+            let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
+            match qseries::findlincombomodp(&target, &refs, p, topshift) {
+                Some(coeffs) => Ok(Value::List(
+                    coeffs.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
+                )),
+                None => Ok(Value::None),
+            }
+        }
+
+        "findhomcombomodp" => {
+            // findhomcombomodp(target, [candidates...], p, degree, topshift)
+            expect_args(name, args, 5)?;
+            let target = extract_series(name, args, 0)?;
+            let candidates = extract_series_list(name, args, 1)?;
+            let p = extract_i64(name, args, 2)?;
+            let degree = extract_i64(name, args, 3)?;
+            let topshift = extract_i64(name, args, 4)?;
+            let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
+            match qseries::findhomcombomodp(&target, &refs, p, degree, topshift) {
+                Some(coeffs) => Ok(Value::List(
+                    coeffs.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
+                )),
+                None => Ok(Value::None),
+            }
+        }
+
+        // Pattern E: list of series
+
+        "findhom" => {
+            // findhom([series...], degree, topshift)
+            expect_args(name, args, 3)?;
+            let series_list = extract_series_list(name, args, 0)?;
+            let degree = extract_i64(name, args, 1)?;
+            let topshift = extract_i64(name, args, 2)?;
+            let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
+            let rows = qseries::findhom(&refs, degree, topshift);
+            Ok(Value::List(
+                rows.into_iter()
+                    .map(|row| Value::List(row.into_iter().map(Value::Rational).collect()))
+                    .collect(),
+            ))
+        }
+
+        "findnonhom" => {
+            // findnonhom([series...], degree, topshift)
+            expect_args(name, args, 3)?;
+            let series_list = extract_series_list(name, args, 0)?;
+            let degree = extract_i64(name, args, 1)?;
+            let topshift = extract_i64(name, args, 2)?;
+            let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
+            let rows = qseries::findnonhom(&refs, degree, topshift);
+            Ok(Value::List(
+                rows.into_iter()
+                    .map(|row| Value::List(row.into_iter().map(Value::Rational).collect()))
+                    .collect(),
+            ))
+        }
+
+        "findhommodp" => {
+            // findhommodp([series...], p, degree, topshift)
+            expect_args(name, args, 4)?;
+            let series_list = extract_series_list(name, args, 0)?;
+            let p = extract_i64(name, args, 1)?;
+            let degree = extract_i64(name, args, 2)?;
+            let topshift = extract_i64(name, args, 3)?;
+            let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
+            let rows = qseries::findhommodp(&refs, p, degree, topshift);
+            Ok(Value::List(
+                rows.into_iter()
+                    .map(|row| Value::List(
+                        row.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
+                    ))
+                    .collect(),
+            ))
+        }
+
+        "findmaxind" => {
+            // findmaxind([series...], topshift)
+            expect_args(name, args, 2)?;
+            let series_list = extract_series_list(name, args, 0)?;
+            let topshift = extract_i64(name, args, 1)?;
+            let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
+            let indices = qseries::findmaxind(&refs, topshift);
+            Ok(Value::List(
+                indices.into_iter().map(|i| Value::Integer(QInt::from(i as i64))).collect(),
+            ))
+        }
+
+        "findprod" => {
+            // findprod([series...], max_coeff, max_exp)
+            expect_args(name, args, 3)?;
+            let series_list = extract_series_list(name, args, 0)?;
+            let max_coeff = extract_i64(name, args, 1)?;
+            let max_exp = extract_i64(name, args, 2)?;
+            let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
+            let results = qseries::findprod(&refs, max_coeff, max_exp);
+            Ok(Value::List(
+                results.into_iter()
+                    .map(|row| Value::List(
+                        row.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
+                    ))
+                    .collect(),
+            ))
+        }
+
+        "findcong" => {
+            // findcong(series, [moduli...])
+            expect_args(name, args, 2)?;
+            let fps = extract_series(name, args, 0)?;
+            let moduli = extract_i64_list(name, args, 1)?;
+            let results = qseries::findcong(&fps, &moduli);
+            Ok(Value::List(
+                results.into_iter()
+                    .map(|c| congruence_to_value(&c))
+                    .collect(),
+            ))
+        }
+
+        // Pattern F: two series
+
+        "findpoly" => {
+            // findpoly(x, y, deg_x, deg_y, topshift)
+            expect_args(name, args, 5)?;
+            let x = extract_series(name, args, 0)?;
+            let y = extract_series(name, args, 1)?;
+            let deg_x = extract_i64(name, args, 2)?;
+            let deg_y = extract_i64(name, args, 3)?;
+            let topshift = extract_i64(name, args, 4)?;
+            match qseries::findpoly(&x, &y, deg_x, deg_y, topshift) {
+                Some(rel) => Ok(polynomial_relation_to_value(&rel)),
+                None => Ok(Value::None),
+            }
+        }
+
+        // =================================================================
+        // Group 6: Hypergeometric (FUNC-06) -- 9 functions
+        // =================================================================
+
+        "phi" => {
+            // phi(upper_list, lower_list, z_num, z_den, z_pow, order)
+            let (series, order) = build_hypergeometric(name, args)?;
+            let result = qseries::eval_phi(&series, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "psi" => {
+            // psi(upper_list, lower_list, z_num, z_den, z_pow, order)
+            let (series, order) = build_bilateral(name, args)?;
+            let result = qseries::eval_psi(&series, env.sym_q, order);
+            Ok(Value::Series(result))
+        }
+
+        "try_summation" => {
+            // try_summation(upper_list, lower_list, z_num, z_den, z_pow, order)
+            let (series, order) = build_hypergeometric(name, args)?;
+            match qseries::try_all_summations(&series, env.sym_q, order) {
+                qseries::SummationResult::ClosedForm(fps) => Ok(Value::Series(fps)),
+                qseries::SummationResult::NotApplicable => Ok(Value::None),
+            }
+        }
+
+        "heine1" => {
+            let (series, order) = build_hypergeometric(name, args)?;
+            match qseries::heine_transform_1(&series, env.sym_q, order) {
+                Some(tr) => Ok(Value::Pair(
+                    Box::new(Value::Series(tr.prefactor)),
+                    Box::new(Value::Series(qseries::eval_phi(&tr.transformed, env.sym_q, order))),
+                )),
+                None => Ok(Value::None),
+            }
+        }
+
+        "heine2" => {
+            let (series, order) = build_hypergeometric(name, args)?;
+            match qseries::heine_transform_2(&series, env.sym_q, order) {
+                Some(tr) => Ok(Value::Pair(
+                    Box::new(Value::Series(tr.prefactor)),
+                    Box::new(Value::Series(qseries::eval_phi(&tr.transformed, env.sym_q, order))),
+                )),
+                None => Ok(Value::None),
+            }
+        }
+
+        "heine3" => {
+            let (series, order) = build_hypergeometric(name, args)?;
+            match qseries::heine_transform_3(&series, env.sym_q, order) {
+                Some(tr) => Ok(Value::Pair(
+                    Box::new(Value::Series(tr.prefactor)),
+                    Box::new(Value::Series(qseries::eval_phi(&tr.transformed, env.sym_q, order))),
+                )),
+                None => Ok(Value::None),
+            }
+        }
+
+        "sears_transform" => {
+            let (series, order) = build_hypergeometric(name, args)?;
+            match qseries::sears_transform(&series, env.sym_q, order) {
+                Some(tr) => Ok(Value::Pair(
+                    Box::new(Value::Series(tr.prefactor)),
+                    Box::new(Value::Series(qseries::eval_phi(&tr.transformed, env.sym_q, order))),
+                )),
+                None => Ok(Value::None),
+            }
+        }
+
+        "watson_transform" => {
+            let (series, order) = build_hypergeometric(name, args)?;
+            match qseries::watson_transform(&series, env.sym_q, order) {
+                Some(tr) => Ok(Value::Pair(
+                    Box::new(Value::Series(tr.prefactor)),
+                    Box::new(Value::Series(qseries::eval_phi(&tr.transformed, env.sym_q, order))),
+                )),
+                None => Ok(Value::None),
+            }
+        }
+
+        "find_transformation_chain" => {
+            // find_transformation_chain(src_upper, src_lower, src_z_n, src_z_d, src_z_p,
+            //                           tgt_upper, tgt_lower, tgt_z_n, tgt_z_d, tgt_z_p,
+            //                           max_depth, order)
+            expect_args(name, args, 12)?;
+            let src_upper = extract_monomial_list(name, args, 0)?;
+            let src_lower = extract_monomial_list(name, args, 1)?;
+            let src_zn = extract_i64(name, args, 2)?;
+            let src_zd = extract_i64(name, args, 3)?;
+            let src_zp = extract_i64(name, args, 4)?;
+            let tgt_upper = extract_monomial_list(name, args, 5)?;
+            let tgt_lower = extract_monomial_list(name, args, 6)?;
+            let tgt_zn = extract_i64(name, args, 7)?;
+            let tgt_zd = extract_i64(name, args, 8)?;
+            let tgt_zp = extract_i64(name, args, 9)?;
+            let max_depth = extract_i64(name, args, 10)? as usize;
+            let order = extract_i64(name, args, 11)?;
+            let source = HypergeometricSeries {
+                upper: src_upper,
+                lower: src_lower,
+                argument: QMonomial::new(QRat::from((src_zn, src_zd)), src_zp),
+            };
+            let target = HypergeometricSeries {
+                upper: tgt_upper,
+                lower: tgt_lower,
+                argument: QMonomial::new(QRat::from((tgt_zn, tgt_zd)), tgt_zp),
+            };
+            let result = qseries::find_transformation_chain(&source, &target, max_depth, env.sym_q, order);
+            Ok(transformation_chain_result_to_value(&result))
+        }
+
+        // =================================================================
+        // Unknown function -- filled in by Task 2 for groups 7-8
         // =================================================================
         _ => {
             let suggestions = find_similar_names(&canonical);
@@ -1043,6 +1564,59 @@ fn q_factorization_to_value(qf: &qseries::QFactorization) -> Value {
     ])
 }
 
+/// Convert a `Congruence` to `Value::Dict`.
+fn congruence_to_value(c: &qseries::Congruence) -> Value {
+    Value::Dict(vec![
+        ("modulus".to_string(), Value::Integer(QInt::from(c.modulus_m))),
+        ("residue".to_string(), Value::Integer(QInt::from(c.residue_b))),
+        ("divisor".to_string(), Value::Integer(QInt::from(c.divisor_r))),
+    ])
+}
+
+/// Convert a `PolynomialRelation` to `Value::Dict`.
+fn polynomial_relation_to_value(rel: &qseries::PolynomialRelation) -> Value {
+    let coeffs = Value::List(
+        rel.coefficients.iter()
+            .map(|row| Value::List(row.iter().map(|r| Value::Rational(r.clone())).collect()))
+            .collect(),
+    );
+    Value::Dict(vec![
+        ("coefficients".to_string(), coeffs),
+        ("deg_x".to_string(), Value::Integer(QInt::from(rel.deg_x))),
+        ("deg_y".to_string(), Value::Integer(QInt::from(rel.deg_y))),
+    ])
+}
+
+/// Convert a `TransformationChainResult` to `Value::Dict`.
+fn transformation_chain_result_to_value(r: &qseries::TransformationChainResult) -> Value {
+    match r {
+        qseries::TransformationChainResult::Found { steps, total_prefactor } => {
+            let step_list = Value::List(
+                steps.iter()
+                    .map(|s| Value::Dict(vec![
+                        ("name".to_string(), Value::List(
+                            s.name.chars().map(|c| Value::Integer(QInt::from(c as i64))).collect(),
+                        )),
+                        ("prefactor".to_string(), Value::Series(s.step_prefactor.clone())),
+                    ]))
+                    .collect(),
+            );
+            Value::Dict(vec![
+                ("found".to_string(), Value::Bool(true)),
+                ("steps".to_string(), step_list),
+                ("total_prefactor".to_string(), Value::Series(total_prefactor.clone())),
+                ("depth".to_string(), Value::Integer(QInt::from(steps.len() as i64))),
+            ])
+        }
+        qseries::TransformationChainResult::NotFound { max_depth } => {
+            Value::Dict(vec![
+                ("found".to_string(), Value::Bool(false)),
+                ("max_depth".to_string(), Value::Integer(QInt::from(*max_depth as i64))),
+            ])
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Function signatures for error messages
 // ---------------------------------------------------------------------------
@@ -1080,6 +1654,29 @@ fn get_signature(name: &str) -> String {
         "mprodmake" => "(series, max_n)".to_string(),
         "qetamake" => "(series, max_n)".to_string(),
         "qfactor" => "(series)".to_string(),
+        // Group 5: Relation Discovery
+        "findlincombo" => "(target, [candidates], topshift)".to_string(),
+        "findhomcombo" => "(target, [candidates], degree, topshift)".to_string(),
+        "findnonhomcombo" => "(target, [candidates], degree, topshift)".to_string(),
+        "findlincombomodp" => "(target, [candidates], p, topshift)".to_string(),
+        "findhomcombomodp" => "(target, [candidates], p, degree, topshift)".to_string(),
+        "findhom" => "([series], degree, topshift)".to_string(),
+        "findnonhom" => "([series], degree, topshift)".to_string(),
+        "findhommodp" => "([series], p, degree, topshift)".to_string(),
+        "findmaxind" => "([series], topshift)".to_string(),
+        "findprod" => "([series], max_coeff, max_exp)".to_string(),
+        "findcong" => "(series, [moduli])".to_string(),
+        "findpoly" => "(x, y, deg_x, deg_y, topshift)".to_string(),
+        // Group 6: Hypergeometric
+        "phi" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "psi" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "try_summation" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "heine1" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "heine2" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "heine3" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "sears_transform" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "watson_transform" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
+        "find_transformation_chain" => "(src_upper, src_lower, src_z_n, src_z_d, src_z_p, tgt_upper, tgt_lower, tgt_z_n, tgt_z_d, tgt_z_p, max_depth, order)".to_string(),
         _ => String::new(),
     }
 }
@@ -1108,6 +1705,8 @@ fn resolve_alias(name: &str) -> String {
         "findhom_modp" => "findhommodp".to_string(),
         "findhomcombo_modp" => "findhomcombomodp".to_string(),
         "search_id" => "search_identities".to_string(),
+        "g2" => "universal_mock_theta_g2".to_string(),
+        "g3" => "universal_mock_theta_g3".to_string(),
         _ => name.to_string(),
     }
 }
@@ -1137,16 +1736,18 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "findpoly",
     // Pattern G: Hypergeometric
     "phi", "psi", "try_summation", "heine1", "heine2", "heine3",
+    "sears_transform", "watson_transform",
     // Pattern H: Identity proving
     "prove_eta_id", "search_identities",
     // Pattern I: Mock theta / Appell-Lerch
     "mock_theta_f3", "mock_theta_phi3", "mock_theta_psi3",
     "mock_theta_chi3", "mock_theta_omega3", "mock_theta_nu3", "mock_theta_rho3",
-    "mock_theta_f5_0", "mock_theta_f5_1",
-    "mock_theta_phi5_0", "mock_theta_phi5_1",
-    "mock_theta_psi5_0", "mock_theta_psi5_1",
-    "mock_theta_chi5_0", "mock_theta_chi5_1",
-    "mock_theta_F7_0", "mock_theta_F7_1", "mock_theta_F7_2",
+    "mock_theta_f0_5", "mock_theta_f1_5",
+    "mock_theta_cap_f0_5", "mock_theta_cap_f1_5",
+    "mock_theta_phi0_5", "mock_theta_phi1_5",
+    "mock_theta_psi0_5", "mock_theta_psi1_5",
+    "mock_theta_chi0_5", "mock_theta_chi1_5",
+    "mock_theta_cap_f0_7", "mock_theta_cap_f1_7", "mock_theta_cap_f2_7",
     "appell_lerch_m", "universal_mock_theta_g2", "universal_mock_theta_g3",
     // Pattern J: Bailey
     "bailey_weak_lemma", "bailey_apply_lemma", "bailey_chain", "bailey_discover",
@@ -1161,6 +1762,7 @@ const ALL_ALIAS_NAMES: &[&str] = &[
     "numbpart", "rankgf", "crankgf", "qphihyper", "qpsihyper",
     "qgauss", "proveid", "qzeil", "qzeilberger", "qpetkovsek",
     "qgosper", "findlincombo_modp", "findhom_modp", "findhomcombo_modp", "search_id",
+    "g2", "g3",
 ];
 
 /// Find function names similar to `unknown` using edit distance.
