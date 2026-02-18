@@ -1,18 +1,19 @@
 //! q-Kangaroo interactive REPL.
 //!
 //! Launches an interactive session with line editing (via rustyline),
-//! persistent history, multi-line input via paren-counting, session commands,
+//! persistent history, multi-line input via paren-counting, tab completion
+//! (functions with auto-paren, commands, user variables), session commands,
 //! and robust error recovery (parse errors, eval errors, and caught panics
 //! never crash the loop).
 
 use rustyline::config::Config;
 use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
-use rustyline::validate::{ValidationContext, ValidationResult, Validator};
-use rustyline::{Completer, CompletionType, EditMode, Editor, Helper, Highlighter, Hinter};
+use rustyline::{CompletionType, EditMode, Editor};
 
 use qsym_cli::commands::{execute_command, parse_command, CommandResult};
 use qsym_cli::environment::Environment;
+use qsym_cli::repl::ReplHelper;
 
 // ---------------------------------------------------------------------------
 // ASCII banner
@@ -45,41 +46,6 @@ fn history_file_path() -> std::path::PathBuf {
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join(".q_kangaroo_history")
-}
-
-// ---------------------------------------------------------------------------
-// ReplHelper (minimal -- Plan 02 adds Completer)
-// ---------------------------------------------------------------------------
-
-/// Minimal helper providing multi-line bracket validation.
-///
-/// Plan 02 extends this with tab completion and syntax highlighting.
-#[derive(Completer, Helper, Highlighter, Hinter)]
-struct ReplHelper;
-
-impl ReplHelper {
-    fn new() -> Self {
-        ReplHelper
-    }
-}
-
-impl Validator for ReplHelper {
-    fn validate(&self, ctx: &mut ValidationContext) -> rustyline::Result<ValidationResult> {
-        let input = ctx.input();
-        let mut depth: i32 = 0;
-        for ch in input.chars() {
-            match ch {
-                '(' | '[' => depth += 1,
-                ')' | ']' => depth -= 1,
-                _ => {}
-            }
-        }
-        if depth > 0 {
-            Ok(ValidationResult::Incomplete)
-        } else {
-            Ok(ValidationResult::Valid(None))
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +104,12 @@ fn main() {
                                 Ok(None) => {} // semicolon-suppressed or empty
                                 Err(e) => eprintln!("{}", e),
                             }
+                        }
+
+                        // Update variable names in completer after eval
+                        let var_names: Vec<String> = env.variables.keys().cloned().collect();
+                        if let Some(helper) = rl.helper_mut() {
+                            helper.update_var_names(var_names);
                         }
                     }
                     Err(e) => eprintln!("{}", e.render(trimmed)),

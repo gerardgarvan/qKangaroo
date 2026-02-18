@@ -6,6 +6,7 @@
 //! the parser.
 
 use crate::environment::Environment;
+use crate::help;
 
 // ---------------------------------------------------------------------------
 // Command enum
@@ -136,10 +137,14 @@ pub fn execute_command(cmd: Command, env: &mut Environment) -> CommandResult {
         Command::SetPrecision(_) => CommandResult::Output(
             "Error: precision must be a positive integer. Usage: set precision N".to_string(),
         ),
-        Command::Help(_) => {
-            // Plan 02 wires up the real help system
-            CommandResult::Output("Help system not yet available.".to_string())
-        }
+        Command::Help(None) => CommandResult::Output(help::general_help()),
+        Command::Help(Some(topic)) => match help::function_help(&topic) {
+            Some(text) => CommandResult::Output(text),
+            None => CommandResult::Output(format!(
+                "Unknown function '{}'. Type 'help' for a list of available functions.",
+                topic
+            )),
+        },
     }
 }
 
