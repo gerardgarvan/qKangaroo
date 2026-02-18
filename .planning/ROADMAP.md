@@ -81,7 +81,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for details.
 - [x] **Phase 24: Parser & AST** - Maple-style expression parser with function calls, assignment, arithmetic, and literals
 - [x] **Phase 25: Evaluator & Function Dispatch** - AST evaluator connecting all 79 functions to qsym-core with variable environment and text output
 - [x] **Phase 26: REPL Shell & Session** - Interactive line-editing shell with history, tab completion, help system, and session configuration
-- [ ] **Phase 27: Output Commands & Polish** - LaTeX rendering and file save commands for computed results
+- [x] **Phase 27: Output Commands & Polish** - LaTeX rendering and file save commands for computed results
 - [ ] **Phase 28: Binary Packaging** - Standalone executables for Windows and Linux with CI integration
 
 ## Phase Details
@@ -189,5 +189,5 @@ Plans:
 | 24. Parser & AST | v1.5 | 2/2 | Complete | 2026-02-17 |
 | 25. Evaluator & Function Dispatch | v1.5 | 3/3 | Complete | 2026-02-17 |
 | 26. REPL Shell & Session | v1.5 | 2/2 | Complete | 2026-02-17 |
-| 27. Output Commands & Polish | v1.5 | 0/1 | Not started | - |
+| 27. Output Commands & Polish | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 28. Binary Packaging | v1.5 | 0/1 | Not started | - |

@@ -33,8 +33,8 @@
 ## Output
 
 - [x] **OUT-01**: Default text output showing series in human-readable format (1 - q - q^2 + q^5 + O(q^20))
-- [ ] **OUT-02**: latex command outputs LaTeX for the last result or a named variable
-- [ ] **OUT-03**: save filename writes results or session transcript to a file
+- [x] **OUT-02**: latex command outputs LaTeX for the last result or a named variable
+- [x] **OUT-03**: save filename writes results or session transcript to a file
 
 ## Session
 
@@ -78,8 +78,8 @@
 | FUNC-07 | Phase 25 | Complete |
 | FUNC-08 | Phase 25 | Complete |
 | OUT-01 | Phase 25 | Complete |
-| OUT-02 | Phase 27 | Pending |
-| OUT-03 | Phase 27 | Pending |
+| OUT-02 | Phase 27 | Complete |
+| OUT-03 | Phase 27 | Complete |
 | SESS-01 | Phase 25 | Complete |
 | SESS-02 | Phase 26 | Complete |
 | SESS-03 | Phase 26 | Complete |
