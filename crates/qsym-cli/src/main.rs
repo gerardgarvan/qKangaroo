@@ -53,6 +53,13 @@ fn history_file_path() -> std::path::PathBuf {
 // ---------------------------------------------------------------------------
 
 fn main() {
+    // Handle --version flag (for CI verification)
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 && (args[1] == "--version" || args[1] == "-V") {
+        println!("q-kangaroo {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
     print_banner();
 
     let config = Config::builder()
