@@ -44,8 +44,8 @@
 
 ## Binary
 
-- [ ] **BIN-01**: Compiles to standalone executable for Windows (x86_64-pc-windows-gnu)
-- [ ] **BIN-02**: Compiles to standalone executable for Linux (x86_64-unknown-linux-gnu)
+- [x] **BIN-01**: Compiles to standalone executable for Windows (x86_64-pc-windows-gnu)
+- [x] **BIN-02**: Compiles to standalone executable for Linux (x86_64-unknown-linux-gnu)
 
 ## Out of Scope
 
@@ -83,8 +83,8 @@
 | SESS-01 | Phase 25 | Complete |
 | SESS-02 | Phase 26 | Complete |
 | SESS-03 | Phase 26 | Complete |
-| BIN-01 | Phase 28 | Pending |
-| BIN-02 | Phase 28 | Pending |
+| BIN-01 | Phase 28 | Complete |
+| BIN-02 | Phase 28 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 24 total
