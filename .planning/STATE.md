@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v1.5 Interactive REPL -- Phase 28 (Binary Packaging)
+**Current focus:** v1.5 Interactive REPL -- COMPLETE
 
 ## Current Position
 
 Phase: 28 of 28 (Binary Packaging)
-Plan: 0 of 1 in current phase
-Status: Ready
-Last activity: 2026-02-18 -- Phase 27 complete (Output Commands & Polish: latex/save commands, 294 tests)
+Plan: 1 of 1 in current phase
+Status: Complete
+Last activity: 2026-02-18 -- Phase 28 complete (Binary Packaging: release profile, CI workflow, --version flag)
 
-Progress: [#############################-] 99% (78/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [##############################] 100% (79/79 plans -- v1.0-v1.5 complete)
 
 ## Performance Metrics
 
@@ -32,7 +32,7 @@ Progress: [#############################-] 99% (78/79 plans -- v1.0-v1.4 complet
 | 25 - Evaluator & Function Dispatch | 3/3 | 20min | 6.7min |
 | 26 - REPL Shell & Session | 2/2 | 12min | 6min |
 | 27 - Output Commands & Polish | 1/1 | 5min | 5min |
-| 28 - Binary Packaging | 0/1 | - | - |
+| 28 - Binary Packaging | 1/1 | 3min | 3min |
 
 ## Accumulated Context
 
@@ -68,6 +68,10 @@ v1.5 decisions:
 - Static FUNC_HELP array for zero-allocation help lookup
 - format_latex ported from qsym-python FPS-level (not qsym-core Expr-level)
 - save command writes format_value plain text output, not LaTeX
+- LTO + strip + codegen-units=1 reduces release binary from ~4.5MB to ~1.4MB
+- Bundle 5 MinGW DLLs on Windows (no static GMP linking)
+- Separate cli-release.yml from existing release.yml (Python wheels vs CLI binaries)
+- --version flag uses simple args check (no clap dependency)
 
 ### Pending Todos
 
@@ -80,5 +84,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Phase 27 complete. Ready for Phase 28.
+Stopped at: Phase 28 complete. All 79 plans across 28 phases shipped. Project complete.
 Resume file: N/A
