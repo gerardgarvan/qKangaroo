@@ -7,7 +7,7 @@ rust-version = "1.85"
 [dependencies]
 # Arbitrary precision arithmetic (GMP backend)
 rug = { version = "1.28", features = ["rational", "serde"] }
-gmp-mpfr-sys = { version = "1.6", features = ["use-system-libs"] }
+gmp-mpfr-sys = "1.6"
 
 # Inline small vectors for Expr children
 smallvec = { version = "1", features = ["const_generics", "serde"] }
