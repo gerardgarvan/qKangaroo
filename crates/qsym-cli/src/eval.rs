@@ -2000,4 +2000,346 @@ mod tests {
             panic!("expected Integer");
         }
     }
+
+    // --- Dispatch: Group 3 (Theta Functions) ---
+
+    #[test]
+    fn dispatch_theta2_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("theta2", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_theta3_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("theta3", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // theta3 = 1 + 2q + 2q^4 + 2q^9 + 2q^16 + ...
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(4), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(9), QRat::from((2i64, 1i64)));
+        } else {
+            panic!("expected Series");
+        }
+    }
+
+    #[test]
+    fn dispatch_theta4_returns_series() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("theta4", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // theta4 = 1 - 2q + 2q^4 - 2q^9 + 2q^16 - ...
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::from((-2i64, 1i64)));
+            assert_eq!(fps.coeff(4), QRat::from((2i64, 1i64)));
+        } else {
+            panic!("expected Series");
+        }
+    }
+
+    // --- Dispatch: Group 4 (Series Analysis) ---
+
+    #[test]
+    fn dispatch_sift_returns_series() {
+        let mut env = make_env();
+        // Build a partition_gf first, then sift it
+        let args = vec![Value::Integer(QInt::from(30i64))];
+        let pgf = dispatch("partition_gf", &args, &mut env).unwrap();
+        let sift_args = vec![
+            pgf,
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(0i64)),
+        ];
+        let val = dispatch("sift", &sift_args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_qdegree_returns_integer() {
+        let mut env = make_env();
+        // qbin(5,2,20) is a polynomial of degree 6
+        let qb = dispatch("qbin", &[
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("qdegree", &[qb], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(6i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_lqdegree_returns_integer() {
+        let mut env = make_env();
+        // etaq(1,1,20) starts at q^0 (constant term 1)
+        let eta = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("lqdegree", &[eta], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(0i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_qdegree_zero_series_returns_none() {
+        let mut env = make_env();
+        let zero = Value::Series(FormalPowerSeries::zero(env.sym_q, 20));
+        let val = dispatch("qdegree", &[zero], &mut env).unwrap();
+        assert!(matches!(val, Value::None));
+    }
+
+    #[test]
+    fn dispatch_prodmake_returns_dict() {
+        let mut env = make_env();
+        // prodmake on partition_gf should give exponents a_n = 1 for all n
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let val = dispatch("prodmake", &[pgf, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            // Should have "exponents" and "terms_used" keys
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"exponents"), "expected 'exponents' in {:?}", keys);
+            assert!(keys.contains(&"terms_used"), "expected 'terms_used' in {:?}", keys);
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_etamake_returns_dict() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let val = dispatch("etamake", &[pgf, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"factors"), "expected 'factors' in {:?}", keys);
+            assert!(keys.contains(&"q_shift"), "expected 'q_shift' in {:?}", keys);
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jacprodmake_returns_dict() {
+        let mut env = make_env();
+        let jp = dispatch("jacprod", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("jacprodmake", &[jp, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"factors"));
+            assert!(keys.contains(&"is_exact"));
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_mprodmake_returns_dict() {
+        let mut env = make_env();
+        // distinct_parts_gf = prod(1+q^n) -- mprodmake should decompose it
+        let dp = dispatch("distinct_parts_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let val = dispatch("mprodmake", &[dp, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        assert!(matches!(val, Value::Dict(_)));
+    }
+
+    #[test]
+    fn dispatch_qetamake_returns_dict() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let val = dispatch("qetamake", &[pgf, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"factors"));
+            assert!(keys.contains(&"q_shift"));
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_qfactor_returns_dict_with_is_exact() {
+        let mut env = make_env();
+        // qbin(5,2,20) is a polynomial: (1-q^4)(1-q^5)/((1-q)(1-q^2))
+        let qb = dispatch("qbin", &[
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("qfactor", &[qb], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"scalar"));
+            assert!(keys.contains(&"factors"));
+            assert!(keys.contains(&"is_exact"));
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    // --- Integration tests (parse -> eval -> format) ---
+
+    #[test]
+    fn integration_etaq_end_to_end() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+
+        let mut env = make_env();
+        let stmts = parse("etaq(1,1,20)").unwrap();
+        assert_eq!(stmts.len(), 1);
+        let result = eval_stmt(&stmts[0], &mut env).unwrap();
+        assert!(result.is_some());
+        let val = result.unwrap();
+        assert!(matches!(val, Value::Series(_)));
+        let text = format_value(&val);
+        // (q;q)_inf = 1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + ...
+        assert!(text.contains("q"), "expected 'q' in: {}", text);
+        assert!(text.contains("1"), "expected '1' in: {}", text);
+    }
+
+    #[test]
+    fn integration_partition_count_end_to_end() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+
+        let mut env = make_env();
+        let stmts = parse("partition_count(50)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result);
+        assert_eq!(text, "204226");
+    }
+
+    #[test]
+    fn integration_variable_persistence() {
+        use crate::parser::parse;
+
+        let mut env = make_env();
+
+        // f := etaq(1,1,20)
+        let stmts = parse("f := etaq(1,1,20)").unwrap();
+        eval_stmt(&stmts[0], &mut env).unwrap();
+        assert!(env.get_var("f").is_some());
+        assert!(matches!(env.get_var("f").unwrap(), Value::Series(_)));
+
+        // prodmake(f, 10)
+        let stmts2 = parse("prodmake(f, 10)").unwrap();
+        let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
+        assert!(matches!(result, Value::Dict(_)));
+    }
+
+    #[test]
+    fn integration_theta3_end_to_end() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+
+        let mut env = make_env();
+        let stmts = parse("theta3(20)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result);
+        // theta3 = 1 + 2*q + 2*q^4 + ...
+        assert!(text.contains("1"), "expected '1' in: {}", text);
+        assert!(text.contains("q"), "expected 'q' in: {}", text);
+    }
+
+    #[test]
+    fn integration_sift_partition_congruence() {
+        use crate::parser::parse;
+
+        let mut env = make_env();
+
+        // f := partition_gf(30)
+        let stmts = parse("f := partition_gf(30)").unwrap();
+        eval_stmt(&stmts[0], &mut env).unwrap();
+
+        // g := sift(f, 5, 4)
+        let stmts2 = parse("g := sift(f, 5, 4)").unwrap();
+        let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
+
+        // p(5n+4) should be divisible by 5 -- check first few coefficients
+        if let Value::Series(fps) = result {
+            for i in 0..fps.truncation_order() {
+                let c = fps.coeff(i);
+                if !c.is_zero() {
+                    // c should be divisible by 5
+                    let n = c.0.numer().clone();
+                    let d = c.0.denom().clone();
+                    assert_eq!(d, rug::Integer::from(1), "coefficient at {} not integer", i);
+                    assert_eq!(
+                        n.clone() % rug::Integer::from(5),
+                        rug::Integer::from(0),
+                        "p(5*{}+4) = {} not divisible by 5",
+                        i,
+                        n
+                    );
+                }
+            }
+        } else {
+            panic!("expected Series");
+        }
+    }
+
+    #[test]
+    fn integration_qfactor_qbin() {
+        use crate::parser::parse;
+
+        let mut env = make_env();
+
+        // qfactor(qbin(5, 2, 20)) returns a Dict with scalar, factors, is_exact
+        let stmts = parse("qfactor(qbin(5, 2, 20))").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        if let Value::Dict(entries) = &result {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"scalar"), "expected 'scalar' key");
+            assert!(keys.contains(&"factors"), "expected 'factors' key");
+            assert!(keys.contains(&"is_exact"), "expected 'is_exact' key");
+        } else {
+            panic!("expected Dict");
+        }
+    }
+
+    #[test]
+    fn integration_multi_statement() {
+        use crate::parser::parse;
+
+        let mut env = make_env();
+
+        // "f := etaq(1,1,20); qdegree(f)"
+        let stmts = parse("f := etaq(1,1,20); qdegree(f)").unwrap();
+        assert_eq!(stmts.len(), 2);
+
+        eval_stmt(&stmts[0], &mut env).unwrap();
+        let result = eval_stmt(&stmts[1], &mut env).unwrap().unwrap();
+        // etaq(1,1,20) has terms up to q^19, so qdegree should be 19 or close
+        assert!(matches!(result, Value::Integer(_)));
+    }
+
+    #[test]
+    fn integration_percent_reference() {
+        use crate::parser::parse;
+
+        let mut env = make_env();
+
+        // Compute etaq then reference with %
+        let stmts = parse("etaq(1,1,20)").unwrap();
+        eval_stmt(&stmts[0], &mut env).unwrap();
+
+        let stmts2 = parse("qdegree(%)").unwrap();
+        let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
+        assert!(matches!(result, Value::Integer(_)));
+    }
 }
