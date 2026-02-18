@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 31 of 32 (Error Hardening & Exit Codes)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-18 -- Phase 30 complete (script execution & CLI flags), advancing to Phase 31
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-18 -- Completed 31-01 (error hardening infrastructure)
 
-Progress: [==========================....] 84/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-30 complete)
+Progress: [==========================....] 85/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-30 complete, 31-01 done)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 84
+- Total plans completed: 85
 - Total phases: 30 complete, 2 remaining
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
@@ -33,6 +33,7 @@ Progress: [==========================....] 84/TBD plans (v1.0-v1.5 complete, v1.
 | 30-01 | Script Execution Engine | 5min | 2 | 8 |
 | 30-02 | CLI Arg Parsing & Mode Dispatch | 5min | 2 | 3 |
 | 30-03 | CLI Integration Tests | 2min | 1 | 1 |
+| 31-01 | Error Hardening Infrastructure | 5min | 2 | 5 |
 
 ## Accumulated Context
 
@@ -44,7 +45,10 @@ v1.6-relevant decisions:
 - Phase 30-03: Integration tests use env!(CARGO_BIN_EXE_q-kangaroo) for binary path resolution
 - Phase 30-03: Windows backslash escaping in read() test paths via replace('\\', '\\\\')
 - Phase 30-02: Hand-written argument parser (no clap) consistent with zero-external-deps philosophy
-- Phase 30-02: read() function propagates script errors via EvalError::Panic
+- Phase 31-01: Panic translation uses contains() matching for robustness against upstream wording changes
+- Phase 31-01: read() errors use EvalError::Other (not Panic) for file/parse errors
+- Phase 31-01: Statement line mapping via lexer tokenize() byte offsets for filename:line context
+- Phase 30-02: read() function propagates script errors via EvalError::Panic (updated in 31-01)
 - Phase 30-02: CommandResult::ReadFile defers execution to main loop (needs env + verbose)
 - Phase 30-01: Sysexits-compatible exit codes (0=success, 1=eval-error, 2=usage, 65=parse-error, 66=file-not-found, 70=panic)
 - Phase 30-01: Script engine uses fail-fast semantics (stops on first error)
@@ -70,5 +74,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Phase 30 complete (script execution & CLI flags), advancing to Phase 31
+Stopped at: Completed 31-01-PLAN.md (error hardening infrastructure)
 Resume file: N/A
