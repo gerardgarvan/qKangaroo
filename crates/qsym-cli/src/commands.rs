@@ -5,8 +5,10 @@
 //! are matched -- lines containing `:=` or function-call syntax fall through to
 //! the parser.
 
+use std::fs;
+
 use crate::environment::Environment;
-use crate::format::format_latex;
+use crate::format::{format_latex, format_value};
 use crate::help;
 
 // ---------------------------------------------------------------------------
@@ -191,15 +193,27 @@ pub fn execute_command(cmd: Command, env: &mut Environment) -> CommandResult {
 }
 
 // ---------------------------------------------------------------------------
-// save_to_file (stub -- fully implemented in Task 3)
+// save_to_file
 // ---------------------------------------------------------------------------
 
-/// Save the last result to a file.
-fn save_to_file(filename: &str, _env: &Environment) -> CommandResult {
+/// Save the last result to a file using [`format_value`].
+///
+/// Returns a success message on write, or a descriptive error message
+/// if the filename is empty, there is no result, or the write fails.
+fn save_to_file(filename: &str, env: &Environment) -> CommandResult {
     if filename.is_empty() {
         return CommandResult::Output("Usage: save filename".to_string());
     }
-    CommandResult::Output(format!("Error: save not yet implemented for '{}'", filename))
+    match &env.last_result {
+        None => CommandResult::Output("No result to save. Evaluate an expression first.".to_string()),
+        Some(val) => {
+            let content = format_value(val);
+            match fs::write(filename, &content) {
+                Ok(()) => CommandResult::Output(format!("Result saved to {}", filename)),
+                Err(e) => CommandResult::Output(format!("Error writing to {}: {}", filename, e)),
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -471,5 +485,59 @@ mod tests {
         let mut env = Environment::new();
         let result = execute_command(Command::Latex(Some("xyz".into())), &mut env);
         assert!(matches!(result, CommandResult::Output(ref s) if s.contains("Unknown variable")));
+    }
+
+    // -- save command execute tests ------------------------------------------
+
+    #[test]
+    fn execute_save_no_filename() {
+        let mut env = Environment::new();
+        let result = execute_command(Command::Save("".into()), &mut env);
+        assert!(matches!(result, CommandResult::Output(ref s) if s.contains("Usage")));
+    }
+
+    #[test]
+    fn execute_save_no_result() {
+        let mut env = Environment::new();
+        let result = execute_command(Command::Save("test.txt".into()), &mut env);
+        assert!(matches!(result, CommandResult::Output(ref s) if s.contains("No result")));
+    }
+
+    #[test]
+    fn execute_save_writes_file() {
+        use qsym_core::number::QInt;
+        use crate::eval::Value;
+        let mut env = Environment::new();
+        env.last_result = Some(Value::Integer(QInt::from(42i64)));
+
+        let tmp_dir = std::env::temp_dir();
+        let tmp_path = tmp_dir.join("qsym_test_save.txt");
+        let path_str = tmp_path.to_string_lossy().to_string();
+
+        let result = execute_command(Command::Save(path_str.clone()), &mut env);
+        assert!(
+            matches!(result, CommandResult::Output(ref s) if s.contains("saved to")),
+            "unexpected result: {:?}",
+            result
+        );
+
+        let contents = std::fs::read_to_string(&tmp_path).expect("file should exist");
+        assert_eq!(contents, "42");
+
+        // cleanup
+        let _ = std::fs::remove_file(&tmp_path);
+    }
+
+    #[test]
+    fn execute_save_bad_path() {
+        use qsym_core::number::QInt;
+        use crate::eval::Value;
+        let mut env = Environment::new();
+        env.last_result = Some(Value::Integer(QInt::from(1i64)));
+        let result = execute_command(
+            Command::Save("/nonexistent_dir_xyz/file.txt".into()),
+            &mut env,
+        );
+        assert!(matches!(result, CommandResult::Output(ref s) if s.contains("Error writing")));
     }
 }
