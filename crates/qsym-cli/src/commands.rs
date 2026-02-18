@@ -563,4 +563,32 @@ mod tests {
         );
         assert!(matches!(result, CommandResult::Output(ref s) if s.contains("Error writing")));
     }
+
+    // -- read command parse tests ---------------------------------------------
+
+    #[test]
+    fn parse_read_command() {
+        assert_eq!(
+            parse_command("read file.qk"),
+            Some(Command::Read("file.qk".into()))
+        );
+    }
+
+    #[test]
+    fn parse_read_no_file() {
+        assert_eq!(parse_command("read"), Some(Command::Read("".into())));
+    }
+
+    #[test]
+    fn parse_read_function_passthrough() {
+        // read("file.qk") should go to parser, not command
+        assert_eq!(parse_command(r#"read("file.qk")"#), None);
+    }
+
+    #[test]
+    fn execute_read_no_path() {
+        let mut env = Environment::new();
+        let result = execute_command(Command::Read("".into()), &mut env);
+        assert!(matches!(result, CommandResult::Output(ref s) if s.contains("Usage")));
+    }
 }

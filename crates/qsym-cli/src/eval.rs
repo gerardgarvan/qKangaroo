@@ -1750,6 +1750,36 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Script loading (EXEC-06)
+        // =================================================================
+
+        "read" => {
+            expect_args(name, args, 1)?;
+            match &args[0] {
+                Value::String(path) => {
+                    match crate::script::execute_file(path, env, false) {
+                        crate::script::ScriptResult::Success => Ok(Value::None),
+                        crate::script::ScriptResult::ParseError(msg) => {
+                            Err(EvalError::Panic(msg))
+                        }
+                        crate::script::ScriptResult::EvalError(msg) => {
+                            Err(EvalError::Panic(msg))
+                        }
+                        crate::script::ScriptResult::Panic(msg) => {
+                            Err(EvalError::Panic(msg))
+                        }
+                    }
+                }
+                _ => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "string",
+                    got: args[0].type_name().to_string(),
+                }),
+            }
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -2285,6 +2315,8 @@ fn get_signature(name: &str) -> String {
         "verify_wz" => "(upper_list, lower_list, z_num, z_den, z_pow, n, q_num, q_den, max_order, max_k)".to_string(),
         "q_petkovsek" => "(coeff_list, q_num, q_den)".to_string(),
         "prove_nonterminating" => "(requires Python API)".to_string(),
+        // Group 9: Script loading
+        "read" => "(filename)".to_string(),
         _ => String::new(),
     }
 }
@@ -2363,6 +2395,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "q_gosper", "q_zeilberger", "verify_wz", "q_petkovsek",
     // Pattern L: Nonterminating
     "prove_nonterminating", "find_transformation_chain",
+    // Pattern M: Script loading
+    "read",
 ];
 
 /// All alias names for fuzzy matching.
