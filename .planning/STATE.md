@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 25 of 28 (Evaluator & Function Dispatch)
-Plan: 0 of 3 in current phase
-Status: Ready
-Last activity: 2026-02-17 -- Phase 24 complete (Parser & AST: lexer + Pratt parser, 68 tests)
+Plan: 1 of 3 in current phase
+Status: In Progress
+Last activity: 2026-02-18 -- Plan 25-01 complete (evaluator core: Value enum, arithmetic, environment, panic catching, 141 tests)
 
-Progress: [########################------] 81% (72/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
+Progress: [#########################-----] 82% (73/79 plans -- v1.0-v1.4 complete, v1.5 in progress)
 
 ## Performance Metrics
 
@@ -29,7 +29,7 @@ Progress: [########################------] 81% (72/79 plans -- v1.0-v1.4 complet
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 24 - Parser & AST | 2/2 | 5min | 2.5min |
-| 25 - Evaluator & Function Dispatch | 0/3 | - | - |
+| 25 - Evaluator & Function Dispatch | 1/3 | 7min | 7min |
 | 26 - REPL Shell & Session | 0/2 | - | - |
 | 27 - Output Commands & Polish | 0/1 | - | - |
 | 28 - Binary Packaging | 0/1 | - | - |
@@ -49,6 +49,10 @@ v1.5 decisions:
 - Non-associative ^ enforced via post-parse check (error if chained)
 - Function call as postfix operator requiring Variable lhs
 - Empty statements (;;) silently skipped
+- Series + Integer promotes integer to constant FPS (matches Maple behavior)
+- Integer / Integer produces Rational (exact arithmetic for mathematicians)
+- rug added as direct dependency to qsym-cli for BigInteger parsing
+- Dispatch stub returns UnknownFunction with fuzzy suggestions -- Plans 02/03 fill in
 
 ### Pending Todos
 
@@ -60,6 +64,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Phase 25 context gathered. Ready to plan.
-Resume file: .planning/phases/25-evaluator-function-dispatch/25-CONTEXT.md
+Last session: 2026-02-18
+Stopped at: Completed 25-01-PLAN.md (evaluator core). Ready for 25-02 (function dispatch).
+Resume file: .planning/phases/25-evaluator-function-dispatch/25-01-SUMMARY.md
