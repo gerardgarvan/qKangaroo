@@ -1,0 +1,339 @@
+//! REPL helper for the q-Kangaroo interactive shell.
+//!
+//! Provides [`ReplHelper`] which implements rustyline's `Helper` composite
+//! trait: tab completion (functions with auto-paren, session commands at line
+//! start, user-defined variables), bracket-counting multi-line validation,
+//! and no-op highlighter/hinter.
+
+use rustyline::completion::{Completer, Pair};
+use rustyline::validate::{ValidationContext, ValidationResult, Validator};
+use rustyline::{Context, Helper, Highlighter, Hinter};
+
+// ---------------------------------------------------------------------------
+// ReplHelper
+// ---------------------------------------------------------------------------
+
+/// Line-editing helper with tab completion and bracket validation.
+///
+/// - **Functions:** All 81 canonical function names auto-complete with `(`.
+/// - **Commands:** `help`, `quit`, `exit`, `clear`, `set` complete at line start.
+/// - **Variables:** User-defined names synced after each eval via
+///   [`update_var_names`](ReplHelper::update_var_names).
+/// - **Validator:** Counts `(` / `[` depth; returns `Incomplete` when positive.
+#[derive(Helper, Highlighter, Hinter)]
+pub struct ReplHelper {
+    // NOTE: Completer and Validator are manually implemented below.
+    // Highlighter and Hinter use derive (no-op defaults).
+    /// Canonical function names (static, from eval.rs ALL_FUNCTION_NAMES).
+    function_names: Vec<&'static str>,
+    /// Session command names for completion.
+    command_names: Vec<&'static str>,
+    /// User-defined variable names (updated after each eval).
+    var_names: Vec<String>,
+}
+
+impl ReplHelper {
+    /// Create a new helper with all canonical function names and commands.
+    pub fn new() -> Self {
+        Self {
+            function_names: Self::canonical_function_names(),
+            command_names: vec!["help", "quit", "exit", "clear", "set"],
+            var_names: Vec::new(),
+        }
+    }
+
+    /// Update the set of user-defined variable names for tab completion.
+    ///
+    /// Called after each successful eval in the main REPL loop.
+    pub fn update_var_names(&mut self, var_names: Vec<String>) {
+        self.var_names = var_names;
+    }
+
+    /// All 81 canonical function names -- must match eval.rs ALL_FUNCTION_NAMES
+    /// exactly. NO Maple aliases.
+    fn canonical_function_names() -> Vec<&'static str> {
+        vec![
+            // Group 1: Products (7)
+            "aqprod", "qbin", "etaq", "jacprod", "tripleprod", "quinprod", "winquist",
+            // Group 2: Partitions (7)
+            "partition_count", "partition_gf", "distinct_parts_gf", "odd_parts_gf",
+            "bounded_parts_gf", "rank_gf", "crank_gf",
+            // Group 3: Theta (3)
+            "theta2", "theta3", "theta4",
+            // Group 4: Analysis (9)
+            "sift", "qdegree", "lqdegree", "qfactor",
+            "prodmake", "etamake", "jacprodmake", "mprodmake", "qetamake",
+            // Group 5: Relations (12)
+            "findlincombo", "findhomcombo", "findnonhomcombo",
+            "findlincombomodp", "findhomcombomodp",
+            "findhom", "findnonhom", "findhommodp",
+            "findmaxind", "findprod", "findcong", "findpoly",
+            // Group 6: Hypergeometric (9)
+            "phi", "psi", "try_summation",
+            "heine1", "heine2", "heine3",
+            "sears_transform", "watson_transform", "find_transformation_chain",
+            // Group 7: Mock Theta / Appell-Lerch / Bailey (27)
+            "mock_theta_f3", "mock_theta_phi3", "mock_theta_psi3",
+            "mock_theta_chi3", "mock_theta_omega3", "mock_theta_nu3", "mock_theta_rho3",
+            "mock_theta_f0_5", "mock_theta_f1_5",
+            "mock_theta_cap_f0_5", "mock_theta_cap_f1_5",
+            "mock_theta_phi0_5", "mock_theta_phi1_5",
+            "mock_theta_psi0_5", "mock_theta_psi1_5",
+            "mock_theta_chi0_5", "mock_theta_chi1_5",
+            "mock_theta_cap_f0_7", "mock_theta_cap_f1_7", "mock_theta_cap_f2_7",
+            "appell_lerch_m", "universal_mock_theta_g2", "universal_mock_theta_g3",
+            "bailey_weak_lemma", "bailey_apply_lemma", "bailey_chain", "bailey_discover",
+            // Group 8: Identity Proving (7)
+            "prove_eta_id", "search_identities",
+            "q_gosper", "q_zeilberger", "verify_wz", "q_petkovsek",
+            "prove_nonterminating",
+        ]
+    }
+
+    /// Core completion logic (separated from rustyline types for testability).
+    ///
+    /// Returns `(word_start, candidates)` where each candidate is
+    /// `(display, replacement)`.
+    fn complete_inner(&self, line: &str, pos: usize) -> (usize, Vec<(String, String)>) {
+        // Find the word start: scan backwards for non-alphanumeric/underscore.
+        let start = line[..pos]
+            .rfind(|c: char| !c.is_alphanumeric() && c != '_')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let prefix = &line[start..pos];
+
+        if prefix.is_empty() {
+            return (start, vec![]);
+        }
+
+        // Check if next char is already '(' (avoid double-paren).
+        let has_paren_after = line.get(pos..pos + 1) == Some("(");
+
+        let mut candidates = Vec::new();
+
+        // Complete function names (with auto-paren).
+        for &name in &self.function_names {
+            if name.starts_with(prefix) {
+                let replacement = if has_paren_after {
+                    name.to_string()
+                } else {
+                    format!("{}(", name)
+                };
+                candidates.push((name.to_string(), replacement));
+            }
+        }
+
+        // Complete session commands (only at start of line, no paren).
+        if start == 0 {
+            for &cmd in &self.command_names {
+                if cmd.starts_with(prefix) {
+                    candidates.push((cmd.to_string(), cmd.to_string()));
+                }
+            }
+        }
+
+        // Complete user-defined variable names (no paren).
+        for var_name in &self.var_names {
+            if var_name.starts_with(prefix) {
+                candidates.push((var_name.clone(), var_name.clone()));
+            }
+        }
+
+        (start, candidates)
+    }
+
+    /// Core bracket-counting logic (separated for testability).
+    ///
+    /// Returns `true` if the input has unclosed brackets (incomplete).
+    fn is_incomplete(input: &str) -> bool {
+        let mut depth: i32 = 0;
+        for ch in input.chars() {
+            match ch {
+                '(' | '[' => depth += 1,
+                ')' | ']' => depth -= 1,
+                _ => {}
+            }
+        }
+        depth > 0
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Completer
+// ---------------------------------------------------------------------------
+
+impl Completer for ReplHelper {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Pair>)> {
+        let (start, candidates) = self.complete_inner(line, pos);
+        let pairs = candidates
+            .into_iter()
+            .map(|(display, replacement)| Pair {
+                display,
+                replacement,
+            })
+            .collect();
+        Ok((start, pairs))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Validator (bracket-counting multi-line)
+// ---------------------------------------------------------------------------
+
+impl Validator for ReplHelper {
+    fn validate(&self, ctx: &mut ValidationContext) -> rustyline::Result<ValidationResult> {
+        if Self::is_incomplete(ctx.input()) {
+            Ok(ValidationResult::Incomplete)
+        } else {
+            Ok(ValidationResult::Valid(None))
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The canonical function list must have exactly 81 entries,
+    /// matching eval.rs ALL_FUNCTION_NAMES.
+    #[test]
+    fn canonical_function_count() {
+        let names = ReplHelper::canonical_function_names();
+        assert_eq!(
+            names.len(),
+            81,
+            "expected 81 canonical function names, got {}",
+            names.len()
+        );
+    }
+
+    /// No duplicates in the canonical list.
+    #[test]
+    fn no_duplicate_function_names() {
+        let names = ReplHelper::canonical_function_names();
+        let mut sorted = names.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(names.len(), sorted.len(), "duplicate function names found");
+    }
+
+    // -- Completion tests (via complete_inner) -----------------------------
+
+    #[test]
+    fn complete_aq_returns_aqprod_with_paren() {
+        let h = ReplHelper::new();
+        let (start, pairs) = h.complete_inner("aq", 2);
+        assert_eq!(start, 0);
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].0, "aqprod");
+        assert_eq!(pairs[0].1, "aqprod(");
+    }
+
+    #[test]
+    fn complete_theta_returns_three_candidates() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("theta", 5);
+        assert_eq!(pairs.len(), 3);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"theta2"));
+        assert!(displays.contains(&"theta3"));
+        assert!(displays.contains(&"theta4"));
+    }
+
+    #[test]
+    fn complete_q_at_start_includes_commands() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("q", 1);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        // Should include function names starting with 'q' AND command "quit"
+        assert!(displays.contains(&"quit"), "quit command missing");
+        assert!(displays.contains(&"qbin"), "qbin function missing");
+    }
+
+    #[test]
+    fn complete_q_mid_line_excludes_commands() {
+        let h = ReplHelper::new();
+        // "f(q" -- cursor is at position 3, word starts at position 2 (after '(')
+        let (start, pairs) = h.complete_inner("f(q", 3);
+        assert_eq!(start, 2);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        // Should NOT include commands since word doesn't start at position 0
+        assert!(!displays.contains(&"quit"), "quit should not appear mid-line");
+        // Should include function names starting with 'q'
+        assert!(displays.contains(&"qbin"), "qbin function missing");
+    }
+
+    #[test]
+    fn complete_variable_after_update() {
+        let mut h = ReplHelper::new();
+        h.update_var_names(vec!["foo".to_string(), "fbar".to_string()]);
+        let (_, pairs) = h.complete_inner("fo", 2);
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].0, "foo");
+        assert_eq!(pairs[0].1, "foo"); // no paren for variables
+    }
+
+    #[test]
+    fn complete_has_paren_after_no_double() {
+        let h = ReplHelper::new();
+        // User typed "aqprod(" but cursor is right before the '('
+        let (_, pairs) = h.complete_inner("aqprod(", 6);
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].0, "aqprod");
+        assert_eq!(pairs[0].1, "aqprod"); // no extra '('
+    }
+
+    #[test]
+    fn complete_empty_prefix_returns_nothing() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("", 0);
+        assert!(pairs.is_empty());
+    }
+
+    #[test]
+    fn complete_no_maple_aliases() {
+        let h = ReplHelper::new();
+        // Maple aliases should NOT appear in completions
+        let (_, pairs) = h.complete_inner("numb", 4);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(!displays.contains(&"numbpart"), "Maple alias numbpart should not appear");
+    }
+
+    // -- Validator tests (via is_incomplete) --------------------------------
+
+    #[test]
+    fn validator_balanced_parens_valid() {
+        assert!(!ReplHelper::is_incomplete("f(1, 2)"));
+    }
+
+    #[test]
+    fn validator_unclosed_paren_incomplete() {
+        assert!(ReplHelper::is_incomplete("f(1, 2"));
+    }
+
+    #[test]
+    fn validator_nested_balanced_valid() {
+        assert!(!ReplHelper::is_incomplete("f(1) + g(2)"));
+    }
+
+    #[test]
+    fn validator_empty_input_valid() {
+        assert!(!ReplHelper::is_incomplete(""));
+    }
+
+    #[test]
+    fn validator_bracket_incomplete() {
+        assert!(ReplHelper::is_incomplete("f([1, 2"));
+    }
+}
