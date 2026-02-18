@@ -93,7 +93,7 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
 **Milestone Goal:** Make q-Kangaroo a fully self-contained, production-quality command-line tool with zero DLL dependencies, script execution, robust error handling, and a comprehensive PDF reference manual.
 
 - [x] **Phase 29: Static Linking** - Self-contained binary with zero DLL dependencies -- 2026-02-18
-- [ ] **Phase 30: Script Execution & CLI Flags** - Non-interactive batch mode and argument handling
+- [x] **Phase 30: Script Execution & CLI Flags** - Non-interactive batch mode and argument handling -- 2026-02-18
 - [ ] **Phase 31: Error Hardening & Exit Codes** - Robust diagnostics and machine-readable exit status
 - [ ] **Phase 32: PDF Reference Manual** - Comprehensive typeset documentation for all 81 functions
 
@@ -126,9 +126,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 30-01-PLAN.md -- Extend lexer/parser/AST with comments, newlines, strings; create script.rs execution engine
-- [ ] 30-02-PLAN.md -- Refactor main.rs with CLI argument parsing, mode dispatch, and read() function
-- [ ] 30-03-PLAN.md -- Subprocess integration tests for all CLI modes and flags
+- [x] 30-01-PLAN.md -- Extend lexer/parser/AST with comments, newlines, strings; create script.rs execution engine
+- [x] 30-02-PLAN.md -- Refactor main.rs with CLI argument parsing, mode dispatch, and read() function
+- [x] 30-03-PLAN.md -- Subprocess integration tests for all CLI modes and flags
 
 ### Phase 31: Error Hardening & Exit Codes
 **Goal**: Users get clear, actionable error messages and scripts/tools can rely on distinct exit codes for every failure mode
@@ -194,6 +194,6 @@ Plans:
 | 27. Output Commands & Polish | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 28. Binary Packaging | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 29. Static Linking | v1.6 | 2/2 | Complete | 2026-02-18 |
-| 30. Script Execution & CLI Flags | v1.6 | 0/3 | Not started | - |
+| 30. Script Execution & CLI Flags | v1.6 | 3/3 | Complete | 2026-02-18 |
 | 31. Error Hardening & Exit Codes | v1.6 | 0/TBD | Not started | - |
 | 32. PDF Reference Manual | v1.6 | 0/TBD | Not started | - |

@@ -15,21 +15,21 @@ Requirements for v1.6 CLI Hardening & Manual. Each maps to roadmap phases.
 
 ### CLI Flags
 
-- [ ] **CLI-01**: User can run `q-kangaroo --help` / `-h` to see usage summary and exit
-- [ ] **CLI-02**: User can run `q-kangaroo -q` / `--quiet` to suppress banner in interactive mode
-- [ ] **CLI-03**: User can run `q-kangaroo -c "expr"` to evaluate an expression and exit
-- [ ] **CLI-04**: User can run `q-kangaroo -v` / `--verbose` to see per-statement timing
-- [ ] **CLI-05**: User can use `--` to separate options from positional filename arguments
-- [ ] **CLI-06**: Unknown flags produce a clear error with `--help` suggestion and exit code 2
+- [x] **CLI-01**: User can run `q-kangaroo --help` / `-h` to see usage summary and exit
+- [x] **CLI-02**: User can run `q-kangaroo -q` / `--quiet` to suppress banner in interactive mode
+- [x] **CLI-03**: User can run `q-kangaroo -c "expr"` to evaluate an expression and exit
+- [x] **CLI-04**: User can run `q-kangaroo -v` / `--verbose` to see per-statement timing
+- [x] **CLI-05**: User can use `--` to separate options from positional filename arguments
+- [x] **CLI-06**: Unknown flags produce a clear error with `--help` suggestion and exit code 2
 
 ### Script Execution
 
-- [ ] **EXEC-01**: User can run `q-kangaroo script.qk` to execute a script file and exit
-- [ ] **EXEC-02**: Script files support `#` line comments
-- [ ] **EXEC-03**: Script files support multi-line statements (unclosed parens span lines)
-- [ ] **EXEC-04**: User can pipe input via stdin (`echo "expr" | q-kangaroo`)
-- [ ] **EXEC-05**: Piped/script/`-c` modes automatically suppress banner and prompt
-- [ ] **EXEC-06**: User can run `read("file.qk")` in the REPL to execute a file in the current session
+- [x] **EXEC-01**: User can run `q-kangaroo script.qk` to execute a script file and exit
+- [x] **EXEC-02**: Script files support `#` line comments
+- [x] **EXEC-03**: Script files support multi-line statements (unclosed parens span lines)
+- [x] **EXEC-04**: User can pipe input via stdin (`echo "expr" | q-kangaroo`)
+- [x] **EXEC-05**: Piped/script/`-c` modes automatically suppress banner and prompt
+- [x] **EXEC-06**: User can run `read("file.qk")` in the REPL to execute a file in the current session
 
 ### Exit Codes
 
@@ -91,18 +91,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUILD-01 | Phase 29 | Complete |
 | BUILD-02 | Phase 29 | Complete |
 | BUILD-03 | Phase 29 | Complete |
-| CLI-01 | Phase 30 | Pending |
-| CLI-02 | Phase 30 | Pending |
-| CLI-03 | Phase 30 | Pending |
-| CLI-04 | Phase 30 | Pending |
-| CLI-05 | Phase 30 | Pending |
-| CLI-06 | Phase 30 | Pending |
-| EXEC-01 | Phase 30 | Pending |
-| EXEC-02 | Phase 30 | Pending |
-| EXEC-03 | Phase 30 | Pending |
-| EXEC-04 | Phase 30 | Pending |
-| EXEC-05 | Phase 30 | Pending |
-| EXEC-06 | Phase 30 | Pending |
+| CLI-01 | Phase 30 | Complete |
+| CLI-02 | Phase 30 | Complete |
+| CLI-03 | Phase 30 | Complete |
+| CLI-04 | Phase 30 | Complete |
+| CLI-05 | Phase 30 | Complete |
+| CLI-06 | Phase 30 | Complete |
+| EXEC-01 | Phase 30 | Complete |
+| EXEC-02 | Phase 30 | Complete |
+| EXEC-03 | Phase 30 | Complete |
+| EXEC-04 | Phase 30 | Complete |
+| EXEC-05 | Phase 30 | Complete |
+| EXEC-06 | Phase 30 | Complete |
 | EXIT-01 | Phase 31 | Pending |
 | EXIT-02 | Phase 31 | Pending |
 | EXIT-03 | Phase 31 | Pending |

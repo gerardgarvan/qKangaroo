@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 30 - Script Execution & CLI Flags (v1.6 CLI Hardening & Manual)
+**Current focus:** Phase 31 - Error Hardening & Exit Codes (v1.6 CLI Hardening & Manual)
 
 ## Current Position
 
-Phase: 30 of 32 (Script Execution & CLI Flags) -- COMPLETE
-Plan: 3 of 3 in current phase (all complete)
-Status: Phase complete
-Last activity: 2026-02-18 -- 30-03 complete (CLI integration tests)
+Phase: 31 of 32 (Error Hardening & Exit Codes)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-18 -- Phase 30 complete (script execution & CLI flags), advancing to Phase 31
 
-Progress: [=========================.....] 85/TBD plans (v1.0-v1.5 complete, v1.6 Phase 29-30 complete)
+Progress: [==========================....] 84/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-30 complete)
 
 ## Performance Metrics
 
@@ -70,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 30-03-PLAN.md (CLI integration tests) -- Phase 30 complete
+Stopped at: Phase 30 complete (script execution & CLI flags), advancing to Phase 31
 Resume file: N/A
