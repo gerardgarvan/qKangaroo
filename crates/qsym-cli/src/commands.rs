@@ -30,6 +30,8 @@ pub enum Command {
     Latex(Option<String>),
     /// Save last result to a file.
     Save(String),
+    /// Load and execute a script file.
+    Read(String),
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +47,8 @@ pub enum CommandResult {
     Quit,
     /// Print this string and continue the REPL loop.
     Output(String),
+    /// Load and execute a script file (handled by main loop).
+    ReadFile(String),
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +151,19 @@ pub fn parse_command(line: &str) -> Option<Command> {
                 None
             }
         }
+        "read" => {
+            // read("file") is a function call, pass to parser
+            if trimmed.contains('(') {
+                return None;
+            }
+            if words.len() == 2 {
+                Some(Command::Read(words[1].to_string()))
+            } else if words.len() == 1 {
+                Some(Command::Read(String::new()))
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
@@ -189,6 +206,12 @@ pub fn execute_command(cmd: Command, env: &mut Environment) -> CommandResult {
             None => CommandResult::Output(format!("Unknown variable '{}'.", name)),
         },
         Command::Save(filename) => save_to_file(&filename, env),
+        Command::Read(path) => {
+            if path.is_empty() {
+                return CommandResult::Output("Usage: read filename.qk".to_string());
+            }
+            CommandResult::ReadFile(path)
+        }
     }
 }
 
