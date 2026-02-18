@@ -23,10 +23,10 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cache/gmp-mpfr-sys
             target
           key: linux-release-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install GMP
-        run: sudo apt-get update && sudo apt-get install -y libgmp-dev libmpfr-dev libmpc-dev
+      # gcc, m4, make, diffutils are pre-installed on Ubuntu 24.04
       - name: Build release binary
         run: cargo build --release -p qsym-cli
       - name: Verify binary runs
@@ -34,6 +34,16 @@ jobs:
           chmod +x target/release/q-kangaroo
           target/release/q-kangaroo --version
           ls -la target/release/q-kangaroo
+      - name: Verify no GMP shared library dependency
+        run: |
+          echo "Shared library dependencies:"
+          ldd target/release/q-kangaroo
+          echo "---"
+          if ldd target/release/q-kangaroo | grep -q "libgmp\|libmpfr\|libmpc"; then
+            echo "ERROR: Binary has GMP/MPFR/MPC shared library dependencies!"
+            exit 1
+          fi
+          echo "OK: No GMP/MPFR/MPC shared library dependencies"
       - name: Package Linux binary
         run: |
           mkdir -p dist
