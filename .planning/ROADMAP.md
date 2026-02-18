@@ -107,11 +107,11 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
   1. Running `q-kangaroo --version` works on a clean Windows machine with no DLLs in the directory or PATH
   2. The GitHub release archive for Windows contains exactly one file: the .exe (no DLL files)
   3. CI builds from bundled GMP/MPFR/MPC source without requiring pre-installed system libraries
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 29-01: TBD
-- [ ] 29-02: TBD
+- [ ] 29-01-PLAN.md -- Enable static GMP/MPFR/MPC linking and verify locally
+- [ ] 29-02-PLAN.md -- Rewrite CI workflow for static builds and single-file archives
 
 ### Phase 30: Script Execution & CLI Flags
 **Goal**: Users can run q-Kangaroo non-interactively via script files, piped input, or command-line expressions
@@ -193,7 +193,7 @@ Plans:
 | 26. REPL Shell & Session | v1.5 | 2/2 | Complete | 2026-02-18 |
 | 27. Output Commands & Polish | v1.5 | 1/1 | Complete | 2026-02-18 |
 | 28. Binary Packaging | v1.5 | 1/1 | Complete | 2026-02-18 |
-| 29. Static Linking | v1.6 | 0/TBD | Not started | - |
+| 29. Static Linking | v1.6 | 0/2 | In progress | - |
 | 30. Script Execution & CLI Flags | v1.6 | 0/TBD | Not started | - |
 | 31. Error Hardening & Exit Codes | v1.6 | 0/TBD | Not started | - |
 | 32. PDF Reference Manual | v1.6 | 0/TBD | Not started | - |
