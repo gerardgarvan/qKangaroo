@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 32 of 32 (PDF Reference Manual)
-Plan: 1 of TBD in current phase
+Plan: 6 of TBD in current phase
 Status: Executing
-Last activity: 2026-02-18 -- Completed 32-01 (manual infrastructure & introductory chapters)
+Last activity: 2026-02-18 -- Completed 32-06 (CI PDF build & help text)
 
-Progress: [===========================...] 87/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete, 32-01 done)
+Progress: [===========================...] 88/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete, 32-01 through 32-06 done)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 87
+- Total plans completed: 88
 - Total phases: 31 complete, 1 remaining
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
@@ -36,6 +36,7 @@ Progress: [===========================...] 87/TBD plans (v1.0-v1.5 complete, v1.
 | 31-01 | Error Hardening Infrastructure | 5min | 2 | 5 |
 | 31-02 | Error Hardening Integration Tests | 4min | 1 | 2 |
 | 32-01 | Manual Infrastructure & Intro Chapters | 4min | 2 | 18 |
+| 32-06 | CI PDF Build & Help Text | 1min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -44,6 +45,8 @@ Progress: [===========================...] 87/TBD plans (v1.0-v1.5 complete, v1.
 All v1.0-v1.5 decisions logged in PROJECT.md Key Decisions table.
 
 v1.6-relevant decisions:
+- Phase 32-06: PDF uploaded as standalone release artifact (not bundled in binary archives) for separate download
+- Phase 32-06: Artifact download pattern uses brace expansion for explicit matching
 - Phase 32-01: New Computer Modern 11pt body + DejaVu Sans Mono 9pt code fonts for PDF manual
 - Phase 32-01: in-dexter v0.7.2 for back-of-book index with index-main for function entries
 - Phase 32-01: func-entry template: name, signature, description, math-def, params, examples, edge-cases, related
@@ -81,5 +84,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 32-01-PLAN.md (manual infrastructure & introductory chapters)
+Stopped at: Completed 32-06-PLAN.md (CI PDF build & help text)
 Resume file: N/A
