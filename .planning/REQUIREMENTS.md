@@ -2,10 +2,10 @@
 
 ## Symbolic Variables
 
-- [ ] **SYM-01**: Bare variable names (f, x, a, etc.) evaluate to a Symbol value without requiring `:=` declaration -- undefined names do not error
-- [ ] **SYM-02**: `q` is recognized as the built-in expansion variable and can be passed as a function parameter (e.g., `etaq(q, 1, 20)`)
-- [ ] **SYM-03**: Monomial expressions like `q^2`, `q^3` can be used as function arguments where Garvan accepts q-monomials
-- [ ] **SYM-04**: Variables assigned via `:=` continue to work as before; assigned values take precedence over bare symbol evaluation
+- [x] **SYM-01**: Bare variable names (f, x, a, etc.) evaluate to a Symbol value without requiring `:=` declaration -- undefined names do not error
+- [x] **SYM-02**: `q` is recognized as the built-in expansion variable and can be passed as a function parameter (e.g., `etaq(q, 1, 20)`)
+- [x] **SYM-03**: Monomial expressions like `q^2`, `q^3` can be used as function arguments where Garvan accepts q-monomials
+- [x] **SYM-04**: Variables assigned via `:=` continue to work as before; assigned values take precedence over bare symbol evaluation
 
 ## Function Signature Compatibility
 
@@ -83,10 +83,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SYM-01 | Phase 33 | Pending |
-| SYM-02 | Phase 33 | Pending |
-| SYM-03 | Phase 33 | Pending |
-| SYM-04 | Phase 33 | Pending |
+| SYM-01 | Phase 33 | Complete |
+| SYM-02 | Phase 33 | Complete |
+| SYM-03 | Phase 33 | Complete |
+| SYM-04 | Phase 33 | Complete |
 | SIG-01 | Phase 34 | Pending |
 | SIG-02 | Phase 34 | Pending |
 | SIG-03 | Phase 34 | Pending |
