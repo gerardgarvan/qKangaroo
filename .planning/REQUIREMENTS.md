@@ -21,13 +21,13 @@
 
 ### Series Analysis (Group 2)
 
-- [ ] **SIG-08**: `sift(s, q, n, k, T)` matches Garvan's 5-arg signature -- `s` is series, `q` variable, `n` modulus, `k` residue, `T` truncation
-- [ ] **SIG-09**: `prodmake(f, q, T)` matches Garvan's 3-arg signature
-- [ ] **SIG-10**: `etamake(f, q, T)` matches Garvan's 3-arg signature
-- [ ] **SIG-11**: `jacprodmake(f, q, T)` and `jacprodmake(f, q, T, P)` match Garvan's 3-arg and 4-arg signatures
-- [ ] **SIG-12**: `mprodmake(f, q, T)` matches Garvan's 3-arg signature
-- [ ] **SIG-13**: `qetamake(f, q, T)` matches Garvan's 3-arg signature
-- [ ] **SIG-14**: `qfactor(f, q)` matches Garvan's signature with explicit `q`
+- [x] **SIG-08**: `sift(s, q, n, k, T)` matches Garvan's 5-arg signature -- `s` is series, `q` variable, `n` modulus, `k` residue, `T` truncation
+- [x] **SIG-09**: `prodmake(f, q, T)` matches Garvan's 3-arg signature
+- [x] **SIG-10**: `etamake(f, q, T)` matches Garvan's 3-arg signature
+- [x] **SIG-11**: `jacprodmake(f, q, T)` and `jacprodmake(f, q, T, P)` match Garvan's 3-arg and 4-arg signatures
+- [x] **SIG-12**: `mprodmake(f, q, T)` matches Garvan's 3-arg signature
+- [x] **SIG-13**: `qetamake(f, q, T)` matches Garvan's 3-arg signature
+- [x] **SIG-14**: `qfactor(f, q)` matches Garvan's signature with explicit `q`
 
 ### Relation Discovery (Group 3)
 
@@ -94,13 +94,13 @@
 | SIG-05 | Phase 34 | Complete |
 | SIG-06 | Phase 34 | Complete |
 | SIG-07 | Phase 34 | Complete |
-| SIG-08 | Phase 35 | Pending |
-| SIG-09 | Phase 35 | Pending |
-| SIG-10 | Phase 35 | Pending |
-| SIG-11 | Phase 35 | Pending |
-| SIG-12 | Phase 35 | Pending |
-| SIG-13 | Phase 35 | Pending |
-| SIG-14 | Phase 35 | Pending |
+| SIG-08 | Phase 35 | Complete |
+| SIG-09 | Phase 35 | Complete |
+| SIG-10 | Phase 35 | Complete |
+| SIG-11 | Phase 35 | Complete |
+| SIG-12 | Phase 35 | Complete |
+| SIG-13 | Phase 35 | Complete |
+| SIG-14 | Phase 35 | Complete |
 | SIG-15 | Phase 36 | Pending |
 | SIG-16 | Phase 36 | Pending |
 | SIG-17 | Phase 36 | Pending |
