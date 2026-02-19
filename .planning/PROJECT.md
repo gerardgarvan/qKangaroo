@@ -88,7 +88,11 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-(None -- planning next milestone)
+**v2.0: Maple Compatibility** — Make q-Kangaroo's REPL a drop-in replacement for Garvan's Maple qseries package:
+- Symbolic variable names (bare `q`, `f`, `x` work without `:=` declaration)
+- Maple-exact function signatures (match Garvan's calling conventions from qseries v1.3)
+- Missing Garvan functions implemented (checkmult, checkprod, jac2prod, jac2series, lqdegree0, qs2jaccombo, theta, zqfactor)
+- Manual UAT testing of every function against Garvan's documentation
 
 ### Future
 
@@ -151,4 +155,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | PDF as standalone release artifact | Not bundled in binary archive; separate download for docs | Good |
 
 ---
-*Last updated: 2026-02-18 after v1.6 milestone*
+*Last updated: 2026-02-18 after v2.0 milestone started*
