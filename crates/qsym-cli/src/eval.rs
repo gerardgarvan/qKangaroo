@@ -1440,6 +1440,87 @@ fn normalize_jacobi_product(mut factors: Vec<(i64, i64, i64)>) -> Vec<(i64, i64,
     merged
 }
 
+/// Compute r^n for integer n (positive, negative, or zero).
+fn qrat_pow(r: &QRat, n: i64) -> QRat {
+    if n == 0 {
+        return QRat::one();
+    }
+    let (base, abs_n) = if n < 0 {
+        (QRat::one() / r.clone(), n.unsigned_abs())
+    } else {
+        (r.clone(), n as u64)
+    };
+    let mut result = QRat::one();
+    for _ in 0..abs_n {
+        result = result * base.clone();
+    }
+    result
+}
+
+/// Expand a JacobiProduct to a FormalPowerSeries by computing each factor
+/// via etaq(a, b, sym, order) and combining with mul/invert.
+fn jacobi_product_to_fps(
+    factors: &[(i64, i64, i64)],
+    sym: SymbolId,
+    order: i64,
+) -> FormalPowerSeries {
+    let mut result = FormalPowerSeries::one(sym, order);
+    for &(a, b, exp) in factors {
+        let factor_fps = qseries::etaq(a, b, sym, order);
+        if exp > 0 {
+            for _ in 0..exp {
+                result = arithmetic::mul(&result, &factor_fps);
+            }
+        } else if exp < 0 {
+            let inv = arithmetic::invert(&factor_fps);
+            for _ in 0..(-exp) {
+                result = arithmetic::mul(&result, &inv);
+            }
+        }
+        // exp == 0: skip (should not happen after normalization)
+    }
+    result
+}
+
+/// Format a JacobiProduct as explicit finite product notation.
+/// E.g., "(1-q)(1-q^6)(1-q^11)..." for JAC(1,5) up to order.
+fn format_product_notation(factors: &[(i64, i64, i64)], sym_name: &str, order: i64) -> String {
+    if factors.is_empty() {
+        return "1".to_string();
+    }
+    let mut numer_parts = Vec::new();
+    let mut denom_parts = Vec::new();
+    for &(a, b, exp) in factors {
+        let abs_exp = exp.unsigned_abs() as i64;
+        // Build the factor string: (1-q^a)(1-q^{a+b})(1-q^{a+2b})...
+        let mut factor_strs = Vec::new();
+        let mut k = a;
+        while k > 0 && k < order {
+            if k == 1 {
+                factor_strs.push(format!("(1-{})", sym_name));
+            } else {
+                factor_strs.push(format!("(1-{}^{})", sym_name, k));
+            }
+            k += b;
+        }
+        let factor_block = factor_strs.join("");
+        // Repeat for |exp| times
+        for _ in 0..abs_exp {
+            if exp > 0 {
+                numer_parts.push(factor_block.clone());
+            } else {
+                denom_parts.push(factor_block.clone());
+            }
+        }
+    }
+    let numer = if numer_parts.is_empty() { "1".to_string() } else { numer_parts.join("") };
+    if denom_parts.is_empty() {
+        numer
+    } else {
+        format!("{}/{}", numer, denom_parts.join(""))
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Function dispatch
 // ---------------------------------------------------------------------------
@@ -2729,6 +2810,92 @@ pub fn dispatch(
             Ok(Value::JacobiProduct(vec![(a, b, 1)]))
         }
 
+        "theta" => {
+            expect_args(name, args, 3)?;
+            let sym = extract_symbol_id(name, args, 1, env)?;
+            let t_range = extract_i64(name, args, 2)?;
+
+            match &args[0] {
+                // Case 1: z is numeric (Integer or Rational)
+                Value::Integer(_) | Value::Rational(_) => {
+                    let z_val = extract_qrat(name, args, 0)?;
+                    let mut fps = FormalPowerSeries::zero(sym, t_range);
+                    for i in -t_range..=t_range {
+                        let q_exp = i * i;
+                        if q_exp >= t_range { continue; }
+                        let z_pow_i = qrat_pow(&z_val, i);
+                        let old = fps.coeff(q_exp);
+                        fps.set_coeff(q_exp, old + z_pow_i);
+                    }
+                    Ok(Value::Series(fps))
+                }
+                // Case 2: z is a q-monomial (Series)
+                Value::Series(_) => {
+                    let mono = extract_monomial_from_arg(name, args, 0)?;
+                    let mono_power = mono.power;
+                    let mono_coeff = mono.coeff;
+                    let mut fps = FormalPowerSeries::zero(sym, t_range);
+                    for i in -t_range..=t_range {
+                        let q_exp = mono_power * i + i * i;
+                        if q_exp < 0 || q_exp >= t_range { continue; }
+                        let coeff_i = qrat_pow(&mono_coeff, i);
+                        let old = fps.coeff(q_exp);
+                        fps.set_coeff(q_exp, old + coeff_i);
+                    }
+                    Ok(Value::Series(fps))
+                }
+                // Case 3: z is a bare Symbol -> warn, don't error
+                Value::Symbol(sym_name) => {
+                    println!("Warning: theta(z, q, T) requires z to be numeric or a q-monomial; '{}' is an unassigned symbol", sym_name);
+                    Ok(Value::None)
+                }
+                _ => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "numeric value, q-monomial, or symbol",
+                    got: args[0].type_name().to_string(),
+                })
+            }
+        }
+
+        "jac2prod" => {
+            expect_args(name, args, 3)?;
+            let factors = match &args[0] {
+                Value::JacobiProduct(f) => f.clone(),
+                _ => return Err(EvalError::Other(
+                    "expected Jacobi product expression (use JAC(a,b))".to_string()
+                )),
+            };
+            let sym = extract_symbol_id(name, args, 1, env)?;
+            let order = extract_i64(name, args, 2)?;
+            let sym_name = env.symbols.name(sym);
+
+            // Print product notation
+            let notation = format_product_notation(&factors, sym_name, order);
+            println!("{}", notation);
+
+            // Compute and return FPS
+            let fps = jacobi_product_to_fps(&factors, sym, order);
+            Ok(Value::Series(fps))
+        }
+
+        "jac2series" => {
+            expect_args(name, args, 3)?;
+            let factors = match &args[0] {
+                Value::JacobiProduct(f) => f.clone(),
+                _ => return Err(EvalError::Other(
+                    "expected Jacobi product expression (use JAC(a,b))".to_string()
+                )),
+            };
+            let sym = extract_symbol_id(name, args, 1, env)?;
+            let order = extract_i64(name, args, 2)?;
+            let fps = jacobi_product_to_fps(&factors, sym, order);
+            // Print using standard series format
+            let formatted = crate::format::format_value(&Value::Series(fps.clone()), &env.symbols);
+            println!("{}", formatted);
+            Ok(Value::Series(fps))
+        }
+
         // =================================================================
         // Unknown function
         // =================================================================
@@ -3272,6 +3439,9 @@ fn get_signature(name: &str) -> String {
         "restart" => "()".to_string(),
         // Group 11: Jacobi Products
         "jac" | "JAC" => "(a, b) -- Jacobi product factor (q^a;q^b)_inf".to_string(),
+        "theta" => "(z, q, T) -- general theta series sum(z^i * q^(i^2), i=-T..T)".to_string(),
+        "jac2prod" => "(JP, q, T) -- convert Jacobi product to explicit product form".to_string(),
+        "jac2series" => "(JP, q, T) -- convert Jacobi product to q-series".to_string(),
         _ => String::new(),
     }
 }
@@ -3355,7 +3525,7 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern N: Variable management
     "anames", "restart",
     // Pattern O: Jacobi Products
-    "JAC",
+    "JAC", "theta", "jac2prod", "jac2series",
 ];
 
 /// All alias names for fuzzy matching.
@@ -5940,6 +6110,181 @@ mod tests {
             assert_eq!(factors, vec![]);
         } else {
             panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    // --- Dispatch: theta, jac2prod, jac2series (Task 2) ---
+
+    #[test]
+    fn dispatch_theta_numeric_z() {
+        let mut env = make_env();
+        // theta(1, q, 5) = sum(1^i * q^(i^2), i=-5..5)
+        // i values: -5..5, i^2: 25,16,9,4,1,0,1,4,9,16,25
+        // Only i^2 < 5: i in {-2,-1,0,1,2} -> q^{4,1,0,1,4}
+        // coeff(0) = 1 (i=0), coeff(1) = 2 (i=+-1), coeff(4) = 2 (i=+-2)
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("theta", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(2), QRat::zero());
+            assert_eq!(fps.coeff(3), QRat::zero());
+            assert_eq!(fps.coeff(4), QRat::from((2i64, 1i64)));
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_theta_monomial_z() {
+        let mut env = make_env();
+        // theta(q^2, q, 10) = sum(q^(2i + i^2), i=-10..10)
+        // Exponent = 2i + i^2 = i(i+2). Only keep 0 <= exp < 10.
+        // i=0: 0, i=1: 3, i=2: 8, i=-1: -1 (skip), i=-2: 0, i=3: 15 (skip)
+        // i=-3: 3, i=-4: 8, i=-5: 15 (skip)
+        // So coeff(0) = 2 (i=0 and i=-2), coeff(3) = 2 (i=1 and i=-3), coeff(8) = 2 (i=2 and i=-4)
+        let sym_q = env.symbols.intern("q");
+        let q_squared = FormalPowerSeries::monomial(sym_q, QRat::one(), 2, POLYNOMIAL_ORDER);
+        let args = vec![
+            Value::Series(q_squared),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("theta", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(0), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(3), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(8), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(1), QRat::zero());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_theta_symbol_z_warns() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("theta", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::None));
+    }
+
+    #[test]
+    fn dispatch_jac2prod_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::JacobiProduct(vec![(1, 5, 1)]),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("jac2prod", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // JAC(1,5) = (q;q^5)_inf = etaq(1,5,q,20)
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), -QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jac2prod_wrong_type_errors() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(42i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let result = dispatch("jac2prod", &args, &mut env);
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("expected Jacobi product"), "expected Jacobi product error, got: {}", msg);
+    }
+
+    #[test]
+    fn dispatch_jac2series_returns_series() {
+        let mut env = make_env();
+        let args = vec![
+            Value::JacobiProduct(vec![(1, 5, 1)]),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("jac2series", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), -QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jac2series_matches_etaq() {
+        let mut env = make_env();
+        // jac2series(JAC(1,5), q, 20) should equal etaq(1, 5, q, 20)
+        let jac_args = vec![
+            Value::JacobiProduct(vec![(1, 5, 1)]),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let jac_val = dispatch("jac2series", &jac_args, &mut env).unwrap();
+
+        let etaq_args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let etaq_val = dispatch("etaq", &etaq_args, &mut env).unwrap();
+
+        if let (Value::Series(jac_fps), Value::Series(etaq_fps)) = (&jac_val, &etaq_val) {
+            for k in 0..20 {
+                assert_eq!(
+                    jac_fps.coeff(k), etaq_fps.coeff(k),
+                    "mismatch at q^{}: jac2series={}, etaq={}",
+                    k, jac_fps.coeff(k), etaq_fps.coeff(k)
+                );
+            }
+        } else {
+            panic!("expected two Series");
+        }
+    }
+
+    #[test]
+    fn dispatch_jac2series_product() {
+        let mut env = make_env();
+        // jac2series(JAC(1,5)*JAC(4,5), q, 20) should equal etaq(1,5,q,20) * etaq(4,5,q,20)
+        let jp = Value::JacobiProduct(vec![(1, 5, 1), (4, 5, 1)]);
+        let jac_args = vec![
+            jp,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let jac_val = dispatch("jac2series", &jac_args, &mut env).unwrap();
+
+        // Compute expected via etaq
+        let sym_q = env.sym_q;
+        let e1 = qseries::etaq(1, 5, sym_q, 20);
+        let e4 = qseries::etaq(4, 5, sym_q, 20);
+        let expected = arithmetic::mul(&e1, &e4);
+
+        if let Value::Series(jac_fps) = &jac_val {
+            for k in 0..20 {
+                assert_eq!(
+                    jac_fps.coeff(k), expected.coeff(k),
+                    "mismatch at q^{}: jac2series={}, expected={}",
+                    k, jac_fps.coeff(k), expected.coeff(k)
+                );
+            }
+        } else {
+            panic!("expected Series");
         }
     }
 }
