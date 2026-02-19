@@ -42,7 +42,41 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::None => "NONE".to_string(),
         Value::Infinity => "infinity".to_string(),
         Value::Symbol(name) => name.clone(),
+        Value::JacobiProduct(factors) => format_jacobi_product(factors),
     }
+}
+
+/// Format a JacobiProduct value as human-readable string.
+/// Examples: "JAC(1,5)", "JAC(1,5)*JAC(2,5)", "JAC(1,5)^(-1)", "1" (empty product)
+fn format_jacobi_product(factors: &[(i64, i64, i64)]) -> String {
+    if factors.is_empty() {
+        return "1".to_string();
+    }
+    let parts: Vec<String> = factors.iter().map(|&(a, b, exp)| {
+        if exp == 1 {
+            format!("JAC({},{})", a, b)
+        } else {
+            format!("JAC({},{})^({})", a, b, exp)
+        }
+    }).collect();
+    parts.join("*")
+}
+
+/// Format a JacobiProduct value as LaTeX.
+/// Uses (q^a;q^b)_\infty notation.
+fn format_jacobi_product_latex(factors: &[(i64, i64, i64)]) -> String {
+    if factors.is_empty() {
+        return "1".to_string();
+    }
+    let parts: Vec<String> = factors.iter().map(|&(a, b, exp)| {
+        let base = format!("(q^{{{}}};q^{{{}}})_{{\\infty}}", a, b);
+        if exp == 1 {
+            base
+        } else {
+            format!("{}^{{{}}}", base, exp)
+        }
+    }).collect();
+    parts.join(" \\cdot ")
 }
 
 /// Format a list of values. For list-of-lists (matrix), put each inner
@@ -221,6 +255,7 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::None => "\\text{NONE}".to_string(),
         Value::Infinity => "\\infty".to_string(),
         Value::Symbol(name) => name.clone(),
+        Value::JacobiProduct(factors) => format_jacobi_product_latex(factors),
     }
 }
 
@@ -601,5 +636,50 @@ mod tests {
         let result = format_latex(&val, &reg);
         assert!(result.contains("t"), "expected 't' in: {}", result);
         assert!(!result.contains("q"), "should not contain 'q': {}", result);
+    }
+
+    // -- JacobiProduct format tests ------------------------------------------
+
+    #[test]
+    fn format_jacobi_product_single() {
+        let reg = empty_reg();
+        let val = Value::JacobiProduct(vec![(1, 5, 1)]);
+        assert_eq!(format_value(&val, &reg), "JAC(1,5)");
+    }
+
+    #[test]
+    fn format_jacobi_product_multiple() {
+        let reg = empty_reg();
+        let val = Value::JacobiProduct(vec![(1, 5, 1), (2, 5, 1)]);
+        assert_eq!(format_value(&val, &reg), "JAC(1,5)*JAC(2,5)");
+    }
+
+    #[test]
+    fn format_jacobi_product_negative_exp() {
+        let reg = empty_reg();
+        let val = Value::JacobiProduct(vec![(1, 5, -1)]);
+        assert_eq!(format_value(&val, &reg), "JAC(1,5)^(-1)");
+    }
+
+    #[test]
+    fn format_jacobi_product_empty() {
+        let reg = empty_reg();
+        let val = Value::JacobiProduct(vec![]);
+        assert_eq!(format_value(&val, &reg), "1");
+    }
+
+    #[test]
+    fn format_jacobi_product_latex_single() {
+        let reg = empty_reg();
+        let val = Value::JacobiProduct(vec![(1, 5, 1)]);
+        assert_eq!(format_latex(&val, &reg), "(q^{1};q^{5})_{\\infty}");
+    }
+
+    #[test]
+    fn format_jacobi_product_latex_multi() {
+        let reg = empty_reg();
+        let val = Value::JacobiProduct(vec![(1, 5, 1), (2, 5, 2)]);
+        let result = format_latex(&val, &reg);
+        assert_eq!(result, "(q^{1};q^{5})_{\\infty} \\cdot (q^{2};q^{5})_{\\infty}^{2}");
     }
 }

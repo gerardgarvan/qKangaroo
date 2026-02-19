@@ -58,6 +58,9 @@ pub enum Value {
     Infinity,
     /// A symbolic variable name (undefined name fallback, Maple-like).
     Symbol(String),
+    /// Jacobi product expression: product of (q^a;q^b)_inf^exp factors.
+    /// Each triple is (a, b, exponent). Maintained in canonical form.
+    JacobiProduct(Vec<(i64, i64, i64)>),
 }
 
 impl Value {
@@ -75,6 +78,7 @@ impl Value {
             Value::None => "none",
             Value::Infinity => "infinity",
             Value::Symbol(_) => "symbol",
+            Value::JacobiProduct(_) => "jacobi_product",
         }
     }
 }
@@ -1146,6 +1150,13 @@ fn eval_add(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                 })
             }
         }
+        // JacobiProduct in add -> helpful error
+        (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
+            Err(EvalError::Other(format!(
+                "cannot add {} and {} -- use jac2series() to expand first",
+                left.type_name(), right.type_name()
+            )))
+        }
         _ => Err(EvalError::TypeError {
             operation: "+".to_string(),
             left: left.type_name().to_string(),
@@ -1196,6 +1207,13 @@ fn eval_sub(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                     right: right.type_name().to_string(),
                 })
             }
+        }
+        // JacobiProduct in sub -> helpful error
+        (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
+            Err(EvalError::Other(format!(
+                "cannot subtract {} and {} -- use jac2series() to expand first",
+                left.type_name(), right.type_name()
+            )))
         }
         _ => Err(EvalError::TypeError {
             operation: "-".to_string(),
@@ -1249,6 +1267,12 @@ fn eval_mul(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                 })
             }
         }
+        // JacobiProduct * JacobiProduct
+        (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
+            let mut combined = a.clone();
+            combined.extend_from_slice(b);
+            Ok(Value::JacobiProduct(normalize_jacobi_product(combined)))
+        }
         _ => Err(EvalError::TypeError {
             operation: "*".to_string(),
             left: left.type_name().to_string(),
@@ -1294,6 +1318,14 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let s = value_to_qrat(&right).unwrap();
             let inv_s = QRat::one() / s;
             Ok(Value::Series(arithmetic::scalar_mul(&inv_s, &sym_fps)))
+        }
+        // JacobiProduct / JacobiProduct
+        (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
+            let mut combined = a.clone();
+            for &(av, bv, exp) in b {
+                combined.push((av, bv, -exp));
+            }
+            Ok(Value::JacobiProduct(normalize_jacobi_product(combined)))
         }
         _ => Err(EvalError::TypeError {
             operation: "/".to_string(),
@@ -1354,6 +1386,14 @@ fn eval_pow(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let fps = FormalPowerSeries::monomial(sym_id, QRat::one(), exp, POLYNOMIAL_ORDER);
             Ok(Value::Series(fps))
         }
+        // JacobiProduct ^ Integer
+        (Value::JacobiProduct(factors), Value::Integer(n)) => {
+            let exp = n.0.to_i64().ok_or_else(|| EvalError::Other(
+                "exponent too large".to_string(),
+            ))?;
+            let scaled: Vec<_> = factors.iter().map(|&(a, b, e)| (a, b, e * exp)).collect();
+            Ok(Value::JacobiProduct(normalize_jacobi_product(scaled)))
+        }
         _ => Err(EvalError::TypeError {
             operation: "^".to_string(),
             left: left.type_name().to_string(),
@@ -1380,6 +1420,24 @@ fn series_pow(fps: &FormalPowerSeries, n: i64) -> FormalPowerSeries {
         result = arithmetic::mul(&result, &base);
     }
     result
+}
+
+/// Normalize a JacobiProduct factor list: sort by (b, a), merge same (a, b)
+/// by summing exponents, remove zero-exponent factors.
+fn normalize_jacobi_product(mut factors: Vec<(i64, i64, i64)>) -> Vec<(i64, i64, i64)> {
+    factors.sort_by_key(|&(a, b, _)| (b, a));
+    let mut merged: Vec<(i64, i64, i64)> = Vec::new();
+    for (a, b, exp) in factors {
+        if let Some(last) = merged.last_mut() {
+            if last.0 == a && last.1 == b {
+                last.2 += exp;
+                continue;
+            }
+        }
+        merged.push((a, b, exp));
+    }
+    merged.retain(|&(_, _, exp)| exp != 0);
+    merged
 }
 
 // ---------------------------------------------------------------------------
@@ -2656,6 +2714,22 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Jacobi Product Constructor (NEW-01/02/03)
+        // =================================================================
+
+        "jac" | "JAC" => {
+            expect_args(name, args, 2)?;
+            let a = extract_i64(name, args, 0)?;
+            let b = extract_i64(name, args, 1)?;
+            if b <= 0 {
+                return Err(EvalError::Other(format!(
+                    "JAC: second argument (b) must be a positive integer, got {}", b
+                )));
+            }
+            Ok(Value::JacobiProduct(vec![(a, b, 1)]))
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -3196,6 +3270,8 @@ fn get_signature(name: &str) -> String {
         // Group 10: Variable management
         "anames" => "()".to_string(),
         "restart" => "()".to_string(),
+        // Group 11: Jacobi Products
+        "jac" | "JAC" => "(a, b) -- Jacobi product factor (q^a;q^b)_inf".to_string(),
         _ => String::new(),
     }
 }
@@ -3278,6 +3354,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "read",
     // Pattern N: Variable management
     "anames", "restart",
+    // Pattern O: Jacobi Products
+    "JAC",
 ];
 
 /// All alias names for fuzzy matching.
@@ -5719,5 +5797,149 @@ mod tests {
         // Now evaluating x should return Symbol
         let val = eval_expr(&AstNode::Variable("x".to_string()), &mut env).unwrap();
         assert!(matches!(val, Value::Symbol(ref s) if s == "x"));
+    }
+
+    // --- Dispatch: JacobiProduct (Task 1) ---
+
+    #[test]
+    fn dispatch_jac_returns_jacobi_product() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("JAC", &args, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = val {
+            assert_eq!(factors, vec![(1, 5, 1)]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jac_lowercase() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("jac", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::JacobiProduct(_)));
+    }
+
+    #[test]
+    fn dispatch_jac_negative_b_errors() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(-3i64)),
+        ];
+        let result = dispatch("JAC", &args, &mut env);
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("positive integer"), "expected positive integer error, got: {}", msg);
+    }
+
+    #[test]
+    fn dispatch_jac_zero_b_errors() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(0i64)),
+        ];
+        let result = dispatch("JAC", &args, &mut env);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eval_mul_jacobi_products() {
+        let mut env = make_env();
+        let left = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let right = Value::JacobiProduct(vec![(2, 5, 1)]);
+        let result = eval_mul(left, right, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = result {
+            assert_eq!(factors.len(), 2);
+            assert_eq!(factors, vec![(1, 5, 1), (2, 5, 1)]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_div_jacobi_products() {
+        let mut env = make_env();
+        let left = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let right = Value::JacobiProduct(vec![(2, 5, 1)]);
+        let result = eval_div(left, right, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = result {
+            assert_eq!(factors.len(), 2);
+            // (1,5,1) then (2,5,-1)
+            assert_eq!(factors, vec![(1, 5, 1), (2, 5, -1)]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_jacobi_product() {
+        let mut env = make_env();
+        let base = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let exp = Value::Integer(QInt::from(3i64));
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = result {
+            assert_eq!(factors, vec![(1, 5, 3)]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_jacobi_product_negative() {
+        let mut env = make_env();
+        let base = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let exp = Value::Integer(QInt::from(-2i64));
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = result {
+            assert_eq!(factors, vec![(1, 5, -2)]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_add_jacobi_product_errors() {
+        let mut env = make_env();
+        let left = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let right = Value::JacobiProduct(vec![(2, 5, 1)]);
+        let result = eval_add(left, right, &mut env);
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("jac2series"), "expected helpful message, got: {}", msg);
+    }
+
+    #[test]
+    fn normalize_merges_same_factors() {
+        let mut env = make_env();
+        let left = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let right = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let result = eval_mul(left, right, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = result {
+            assert_eq!(factors, vec![(1, 5, 2)]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn normalize_removes_zero_exp() {
+        let mut env = make_env();
+        let left = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let right = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let result = eval_div(left, right, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = result {
+            assert_eq!(factors, vec![]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", result);
+        }
     }
 }
