@@ -61,9 +61,4 @@
 #include "chapters/14-maple-migration.typ"
 #include "chapters/15-appendix.typ"
 
-// ---------------------------------------------------------------------------
-// Back-of-book index
-// ---------------------------------------------------------------------------
-
-#pagebreak()
-#make-index(title: [Index])
+// Back-of-book index is generated inside chapters/15-appendix.typ

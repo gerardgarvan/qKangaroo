@@ -1,2 +1,5 @@
-// 15-appendix.typ -- Appendix (stub)
-// Content will be added by plan 32-06.
+// 15-appendix.typ -- Back-of-book index
+
+= Index
+
+#make-index(title: none)
