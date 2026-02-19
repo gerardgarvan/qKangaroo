@@ -139,7 +139,9 @@ fn print_usage() {
     println!("  q-kangaroo -c \"etaq(1,1,20)\"  Evaluate an expression");
     println!("  echo \"1+1\" | q-kangaroo       Pipe input");
     println!();
-    println!("In interactive mode, type 'help' for available functions.");
+    println!("DOCUMENTATION:");
+    println!("  See the q-Kangaroo Reference Manual (PDF) included with release downloads.");
+    println!("  In interactive mode, type 'help' for available functions.");
 }
 
 // ---------------------------------------------------------------------------
