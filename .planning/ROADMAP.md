@@ -125,7 +125,11 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
   2. `etaq(q, 1, 20)` works -- `q` is accepted as a function parameter and the result is the correct q-series
   3. `aqprod(q^2, q, 5)` works -- q-monomial `q^2` is accepted as a function argument
   4. `x := 42` followed by `x` returns 42 (assignment still takes precedence over symbol fallback)
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 33-01-PLAN.md -- Value::Symbol variant, Token::Q/AstNode::Q removal, symbol fallback, test updates
+- [ ] 33-02-PLAN.md -- Symbol arithmetic (pow/mul/add/sub), polynomial display, variable-aware formatting
+- [ ] 33-03-PLAN.md -- Function dispatch with symbol args, single-quote lexer, restart/anames/unassign, integration tests
 
 ### Phase 34: Product & Theta Signatures
 **Goal**: All product and theta functions accept Garvan's exact argument lists so researchers can call them identically to Maple
@@ -243,7 +247,7 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 | 30. Script Execution & CLI Flags | v1.6 | 3/3 | Complete | 2026-02-18 |
 | 31. Error Hardening & Exit Codes | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 32. PDF Reference Manual | v1.6 | 6/6 | Complete | 2026-02-18 |
-| 33. Symbolic Variable Foundation | v2.0 | 0/TBD | Not started | - |
+| 33. Symbolic Variable Foundation | v2.0 | 0/3 | Planned | - |
 | 34. Product & Theta Signatures | v2.0 | 0/TBD | Not started | - |
 | 35. Series Analysis Signatures | v2.0 | 0/TBD | Not started | - |
 | 36. Relation Discovery Signatures | v2.0 | 0/TBD | Not started | - |
