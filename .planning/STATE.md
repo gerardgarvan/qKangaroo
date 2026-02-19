@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 35 of 40 (Series Analysis Signatures)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-19 -- Phase 34 complete (2/2 plans, verified)
+Plan: 1 of 2 in current phase
+Status: Plan 35-01 complete, ready for 35-02
+Last activity: 2026-02-19 -- Plan 35-01 complete (7 series analysis functions migrated)
 
-Progress: [#################################             ] 97/? plans (v2.0 phases 33-40 pending)
+Progress: [##################################            ] 98/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 97
+- Total plans completed: 98
 - Total phases: 34 complete (v1.0-v1.6 + Phases 33-34), 6 planned (v2.0 phases 35-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
@@ -33,6 +33,7 @@ Progress: [#################################             ] 97/? plans (v2.0 phas
 | 33-03 | Symbol-aware dispatch | 7min | 2 | 5 |
 | 34-01 | Product/theta Maple dispatch | 12min | 2 | 1 |
 | 34-02 | Numbpart canonical + help + tests | 6min | 2 | 4 |
+| 35-01 | Series analysis Maple dispatch | 8min | 2 | 4 |
 
 ## Accumulated Context
 
@@ -58,6 +59,11 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 34-02: numbpart(n,m) uses bounded_parts_gf to count bounded partitions
 - 34-02: help(partition_count) redirects to numbpart via function_help lookup
 - 34-02: Piped help tests replaced with -c flag tests (help commands only work in interactive REPL)
+- 35-01: sift validates k range at CLI level, core sift normalizes j internally
+- 35-01: sift truncates input series to T before calling core sift for Maple-accurate truncation
+- 35-01: jacprodmake_impl uses Option<i64> period_divisor for code reuse
+- 35-01: qfactor accepts optional T arg for Maple compat but ignores it (already degree-bounded)
+- 35-01: No backward compat for series analysis functions -- old arg counts error
 
 ### Pending Todos
 
@@ -70,5 +76,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Phase 35 context gathered
-Resume file: .planning/phases/35-series-analysis-signatures/35-CONTEXT.md
+Stopped at: Completed 35-01-PLAN.md
+Resume file: .planning/phases/35-series-analysis-signatures/35-01-SUMMARY.md
