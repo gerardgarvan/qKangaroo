@@ -61,7 +61,7 @@ pub use linalg::{rational_null_space, build_coefficient_matrix, modular_null_spa
 pub use relations::{findlincombo, findhom, findpoly, PolynomialRelation, findcong, findnonhom, findhomcombo, findnonhomcombo, Congruence, findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod};
 pub use partitions::{partition_count, partition_gf, distinct_parts_gf, odd_parts_gf, bounded_parts_gf};
 pub use pochhammer::aqprod;
-pub use prodmake::{prodmake, InfiniteProductForm, etamake, EtaQuotient, jacprodmake, JacobiProductForm, mprodmake, qetamake, QEtaForm};
+pub use prodmake::{prodmake, InfiniteProductForm, etamake, EtaQuotient, jacprodmake, jacprodmake_with_period_filter, JacobiProductForm, mprodmake, qetamake, QEtaForm};
 pub use products::{etaq, jacprod, tripleprod, quinprod, winquist};
 pub use qbinomial::qbin;
 pub use rank_crank::{rank_gf, crank_gf};

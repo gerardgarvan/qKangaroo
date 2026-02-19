@@ -1490,12 +1490,37 @@ pub fn dispatch(
         // =================================================================
 
         "sift" => {
-            // sift(series, m, j)
-            expect_args(name, args, 3)?;
+            // Maple: sift(s, q, n, k, T)
+            expect_args(name, args, 5)?;
             let fps = extract_series(name, args, 0)?;
-            let m = extract_i64(name, args, 1)?;
-            let j = extract_i64(name, args, 2)?;
-            let result = qseries::sift(&fps, m, j);
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let n = extract_i64(name, args, 2)?;
+            let k = extract_i64(name, args, 3)?;
+            let t = extract_i64(name, args, 4)?;
+            if n <= 0 {
+                return Err(EvalError::Other(format!(
+                    "sift: Argument 3 (n): modulus must be positive, got {}", n
+                )));
+            }
+            if k < 0 || k >= n {
+                return Err(EvalError::Other(format!(
+                    "sift: Argument 4 (k): residue must satisfy 0 <= k < n={}, got {}", n, k
+                )));
+            }
+            // Cap T at the series truncation order, then truncate input before sifting
+            let effective_t = t.min(fps.truncation_order());
+            let truncated_input = if effective_t < fps.truncation_order() {
+                let mut coeffs = std::collections::BTreeMap::new();
+                for (&exp, c) in fps.iter() {
+                    if exp < effective_t {
+                        coeffs.insert(exp, c.clone());
+                    }
+                }
+                FormalPowerSeries::from_coeffs(fps.variable(), coeffs, effective_t)
+            } else {
+                fps
+            };
+            let result = qseries::sift(&truncated_input, n, k);
             Ok(Value::Series(result))
         }
 
@@ -1520,56 +1545,97 @@ pub fn dispatch(
         }
 
         "prodmake" => {
-            // prodmake(series, max_n)
-            expect_args(name, args, 2)?;
+            // Maple: prodmake(f, q, T)
+            expect_args(name, args, 3)?;
             let fps = extract_series(name, args, 0)?;
-            let max_n = extract_i64(name, args, 1)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let max_n = extract_i64(name, args, 2)?;
             let result = qseries::prodmake(&fps, max_n);
             Ok(infinite_product_form_to_value(&result))
         }
 
         "etamake" => {
-            // etamake(series, max_n)
-            expect_args(name, args, 2)?;
+            // Maple: etamake(f, q, T)
+            expect_args(name, args, 3)?;
             let fps = extract_series(name, args, 0)?;
-            let max_n = extract_i64(name, args, 1)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let max_n = extract_i64(name, args, 2)?;
             let result = qseries::etamake(&fps, max_n);
             Ok(eta_quotient_to_value(&result))
         }
 
         "jacprodmake" => {
-            // jacprodmake(series, max_n)
-            expect_args(name, args, 2)?;
-            let fps = extract_series(name, args, 0)?;
-            let max_n = extract_i64(name, args, 1)?;
-            let result = qseries::jacprodmake(&fps, max_n);
-            Ok(jacobi_product_form_to_value(&result))
+            // Maple: jacprodmake(f, q, T) or jacprodmake(f, q, T, P)
+            if args.len() == 3 {
+                let fps = extract_series(name, args, 0)?;
+                let _sym = extract_symbol_id(name, args, 1, env)?;
+                let max_n = extract_i64(name, args, 2)?;
+                let result = qseries::jacprodmake(&fps, max_n);
+                Ok(jacobi_product_form_to_value(&result))
+            } else if args.len() == 4 {
+                let fps = extract_series(name, args, 0)?;
+                let _sym = extract_symbol_id(name, args, 1, env)?;
+                let max_n = extract_i64(name, args, 2)?;
+                let pp = extract_i64(name, args, 3)?;
+                if pp <= 0 {
+                    return Err(EvalError::Other(format!(
+                        "jacprodmake: Argument 4 (P): period filter must be positive, got {}", pp
+                    )));
+                }
+                let result = qseries::jacprodmake_with_period_filter(&fps, max_n, pp);
+                Ok(jacobi_product_form_to_value(&result))
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "3 or 4".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
         }
 
         "mprodmake" => {
-            // mprodmake(series, max_n)
-            expect_args(name, args, 2)?;
+            // Maple: mprodmake(f, q, T)
+            expect_args(name, args, 3)?;
             let fps = extract_series(name, args, 0)?;
-            let max_n = extract_i64(name, args, 1)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let max_n = extract_i64(name, args, 2)?;
             let result = qseries::mprodmake(&fps, max_n);
             Ok(btreemap_i64_to_value(&result))
         }
 
         "qetamake" => {
-            // qetamake(series, max_n)
-            expect_args(name, args, 2)?;
+            // Maple: qetamake(f, q, T)
+            expect_args(name, args, 3)?;
             let fps = extract_series(name, args, 0)?;
-            let max_n = extract_i64(name, args, 1)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let max_n = extract_i64(name, args, 2)?;
             let result = qseries::qetamake(&fps, max_n);
             Ok(q_eta_form_to_value(&result))
         }
 
         "qfactor" => {
-            // qfactor(series)
-            expect_args(name, args, 1)?;
-            let fps = extract_series(name, args, 0)?;
-            let result = qseries::qfactor(&fps);
-            Ok(q_factorization_to_value(&result))
+            // Maple: qfactor(f, q) or qfactor(f, q, T)
+            if args.len() == 2 {
+                let fps = extract_series(name, args, 0)?;
+                let _sym = extract_symbol_id(name, args, 1, env)?;
+                let result = qseries::qfactor(&fps);
+                Ok(q_factorization_to_value(&result))
+            } else if args.len() == 3 {
+                let fps = extract_series(name, args, 0)?;
+                let _sym = extract_symbol_id(name, args, 1, env)?;
+                let _t = extract_i64(name, args, 2)?;
+                // T parameter accepted for Maple compat but our qfactor is already degree-bounded
+                let result = qseries::qfactor(&fps);
+                Ok(q_factorization_to_value(&result))
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "2 or 3".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
         }
 
         // =================================================================
@@ -2671,15 +2737,15 @@ fn get_signature(name: &str) -> String {
         "theta3" => "(order)".to_string(),
         "theta4" => "(order)".to_string(),
         // Group 4: Series Analysis
-        "sift" => "(series, m, j)".to_string(),
+        "sift" => "(s, q, n, k, T)".to_string(),
         "qdegree" => "(series)".to_string(),
         "lqdegree" => "(series)".to_string(),
-        "prodmake" => "(series, max_n)".to_string(),
-        "etamake" => "(series, max_n)".to_string(),
-        "jacprodmake" => "(series, max_n)".to_string(),
-        "mprodmake" => "(series, max_n)".to_string(),
-        "qetamake" => "(series, max_n)".to_string(),
-        "qfactor" => "(series)".to_string(),
+        "prodmake" => "(f, q, T)".to_string(),
+        "etamake" => "(f, q, T)".to_string(),
+        "jacprodmake" => "(f, q, T) or (f, q, T, P)".to_string(),
+        "mprodmake" => "(f, q, T)".to_string(),
+        "qetamake" => "(f, q, T)".to_string(),
+        "qfactor" => "(f, q) or (f, q, T)".to_string(),
         // Group 5: Relation Discovery
         "findlincombo" => "(target, [candidates], topshift)".to_string(),
         "findhomcombo" => "(target, [candidates], degree, topshift)".to_string(),
@@ -4073,16 +4139,34 @@ mod tests {
     #[test]
     fn dispatch_sift_returns_series() {
         let mut env = make_env();
-        // Build a partition_gf first, then sift it
-        let args = vec![Value::Integer(QInt::from(30i64))];
-        let pgf = dispatch("partition_gf", &args, &mut env).unwrap();
+        // Maple: sift(s, q, n, k, T)
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(30i64))], &mut env).unwrap();
         let sift_args = vec![
             pgf,
-            Value::Integer(QInt::from(5i64)),
-            Value::Integer(QInt::from(0i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),  // n
+            Value::Integer(QInt::from(0i64)),  // k
+            Value::Integer(QInt::from(30i64)), // T
         ];
         let val = dispatch("sift", &sift_args, &mut env).unwrap();
         assert!(matches!(val, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_sift_invalid_residue_errors() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(30i64))], &mut env).unwrap();
+        // k=7 >= n=5 is invalid
+        let sift_args = vec![
+            pgf,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),  // n
+            Value::Integer(QInt::from(7i64)),  // k (invalid: k >= n)
+            Value::Integer(QInt::from(30i64)), // T
+        ];
+        let err = dispatch("sift", &sift_args, &mut env).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("residue"), "expected 'residue' in error message, got: {}", msg);
     }
 
     #[test]
@@ -4130,11 +4214,14 @@ mod tests {
     #[test]
     fn dispatch_prodmake_returns_dict() {
         let mut env = make_env();
-        // prodmake on partition_gf should give exponents a_n = 1 for all n
+        // Maple: prodmake(f, q, T)
         let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
-        let val = dispatch("prodmake", &[pgf, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        let val = dispatch("prodmake", &[
+            pgf,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ], &mut env).unwrap();
         if let Value::Dict(entries) = &val {
-            // Should have "exponents" and "terms_used" keys
             let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
             assert!(keys.contains(&"exponents"), "expected 'exponents' in {:?}", keys);
             assert!(keys.contains(&"terms_used"), "expected 'terms_used' in {:?}", keys);
@@ -4146,8 +4233,13 @@ mod tests {
     #[test]
     fn dispatch_etamake_returns_dict() {
         let mut env = make_env();
+        // Maple: etamake(f, q, T)
         let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
-        let val = dispatch("etamake", &[pgf, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        let val = dispatch("etamake", &[
+            pgf,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ], &mut env).unwrap();
         if let Value::Dict(entries) = &val {
             let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
             assert!(keys.contains(&"factors"), "expected 'factors' in {:?}", keys);
@@ -4160,12 +4252,41 @@ mod tests {
     #[test]
     fn dispatch_jacprodmake_returns_dict() {
         let mut env = make_env();
+        // Maple: jacprodmake(f, q, T) -- 3-arg form
         let jp = dispatch("jacprod", &[
             Value::Integer(QInt::from(1i64)),
             Value::Integer(QInt::from(5i64)),
             Value::Integer(QInt::from(20i64)),
         ], &mut env).unwrap();
-        let val = dispatch("jacprodmake", &[jp, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        let val = dispatch("jacprodmake", &[
+            jp,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"factors"));
+            assert!(keys.contains(&"is_exact"));
+        } else {
+            panic!("expected Dict, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jacprodmake_4arg_with_period() {
+        let mut env = make_env();
+        // Maple: jacprodmake(f, q, T, P) -- 4-arg form with period filter
+        let jp = dispatch("jacprod", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("jacprodmake", &[
+            jp,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+            Value::Integer(QInt::from(10i64)), // P = 10 (5 divides 10)
+        ], &mut env).unwrap();
         if let Value::Dict(entries) = &val {
             let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
             assert!(keys.contains(&"factors"));
@@ -4178,17 +4299,26 @@ mod tests {
     #[test]
     fn dispatch_mprodmake_returns_dict() {
         let mut env = make_env();
-        // distinct_parts_gf = prod(1+q^n) -- mprodmake should decompose it
+        // Maple: mprodmake(f, q, T)
         let dp = dispatch("distinct_parts_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
-        let val = dispatch("mprodmake", &[dp, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        let val = dispatch("mprodmake", &[
+            dp,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ], &mut env).unwrap();
         assert!(matches!(val, Value::Dict(_)));
     }
 
     #[test]
     fn dispatch_qetamake_returns_dict() {
         let mut env = make_env();
+        // Maple: qetamake(f, q, T)
         let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
-        let val = dispatch("qetamake", &[pgf, Value::Integer(QInt::from(10i64))], &mut env).unwrap();
+        let val = dispatch("qetamake", &[
+            pgf,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ], &mut env).unwrap();
         if let Value::Dict(entries) = &val {
             let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
             assert!(keys.contains(&"factors"));
@@ -4201,13 +4331,16 @@ mod tests {
     #[test]
     fn dispatch_qfactor_returns_dict_with_is_exact() {
         let mut env = make_env();
-        // qbin(5,2,20) is a polynomial: (1-q^4)(1-q^5)/((1-q)(1-q^2))
+        // Maple: qfactor(f, q) -- qbin(5,2,20) is a polynomial
         let qb = dispatch("qbin", &[
             Value::Integer(QInt::from(5i64)),
             Value::Integer(QInt::from(2i64)),
             Value::Integer(QInt::from(20i64)),
         ], &mut env).unwrap();
-        let val = dispatch("qfactor", &[qb], &mut env).unwrap();
+        let val = dispatch("qfactor", &[
+            qb,
+            Value::Symbol("q".to_string()),
+        ], &mut env).unwrap();
         if let Value::Dict(entries) = &val {
             let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
             assert!(keys.contains(&"scalar"));
@@ -4262,8 +4395,8 @@ mod tests {
         assert!(env.get_var("f").is_some());
         assert!(matches!(env.get_var("f").unwrap(), Value::Series(_)));
 
-        // prodmake(f, 10)
-        let stmts2 = parse("prodmake(f, 10)").unwrap();
+        // Maple: prodmake(f, q, 10)
+        let stmts2 = parse("prodmake(f, q, 10)").unwrap();
         let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
         assert!(matches!(result, Value::Dict(_)));
     }
@@ -4292,8 +4425,8 @@ mod tests {
         let stmts = parse("f := partition_gf(30)").unwrap();
         eval_stmt(&stmts[0], &mut env).unwrap();
 
-        // g := sift(f, 5, 4)
-        let stmts2 = parse("g := sift(f, 5, 4)").unwrap();
+        // g := sift(f, q, 5, 4, 30)
+        let stmts2 = parse("g := sift(f, q, 5, 4, 30)").unwrap();
         let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
 
         // p(5n+4) should be divisible by 5 -- check first few coefficients
@@ -4325,8 +4458,8 @@ mod tests {
 
         let mut env = make_env();
 
-        // qfactor(qbin(5, 2, 20)) returns a Dict with scalar, factors, is_exact
-        let stmts = parse("qfactor(qbin(5, 2, 20))").unwrap();
+        // Maple: qfactor(f, q) returns a Dict with scalar, factors, is_exact
+        let stmts = parse("qfactor(qbin(5, 2, 20), q)").unwrap();
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
         if let Value::Dict(entries) = &result {
             let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
