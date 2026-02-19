@@ -155,7 +155,10 @@ Plans:
   2. `prodmake(f, q, 30)` and `etamake(f, q, 30)` decompose a series into product/eta forms with Garvan's signatures
   3. `jacprodmake(f, q, 30)` (3-arg) and `jacprodmake(f, q, 30, P)` (4-arg) both work
   4. `qfactor(f, q)` factors a q-series with explicit q parameter
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 35-01-PLAN.md -- Core jacprodmake period filter, Maple-style dispatch for all 7 functions, unit tests
+- [ ] 35-02-PLAN.md -- Help text updates for all 7 functions, CLI integration tests
 
 ### Phase 36: Relation Discovery Signatures
 **Goal**: All relation-finding functions accept Garvan's signatures including symbolic label lists, and output uses those labels in results
@@ -252,7 +255,7 @@ Plans:
 | 32. PDF Reference Manual | v1.6 | 6/6 | Complete | 2026-02-18 |
 | 33. Symbolic Variable Foundation | v2.0 | 3/3 | Complete | 2026-02-19 |
 | 34. Product & Theta Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
-| 35. Series Analysis Signatures | v2.0 | 0/TBD | Not started | - |
+| 35. Series Analysis Signatures | v2.0 | 0/2 | Not started | - |
 | 36. Relation Discovery Signatures | v2.0 | 0/TBD | Not started | - |
 | 37. New Functions - Theta & Jacobi | v2.0 | 0/TBD | Not started | - |
 | 38. New Functions - Analysis & Discovery | v2.0 | 0/TBD | Not started | - |
