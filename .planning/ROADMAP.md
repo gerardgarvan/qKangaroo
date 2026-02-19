@@ -9,6 +9,7 @@
 - v1.4 Installation & Build Guide - Phases 22-23 (shipped 2026-02-17)
 - v1.5 Interactive REPL - Phases 24-28 (shipped 2026-02-18)
 - v1.6 CLI Hardening & Manual - Phases 29-32 (shipped 2026-02-18)
+- v2.0 Maple Compatibility - Phases 33-40 (in progress)
 
 ## Phases
 
@@ -100,6 +101,112 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 
 </details>
 
+### v2.0 Maple Compatibility (Phases 33-40)
+
+**Milestone Goal:** Every qseries/thetaids function can be called with Garvan's exact Maple syntax -- researchers copy-paste from Maple worksheets and get correct results.
+
+- [ ] **Phase 33: Symbolic Variable Foundation** - Parser and evaluator support bare symbols, q-as-parameter, and q-monomial arguments
+- [ ] **Phase 34: Product & Theta Signatures** - Product/theta functions accept Garvan's exact calling conventions
+- [ ] **Phase 35: Series Analysis Signatures** - Series analysis functions accept Garvan's exact calling conventions
+- [ ] **Phase 36: Relation Discovery Signatures** - All find* functions accept Garvan's signatures with symbolic labels
+- [ ] **Phase 37: New Functions - Theta & Jacobi** - theta, jac2prod, jac2series, qs2jaccombo implemented
+- [ ] **Phase 38: New Functions - Analysis & Discovery** - checkmult, checkprod, lqdegree0, zqfactor, findprod implemented
+- [ ] **Phase 39: Output & Compatibility** - Maple-style display, backward compat verified, all tests green
+- [ ] **Phase 40: Documentation** - Manual, help, tab completion, migration guide all updated
+
+## Phase Details
+
+### Phase 33: Symbolic Variable Foundation
+**Goal**: Users can type bare variable names, pass `q` as a function argument, and use q-monomials like `q^2` as parameters -- the prerequisite for all Maple-compatible signatures
+**Depends on**: Phase 32 (existing CLI infrastructure)
+**Requirements**: SYM-01, SYM-02, SYM-03, SYM-04
+**Success Criteria** (what must be TRUE):
+  1. Typing an undefined name like `f` at the REPL returns a Symbol value (no error)
+  2. `etaq(q, 1, 20)` works -- `q` is accepted as a function parameter and the result is the correct q-series
+  3. `aqprod(q^2, q, 5)` works -- q-monomial `q^2` is accepted as a function argument
+  4. `x := 42` followed by `x` returns 42 (assignment still takes precedence over symbol fallback)
+**Plans**: TBD
+
+### Phase 34: Product & Theta Signatures
+**Goal**: All product and theta functions accept Garvan's exact argument lists so researchers can call them identically to Maple
+**Depends on**: Phase 33
+**Requirements**: SIG-01, SIG-02, SIG-03, SIG-04, SIG-05, SIG-06, SIG-07, SIG-26
+**Success Criteria** (what must be TRUE):
+  1. `aqprod(q^2, q, 5)` returns the same polynomial as Garvan's `aqprod(q^2, q, 5)` in Maple
+  2. `etaq(q, 3, 20)` returns the eta-quotient series matching Garvan output to 20 terms
+  3. `jacprod(1, 5, q, 30)` and `qbin(4, 2, q, 10)` return correct results with explicit q and T arguments
+  4. `numbpart(100)` returns 190569292 (primary name matches Maple, `partition_count` remains as alias)
+  5. `tripleprod`, `quinprod`, and `winquist` all accept Garvan's exact argument forms
+**Plans**: TBD
+
+### Phase 35: Series Analysis Signatures
+**Goal**: Series analysis functions accept Garvan's calling conventions so sifting, product-make, and factoring workflows match Maple exactly
+**Depends on**: Phase 34
+**Requirements**: SIG-08, SIG-09, SIG-10, SIG-11, SIG-12, SIG-13, SIG-14
+**Success Criteria** (what must be TRUE):
+  1. `sift(s, q, 5, 2, 30)` extracts the correct residue-2-mod-5 subseries with explicit q and T
+  2. `prodmake(f, q, 30)` and `etamake(f, q, 30)` decompose a series into product/eta forms with Garvan's signatures
+  3. `jacprodmake(f, q, 30)` (3-arg) and `jacprodmake(f, q, 30, P)` (4-arg) both work
+  4. `qfactor(f, q)` factors a q-series with explicit q parameter
+**Plans**: TBD
+
+### Phase 36: Relation Discovery Signatures
+**Goal**: All relation-finding functions accept Garvan's signatures including symbolic label lists, and output uses those labels in results
+**Depends on**: Phase 33, Phase 34
+**Requirements**: SIG-15, SIG-16, SIG-17, SIG-18, SIG-19, SIG-20, SIG-21, SIG-22, SIG-23, SIG-24, SIG-25, OUT-01, OUT-02
+**Success Criteria** (what must be TRUE):
+  1. `findlincombo(f, [e1,e2], [F1,F2], q, 0)` finds the linear combination and prints result using symbolic labels F1, F2 (e.g., "12*F1 + 13*F2")
+  2. `findhomcombo`, `findnonhomcombo`, `findlincombomodp`, `findhomcombomodp` all accept the SL label list in their Garvan position
+  3. `findhom`, `findnonhom`, `findhommodp`, `findmaxind`, `findpoly` accept Garvan's exact argument lists with explicit q
+  4. `findcong(QS, T)` outputs results in Garvan's `[B, A, R]` triple format
+  5. `findcong(QS, T, LM)` and `findcong(QS, T, LM, XSET)` overloaded forms work
+**Plans**: TBD
+
+### Phase 37: New Functions - Theta & Jacobi
+**Goal**: The four theta/Jacobi conversion functions are available, enabling workflows that convert between theta, Jacobi product, and q-series representations
+**Depends on**: Phase 34
+**Requirements**: NEW-01, NEW-02, NEW-03, NEW-04
+**Success Criteria** (what must be TRUE):
+  1. `theta(z, q, 20)` returns the general theta series sum(z^i * q^(i^2), i=-20..20) as a formal power series in z and q
+  2. `jac2prod(JP, q, 30)` converts a Jacobi product expression to explicit q-product form
+  3. `jac2series(JP, q, 30)` converts a Jacobi product expression to a truncated q-series
+  4. `qs2jaccombo(f, q, 30)` decomposes a q-series into a linear combination of Jacobi products
+**Plans**: TBD
+
+### Phase 38: New Functions - Analysis & Discovery
+**Goal**: Five new analysis/discovery functions are available, completing the Garvan function inventory
+**Depends on**: Phase 35
+**Requirements**: NEW-05, NEW-06, NEW-07, NEW-08, NEW-09
+**Success Criteria** (what must be TRUE):
+  1. `checkmult(f, q, 30)` correctly reports whether the coefficients of a q-series are multiplicative
+  2. `checkprod(f, q, 30)` validates whether a q-series represents a well-formed product and reports the result
+  3. `lqdegree0(f, q)` returns the lowest q-degree (distinct from existing `lqdegree` which works on series values)
+  4. `zqfactor(f, z, q)` factors a bivariate (z,q)-series into (z,q)-product form
+  5. `findprod(L, q, maxcoeff, maxexp)` searches for a product identity matching the given series list
+**Plans**: TBD
+
+### Phase 39: Output & Compatibility
+**Goal**: Series display matches Maple conventions and all existing v1.x calling conventions still work as aliases
+**Depends on**: Phase 34, Phase 35, Phase 36, Phase 37, Phase 38
+**Requirements**: OUT-03, COMPAT-01, COMPAT-02
+**Success Criteria** (what must be TRUE):
+  1. Series output uses Maple-style polynomial ordering (descending powers) when appropriate
+  2. Every v1.x function signature (e.g., `etaq(1, 20)` without explicit q) continues to work and returns the same result
+  3. The full existing test suite (836 core + 294 CLI tests) passes with zero regressions
+**Plans**: TBD
+
+### Phase 40: Documentation
+**Goal**: All documentation reflects the new Maple-compatible signatures so users can learn the system from any entry point
+**Depends on**: Phase 39
+**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06
+**Success Criteria** (what must be TRUE):
+  1. PDF reference manual documents every new and changed function with Garvan's exact signatures, formal math definitions, and worked examples
+  2. REPL `help(function_name)` shows updated signatures and examples for all changed functions; new functions appear in help categories
+  3. Tab completion includes all new function names (theta, jac2prod, jac2series, qs2jaccombo, checkmult, checkprod, lqdegree0, zqfactor, findprod, numbpart)
+  4. Maple migration guide shows side-by-side examples where q-Kangaroo syntax is now identical to Maple (no translation needed)
+  5. Python API docstrings and README quick-start reflect any signature changes
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -136,3 +243,11 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 | 30. Script Execution & CLI Flags | v1.6 | 3/3 | Complete | 2026-02-18 |
 | 31. Error Hardening & Exit Codes | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 32. PDF Reference Manual | v1.6 | 6/6 | Complete | 2026-02-18 |
+| 33. Symbolic Variable Foundation | v2.0 | 0/TBD | Not started | - |
+| 34. Product & Theta Signatures | v2.0 | 0/TBD | Not started | - |
+| 35. Series Analysis Signatures | v2.0 | 0/TBD | Not started | - |
+| 36. Relation Discovery Signatures | v2.0 | 0/TBD | Not started | - |
+| 37. New Functions - Theta & Jacobi | v2.0 | 0/TBD | Not started | - |
+| 38. New Functions - Analysis & Discovery | v2.0 | 0/TBD | Not started | - |
+| 39. Output & Compatibility | v2.0 | 0/TBD | Not started | - |
+| 40. Documentation | v2.0 | 0/TBD | Not started | - |
