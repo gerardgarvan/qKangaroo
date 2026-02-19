@@ -1200,25 +1200,72 @@ pub fn dispatch(
         }
 
         "qbin" => {
-            // qbin(n, k, order)
-            expect_args(name, args, 3)?;
-            let n = extract_i64(name, args, 0)?;
-            let k = extract_i64(name, args, 1)?;
-            let order = extract_i64(name, args, 2)?;
-            let result = qseries::qbin(n, k, env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 3 && matches!(&args[0], Value::Symbol(_)) {
+                // Garvan: qbin(q, m, n) -- exact polynomial
+                let sym = extract_symbol_id(name, args, 0, env)?;
+                let m = extract_i64(name, args, 1)?;
+                let n = extract_i64(name, args, 2)?;
+                // Exact polynomial of degree m*(n-m), use tight truncation
+                // then re-wrap with POLYNOMIAL_ORDER sentinel for display
+                let degree = if m >= 0 && m <= n { m * (n - m) } else { 0 };
+                let tight_order = degree + 1;
+                let computed = qseries::qbin(n, m, sym, tight_order);
+                // Re-wrap with POLYNOMIAL_ORDER sentinel so display omits O(...)
+                let coeffs: BTreeMap<i64, QRat> = computed.iter()
+                    .map(|(&k, v)| (k, v.clone()))
+                    .collect();
+                let result = FormalPowerSeries::from_coeffs(sym, coeffs, POLYNOMIAL_ORDER);
+                Ok(Value::Series(result))
+            } else if args.len() == 4 && matches!(&args[2], Value::Symbol(_)) {
+                // Extended: qbin(n, k, q, T) -- with explicit variable and truncation
+                let n = extract_i64(name, args, 0)?;
+                let k = extract_i64(name, args, 1)?;
+                let sym = extract_symbol_id(name, args, 2, env)?;
+                let order = extract_i64(name, args, 3)?;
+                let result = qseries::qbin(n, k, sym, order);
+                Ok(Value::Series(result))
+            } else {
+                // Legacy: qbin(n, k, order)
+                expect_args(name, args, 3)?;
+                let n = extract_i64(name, args, 0)?;
+                let k = extract_i64(name, args, 1)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::qbin(n, k, env.sym_q, order);
+                Ok(Value::Series(result))
+            }
         }
 
         "etaq" => {
             if args.len() >= 2 && matches!(&args[0], Value::Symbol(_)) {
-                // Maple-style: etaq(var, b, order) with t=1 default
-                // e.g., etaq(q, 1, 20) -> etaq(b=1, t=1, sym=q, order=20)
-                expect_args(name, args, 3)?;
                 let sym = extract_symbol_id(name, args, 0, env)?;
-                let b = extract_i64(name, args, 1)?;
-                let order = extract_i64(name, args, 2)?;
-                let result = qseries::etaq(b, 1, sym, order);
-                Ok(Value::Series(result))
+                if args.len() == 3 && matches!(&args[1], Value::List(_)) {
+                    // Multi-delta: etaq(q, [d1, d2, ...], T)
+                    let deltas = extract_i64_list(name, args, 1)?;
+                    let order = extract_i64(name, args, 2)?;
+                    if deltas.is_empty() {
+                        return Err(EvalError::Other(
+                            format!("{}: delta list must not be empty", name),
+                        ));
+                    }
+                    let mut result = FormalPowerSeries::one(sym, order);
+                    for d in &deltas {
+                        if *d <= 0 {
+                            return Err(EvalError::Other(
+                                format!("{}: each delta must be positive, got {}", name, d),
+                            ));
+                        }
+                        let factor = qseries::etaq(*d, 1, sym, order);
+                        result = arithmetic::mul(&result, &factor);
+                    }
+                    Ok(Value::Series(result))
+                } else {
+                    // Single delta: etaq(q, b, T)
+                    expect_args(name, args, 3)?;
+                    let b = extract_i64(name, args, 1)?;
+                    let order = extract_i64(name, args, 2)?;
+                    let result = qseries::etaq(b, 1, sym, order);
+                    Ok(Value::Series(result))
+                }
             } else {
                 // Legacy: etaq(b, t, order)
                 expect_args(name, args, 3)?;
@@ -2581,8 +2628,8 @@ fn get_signature(name: &str) -> String {
     match name {
         // Group 1: q-Pochhammer and Products
         "aqprod" => "(coeff_num, coeff_den, power, n_or_infinity, order) or (monomial, var, n[, order])".to_string(),
-        "qbin" => "(n, k, order)".to_string(),
-        "etaq" => "(var, b, order) or (b, t, order)".to_string(),
+        "qbin" => "(q, m, n) or (n, k, q, T) or (n, k, order)".to_string(),
+        "etaq" => "(q, delta, T) or (q, [deltas], T) or (b, t, order)".to_string(),
         "jacprod" => "(a, b, q, T) or (a, b, order)".to_string(),
         "tripleprod" => "(z, q, T) or (coeff_num, coeff_den, power, order)".to_string(),
         "quinprod" => "(z, q, T) or (coeff_num, coeff_den, power, order)".to_string(),
@@ -3697,6 +3744,95 @@ mod tests {
         ];
         let val = dispatch("winquist", &args, &mut env).unwrap();
         assert!(matches!(val, Value::Series(_)), "expected Series");
+    }
+
+    #[test]
+    fn dispatch_qbin_garvan_3arg() {
+        let mut env = make_env();
+        // Garvan: qbin(q, 2, 4) -- exact polynomial [4 choose 2]_q
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(4i64)),
+        ];
+        let val = dispatch("qbin", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // [4 choose 2]_q = 1 + q + 2*q^2 + q^3 + q^4
+            assert_eq!(fps.coeff(0), QRat::one(), "constant term");
+            assert_eq!(fps.coeff(2), QRat::from(QInt::from(2i64)), "q^2 coefficient should be 2");
+            assert_eq!(fps.coeff(4), QRat::one(), "q^4 coefficient should be 1");
+            assert!(fps.truncation_order() >= POLYNOMIAL_ORDER, "should be exact polynomial");
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_qbin_4arg() {
+        let mut env = make_env();
+        // Extended: qbin(4, 2, q, 10) -- with explicit variable and truncation
+        let args = vec![
+            Value::Integer(QInt::from(4i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("qbin", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // Same result as [4 choose 2]_q but with explicit truncation
+            assert_eq!(fps.coeff(0), QRat::one(), "constant term");
+            assert_eq!(fps.coeff(2), QRat::from(QInt::from(2i64)), "q^2 coefficient");
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_etaq_multi_delta() {
+        let mut env = make_env();
+        // Multi-delta: etaq(q, [1, 2], 10)
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::List(vec![
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(2i64)),
+            ]),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("etaq", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // etaq(q, [1, 2], 10) = etaq(q, 1, 10) * etaq(q, 2, 10)
+            // = (q;q)_inf * (q^2;q^2)_inf
+            assert_eq!(fps.coeff(0), QRat::one(), "constant term should be 1");
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_etaq_empty_list_errors() {
+        let mut env = make_env();
+        // etaq(q, [], 10) should error
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::List(vec![]),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let result = dispatch("etaq", &args, &mut env);
+        assert!(result.is_err(), "empty delta list should return error");
+    }
+
+    #[test]
+    fn dispatch_etaq_negative_delta_errors() {
+        let mut env = make_env();
+        // etaq(q, [-1], 10) should error
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::List(vec![Value::Integer(QInt::from(-1i64))]),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let result = dispatch("etaq", &args, &mut env);
+        assert!(result.is_err(), "negative delta should return error");
     }
 
     // --- Dispatch: Group 2 (Partitions) ---
