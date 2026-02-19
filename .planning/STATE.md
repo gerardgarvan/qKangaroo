@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 32 of 32 (PDF Reference Manual)
-Plan: 7 of TBD in current phase
+Plan: 8 of TBD in current phase
 Status: Executing
-Last activity: 2026-02-19 -- Completed 32-03 (Relations & Hypergeometric chapters)
+Last activity: 2026-02-19 -- Completed 32-04 (Mock Theta/Bailey & Identity Proving chapters)
 
-Progress: [===========================...] 89/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete, 32-01 through 32-06 + 32-03 done)
+Progress: [===========================...] 90/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete, 32-01 through 32-06 + 32-03 + 32-04 done)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 89
+- Total plans completed: 90
 - Total phases: 31 complete, 1 remaining
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
@@ -38,6 +38,7 @@ Progress: [===========================...] 89/TBD plans (v1.0-v1.5 complete, v1.
 | 32-01 | Manual Infrastructure & Intro Chapters | 4min | 2 | 18 |
 | 32-06 | CI PDF Build & Help Text | 1min | 2 | 2 |
 | 32-03 | Relations & Hypergeometric Chapters | 3min | 2 | 2 |
+| 32-04 | Mock Theta/Bailey & Identity Proving | 4min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -46,6 +47,9 @@ Progress: [===========================...] 89/TBD plans (v1.0-v1.5 complete, v1.
 All v1.0-v1.5 decisions logged in PROJECT.md Key Decisions table.
 
 v1.6-relevant decisions:
+- Phase 32-04: Mock theta functions organized by order (third/fifth/seventh) matching Ramanujan's classification
+- Phase 32-04: Appell-Lerch sums grouped with mock theta (Zwegers unification framework)
+- Phase 32-04: prove_nonterminating prominently marked Python-API-only with CLI error message example
 - Phase 32-03: Relations chapter organized into 3 subsections (Linear Combinations, Relation Finding, Specialized Searches)
 - Phase 32-03: Hypergeometric chapter includes formal r_phi_s display equation; Heine formulas shown inline
 - Phase 32-06: PDF uploaded as standalone release artifact (not bundled in binary archives) for separate download
@@ -87,5 +91,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 32-03-PLAN.md (Relations & Hypergeometric chapters)
+Stopped at: Completed 32-04-PLAN.md (Mock Theta/Bailey & Identity Proving chapters)
 Resume file: N/A
