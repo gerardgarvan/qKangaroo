@@ -462,6 +462,27 @@ pub fn mprodmake(f: &FormalPowerSeries, max_n: i64) -> BTreeMap<i64, i64> {
 /// - `f`: The formal power series to analyze.
 /// - `max_n`: Maximum exponent to recover.
 pub fn jacprodmake(f: &FormalPowerSeries, max_n: i64) -> JacobiProductForm {
+    jacprodmake_impl(f, max_n, None)
+}
+
+/// Express a series as a product of Jacobi triple products JAC(a,b),
+/// restricting the period search to divisors of `pp` (excluding 1).
+///
+/// This matches Garvan's `jacprodmake(f, q, T, PP)` where PP constrains
+/// which periods are tried. Only divisors of PP greater than 1 are tested
+/// as candidate periods.
+///
+/// # Arguments
+///
+/// - `f`: The formal power series to analyze.
+/// - `max_n`: Maximum exponent to recover.
+/// - `pp`: Period filter; only divisors of pp > 1 are tested as candidate periods.
+pub fn jacprodmake_with_period_filter(f: &FormalPowerSeries, max_n: i64, pp: i64) -> JacobiProductForm {
+    jacprodmake_impl(f, max_n, Some(pp))
+}
+
+/// Internal implementation of jacprodmake with optional period filter.
+fn jacprodmake_impl(f: &FormalPowerSeries, max_n: i64, period_divisor: Option<i64>) -> JacobiProductForm {
     let product = prodmake(f, max_n);
     let effective_max = product.terms_used;
 
@@ -490,7 +511,19 @@ pub fn jacprodmake(f: &FormalPowerSeries, max_n: i64) -> JacobiProductForm {
         };
     }
 
-    // Try each candidate period b from 1 to effective_max
+    // Determine candidate periods based on period_divisor filter
+    let candidates: Vec<i64> = match period_divisor {
+        Some(pp) => {
+            // Garvan: numtheory[divisors](PP) minus {1}
+            // Only test divisors of pp that are > 1 and <= effective_max
+            divisors(pp).into_iter().filter(|&d| d > 1 && d <= effective_max).collect()
+        }
+        None => {
+            // Default: try all periods from 1 to effective_max
+            (1..=effective_max).collect()
+        }
+    };
+
     let mut best_b = 0i64;
     let mut best_score = 0i64; // number of exponents explained
     let mut best_factors: BTreeMap<(i64, i64), i64> = BTreeMap::new();
@@ -498,7 +531,7 @@ pub fn jacprodmake(f: &FormalPowerSeries, max_n: i64) -> JacobiProductForm {
 
     let total_nonzero = a.len() as i64;
 
-    for b in 1..=effective_max {
+    for b in candidates {
         let result = try_period(&a, b, effective_max);
         if result.explained >= best_score {
             best_score = result.explained;
@@ -706,5 +739,37 @@ mod tests {
         assert_eq!(divisors(7), vec![1, 7]);
         assert_eq!(divisors(12), vec![1, 2, 3, 4, 6, 12]);
         assert_eq!(divisors(36), vec![1, 2, 3, 4, 6, 9, 12, 18, 36]);
+    }
+
+    #[test]
+    fn test_jacprodmake_with_period_filter() {
+        use crate::symbol::SymbolRegistry;
+        use crate::qseries::jacprod;
+
+        // Build JAC(1,5) series to O(q^20) -- its period is 5
+        let mut reg = SymbolRegistry::new();
+        let sym_q = reg.intern("q");
+        let series = jacprod(1, 5, sym_q, 20);
+
+        // Unfiltered jacprodmake should find the correct decomposition
+        let unfiltered = jacprodmake(&series, 10);
+        assert!(unfiltered.is_exact, "unfiltered jacprodmake should be exact");
+        assert!(!unfiltered.factors.is_empty(), "unfiltered should have factors");
+
+        // Filtered with pp=10 (divisors: 2,5,10) -- period 5 is among them
+        let filtered = jacprodmake_with_period_filter(&series, 10, 10);
+        assert!(filtered.is_exact, "filtered with pp=10 should be exact (5 divides 10)");
+        assert_eq!(
+            unfiltered.factors, filtered.factors,
+            "filtered and unfiltered should produce same factors when PP contains the correct period"
+        );
+
+        // Filtered with pp=7 (divisors: 7) -- period 5 is NOT among them
+        let bad_filter = jacprodmake_with_period_filter(&series, 10, 7);
+        // Should either not be exact or produce different/empty factors
+        assert!(
+            !bad_filter.is_exact || bad_filter.factors != unfiltered.factors,
+            "filtered with pp=7 should not match unfiltered result (period 5 not a divisor of 7)"
+        );
     }
 }
