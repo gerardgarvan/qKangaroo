@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** Phase 32 - PDF Reference Manual (v1.6 CLI Hardening & Manual)
+**Current focus:** v1.6 COMPLETE -- all 32 phases shipped
 
 ## Current Position
 
-Phase: 32 of 32 (PDF Reference Manual)
-Plan: 10 of TBD in current phase
-Status: Executing
-Last activity: 2026-02-19 -- Completed 32-02 (Products, Partitions, Theta, Series Analysis chapters)
+Phase: 32 of 32 (PDF Reference Manual) -- COMPLETE
+Plan: 6 of 6 in current phase (PHASE COMPLETE)
+Status: v1.6 milestone complete -- all phases shipped
+Last activity: 2026-02-18 -- Phase 32 complete (PDF Reference Manual), v1.6 milestone complete
 
-Progress: [===========================...] 92/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete, 32-01 through 32-06 done)
+Progress: [==============================] 92/92 plans (v1.0-v1.6 all complete)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
 - Total plans completed: 92
-- Total phases: 31 complete, 1 remaining
-- Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
+- Total phases: 32 complete, 0 remaining
+- Total milestones: 7 complete (v1.0-v1.6)
 - Average duration: ~5 min/plan
 - Total execution time: ~8 hours
 
@@ -98,6 +98,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-19
-Stopped at: Completed 32-02-PLAN.md (Products, Partitions, Theta, Series Analysis chapters)
+Last session: 2026-02-18
+Stopped at: v1.6 milestone complete -- all 32 phases shipped, 92 plans executed
 Resume file: N/A

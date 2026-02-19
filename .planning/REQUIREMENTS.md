@@ -51,12 +51,12 @@ Requirements for v1.6 CLI Hardening & Manual. Each maps to roadmap phases.
 
 ### Documentation
 
-- [ ] **DOC-01**: PDF reference manual covers all 81 functions with mathematical definitions
-- [ ] **DOC-02**: Manual includes language reference, CLI usage, and session commands
-- [ ] **DOC-03**: Manual includes worked examples and Maple migration guide
-- [ ] **DOC-04**: PDF compiled from Typst source at release time
-- [ ] **DOC-05**: PDF included in GitHub release archives alongside binary
-- [ ] **DOC-06**: `--help` output mentions the PDF manual
+- [x] **DOC-01**: PDF reference manual covers all 81 functions with mathematical definitions
+- [x] **DOC-02**: Manual includes language reference, CLI usage, and session commands
+- [x] **DOC-03**: Manual includes worked examples and Maple migration guide
+- [x] **DOC-04**: PDF compiled from Typst source at release time
+- [x] **DOC-05**: PDF included in GitHub release archives alongside binary
+- [x] **DOC-06**: `--help` output mentions the PDF manual
 
 ## Future Requirements
 
@@ -115,12 +115,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ERR-03 | Phase 31 | Complete |
 | ERR-04 | Phase 31 | Complete |
 | ERR-05 | Phase 31 | Complete |
-| DOC-01 | Phase 32 | Pending |
-| DOC-02 | Phase 32 | Pending |
-| DOC-03 | Phase 32 | Pending |
-| DOC-04 | Phase 32 | Pending |
-| DOC-05 | Phase 32 | Pending |
-| DOC-06 | Phase 32 | Pending |
+| DOC-01 | Phase 32 | Complete |
+| DOC-02 | Phase 32 | Complete |
+| DOC-03 | Phase 32 | Complete |
+| DOC-04 | Phase 32 | Complete |
+| DOC-05 | Phase 32 | Complete |
+| DOC-06 | Phase 32 | Complete |
 
 **Coverage:**
 - v1.6 requirements: 27 total

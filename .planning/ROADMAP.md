@@ -95,7 +95,7 @@ See `.planning/milestones/v1.5-ROADMAP.md` for details.
 - [x] **Phase 29: Static Linking** - Self-contained binary with zero DLL dependencies -- 2026-02-18
 - [x] **Phase 30: Script Execution & CLI Flags** - Non-interactive batch mode and argument handling -- 2026-02-18
 - [x] **Phase 31: Error Hardening & Exit Codes** - Robust diagnostics and machine-readable exit status -- 2026-02-18
-- [ ] **Phase 32: PDF Reference Manual** - Comprehensive typeset documentation for all 81 functions
+- [x] **Phase 32: PDF Reference Manual** - Comprehensive typeset documentation for all 81 functions -- 2026-02-18
 
 ## Phase Details
 
@@ -158,12 +158,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 32-01-PLAN.md -- Typst project infrastructure, templates, and introductory chapters (00-04)
-- [ ] 32-02-PLAN.md -- Function reference: Products, Partitions, Theta, Series Analysis (26 functions)
-- [ ] 32-03-PLAN.md -- Function reference: Relations, Hypergeometric (21 functions)
-- [ ] 32-04-PLAN.md -- Function reference: Mock Theta/Bailey, Identity Proving (34 functions)
-- [ ] 32-05-PLAN.md -- Worked Examples, Maple Migration, and Index chapters
-- [ ] 32-06-PLAN.md -- CI workflow for PDF compilation and --help update
+- [x] 32-01-PLAN.md -- Typst project infrastructure, templates, and introductory chapters (00-04)
+- [x] 32-02-PLAN.md -- Function reference: Products, Partitions, Theta, Series Analysis (26 functions)
+- [x] 32-03-PLAN.md -- Function reference: Relations, Hypergeometric (21 functions)
+- [x] 32-04-PLAN.md -- Function reference: Mock Theta/Bailey, Identity Proving (34 functions)
+- [x] 32-05-PLAN.md -- Worked Examples, Maple Migration, and Index chapters
+- [x] 32-06-PLAN.md -- CI workflow for PDF compilation and --help update
 
 ## Progress
 
@@ -200,4 +200,4 @@ Plans:
 | 29. Static Linking | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 30. Script Execution & CLI Flags | v1.6 | 3/3 | Complete | 2026-02-18 |
 | 31. Error Hardening & Exit Codes | v1.6 | 2/2 | Complete | 2026-02-18 |
-| 32. PDF Reference Manual | v1.6 | 0/6 | Not started | - |
+| 32. PDF Reference Manual | v1.6 | 6/6 | Complete | 2026-02-18 |
