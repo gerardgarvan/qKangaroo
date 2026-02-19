@@ -40,10 +40,10 @@ Theta Functions:
   theta4   - Jacobi theta_4(q)
 
 Series Analysis:
-  sift           - extract arithmetic subsequence: coeff of q^(mj+r)
+  sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
   qdegree        - highest power of q with nonzero coefficient
   lqdegree       - lowest power of q with nonzero coefficient
-  qfactor        - factor series into (1-q^i) factors
+  qfactor        - factor polynomial into (1-q^i) factors
   prodmake       - find infinite product form via log derivative
   etamake        - find eta quotient form
   jacprodmake    - find Jacobi product form
@@ -263,9 +263,9 @@ const FUNC_HELP: &[FuncHelp] = &[
     FuncHelp {
         name: "sift",
         signature: "sift(s, q, n, k, T)",
-        description: "Extract the arithmetic subsequence of coefficients: returns a new series whose\n  i-th coefficient is the (n*i+k)-th coefficient of the input series s.\n  The q argument specifies the series variable, T caps the truncation order.\n  Requires 0 <= k < n.",
-        example: "q> sift(partition_gf(50), q, 5, 4, 50)",
-        example_output: "1 + q + 2*q^2 + ... (coefficients of q^(5i+4) from partition_gf)",
+        description: "Extract the arithmetic subsequence of coefficients at residue k mod n.\n  Returns a new series whose i-th coefficient is the (n*i+k)-th coefficient of the input.\n  T controls the truncation: the input is used up to q^T.",
+        example: "q> f := partition_gf(50)\nq> sift(f, q, 5, 4, 50)",
+        example_output: "1 + q + 2*q^2 + 3*q^3 + ... (coefficients of q^(5i+4) from partition_gf)",
     },
     FuncHelp {
         name: "qdegree",
@@ -284,44 +284,44 @@ const FUNC_HELP: &[FuncHelp] = &[
     FuncHelp {
         name: "qfactor",
         signature: "qfactor(f, q) or qfactor(f, q, T)",
-        description: "Factor a polynomial series into (1-q^i) factors by top-down division.\n  Returns a dictionary mapping each factor (1-q^i) to its multiplicity.\n  The optional T argument is accepted for Maple compat but has no effect.",
-        example: "q> qfactor(aqprod(1, 1, 1, 5, 20), q)",
-        example_output: "{(1-q): 1, (1-q^2): 1, (1-q^3): 1, (1-q^4): 1, (1-q^5): 1}",
+        description: "Factor a polynomial series into (1-q^i) factors by top-down division.\n  Returns a dictionary with scalar, factors, and is_exact flag.\n  Optional T limits the maximum factor index to search.",
+        example: "q> f := aqprod(q, q, 5)\nq> qfactor(f, q)",
+        example_output: "{scalar: 1, factors: {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}, is_exact: true}",
     },
     FuncHelp {
         name: "prodmake",
         signature: "prodmake(f, q, T)",
-        description: "Find the infinite product representation of a series via the log derivative method.\n  Returns exponents a_n such that series = prod_{n>=1} (1-q^n)^{a_n}.\n  T specifies the maximum exponent to recover.",
-        example: "q> prodmake(partition_gf(50), q, 20)",
-        example_output: "{1: -1, 2: -1, 3: -1, ...}",
+        description: "Find the infinite product representation of a series via the log derivative method.\n  Returns exponents a_n such that series = prod_{n>=1} (1-q^n)^{a_n}.\n  T is the maximum exponent to search.",
+        example: "q> f := partition_gf(50)\nq> prodmake(f, q, 20)",
+        example_output: "{exponents: {1: -1, 2: -1, 3: -1, ...}, terms_used: 20}",
     },
     FuncHelp {
         name: "etamake",
         signature: "etamake(f, q, T)",
-        description: "Find an eta-quotient representation of the series via Mobius inversion.\n  Returns divisor-grouped exponents for eta(d*tau) factors.",
-        example: "q> etamake(partition_gf(50), q, 10)",
-        example_output: "{1: -1} (meaning 1/eta(tau))",
+        description: "Find an eta-quotient representation of the series via Mobius inversion.\n  Returns divisor-grouped exponents for eta(d*tau) factors.\n  T is the maximum delta to search.",
+        example: "q> f := partition_gf(50)\nq> etamake(f, q, 10)",
+        example_output: "{factors: {1: -1}, q_shift: 0, is_exact: true}",
     },
     FuncHelp {
         name: "jacprodmake",
         signature: "jacprodmake(f, q, T) or jacprodmake(f, q, T, P)",
-        description: "Find a Jacobi product representation with period search and residue grouping.\n  Includes an is_exact flag indicating whether the product matches exactly.\n  Optional P restricts the period search to divisors of P.",
-        example: "q> jacprodmake(theta3(50), q, 10)",
-        example_output: "{period: 2, residues: {...}, is_exact: true}",
+        description: "Find a Jacobi product representation with period search and residue grouping.\n  Returns JAC(a,b) factors. Optional P restricts the period search to divisors of P.\n  Includes an is_exact flag indicating whether the product matches exactly.",
+        example: "q> f := jacprod(1, 5, q, 30)\nq> jacprodmake(f, q, 10)",
+        example_output: "{factors: {(1,5): 1}, scalar: 1, is_exact: true}",
     },
     FuncHelp {
         name: "mprodmake",
         signature: "mprodmake(f, q, T)",
-        description: "Find a (1+q^n) product representation by iterative extraction.\n  Converts (1+q^n) = (1-q^(2n))/(1-q^n) factors.",
-        example: "q> mprodmake(distinct_parts_gf(50), q, 10)",
+        description: "Find a (1+q^n) product representation by iterative extraction.\n  Returns exponents for each (1+q^n) factor.\n  T is the maximum exponent to search.",
+        example: "q> f := distinct_parts_gf(50)\nq> mprodmake(f, q, 10)",
         example_output: "{1: 1, 2: 1, 3: 1, ...}",
     },
     FuncHelp {
         name: "qetamake",
         signature: "qetamake(f, q, T)",
-        description: "Find a combined eta/q-Pochhammer product representation.\n  Extends etamake with additional q-Pochhammer factors.",
-        example: "q> qetamake(partition_gf(50), q, 10)",
-        example_output: "{eta_factors: {...}, qpoch_factors: {...}}",
+        description: "Find a combined eta/q-Pochhammer product representation.\n  Extends etamake with additional q-Pochhammer factors.\n  T is the maximum exponent to search.",
+        example: "q> f := partition_gf(50)\nq> qetamake(f, q, 10)",
+        example_output: "{factors: {...}, q_shift: 0, is_exact: true}",
     },
 
     // -----------------------------------------------------------------------
