@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 35 complete, ready for Phase 36
+**Current focus:** v2.0 Maple Compatibility -- Phase 36 in progress
 
 ## Current Position
 
-Phase: 35 of 40 (Series Analysis Signatures) -- COMPLETE
-Plan: 2 of 2 in current phase (all done)
-Status: Phase 35 complete, ready for Phase 36
-Last activity: 2026-02-19 -- Plan 35-02 complete (help text + 12 integration tests)
+Phase: 36 of 40 (Relation Discovery Signatures)
+Plan: 1 of 3 in current phase (36-01 complete)
+Status: Plan 36-01 complete, ready for 36-02
+Last activity: 2026-02-19 -- Plan 36-01 complete (pub monomial generators + findcong_garvan)
 
-Progress: [###################################           ] 100/? plans (v2.0 phases 33-40 pending)
+Progress: [####################################          ] 101/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 100
+- Total plans completed: 101
 - Total phases: 35 complete (v1.0-v1.6 + Phases 33-35), 5 planned (v2.0 phases 36-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
@@ -35,6 +35,7 @@ Progress: [###################################           ] 100/? plans (v2.0 pha
 | 34-02 | Numbpart canonical + help + tests | 6min | 2 | 4 |
 | 35-01 | Series analysis Maple dispatch | 8min | 2 | 4 |
 | 35-02 | Help text + integration tests | 4min | 2 | 2 |
+| 36-01 | Pub monomial generators + findcong_garvan | 4min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -68,6 +69,10 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 35-02: Help examples use two-line format (assign then call) matching Maple documentation style
 - 35-02: qfactor integration test uses aqprod(q, q, 5, 20) for complete polynomial factoring
 - 35-02: Old-signature error tests check for exact "expects N arguments" message format
+- 36-01: findcong_garvan uses rug::Integer GCD with abs_ref for sign safety
+- 36-01: trial_factor returns Vec<(i64, u32)> for simple prime-power iteration
+- 36-01: generate_nonhom_monomials delegates to generate_monomials for each degree level
+- 36-01: Test truncation uses t=99 with partition_gf(100) to respect O(q^100) bound
 
 ### Pending Todos
 
@@ -80,5 +85,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Phase 36 context gathered
-Resume file: .planning/phases/36-relation-discovery-signatures/36-CONTEXT.md
+Stopped at: Completed 36-01-PLAN.md
+Resume file: .planning/phases/36-relation-discovery-signatures/36-02-PLAN.md
