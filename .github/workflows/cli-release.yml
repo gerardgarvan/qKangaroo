@@ -107,16 +107,29 @@ jobs:
           name: binary-windows
           path: dist/q-kangaroo-windows-x86_64.zip
 
+  build-manual:
+    name: Build PDF Manual
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: typst-community/setup-typst@v4
+      - name: Compile PDF
+        run: typst compile manual/main.typ q-kangaroo-manual.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manual-pdf
+          path: q-kangaroo-manual.pdf
+
   create-release:
     name: Create GitHub Release
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-manual]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: binary-*
+          pattern: '{binary-*,manual-pdf}'
           merge-multiple: true
           path: dist/
       - name: Create Release
@@ -126,3 +139,4 @@ jobs:
           files: |
             dist/q-kangaroo-linux-x86_64.tar.gz
             dist/q-kangaroo-windows-x86_64.zip
+            dist/q-kangaroo-manual.pdf
