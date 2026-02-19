@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 32 of 32 (PDF Reference Manual)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-18 -- Phase 31 complete (error hardening & exit codes), advancing to Phase 32
+Plan: 1 of TBD in current phase
+Status: Executing
+Last activity: 2026-02-18 -- Completed 32-01 (manual infrastructure & introductory chapters)
 
-Progress: [===========================...] 86/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete)
+Progress: [===========================...] 87/TBD plans (v1.0-v1.5 complete, v1.6 Phases 29-31 complete, 32-01 done)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 86
+- Total plans completed: 87
 - Total phases: 31 complete, 1 remaining
 - Total milestones: 6 complete (v1.0-v1.5), 1 in progress (v1.6)
 - Average duration: ~5 min/plan
@@ -35,6 +35,7 @@ Progress: [===========================...] 86/TBD plans (v1.0-v1.5 complete, v1.
 | 30-03 | CLI Integration Tests | 2min | 1 | 1 |
 | 31-01 | Error Hardening Infrastructure | 5min | 2 | 5 |
 | 31-02 | Error Hardening Integration Tests | 4min | 1 | 2 |
+| 32-01 | Manual Infrastructure & Intro Chapters | 4min | 2 | 18 |
 
 ## Accumulated Context
 
@@ -43,6 +44,10 @@ Progress: [===========================...] 86/TBD plans (v1.0-v1.5 complete, v1.
 All v1.0-v1.5 decisions logged in PROJECT.md Key Decisions table.
 
 v1.6-relevant decisions:
+- Phase 32-01: New Computer Modern 11pt body + DejaVu Sans Mono 9pt code fonts for PDF manual
+- Phase 32-01: in-dexter v0.7.2 for back-of-book index with index-main for function entries
+- Phase 32-01: func-entry template: name, signature, description, math-def, params, examples, edge-cases, related
+- Phase 32-01: Version variable centralized in template.typ for single-point updates
 - Phase 31-02: Custom panic hook (set_hook) suppresses raw "thread panicked" output for clean error messages
 - Phase 30-03: Integration tests use env!(CARGO_BIN_EXE_q-kangaroo) for binary path resolution
 - Phase 30-03: Windows backslash escaping in read() test paths via replace('\\', '\\\\')
@@ -76,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 31-02-PLAN.md (error hardening integration tests) -- Phase 31 complete
+Stopped at: Completed 32-01-PLAN.md (manual infrastructure & introductory chapters)
 Resume file: N/A
