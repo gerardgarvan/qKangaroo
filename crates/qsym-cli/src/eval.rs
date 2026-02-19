@@ -1231,53 +1231,94 @@ pub fn dispatch(
         }
 
         "jacprod" => {
-            // jacprod(a, b, order)
-            expect_args(name, args, 3)?;
-            let a = extract_i64(name, args, 0)?;
-            let b = extract_i64(name, args, 1)?;
-            let order = extract_i64(name, args, 2)?;
-            let result = qseries::jacprod(a, b, env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 4 && matches!(&args[2], Value::Symbol(_)) {
+                // Maple: jacprod(a, b, q, T) = JAC(a,b) / JAC(b,3b)
+                let a_val = extract_i64(name, args, 0)?;
+                let b_val = extract_i64(name, args, 1)?;
+                let sym = extract_symbol_id(name, args, 2, env)?;
+                let order = extract_i64(name, args, 3)?;
+                let jac_ab = qseries::jacprod(a_val, b_val, sym, order);
+                let jac_b3b = qseries::jacprod(b_val, 3 * b_val, sym, order);
+                let inv_b3b = arithmetic::invert(&jac_b3b);
+                let result = arithmetic::mul(&jac_ab, &inv_b3b);
+                Ok(Value::Series(result))
+            } else {
+                // Legacy: jacprod(a, b, order)
+                expect_args(name, args, 3)?;
+                let a = extract_i64(name, args, 0)?;
+                let b = extract_i64(name, args, 1)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::jacprod(a, b, env.sym_q, order);
+                Ok(Value::Series(result))
+            }
         }
 
         "tripleprod" => {
-            // tripleprod(coeff_num, coeff_den, power, order)
-            expect_args(name, args, 4)?;
-            let cn = extract_i64(name, args, 0)?;
-            let cd = extract_i64(name, args, 1)?;
-            let power = extract_i64(name, args, 2)?;
-            let order = extract_i64(name, args, 3)?;
-            let monomial = QMonomial::new(QRat::from((cn, cd)), power);
-            let result = qseries::tripleprod(&monomial, env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 3 && matches!(&args[0], Value::Series(_) | Value::Symbol(_)) {
+                // Maple: tripleprod(z, q, T) -- z is monomial, q is variable
+                let monomial = extract_monomial_from_arg(name, args, 0)?;
+                let sym = extract_symbol_id(name, args, 1, env)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::tripleprod(&monomial, sym, order);
+                Ok(Value::Series(result))
+            } else {
+                // Legacy: tripleprod(coeff_num, coeff_den, power, order)
+                expect_args(name, args, 4)?;
+                let cn = extract_i64(name, args, 0)?;
+                let cd = extract_i64(name, args, 1)?;
+                let power = extract_i64(name, args, 2)?;
+                let order = extract_i64(name, args, 3)?;
+                let monomial = QMonomial::new(QRat::from((cn, cd)), power);
+                let result = qseries::tripleprod(&monomial, env.sym_q, order);
+                Ok(Value::Series(result))
+            }
         }
 
         "quinprod" => {
-            // quinprod(coeff_num, coeff_den, power, order)
-            expect_args(name, args, 4)?;
-            let cn = extract_i64(name, args, 0)?;
-            let cd = extract_i64(name, args, 1)?;
-            let power = extract_i64(name, args, 2)?;
-            let order = extract_i64(name, args, 3)?;
-            let monomial = QMonomial::new(QRat::from((cn, cd)), power);
-            let result = qseries::quinprod(&monomial, env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 3 && matches!(&args[0], Value::Series(_) | Value::Symbol(_)) {
+                // Maple: quinprod(z, q, T) -- z is monomial, q is variable
+                let monomial = extract_monomial_from_arg(name, args, 0)?;
+                let sym = extract_symbol_id(name, args, 1, env)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::quinprod(&monomial, sym, order);
+                Ok(Value::Series(result))
+            } else {
+                // Legacy: quinprod(coeff_num, coeff_den, power, order)
+                expect_args(name, args, 4)?;
+                let cn = extract_i64(name, args, 0)?;
+                let cd = extract_i64(name, args, 1)?;
+                let power = extract_i64(name, args, 2)?;
+                let order = extract_i64(name, args, 3)?;
+                let monomial = QMonomial::new(QRat::from((cn, cd)), power);
+                let result = qseries::quinprod(&monomial, env.sym_q, order);
+                Ok(Value::Series(result))
+            }
         }
 
         "winquist" => {
-            // winquist(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)
-            expect_args(name, args, 7)?;
-            let a_cn = extract_i64(name, args, 0)?;
-            let a_cd = extract_i64(name, args, 1)?;
-            let a_p = extract_i64(name, args, 2)?;
-            let b_cn = extract_i64(name, args, 3)?;
-            let b_cd = extract_i64(name, args, 4)?;
-            let b_p = extract_i64(name, args, 5)?;
-            let order = extract_i64(name, args, 6)?;
-            let a = QMonomial::new(QRat::from((a_cn, a_cd)), a_p);
-            let b = QMonomial::new(QRat::from((b_cn, b_cd)), b_p);
-            let result = qseries::winquist(&a, &b, env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 4 && matches!(&args[2], Value::Symbol(_)) {
+                // Maple: winquist(a, b, q, T) -- a,b are monomials, q is variable
+                let a = extract_monomial_from_arg(name, args, 0)?;
+                let b = extract_monomial_from_arg(name, args, 1)?;
+                let sym = extract_symbol_id(name, args, 2, env)?;
+                let order = extract_i64(name, args, 3)?;
+                let result = qseries::winquist(&a, &b, sym, order);
+                Ok(Value::Series(result))
+            } else {
+                // Legacy: winquist(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)
+                expect_args(name, args, 7)?;
+                let a_cn = extract_i64(name, args, 0)?;
+                let a_cd = extract_i64(name, args, 1)?;
+                let a_p = extract_i64(name, args, 2)?;
+                let b_cn = extract_i64(name, args, 3)?;
+                let b_cd = extract_i64(name, args, 4)?;
+                let b_p = extract_i64(name, args, 5)?;
+                let order = extract_i64(name, args, 6)?;
+                let a = QMonomial::new(QRat::from((a_cn, a_cd)), a_p);
+                let b = QMonomial::new(QRat::from((b_cn, b_cd)), b_p);
+                let result = qseries::winquist(&a, &b, env.sym_q, order);
+                Ok(Value::Series(result))
+            }
         }
 
         // =================================================================
@@ -2542,10 +2583,10 @@ fn get_signature(name: &str) -> String {
         "aqprod" => "(coeff_num, coeff_den, power, n_or_infinity, order) or (monomial, var, n[, order])".to_string(),
         "qbin" => "(n, k, order)".to_string(),
         "etaq" => "(var, b, order) or (b, t, order)".to_string(),
-        "jacprod" => "(a, b, order)".to_string(),
-        "tripleprod" => "(coeff_num, coeff_den, power, order)".to_string(),
-        "quinprod" => "(coeff_num, coeff_den, power, order)".to_string(),
-        "winquist" => "(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)".to_string(),
+        "jacprod" => "(a, b, q, T) or (a, b, order)".to_string(),
+        "tripleprod" => "(z, q, T) or (coeff_num, coeff_den, power, order)".to_string(),
+        "quinprod" => "(z, q, T) or (coeff_num, coeff_den, power, order)".to_string(),
+        "winquist" => "(a, b, q, T) or (a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)".to_string(),
         // Group 2: Partitions
         "partition_count" => "(n)".to_string(),
         "partition_gf" => "(order)".to_string(),
@@ -3570,6 +3611,92 @@ mod tests {
         ];
         let val = dispatch("quinprod", &args, &mut env).unwrap();
         assert!(matches!(val, Value::Series(_)));
+    }
+
+    // --- Dispatch: Group 1 Maple-style ---
+
+    /// Helper: create a monomial series q^power for test arguments.
+    fn make_monomial_series(env: &Environment, power: i64) -> Value {
+        let fps = FormalPowerSeries::monomial(env.sym_q, QRat::one(), power, POLYNOMIAL_ORDER);
+        Value::Series(fps)
+    }
+
+    #[test]
+    fn dispatch_jacprod_maple_style() {
+        let mut env = make_env();
+        // Maple: jacprod(1, 5, q, 30) = JAC(1,5) / JAC(5,15)
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(30i64)),
+        ];
+        let val = dispatch("jacprod", &args, &mut env).unwrap();
+        if let Value::Series(ref fps) = val {
+            assert_eq!(fps.coeff(0), QRat::one(), "constant term should be 1");
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+
+        // Verify Maple result differs from legacy JAC(1,5) at some coefficient
+        // (since Maple = JAC(a,b)/JAC(b,3b), legacy = JAC(a,b))
+        let legacy_args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(30i64)),
+        ];
+        let legacy_val = dispatch("jacprod", &legacy_args, &mut env).unwrap();
+        if let (Value::Series(maple_fps), Value::Series(legacy_fps)) = (&val, &legacy_val) {
+            // Check several coefficients -- they must differ somewhere
+            let mut found_diff = false;
+            for k in 0..30 {
+                if maple_fps.coeff(k) != legacy_fps.coeff(k) {
+                    found_diff = true;
+                    break;
+                }
+            }
+            assert!(found_diff, "Maple and legacy jacprod should differ at some coefficient");
+        }
+    }
+
+    #[test]
+    fn dispatch_tripleprod_maple_style() {
+        let mut env = make_env();
+        // Maple: tripleprod(q^3, q, 20)
+        let args = vec![
+            make_monomial_series(&env, 3),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("tripleprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)), "expected Series");
+    }
+
+    #[test]
+    fn dispatch_quinprod_maple_style() {
+        let mut env = make_env();
+        // Maple: quinprod(q^2, q, 20)
+        let args = vec![
+            make_monomial_series(&env, 2),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("quinprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)), "expected Series");
+    }
+
+    #[test]
+    fn dispatch_winquist_maple_style() {
+        let mut env = make_env();
+        // Maple: winquist(q, q^2, q, 10) -- a=q^1, b=q^2
+        let args = vec![
+            make_monomial_series(&env, 1),
+            make_monomial_series(&env, 2),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("winquist", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)), "expected Series");
     }
 
     // --- Dispatch: Group 2 (Partitions) ---
