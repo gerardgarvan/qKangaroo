@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 36 of 40 (Relation Discovery Signatures)
-Plan: 1 of 3 in current phase (36-01 complete)
-Status: Plan 36-01 complete, ready for 36-02
-Last activity: 2026-02-19 -- Plan 36-01 complete (pub monomial generators + findcong_garvan)
+Plan: 2 of 3 in current phase (36-02 complete)
+Status: Plan 36-02 complete, ready for 36-03
+Last activity: 2026-02-19 -- Plan 36-02 complete (Garvan-compatible relation discovery dispatch)
 
-Progress: [####################################          ] 101/? plans (v2.0 phases 33-40 pending)
+Progress: [####################################          ] 102/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 101
+- Total plans completed: 102
 - Total phases: 35 complete (v1.0-v1.6 + Phases 33-35), 5 planned (v2.0 phases 36-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
@@ -36,6 +36,7 @@ Progress: [####################################          ] 101/? plans (v2.0 pha
 | 35-01 | Series analysis Maple dispatch | 8min | 2 | 4 |
 | 35-02 | Help text + integration tests | 4min | 2 | 2 |
 | 36-01 | Pub monomial generators + findcong_garvan | 4min | 2 | 2 |
+| 36-02 | Garvan-compatible relation discovery dispatch | 5min | 1 | 1 |
 
 ## Accumulated Context
 
@@ -73,6 +74,13 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 36-01: trial_factor returns Vec<(i64, u32)> for simple prime-power iteration
 - 36-01: generate_nonhom_monomials delegates to generate_monomials for each degree level
 - 36-01: Test truncation uses t=99 with partition_gf(100) to respect O(q^100) bound
+- 36-02: SL label validation uses strict match (labels.len() == candidates.len())
+- 36-02: validate_unique_labels uses HashSet for O(n) duplicate detection
+- 36-02: is_prime uses trial division (6k+-1) for small p validation at dispatch time
+- 36-02: default_labels generates X[1]..X[k] matching Garvan convention
+- 36-02: findmaxind returns 1-based indices matching Garvan convention
+- 36-02: findcong dispatches to findcong_garvan with auto-scan algorithm
+- 36-02: findpoly uses fixed topshift=10 matching Garvan's dim2:=dim1+10
 
 ### Pending Todos
 
@@ -85,5 +93,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 36-01-PLAN.md
-Resume file: .planning/phases/36-relation-discovery-signatures/36-02-PLAN.md
+Stopped at: Completed 36-02-PLAN.md
+Resume file: .planning/phases/36-relation-discovery-signatures/36-03-PLAN.md
