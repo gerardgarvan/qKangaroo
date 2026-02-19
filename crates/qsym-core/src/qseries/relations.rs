@@ -1466,3 +1466,116 @@ fn increment_coeffs(coeffs: &mut [i64], max_coeff: i64) -> bool {
     }
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+    use crate::symbol::SymbolRegistry;
+
+    /// Helper to create a partition generating function for tests.
+    fn test_partition_gf(trunc: i64) -> FormalPowerSeries {
+        let mut reg = SymbolRegistry::new();
+        let q = reg.intern("q");
+        crate::qseries::partition_gf(q, trunc)
+    }
+
+    #[test]
+    fn test_trial_factor_basic() {
+        let empty: Vec<(i64, u32)> = vec![];
+        assert_eq!(trial_factor(1), empty);
+        assert_eq!(trial_factor(0), empty);
+        assert_eq!(trial_factor(2), vec![(2, 1)]);
+        assert_eq!(trial_factor(12), vec![(2, 2), (3, 1)]);
+        assert_eq!(trial_factor(25), vec![(5, 2)]);
+        assert_eq!(trial_factor(7), vec![(7, 1)]);
+        assert_eq!(trial_factor(100), vec![(2, 2), (5, 2)]);
+    }
+
+    #[test]
+    fn test_generate_monomials_pub() {
+        // generate_monomials(2, 2) should produce [2,0], [1,1], [0,2]
+        let monos = generate_monomials(2, 2);
+        assert_eq!(monos.len(), 3);
+        assert!(monos.contains(&vec![2, 0]));
+        assert!(monos.contains(&vec![1, 1]));
+        assert!(monos.contains(&vec![0, 2]));
+
+        // generate_monomials(3, 1) should produce 3 monomials: [1,0,0], [0,1,0], [0,0,1]
+        let monos3 = generate_monomials(3, 1);
+        assert_eq!(monos3.len(), 3);
+    }
+
+    #[test]
+    fn test_generate_nonhom_monomials() {
+        // generate_nonhom_monomials(2, 1): degree 0 has 1 monomial, degree 1 has 2 = 3 total
+        let monos = generate_nonhom_monomials(2, 1);
+        assert_eq!(monos.len(), 3);
+        assert!(monos.contains(&vec![0, 0]));
+        assert!(monos.contains(&vec![1, 0]));
+        assert!(monos.contains(&vec![0, 1]));
+
+        // generate_nonhom_monomials(2, 2): 1 + 2 + 3 = 6 monomials
+        let monos2 = generate_nonhom_monomials(2, 2);
+        assert_eq!(monos2.len(), 6);
+    }
+
+    #[test]
+    fn test_findcong_garvan_partition_congruences() {
+        let pgf = test_partition_gf(100);
+
+        let results = findcong_garvan(&pgf, 99, None, &HashSet::new());
+
+        // Check that p(5n+4) = 0 mod 5 is found
+        let has_5n4_mod5 = results.iter().any(|c| {
+            c.modulus_m == 5 && c.residue_b == 4 && c.divisor_r == 5
+        });
+        assert!(has_5n4_mod5, "Should find Ramanujan's p(5n+4) = 0 mod 5, got: {:?}", results);
+
+        // Check that p(7n+5) = 0 mod 7 is found
+        let has_7n5_mod7 = results.iter().any(|c| {
+            c.modulus_m == 7 && c.residue_b == 5 && c.divisor_r == 7
+        });
+        assert!(has_7n5_mod7, "Should find Ramanujan's p(7n+5) = 0 mod 7, got: {:?}", results);
+    }
+
+    #[test]
+    fn test_findcong_garvan_with_lm() {
+        let pgf = test_partition_gf(100);
+
+        // With lm=5, should only scan moduli 2..5, so no modulus 7 results
+        let results = findcong_garvan(&pgf, 99, Some(5), &HashSet::new());
+
+        let has_mod7 = results.iter().any(|c| c.modulus_m == 7);
+        assert!(!has_mod7, "With lm=5, should not have modulus 7 results");
+
+        // But should still find p(5n+4) = 0 mod 5
+        let has_5n4_mod5 = results.iter().any(|c| {
+            c.modulus_m == 5 && c.residue_b == 4 && c.divisor_r == 5
+        });
+        assert!(has_5n4_mod5, "Should still find p(5n+4) = 0 mod 5 with lm=5");
+    }
+
+    #[test]
+    fn test_findcong_garvan_with_xset() {
+        let pgf = test_partition_gf(100);
+
+        // Exclude 5 from results
+        let mut xset = HashSet::new();
+        xset.insert(5i64);
+
+        let results = findcong_garvan(&pgf, 99, None, &xset);
+
+        // p(5n+4) mod 5 should be excluded
+        let has_5n4_mod5 = results.iter().any(|c| {
+            c.modulus_m == 5 && c.residue_b == 4 && c.divisor_r == 5
+        });
+        assert!(!has_5n4_mod5, "p(5n+4) mod 5 should be excluded by xset");
+
+        // p(7n+5) mod 7 should still be present
+        let has_7n5_mod7 = results.iter().any(|c| {
+            c.modulus_m == 7 && c.residue_b == 5 && c.divisor_r == 7
+        });
+        assert!(has_7n5_mod7, "p(7n+5) mod 7 should not be excluded by xset={{5}}");
+    }
+}
