@@ -176,3 +176,33 @@ See STATE.md Accumulated Context for full decision log.
 - 8,241 lines qsym-cli source (13 Rust files)
 - 23 feature commits, 9 plans in ~45 min (avg 5 min/plan)
 - Total project: 79 plans across 28 phases (v1.0 + v1.1 + v1.2 + v1.3 + v1.4 + v1.5)
+
+## v1.6: CLI Hardening & Manual (Complete)
+
+**Shipped:** 2026-02-18
+**Phases:** 29-32 (13 plans, 55 CLI tests added)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 29 | Static linking — zero-dependency standalone .exe with static GMP/MPFR/MPC, CI builds from bundled source |
+| 30 | Script execution & CLI flags — `q-kangaroo script.qk`, pipe input, `-c` expression, `--help`/`--quiet`/`--verbose`, `read()` in REPL |
+| 31 | Error hardening — 7 distinct exit codes (0/1/2/65/66/70/74), filename:line:col context, panic translation, fail-fast scripts |
+| 32 | PDF reference manual — 81 functions with formal math in Typst, 6 worked examples with citations, Maple migration table, CI-compiled PDF |
+
+### Key Accomplishments
+
+- Zero-dependency standalone executable — static GMP/MPFR/MPC linking eliminates all 5 DLLs from Windows release
+- Script execution engine with `#` comments, multi-line statements, pipe support, and in-REPL `read()` function
+- Production error handling — 7 sysexits-compatible exit codes, filename:line:col diagnostics, human-friendly panic translation
+- Comprehensive 81-function PDF reference manual with formal mathematics, 6 worked examples, and complete Maple migration table
+- CI pipeline produces three release artifacts: Linux binary, Windows binary, and PDF manual
+
+### Key Metrics
+
+- 27 v1.6 requirements: 27/27 complete
+- 55 commits, 9,199 lines CLI + 4,191 lines Typst manual
+- 13 plans in ~45 min (avg 3.5 min/plan)
+- UAT: 14/14 tests passed (7 Phase 31 + 7 Phase 32)
+- Total project: 92 plans across 32 phases (v1.0-v1.6)
