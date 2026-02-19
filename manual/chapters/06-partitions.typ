@@ -1,4 +1,5 @@
 // 06-partitions.typ -- Partitions function reference
+#import "../template.typ": *
 
 = Partitions
 #index[partitions]
@@ -250,7 +251,7 @@ bounded parts, rank, and crank statistics.
   edge-cases: (
     [`z_den` must be nonzero.],
     [At $z = 1$ (i.e., `crank_gf(1, 1, order)`), the result equals `partition_gf(order)`.],
-    [The crank statistic explains all three of Ramanujan's congruences $p(5n+4) equiv 0 pmod(5)$, $p(7n+5) equiv 0 pmod(7)$, and $p(11n+6) equiv 0 pmod(11)$.],
+    [The crank statistic explains all three of Ramanujan's congruences $p(5n+4) equiv 0 space (mod 5)$, $p(7n+5) equiv 0 space (mod 7)$, and $p(11n+6) equiv 0 space (mod 11)$.],
   ),
   related: ("rank_gf", "partition_gf", "sift", "findcong"),
 )

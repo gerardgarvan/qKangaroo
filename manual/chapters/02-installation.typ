@@ -1,4 +1,5 @@
 // 02-installation.typ -- Installation (1-2 pages)
+#import "../template.typ": *
 
 = Installation <installation>
 #index[installation]

@@ -1,4 +1,5 @@
 // 03-cli-usage.typ -- Command-Line Interface (3-4 pages)
+#import "../template.typ": *
 
 = Command-Line Interface
 #index[command-line interface]

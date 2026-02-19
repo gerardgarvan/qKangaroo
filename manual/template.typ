@@ -4,7 +4,10 @@
 //   - func-entry: template for function reference entries
 //   - repl: single-line REPL example helper
 //   - repl-block: multi-line REPL transcript helper
+//   - index, index-main, make-index (re-exported from in-dexter)
 //   - Chapter heading styling via show rules
+
+#import "@preview/in-dexter:0.7.2": *
 
 #let version = "0.9.0"
 

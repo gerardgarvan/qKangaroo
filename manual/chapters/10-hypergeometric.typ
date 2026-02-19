@@ -1,4 +1,5 @@
 // 10-hypergeometric.typ -- Basic Hypergeometric Series function reference
+#import "../template.typ": *
 
 = Basic Hypergeometric Series
 #index[basic hypergeometric series]
@@ -88,8 +89,8 @@ as `z_num`, `z_den`, `z_pow` representing $z = (z_"num" slash z_"den") dot q^(z_
         z^n $
     where for negative $n$, the q-Pochhammer symbols are defined via
     $(a ; q)_(-n) = 1 slash (a q^(-n) ; q)_n$.
+    #index[bilateral series]
   ],
-  #index[bilateral series]
   math-def: [
     $ attach(, tl: r) psi_s
       mat(a_1, ..., a_r; b_1, ..., b_s; q, z)

@@ -1,4 +1,5 @@
 // 04-expression-language.typ -- Expression Language (3-4 pages)
+#import "../template.typ": *
 
 = Expression Language
 #index[expression language]

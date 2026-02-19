@@ -1,4 +1,5 @@
 // 14-maple-migration.typ -- Maple Migration Quick Reference
+#import "../template.typ": *
 
 = Maple Migration Quick Reference
 #index-main[Maple migration]

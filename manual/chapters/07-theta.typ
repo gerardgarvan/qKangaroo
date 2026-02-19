@@ -1,4 +1,5 @@
 // 07-theta.typ -- Theta Functions reference
+#import "../template.typ": *
 
 = Theta Functions
 #index[theta functions]

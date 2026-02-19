@@ -1,4 +1,5 @@
 // 12-identity-proving.typ -- Identity Proving function reference
+#import "../template.typ": *
 
 = Identity Proving
 #index[identity proving]

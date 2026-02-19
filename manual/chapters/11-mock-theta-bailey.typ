@@ -1,4 +1,5 @@
 // 11-mock-theta-bailey.typ -- Mock Theta Functions and Bailey Chains
+#import "../template.typ": *
 
 = Mock Theta Functions and Bailey Chains
 #index[mock theta function]

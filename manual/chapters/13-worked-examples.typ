@@ -1,4 +1,5 @@
 // 13-worked-examples.typ -- Worked Examples
+#import "../template.typ": *
 
 = Worked Examples
 #index[worked examples]
@@ -205,7 +206,7 @@ Math._ 114, 267--283.
 === REPL Workflow
 
 *Step 1.* Start with the Rogers-Ramanujan Bailey pair. The weak lemma
-produces the $(\alpha, \beta)$ pair for the base case:
+produces the $(alpha, beta)$ pair for the base case:
 
 #repl("bailey_weak_lemma(1, 1, 1, 0, 10, 30)",
   "([1, -1, 0, 1, 0, 0, 0, -1, 0, 0], [1, 1, 1, 1, 2, 2, 3, 3, 4, 5])")
@@ -225,7 +226,7 @@ identities from the seed:
 #repl("bailey_chain(1, 1, 1, 0, 1, 1, 1, 1, 1, 2, 2, 10, 30)",
   "[[...], [...]]")
 
-Each element in the chain is a new $(\alpha, \beta)$ pair that encodes a
+Each element in the chain is a new $(alpha, beta)$ pair that encodes a
 distinct $q$-series identity.
 
 *Step 4.* Use `bailey_discover` to find the proof automatically. Given a
@@ -265,7 +266,7 @@ Series_, 2nd ed. (Cambridge, 2004), Chapter 1.
 === REPL Workflow
 
 *Step 1.* Define a ${}_2 phi_1$ series with specific parameters. In
-q-Kangaroo, each parameter $a = frac(n)(d) q^p$ is encoded as
+q-Kangaroo, each parameter $a = n/d dot q^p$ is encoded as
 the triple $(n, d, p)$:
 
 #repl("src := phi([(1,1,2), (1,1,3)], [(1,1,5)], 1, 1, 1, 30):",

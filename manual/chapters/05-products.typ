@@ -1,4 +1,5 @@
 // 05-products.typ -- Products function reference
+#import "../template.typ": *
 
 = Products
 #index[products]
@@ -266,7 +267,7 @@ are discarded and represented as $O(q^"order")$.
     $a = (a_"cn" \/ a_"cd") dot q^(a_p)$ and $b = (b_"cn" \/ b_"cd") dot q^(b_p)$.
     The Winquist product is a product of 10 theta-type factors used primarily in
     partition congruence proofs, particularly for Ramanujan's congruence
-    $p(11n + 6) equiv 0 pmod(11)$.
+    $p(11n + 6) equiv 0 space (mod 11)$.
     #index[Winquist product]
     #index[partition congruences]
   ],

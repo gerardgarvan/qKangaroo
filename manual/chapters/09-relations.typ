@@ -1,4 +1,5 @@
 // 09-relations.typ -- Relation Discovery function reference
+#import "../template.typ": *
 
 = Relation Discovery
 #index[relation discovery]
@@ -111,8 +112,8 @@ a polynomial combination of candidate series.
     ($a^(-1) equiv a^(p-2) mod p$). This is useful when exact rational
     arithmetic is too expensive -- for instance, when working with very long
     series where rational coefficient growth causes slowdown.
+    #index[modular arithmetic]
   ],
-  #index[modular arithmetic]
   params: (
     ([target], [Series], [The target series]),
     ([candidates], [List of Series], [Candidate series to combine]),
@@ -315,9 +316,9 @@ two series.
     This is the tool for rediscovering Ramanujan's celebrated congruences:
     $p(5n + 4) equiv 0 mod 5$, $p(7n + 5) equiv 0 mod 7$, and
     $p(11n + 6) equiv 0 mod 11$.
+    #index[Ramanujan congruences]
+    #index[congruence]
   ],
-  #index[Ramanujan congruences]
-  #index[congruence]
   params: (
     ([series], [Series], [The generating function to analyze]),
     ([moduli], [List of Integer], [List of moduli to test]),

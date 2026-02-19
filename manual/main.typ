@@ -2,7 +2,6 @@
 //
 // Compile with: typst compile manual/main.typ manual/q-kangaroo-manual.pdf
 
-#import "@preview/in-dexter:0.7.2": *
 #import "template.typ": *
 
 // ---------------------------------------------------------------------------

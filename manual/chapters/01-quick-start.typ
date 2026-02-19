@@ -1,4 +1,5 @@
 // 01-quick-start.typ -- Quick Start tutorial (2-3 pages)
+#import "../template.typ": *
 
 = Quick Start
 #index[Quick Start]

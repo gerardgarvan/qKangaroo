@@ -1,4 +1,5 @@
 // 08-series-analysis.typ -- Series Analysis function reference
+#import "../template.typ": *
 
 = Series Analysis
 #index[series analysis]
@@ -48,7 +49,7 @@ analysis functions work in the opposite direction -- they take a series and
     [$m$ must be a positive integer.],
     [$j$ must satisfy $0 <= j < m$.],
     [The output series has approximately $floor(("order" - j) \/ m)$ terms from the original.],
-    [The example demonstrates Ramanujan's congruence: all coefficients of `sift(partition_gf(N), 5, 4)` are divisible by 5, since $p(5n+4) equiv 0 pmod(5)$.],
+    [The example demonstrates Ramanujan's congruence: all coefficients of `sift(partition_gf(N), 5, 4)` are divisible by 5, since $p(5n+4) equiv 0 space (mod 5)$.],
   ),
   related: ("findcong", "partition_gf", "rank_gf"),
 )
