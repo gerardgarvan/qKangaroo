@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 36 in progress
+**Current focus:** v2.0 Maple Compatibility -- Phase 36 complete, ready for Phase 37
 
 ## Current Position
 
-Phase: 36 of 40 (Relation Discovery Signatures)
-Plan: 2 of 3 in current phase (36-02 complete)
-Status: Plan 36-02 complete, ready for 36-03
-Last activity: 2026-02-19 -- Plan 36-02 complete (Garvan-compatible relation discovery dispatch)
+Phase: 36 of 40 (Relation Discovery Signatures) -- COMPLETE
+Plan: 3 of 3 in current phase (36-03 complete)
+Status: Phase 36 complete, ready for Phase 37
+Last activity: 2026-02-19 -- Plan 36-03 complete (help text + integration tests for relation discovery)
 
-Progress: [####################################          ] 102/? plans (v2.0 phases 33-40 pending)
+Progress: [####################################          ] 103/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 102
-- Total phases: 35 complete (v1.0-v1.6 + Phases 33-35), 5 planned (v2.0 phases 36-40)
+- Total plans completed: 103
+- Total phases: 36 complete (v1.0-v1.6 + Phases 33-36), 4 planned (v2.0 phases 37-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8 hours
@@ -37,6 +37,7 @@ Progress: [####################################          ] 102/? plans (v2.0 pha
 | 35-02 | Help text + integration tests | 4min | 2 | 2 |
 | 36-01 | Pub monomial generators + findcong_garvan | 4min | 2 | 2 |
 | 36-02 | Garvan-compatible relation discovery dispatch | 5min | 1 | 1 |
+| 36-03 | Help text + integration tests | 6min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 36-02: findmaxind returns 1-based indices matching Garvan convention
 - 36-02: findcong dispatches to findcong_garvan with auto-scan algorithm
 - 36-02: findpoly uses fixed topshift=10 matching Garvan's dim2:=dim1+10
+- 36-03: Help examples use two-line assign-then-call format matching Maple documentation style
+- 36-03: findcong integration tests use partition_gf(201) with T=200 to avoid boundary access error
+- 36-03: Script-based integration tests use colon terminators for multi-statement separation
 
 ### Pending Todos
 
@@ -93,5 +97,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 36-02-PLAN.md
-Resume file: .planning/phases/36-relation-discovery-signatures/36-03-PLAN.md
+Stopped at: Completed 36-03-PLAN.md (Phase 36 complete)
+Resume file: .planning/phases/37-*/37-01-PLAN.md (next phase)
