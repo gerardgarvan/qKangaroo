@@ -185,7 +185,10 @@ Plans:
   2. `jac2prod(JP, q, 30)` converts a Jacobi product expression to explicit q-product form
   3. `jac2series(JP, q, 30)` converts a Jacobi product expression to a truncated q-series
   4. `qs2jaccombo(f, q, 30)` decomposes a q-series into a linear combination of Jacobi products
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 37-01-PLAN.md -- Value::JacobiProduct type, JAC constructor, arithmetic, formatting, theta/jac2prod/jac2series dispatch
+- [ ] 37-02-PLAN.md -- qs2jaccombo dispatch, help text for all 5 functions, tab completion, integration tests
 
 ### Phase 38: New Functions - Analysis & Discovery
 **Goal**: Five new analysis/discovery functions are available, completing the Garvan function inventory
@@ -261,7 +264,7 @@ Plans:
 | 34. Product & Theta Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 35. Series Analysis Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 36. Relation Discovery Signatures | v2.0 | 3/3 | Complete | 2026-02-19 |
-| 37. New Functions - Theta & Jacobi | v2.0 | 0/TBD | Not started | - |
+| 37. New Functions - Theta & Jacobi | v2.0 | 0/2 | Not started | - |
 | 38. New Functions - Analysis & Discovery | v2.0 | 0/TBD | Not started | - |
 | 39. Output & Compatibility | v2.0 | 0/TBD | Not started | - |
 | 40. Documentation | v2.0 | 0/TBD | Not started | - |
