@@ -106,7 +106,7 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 **Milestone Goal:** Every qseries/thetaids function can be called with Garvan's exact Maple syntax -- researchers copy-paste from Maple worksheets and get correct results.
 
 - [x] **Phase 33: Symbolic Variable Foundation** - Parser and evaluator support bare symbols, q-as-parameter, and q-monomial arguments -- 2026-02-19
-- [ ] **Phase 34: Product & Theta Signatures** - Product/theta functions accept Garvan's exact calling conventions
+- [x] **Phase 34: Product & Theta Signatures** - Product/theta functions accept Garvan's exact calling conventions -- 2026-02-19
 - [ ] **Phase 35: Series Analysis Signatures** - Series analysis functions accept Garvan's exact calling conventions
 - [ ] **Phase 36: Relation Discovery Signatures** - All find* functions accept Garvan's signatures with symbolic labels
 - [ ] **Phase 37: New Functions - Theta & Jacobi** - theta, jac2prod, jac2series, qs2jaccombo implemented
@@ -143,8 +143,8 @@ Plans:
   5. `tripleprod`, `quinprod`, and `winquist` all accept Garvan's exact argument forms
 **Plans:** 2 plans
 Plans:
-- [ ] 34-01-PLAN.md -- Maple-style dispatch for jacprod, tripleprod, quinprod, winquist, qbin, etaq multi-delta
-- [ ] 34-02-PLAN.md -- numbpart alias reversal, help text updates, tab completion, integration tests
+- [x] 34-01-PLAN.md -- Maple-style dispatch for jacprod, tripleprod, quinprod, winquist, qbin, etaq multi-delta
+- [x] 34-02-PLAN.md -- numbpart alias reversal, help text updates, tab completion, integration tests
 
 ### Phase 35: Series Analysis Signatures
 **Goal**: Series analysis functions accept Garvan's calling conventions so sifting, product-make, and factoring workflows match Maple exactly
@@ -251,7 +251,7 @@ Plans:
 | 31. Error Hardening & Exit Codes | v1.6 | 2/2 | Complete | 2026-02-18 |
 | 32. PDF Reference Manual | v1.6 | 6/6 | Complete | 2026-02-18 |
 | 33. Symbolic Variable Foundation | v2.0 | 3/3 | Complete | 2026-02-19 |
-| 34. Product & Theta Signatures | v2.0 | 0/2 | Not started | - |
+| 34. Product & Theta Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 35. Series Analysis Signatures | v2.0 | 0/TBD | Not started | - |
 | 36. Relation Discovery Signatures | v2.0 | 0/TBD | Not started | - |
 | 37. New Functions - Theta & Jacobi | v2.0 | 0/TBD | Not started | - |

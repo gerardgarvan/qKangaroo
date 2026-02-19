@@ -11,13 +11,13 @@
 
 ### Products & Theta (Group 1)
 
-- [ ] **SIG-01**: `aqprod(a, q, n)` accepts Garvan's 3-arg signature where `a` is a q-monomial, `q` is the variable, `n` is the order -- finite products return exact polynomials, infinite products require truncation context
-- [ ] **SIG-02**: `etaq(q, a, T)` matches Garvan's signature -- `q` is the variable, `a` is a positive integer (delta), `T` is truncation order
-- [ ] **SIG-03**: `jacprod(a, b, q, T)` matches Garvan's 4-arg signature -- `a`, `b` positive integers, `q` variable, `T` truncation
-- [ ] **SIG-04**: `tripleprod(a, q_power, T)` matches Garvan's signature with q-monomial first argument
-- [ ] **SIG-05**: `quinprod(a, q_power, T)` matches Garvan's signature with q-monomial first argument
-- [ ] **SIG-06**: `winquist(a, b, q, T)` matches Garvan's signature
-- [ ] **SIG-07**: `qbin(n, k, q, T)` matches Garvan's signature with explicit `q` and `T`
+- [x] **SIG-01**: `aqprod(a, q, n)` accepts Garvan's 3-arg signature where `a` is a q-monomial, `q` is the variable, `n` is the order -- finite products return exact polynomials, infinite products require truncation context
+- [x] **SIG-02**: `etaq(q, a, T)` matches Garvan's signature -- `q` is the variable, `a` is a positive integer (delta), `T` is truncation order
+- [x] **SIG-03**: `jacprod(a, b, q, T)` matches Garvan's 4-arg signature -- `a`, `b` positive integers, `q` variable, `T` truncation
+- [x] **SIG-04**: `tripleprod(a, q_power, T)` matches Garvan's signature with q-monomial first argument
+- [x] **SIG-05**: `quinprod(a, q_power, T)` matches Garvan's signature with q-monomial first argument
+- [x] **SIG-06**: `winquist(a, b, q, T)` matches Garvan's signature
+- [x] **SIG-07**: `qbin(n, k, q, T)` matches Garvan's signature with explicit `q` and `T`
 
 ### Series Analysis (Group 2)
 
@@ -45,7 +45,7 @@
 
 ### Partition Functions
 
-- [ ] **SIG-26**: `numbpart(n)` is the primary name for partition counting (matching Maple), with `partition_count` as alias
+- [x] **SIG-26**: `numbpart(n)` is the primary name for partition counting (matching Maple), with `partition_count` as alias
 
 ## New Functions
 
@@ -87,13 +87,13 @@
 | SYM-02 | Phase 33 | Complete |
 | SYM-03 | Phase 33 | Complete |
 | SYM-04 | Phase 33 | Complete |
-| SIG-01 | Phase 34 | Pending |
-| SIG-02 | Phase 34 | Pending |
-| SIG-03 | Phase 34 | Pending |
-| SIG-04 | Phase 34 | Pending |
-| SIG-05 | Phase 34 | Pending |
-| SIG-06 | Phase 34 | Pending |
-| SIG-07 | Phase 34 | Pending |
+| SIG-01 | Phase 34 | Complete |
+| SIG-02 | Phase 34 | Complete |
+| SIG-03 | Phase 34 | Complete |
+| SIG-04 | Phase 34 | Complete |
+| SIG-05 | Phase 34 | Complete |
+| SIG-06 | Phase 34 | Complete |
+| SIG-07 | Phase 34 | Complete |
 | SIG-08 | Phase 35 | Pending |
 | SIG-09 | Phase 35 | Pending |
 | SIG-10 | Phase 35 | Pending |
@@ -112,7 +112,7 @@
 | SIG-23 | Phase 36 | Pending |
 | SIG-24 | Phase 36 | Pending |
 | SIG-25 | Phase 36 | Pending |
-| SIG-26 | Phase 34 | Pending |
+| SIG-26 | Phase 34 | Complete |
 | NEW-01 | Phase 37 | Pending |
 | NEW-02 | Phase 37 | Pending |
 | NEW-03 | Phase 37 | Pending |
