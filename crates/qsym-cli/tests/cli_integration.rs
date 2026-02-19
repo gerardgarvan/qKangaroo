@@ -820,6 +820,55 @@ fn symbol_q_bare() {
 }
 
 // ===========================================================================
+// SYM-02: etaq(q, 1, 20) works (Phase 33)
+// ===========================================================================
+
+#[test]
+fn sym_02_etaq_with_q_symbol() {
+    let (code, stdout, stderr) = run(&["-c", "etaq(q, 1, 20)"]);
+    assert_eq!(code, 0, "SYM-02: etaq(q, 1, 20) should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("q"), "should contain q variable");
+    assert!(stdout.contains("O(q^20)"), "should show truncation at order 20");
+}
+
+#[test]
+fn sym_02_etaq_with_t_symbol() {
+    // Any symbol can be the base variable
+    let (code, stdout, stderr) = run(&["-c", "etaq(t, 1, 10)"]);
+    assert_eq!(code, 0, "SYM-02: etaq(t, 1, 10) should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("t"), "should display in variable t");
+    assert!(stdout.contains("O(t^10)"), "should show truncation with t variable");
+}
+
+#[test]
+fn sym_02_etaq_legacy_still_works() {
+    // Legacy syntax etaq(b, t, order) should still work
+    let (code, stdout, _) = run(&["-c", "etaq(1, 1, 10)"]);
+    assert_eq!(code, 0, "legacy etaq(1,1,10) should still work");
+    assert!(stdout.contains("q"), "legacy output uses q");
+}
+
+// ===========================================================================
+// SYM-03: aqprod(q^2, q, 5) works (Phase 33)
+// ===========================================================================
+
+#[test]
+fn sym_03_aqprod_with_monomial() {
+    let (code, stdout, stderr) = run(&["-c", "aqprod(q^2, q, 5)"]);
+    assert_eq!(code, 0, "SYM-03: aqprod(q^2, q, 5) should succeed. stderr: {}", stderr);
+    // Should produce a series/polynomial
+    assert!(!stdout.trim().is_empty(), "should produce output");
+}
+
+#[test]
+fn sym_03_aqprod_legacy_still_works() {
+    // Legacy: aqprod(1, 1, 1, infinity, 20)
+    let (code, stdout, _) = run(&["-c", "aqprod(1, 1, 1, infinity, 20)"]);
+    assert_eq!(code, 0, "legacy aqprod should still work");
+    assert!(stdout.contains("q"), "should produce q-series");
+}
+
+// ===========================================================================
 // SYM-04: Assignment precedence (Phase 33)
 // ===========================================================================
 
@@ -829,4 +878,92 @@ fn symbol_assignment_precedence() {
     let (code, stdout, _) = run(&["-c", "x := 42:\nx"]);
     assert_eq!(code, 0, "assigned variable should succeed");
     assert_eq!(stdout.trim(), "42");
+}
+
+#[test]
+fn sym_04_q_reassignment() {
+    // q is NOT protected from reassignment
+    let (code, stdout, _) = run(&["-c", "q := 5:\nq"]);
+    assert_eq!(code, 0, "q should be reassignable");
+    assert_eq!(stdout.trim(), "5", "q should return assigned value");
+}
+
+// ===========================================================================
+// Polynomial arithmetic and display (Phase 33)
+// ===========================================================================
+
+#[test]
+fn polynomial_arithmetic() {
+    let (code, stdout, _) = run(&["-c", "(q + 1) * (q + 1)"]);
+    assert_eq!(code, 0, "polynomial multiplication should work");
+    // Should be 1 + 2*q + q^2 with no O(...)
+    assert!(stdout.contains("1"), "should have constant term");
+    assert!(stdout.contains("q^2"), "should have q^2 term");
+    assert!(!stdout.contains("O("), "polynomial should not have O(...) truncation");
+}
+
+#[test]
+fn polynomial_display_no_truncation() {
+    let (code, stdout, _) = run(&["-c", "q^2 + q + 1"]);
+    assert_eq!(code, 0);
+    assert!(!stdout.contains("O("), "polynomial should not have O(...) truncation");
+}
+
+#[test]
+fn series_display_has_truncation() {
+    let (code, stdout, _) = run(&["-c", "etaq(1, 1, 5)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^5)"), "series should have O(q^5) truncation");
+}
+
+// ===========================================================================
+// Variable management: restart, anames, unassign (Phase 33)
+// ===========================================================================
+
+#[test]
+fn restart_function_in_script() {
+    // restart() clears all variables; anames() should return empty list after
+    let tmp = write_temp_script("qk_test_restart.qk", "x := 42:\nrestart():\nanames()");
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "restart in script should work. stderr: {}", stderr);
+    // After restart(), anames() should return empty list
+    assert!(stdout.contains("[]"), "anames() after restart should be empty. stdout: {}", stdout);
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn anames_function() {
+    let (code, stdout, _) = run(&["-c", "x := 1:\ny := 2:\nanames()"]);
+    assert_eq!(code, 0, "anames() should work");
+    // Should list x and y
+    assert!(stdout.contains("x"), "should list x");
+    assert!(stdout.contains("y"), "should list y");
+}
+
+#[test]
+fn anames_empty() {
+    let (code, stdout, _) = run(&["-c", "anames()"]);
+    assert_eq!(code, 0, "anames() with no vars should work");
+    assert_eq!(stdout.trim(), "[]", "should be empty list");
+}
+
+#[test]
+fn unassign_via_single_quote() {
+    let tmp = write_temp_script("qk_test_unassign.qk", "x := 42:\nx := 'x':\nx");
+    let (code, stdout, _) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "unassign should work");
+    // After unassign, x is a symbol again
+    assert_eq!(stdout.trim(), "x", "after unassign, x should be a symbol");
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ===========================================================================
+// Additional Phase 33 regression: long symbol names (SYM-01)
+// ===========================================================================
+
+#[test]
+fn sym_01_long_name_symbol() {
+    let (code, stdout, _) = run(&["-c", "myVariable"]);
+    assert_eq!(code, 0, "SYM-01: long names should work");
+    assert_eq!(stdout.trim(), "myVariable");
 }
