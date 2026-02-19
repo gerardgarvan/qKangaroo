@@ -32,6 +32,8 @@ pub enum Command {
     Save(String),
     /// Load and execute a script file.
     Read(String),
+    /// Reset all session state (Maple-style restart).
+    Restart,
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +166,13 @@ pub fn parse_command(line: &str) -> Option<Command> {
                 None
             }
         }
+        "restart" => {
+            if words.len() == 1 && !trimmed.contains('(') {
+                Some(Command::Restart)
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
@@ -205,6 +214,10 @@ pub fn execute_command(cmd: Command, env: &mut Environment) -> CommandResult {
             Some(val) => CommandResult::Output(format_latex(val, &env.symbols)),
             None => CommandResult::Output(format!("Unknown variable '{}'.", name)),
         },
+        Command::Restart => {
+            env.reset();
+            CommandResult::Output("Restart.".to_string())
+        }
         Command::Save(filename) => save_to_file(&filename, env),
         Command::Read(path) => {
             if path.is_empty() {
@@ -590,5 +603,46 @@ mod tests {
         let mut env = Environment::new();
         let result = execute_command(Command::Read("".into()), &mut env);
         assert!(matches!(result, CommandResult::Output(ref s) if s.contains("Usage")));
+    }
+
+    // -- restart command tests ------------------------------------------------
+
+    #[test]
+    fn parse_restart() {
+        assert_eq!(parse_command("restart"), Some(Command::Restart));
+    }
+
+    #[test]
+    fn parse_restart_case_insensitive() {
+        assert_eq!(parse_command("RESTART"), Some(Command::Restart));
+        assert_eq!(parse_command("Restart"), Some(Command::Restart));
+    }
+
+    #[test]
+    fn parse_restart_function_passthrough() {
+        // restart() should go to parser, not command
+        assert_eq!(parse_command("restart()"), None);
+    }
+
+    #[test]
+    fn parse_restart_assignment_passthrough() {
+        assert_eq!(parse_command("restart := 5"), None);
+    }
+
+    #[test]
+    fn execute_restart_clears_vars() {
+        use qsym_core::number::QInt;
+        use crate::eval::Value;
+        let mut env = Environment::new();
+        env.set_var("x", Value::Integer(QInt::from(42i64)));
+        env.set_var("y", Value::Integer(QInt::from(99i64)));
+        env.default_order = 50;
+        env.last_result = Some(Value::Integer(QInt::from(7i64)));
+
+        let result = execute_command(Command::Restart, &mut env);
+        assert_eq!(result, CommandResult::Output("Restart.".to_string()));
+        assert!(env.variables.is_empty(), "variables should be cleared");
+        assert!(env.last_result.is_none(), "last_result should be None");
+        assert_eq!(env.default_order, 20, "default_order should reset to 20");
     }
 }

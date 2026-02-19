@@ -13,6 +13,7 @@ use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
 use qsym_core::qseries::{HypergeometricSeries, BilateralHypergeometricSeries};
 use qsym_core::series::arithmetic;
 use qsym_core::series::FormalPowerSeries;
+use qsym_core::symbol::SymbolId;
 
 use crate::ast::{AstNode, BinOp, Stmt, Terminator};
 use crate::environment::Environment;
@@ -470,6 +471,64 @@ pub fn extract_monomial_list(
     }
 }
 
+/// Extract a SymbolId from a Value::Symbol, interning it in the registry.
+fn extract_symbol_id(
+    name: &str,
+    args: &[Value],
+    index: usize,
+    env: &mut Environment,
+) -> Result<SymbolId, EvalError> {
+    match &args[index] {
+        Value::Symbol(s) => Ok(env.symbols.intern(s)),
+        other => Err(EvalError::ArgType {
+            function: name.to_string(),
+            arg_index: index,
+            expected: "symbol (variable name)",
+            got: other.type_name().to_string(),
+        }),
+    }
+}
+
+/// Extract a QMonomial from an argument that is a Symbol (var^1) or a Series monomial.
+fn extract_monomial_from_arg(
+    func_name: &str,
+    args: &[Value],
+    index: usize,
+) -> Result<QMonomial, EvalError> {
+    match &args[index] {
+        Value::Symbol(_) => {
+            // Symbol = var^1, coefficient 1
+            Ok(QMonomial::new(QRat::one(), 1))
+        }
+        Value::Series(fps) => {
+            // Extract monomial from single-term series
+            let terms: Vec<_> = fps.iter().collect();
+            if terms.len() == 1 {
+                let (&power, coeff) = terms[0];
+                Ok(QMonomial::new(coeff.clone(), power))
+            } else if terms.is_empty() {
+                Ok(QMonomial::new(QRat::zero(), 0))
+            } else {
+                Err(EvalError::ArgType {
+                    function: func_name.to_string(),
+                    arg_index: index,
+                    expected: "monomial (single-term series like q^2)",
+                    got: format!("polynomial with {} terms", terms.len()),
+                })
+            }
+        }
+        Value::Integer(n) => {
+            Ok(QMonomial::new(QRat::from(n.clone()), 0))
+        }
+        other => Err(EvalError::ArgType {
+            function: func_name.to_string(),
+            arg_index: index,
+            expected: "monomial expression (e.g., q^2) or symbol",
+            got: other.type_name().to_string(),
+        }),
+    }
+}
+
 /// Build a `HypergeometricSeries` from standard 6-arg pattern:
 /// (upper_list, lower_list, z_num, z_den, z_pow, order).
 ///
@@ -673,6 +732,14 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
         }
 
         AstNode::Assign { name, value } => {
+            // Check for Maple unassign syntax: x := 'x'
+            // After parsing, 'x' becomes AstNode::StringLit("x")
+            if let AstNode::StringLit(s) = value.as_ref() {
+                if s == name {
+                    env.variables.remove(name);
+                    return Ok(Value::Symbol(name.clone()));
+                }
+            }
             let val = eval_expr(value, env)?;
             env.set_var(name, val.clone());
             Ok(val)
@@ -1081,22 +1148,55 @@ pub fn dispatch(
         // =================================================================
 
         "aqprod" => {
-            // aqprod(coeff_num, coeff_den, power, n_or_infinity, order)
-            expect_args(name, args, 5)?;
-            let cn = extract_i64(name, args, 0)?;
-            let cd = extract_i64(name, args, 1)?;
-            let power = extract_i64(name, args, 2)?;
-            let poch_order = match &args[3] {
-                Value::Infinity => PochhammerOrder::Infinite,
-                _ => {
-                    let n = extract_i64(name, args, 3)?;
-                    PochhammerOrder::Finite(n)
+            // Detect Maple-style: first arg is Series (monomial like q^2) or Symbol
+            if !args.is_empty() && matches!(&args[0], Value::Series(_) | Value::Symbol(_)) {
+                // aqprod(a, q, n) or aqprod(a, q, n, order) or aqprod(a, q, infinity, order)
+                let monomial = extract_monomial_from_arg(name, args, 0)?;
+                let sym = extract_symbol_id(name, args, 1, env)?;
+
+                if args.len() == 3 {
+                    // aqprod(q^2, q, 5) -> finite product, n=args[2]
+                    let n = extract_i64(name, args, 2)?;
+                    let result = qseries::aqprod(&monomial, sym, PochhammerOrder::Finite(n), n);
+                    Ok(Value::Series(result))
+                } else if args.len() == 4 {
+                    // aqprod(q^2, q, infinity, order) or aqprod(q^2, q, n, order)
+                    let poch_order = match &args[2] {
+                        Value::Infinity => PochhammerOrder::Infinite,
+                        _ => {
+                            let n = extract_i64(name, args, 2)?;
+                            PochhammerOrder::Finite(n)
+                        }
+                    };
+                    let order = extract_i64(name, args, 3)?;
+                    let result = qseries::aqprod(&monomial, sym, poch_order, order);
+                    Ok(Value::Series(result))
+                } else {
+                    Err(EvalError::WrongArgCount {
+                        function: name.to_string(),
+                        expected: "3 or 4 (Maple-style)".to_string(),
+                        got: args.len(),
+                        signature: "aqprod(monomial, q, n) or aqprod(monomial, q, n, order)".to_string(),
+                    })
                 }
-            };
-            let order = extract_i64(name, args, 4)?;
-            let monomial = QMonomial::new(QRat::from((cn, cd)), power);
-            let result = qseries::aqprod(&monomial, env.sym_q, poch_order, order);
-            Ok(Value::Series(result))
+            } else {
+                // Legacy: aqprod(coeff_num, coeff_den, power, n_or_infinity, order)
+                expect_args(name, args, 5)?;
+                let cn = extract_i64(name, args, 0)?;
+                let cd = extract_i64(name, args, 1)?;
+                let power = extract_i64(name, args, 2)?;
+                let poch_order = match &args[3] {
+                    Value::Infinity => PochhammerOrder::Infinite,
+                    _ => {
+                        let n = extract_i64(name, args, 3)?;
+                        PochhammerOrder::Finite(n)
+                    }
+                };
+                let order = extract_i64(name, args, 4)?;
+                let monomial = QMonomial::new(QRat::from((cn, cd)), power);
+                let result = qseries::aqprod(&monomial, env.sym_q, poch_order, order);
+                Ok(Value::Series(result))
+            }
         }
 
         "qbin" => {
@@ -1110,13 +1210,24 @@ pub fn dispatch(
         }
 
         "etaq" => {
-            // etaq(b, t, order)
-            expect_args(name, args, 3)?;
-            let b = extract_i64(name, args, 0)?;
-            let t = extract_i64(name, args, 1)?;
-            let order = extract_i64(name, args, 2)?;
-            let result = qseries::etaq(b, t, env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() >= 2 && matches!(&args[0], Value::Symbol(_)) {
+                // Maple-style: etaq(var, b, order) with t=1 default
+                // e.g., etaq(q, 1, 20) -> etaq(b=1, t=1, sym=q, order=20)
+                expect_args(name, args, 3)?;
+                let sym = extract_symbol_id(name, args, 0, env)?;
+                let b = extract_i64(name, args, 1)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::etaq(b, 1, sym, order);
+                Ok(Value::Series(result))
+            } else {
+                // Legacy: etaq(b, t, order)
+                expect_args(name, args, 3)?;
+                let b = extract_i64(name, args, 0)?;
+                let t = extract_i64(name, args, 1)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::etaq(b, t, env.sym_q, order);
+                Ok(Value::Series(result))
+            }
         }
 
         "jacprod" => {
@@ -1913,6 +2024,23 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Variable management (SYM-03)
+        // =================================================================
+
+        "anames" => {
+            expect_args(name, args, 0)?;
+            let mut names: Vec<String> = env.variables.keys().cloned().collect();
+            names.sort();
+            Ok(Value::List(names.into_iter().map(Value::String).collect()))
+        }
+
+        "restart" => {
+            expect_args(name, args, 0)?;
+            env.reset();
+            Ok(Value::String("Restart.".to_string()))
+        }
+
+        // =================================================================
         // Script loading (EXEC-06)
         // =================================================================
 
@@ -2411,9 +2539,9 @@ fn identity_entry_to_value(e: &qseries::IdentityEntry) -> Value {
 fn get_signature(name: &str) -> String {
     match name {
         // Group 1: q-Pochhammer and Products
-        "aqprod" => "(coeff_num, coeff_den, power, n_or_infinity, order)".to_string(),
+        "aqprod" => "(coeff_num, coeff_den, power, n_or_infinity, order) or (monomial, var, n[, order])".to_string(),
         "qbin" => "(n, k, order)".to_string(),
-        "etaq" => "(b, t, order)".to_string(),
+        "etaq" => "(var, b, order) or (b, t, order)".to_string(),
         "jacprod" => "(a, b, order)".to_string(),
         "tripleprod" => "(coeff_num, coeff_den, power, order)".to_string(),
         "quinprod" => "(coeff_num, coeff_den, power, order)".to_string(),
@@ -2486,6 +2614,9 @@ fn get_signature(name: &str) -> String {
         "prove_nonterminating" => "(requires Python API)".to_string(),
         // Group 9: Script loading
         "read" => "(filename)".to_string(),
+        // Group 10: Variable management
+        "anames" => "()".to_string(),
+        "restart" => "()".to_string(),
         _ => String::new(),
     }
 }
@@ -2566,6 +2697,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "prove_nonterminating", "find_transformation_chain",
     // Pattern M: Script loading
     "read",
+    // Pattern N: Variable management
+    "anames", "restart",
 ];
 
 /// All alias names for fuzzy matching.
@@ -4486,5 +4619,114 @@ mod tests {
         let translated = translate_panic_message("thread 'main' panicked at 'attempt to divide by zero'");
         // Should strip the thread prefix
         assert!(!translated.contains("thread 'main'"));
+    }
+
+    // --- Phase 33 Plan 03: Symbol-aware function dispatch ---
+
+    #[test]
+    fn eval_etaq_with_symbol() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("etaq", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // etaq(q, 1, 5) = (q;q)_inf truncated at O(q^5) = 1 - q - q^2 + ...
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), -QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_etaq_with_custom_symbol() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("t".to_string()),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("etaq", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // Should use the "t" variable
+            let sym_name = env.symbols.name(fps.variable());
+            assert_eq!(sym_name, "t", "expected variable t, got {}", sym_name);
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_aqprod_with_symbol_monomial() {
+        let mut env = make_env();
+        // aqprod(q, q, 3) -- q as monomial, q as var, n=3
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(3i64)),
+        ];
+        let val = dispatch("aqprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)), "expected Series");
+    }
+
+    #[test]
+    fn eval_anames_empty() {
+        let mut env = make_env();
+        let val = dispatch("anames", &[], &mut env).unwrap();
+        if let Value::List(items) = val {
+            assert!(items.is_empty(), "expected empty list");
+        } else {
+            panic!("expected List, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_anames_with_vars() {
+        let mut env = make_env();
+        env.set_var("x", Value::Integer(QInt::from(42i64)));
+        env.set_var("y", Value::Integer(QInt::from(7i64)));
+        let val = dispatch("anames", &[], &mut env).unwrap();
+        if let Value::List(items) = val {
+            let names: Vec<String> = items.iter().map(|v| {
+                if let Value::String(s) = v { s.clone() } else { panic!("expected string") }
+            }).collect();
+            assert_eq!(names, vec!["x".to_string(), "y".to_string()]);
+        } else {
+            panic!("expected List, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_restart_clears_vars() {
+        let mut env = make_env();
+        env.set_var("x", Value::Integer(QInt::from(42i64)));
+        env.set_var("y", Value::Integer(QInt::from(7i64)));
+        let val = dispatch("restart", &[], &mut env).unwrap();
+        assert!(matches!(val, Value::String(ref s) if s == "Restart."));
+        assert!(env.variables.is_empty(), "vars should be cleared after restart");
+    }
+
+    #[test]
+    fn eval_unassign() {
+        let mut env = make_env();
+        // Set x := 42
+        env.set_var("x", Value::Integer(QInt::from(42i64)));
+        assert!(env.get_var("x").is_some());
+
+        // Eval x := 'x' (Assign with StringLit)
+        let node = AstNode::Assign {
+            name: "x".to_string(),
+            value: Box::new(AstNode::StringLit("x".to_string())),
+        };
+        let result = eval_expr(&node, &mut env).unwrap();
+        assert!(matches!(result, Value::Symbol(ref s) if s == "x"));
+        assert!(env.get_var("x").is_none(), "x should be unassigned");
+
+        // Now evaluating x should return Symbol
+        let val = eval_expr(&AstNode::Variable("x".to_string()), &mut env).unwrap();
+        assert!(matches!(val, Value::Symbol(ref s) if s == "x"));
     }
 }

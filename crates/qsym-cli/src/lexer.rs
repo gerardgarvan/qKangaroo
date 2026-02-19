@@ -69,6 +69,29 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             continue;
         }
 
+        // Single-quoted string literals (for Maple unassign syntax: x := 'x')
+        if b == b'\'' {
+            let start = pos;
+            pos += 1; // skip opening quote
+            let mut value = String::new();
+            while pos < bytes.len() && bytes[pos] != b'\'' {
+                value.push(bytes[pos] as char);
+                pos += 1;
+            }
+            if pos >= bytes.len() {
+                return Err(ParseError::new(
+                    "unterminated single-quoted string".to_string(),
+                    Span::new(start, pos),
+                ));
+            }
+            pos += 1; // skip closing quote
+            tokens.push(SpannedToken {
+                token: Token::StringLit(value),
+                span: Span::new(start, pos),
+            });
+            continue;
+        }
+
         // Single-character tokens
         let single = match b {
             b'+' => Some(Token::Plus),
@@ -392,5 +415,31 @@ mod tests {
         let toks = tokens("aqprod(\n  q,q,\n  infinity,20\n)");
         let expected = tokens("aqprod(q,q,infinity,20)");
         assert_eq!(toks, expected);
+    }
+
+    #[test]
+    fn test_single_quote_string() {
+        let toks = tokens("'hello'");
+        assert_eq!(toks, vec![Token::StringLit("hello".to_string()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_unassign_syntax() {
+        let toks = tokens("x := 'x'");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("x".to_string()),
+                Token::Assign,
+                Token::StringLit("x".to_string()),
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_single_quote_unterminated() {
+        let err = tokenize("'hello").unwrap_err();
+        assert!(err.message.contains("unterminated"), "got: {}", err.message);
     }
 }
