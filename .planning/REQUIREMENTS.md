@@ -31,17 +31,17 @@
 
 ### Relation Discovery (Group 3)
 
-- [ ] **SIG-15**: `findlincombo(f, L, SL, q, topshift)` matches Garvan's 5-arg signature including symbolic label list `SL`
-- [ ] **SIG-16**: `findhomcombo(f, L, SL, q, n, topshift)` matches Garvan's signature with `SL` labels and degree `n`
-- [ ] **SIG-17**: `findnonhomcombo(f, L, SL, q, n, topshift)` matches Garvan's signature with `SL` labels
-- [ ] **SIG-18**: `findlincombomodp(f, L, SL, q, p, topshift)` matches Garvan's signature with `SL` labels and prime `p`
-- [ ] **SIG-19**: `findhomcombomodp(f, L, SL, q, p, n, topshift)` matches Garvan's signature
-- [ ] **SIG-20**: `findhom(L, q, n, topshift)` matches Garvan's signature
-- [ ] **SIG-21**: `findnonhom(L, q, n, topshift)` matches Garvan's signature
-- [ ] **SIG-22**: `findhommodp(L, q, p, n, topshift)` matches Garvan's signature
-- [ ] **SIG-23**: `findmaxind(L, q, topshift)` matches Garvan's signature
-- [ ] **SIG-24**: `findpoly(f, g, q, dx, dy, topshift)` matches Garvan's signature
-- [ ] **SIG-25**: `findcong(QS, T)` and `findcong(QS, T, LM)` and `findcong(QS, T, LM, XSET)` match Garvan's overloaded signatures
+- [x] **SIG-15**: `findlincombo(f, L, SL, q, topshift)` matches Garvan's 5-arg signature including symbolic label list `SL`
+- [x] **SIG-16**: `findhomcombo(f, L, q, n, topshift)` matches Garvan's actual signature (no SL -- verified from Maple source)
+- [x] **SIG-17**: `findnonhomcombo(f, L, q, n, topshift)` matches Garvan's actual signature (no SL -- verified from Maple source)
+- [x] **SIG-18**: `findlincombomodp(f, L, SL, p, q, topshift)` matches Garvan's signature (p before q -- verified from Maple source)
+- [x] **SIG-19**: `findhomcombomodp(f, L, p, q, n, topshift)` matches Garvan's actual signature (no SL, p before q)
+- [x] **SIG-20**: `findhom(L, q, n, topshift)` matches Garvan's signature
+- [x] **SIG-21**: `findnonhom(L, q, n, topshift)` matches Garvan's signature
+- [x] **SIG-22**: `findhommodp(L, p, q, n, topshift)` matches Garvan's signature (p before q -- verified from Maple source)
+- [x] **SIG-23**: `findmaxind(L, T)` matches Garvan's signature (2 args, no q -- verified from Maple docs)
+- [x] **SIG-24**: `findpoly(x, y, q, dx, dy, [check])` matches Garvan's signature (optional check, not topshift)
+- [x] **SIG-25**: `findcong(QS, T)` and `findcong(QS, T, LM)` and `findcong(QS, T, LM, XSET)` match Garvan's overloaded signatures
 
 ### Partition Functions
 
@@ -61,8 +61,8 @@
 
 ## Output & Display
 
-- [ ] **OUT-01**: Relation discovery functions print results using symbolic labels (SL parameter) matching Maple's output format (e.g., "12 F1 + 13 F2")
-- [ ] **OUT-02**: `findcong` output format matches Garvan's `[B, A, R]` triple format
+- [x] **OUT-01**: Relation discovery functions print results using symbolic labels (SL for findlincombo/findlincombomodp, X[i] auto-labels for others) matching Maple's output format
+- [x] **OUT-02**: `findcong` output format matches Garvan's `[B, A, R]` triple format
 - [ ] **OUT-03**: Series display uses Maple-style polynomial ordering when appropriate
 
 ## Documentation
@@ -101,17 +101,17 @@
 | SIG-12 | Phase 35 | Complete |
 | SIG-13 | Phase 35 | Complete |
 | SIG-14 | Phase 35 | Complete |
-| SIG-15 | Phase 36 | Pending |
-| SIG-16 | Phase 36 | Pending |
-| SIG-17 | Phase 36 | Pending |
-| SIG-18 | Phase 36 | Pending |
-| SIG-19 | Phase 36 | Pending |
-| SIG-20 | Phase 36 | Pending |
-| SIG-21 | Phase 36 | Pending |
-| SIG-22 | Phase 36 | Pending |
-| SIG-23 | Phase 36 | Pending |
-| SIG-24 | Phase 36 | Pending |
-| SIG-25 | Phase 36 | Pending |
+| SIG-15 | Phase 36 | Complete |
+| SIG-16 | Phase 36 | Complete |
+| SIG-17 | Phase 36 | Complete |
+| SIG-18 | Phase 36 | Complete |
+| SIG-19 | Phase 36 | Complete |
+| SIG-20 | Phase 36 | Complete |
+| SIG-21 | Phase 36 | Complete |
+| SIG-22 | Phase 36 | Complete |
+| SIG-23 | Phase 36 | Complete |
+| SIG-24 | Phase 36 | Complete |
+| SIG-25 | Phase 36 | Complete |
 | SIG-26 | Phase 34 | Complete |
 | NEW-01 | Phase 37 | Pending |
 | NEW-02 | Phase 37 | Pending |
@@ -122,8 +122,8 @@
 | NEW-07 | Phase 38 | Pending |
 | NEW-08 | Phase 38 | Pending |
 | NEW-09 | Phase 38 | Pending |
-| OUT-01 | Phase 36 | Pending |
-| OUT-02 | Phase 36 | Pending |
+| OUT-01 | Phase 36 | Complete |
+| OUT-02 | Phase 36 | Complete |
 | OUT-03 | Phase 39 | Pending |
 | DOC-01 | Phase 40 | Pending |
 | DOC-02 | Phase 40 | Pending |

@@ -108,7 +108,7 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 - [x] **Phase 33: Symbolic Variable Foundation** - Parser and evaluator support bare symbols, q-as-parameter, and q-monomial arguments -- 2026-02-19
 - [x] **Phase 34: Product & Theta Signatures** - Product/theta functions accept Garvan's exact calling conventions -- 2026-02-19
 - [x] **Phase 35: Series Analysis Signatures** - Series analysis functions accept Garvan's exact calling conventions -- 2026-02-19
-- [ ] **Phase 36: Relation Discovery Signatures** - All find* functions accept Garvan's signatures with symbolic labels
+- [x] **Phase 36: Relation Discovery Signatures** - All find* functions accept Garvan's signatures with symbolic labels -- 2026-02-19
 - [ ] **Phase 37: New Functions - Theta & Jacobi** - theta, jac2prod, jac2series, qs2jaccombo implemented
 - [ ] **Phase 38: New Functions - Analysis & Discovery** - checkmult, checkprod, lqdegree0, zqfactor, findprod implemented
 - [ ] **Phase 39: Output & Compatibility** - Maple-style display, backward compat verified, all tests green
@@ -172,9 +172,9 @@ Plans:
   5. `findcong(QS, T, LM)` and `findcong(QS, T, LM, XSET)` overloaded forms work
 **Plans:** 3 plans
 Plans:
-- [ ] 36-01-PLAN.md -- Core: pub monomial generators, Garvan findcong algorithm with GCD factoring
-- [ ] 36-02-PLAN.md -- Dispatch: all 11 functions with Garvan signatures, formatting helpers, unit tests
-- [ ] 36-03-PLAN.md -- Help text updates for all functions, CLI integration tests
+- [x] 36-01-PLAN.md -- Core: pub monomial generators, Garvan findcong algorithm with GCD factoring
+- [x] 36-02-PLAN.md -- Dispatch: all 11 functions with Garvan signatures, formatting helpers, unit tests
+- [x] 36-03-PLAN.md -- Help text updates for all functions, CLI integration tests
 
 ### Phase 37: New Functions - Theta & Jacobi
 **Goal**: The four theta/Jacobi conversion functions are available, enabling workflows that convert between theta, Jacobi product, and q-series representations
@@ -260,7 +260,7 @@ Plans:
 | 33. Symbolic Variable Foundation | v2.0 | 3/3 | Complete | 2026-02-19 |
 | 34. Product & Theta Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 35. Series Analysis Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
-| 36. Relation Discovery Signatures | v2.0 | 0/3 | In progress | - |
+| 36. Relation Discovery Signatures | v2.0 | 3/3 | Complete | 2026-02-19 |
 | 37. New Functions - Theta & Jacobi | v2.0 | 0/TBD | Not started | - |
 | 38. New Functions - Analysis & Discovery | v2.0 | 0/TBD | Not started | - |
 | 39. Output & Compatibility | v2.0 | 0/TBD | Not started | - |
