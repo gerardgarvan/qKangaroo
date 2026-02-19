@@ -51,18 +51,18 @@ Series Analysis:
   qetamake       - combined eta/q-Pochhammer product form
 
 Relations:
-  findlincombo       - find linear combination of candidates matching target
-  findhomcombo       - find homogeneous polynomial combo matching target
-  findnonhomcombo    - find nonhomogeneous polynomial combo matching target
-  findlincombomodp   - linear combination mod prime p
+  findlincombo       - find f as linear combination of L using SL labels
+  findhomcombo       - find f as degree-n homogeneous polynomial in L
+  findnonhomcombo    - find f as degree-<=n polynomial in L
+  findlincombomodp   - linear combination of L mod prime p, with SL labels
   findhomcombomodp   - homogeneous polynomial combo mod prime p
-  findhom            - find homogeneous relation among series
-  findnonhom         - find nonhomogeneous relation among series
+  findhom            - find degree-n homogeneous relations among L
+  findnonhom         - find degree-<=n polynomial relations among L
   findhommodp        - homogeneous relation mod prime p
   findmaxind         - find maximally independent subset of series
   findprod           - find product identity among series
-  findcong           - find partition congruences
-  findpoly           - find polynomial relation between two series
+  findcong           - auto-discover congruences in a q-series
+  findpoly           - find polynomial relation P(X,Y)=0 between two series
 
 Hypergeometric:
   phi                        - basic hypergeometric r_phi_s series
@@ -329,66 +329,66 @@ const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     FuncHelp {
         name: "findlincombo",
-        signature: "findlincombo(target, [candidates], topshift)",
-        description: "Find rational coefficients c_i such that target = sum c_i * candidates[i].\n  Uses exact arithmetic over Q via RREF.",
-        example: "q> findlincombo(partition_gf(30), [distinct_parts_gf(30), odd_parts_gf(30)], 0)",
-        example_output: "[1] (if partition_gf equals odd_parts_gf)",
+        signature: "findlincombo(f, L, SL, q, topshift)",
+        description: "Find f as a linear combination of basis series L, printing result using symbolic labels SL.\n  Uses exact arithmetic over Q via RREF. Prints \"NOT A LINEAR COMBO.\" on failure.",
+        example: "q> f := partition_gf(30)\nq> findlincombo(f, [distinct_parts_gf(30), odd_parts_gf(30)], [D, O], q, 0)",
+        example_output: "1*O (partition_gf equals odd_parts_gf)",
     },
     FuncHelp {
         name: "findhomcombo",
-        signature: "findhomcombo(target, [candidates], degree, topshift)",
-        description: "Find a homogeneous polynomial combination of given degree matching the target.\n  Generates all monomials of degree d in the candidate series.",
-        example: "q> findhomcombo(target, [f, g, h], 2, 0)",
-        example_output: "polynomial combination coefficients",
+        signature: "findhomcombo(f, L, q, n, topshift)",
+        description: "Express f as a degree-n homogeneous polynomial in basis series L.\n  Uses auto-generated X[i] labels. Returns polynomial expression or \"NOT FOUND\".",
+        example: "q> f := partition_gf(30)\nq> findhomcombo(f, [etaq(1, 1, 30), etaq(2, 1, 30)], q, 2, 0)",
+        example_output: "polynomial expression in X[1], X[2], ...",
     },
     FuncHelp {
         name: "findnonhomcombo",
-        signature: "findnonhomcombo(target, [candidates], degree, topshift)",
-        description: "Find a nonhomogeneous polynomial combination up to given degree matching the target.\n  Includes all monomials from degree 0 through degree d.",
-        example: "q> findnonhomcombo(target, [f, g], 3, 0)",
-        example_output: "polynomial combination coefficients",
+        signature: "findnonhomcombo(f, L, q, n, topshift)",
+        description: "Express f as a degree-<=n polynomial in basis series L.\n  Uses auto-generated X[i] labels. Includes all monomials from degree 0 through n.",
+        example: "q> f := partition_gf(30)\nq> findnonhomcombo(f, [etaq(1, 1, 30), etaq(2, 1, 30)], q, 2, 0)",
+        example_output: "polynomial expression in X[1], X[2], ...",
     },
     FuncHelp {
         name: "findlincombomodp",
-        signature: "findlincombomodp(target, [candidates], p, topshift)",
-        description: "Find a linear combination matching the target, with arithmetic mod prime p.\n  Uses Fermat inverse for modular division.",
-        example: "q> findlincombomodp(target, [f, g], 7, 0)",
-        example_output: "coefficients in Z/pZ",
+        signature: "findlincombomodp(f, L, SL, p, q, topshift)",
+        description: "Find f as a linear combination of L mod prime p, using symbolic labels SL.\n  Note: p comes before q in the argument list. Uses Fermat inverse for modular division.",
+        example: "q> f := partition_gf(30)\nq> findlincombomodp(f, [distinct_parts_gf(30)], [D], 7, q, 0)",
+        example_output: "linear combination with SL labels, coefficients in Z/pZ",
     },
     FuncHelp {
         name: "findhomcombomodp",
-        signature: "findhomcombomodp(target, [candidates], p, degree, topshift)",
-        description: "Find a homogeneous polynomial combination mod prime p.\n  Combines monomial generation with modular arithmetic.",
-        example: "q> findhomcombomodp(target, [f, g], 5, 2, 0)",
-        example_output: "polynomial combination coefficients mod 5",
+        signature: "findhomcombomodp(f, L, p, q, n, topshift)",
+        description: "Express f as degree-n homogeneous polynomial in L, mod prime p.\n  Uses auto-generated X[i] labels. Note: p comes before q.",
+        example: "q> f := partition_gf(30)\nq> findhomcombomodp(f, [etaq(1, 1, 30)], 5, q, 2, 0)",
+        example_output: "polynomial expression in X[1], X[2], ... with coefficients mod p",
     },
     FuncHelp {
         name: "findhom",
-        signature: "findhom([series], degree, topshift)",
-        description: "Find a homogeneous polynomial relation of given degree among the series.\n  Returns the null space of the coefficient matrix.",
-        example: "q> findhom([theta3(50)^2, theta2(50)^2, theta4(50)^2], 1, 0)",
-        example_output: "relation coefficients (if one exists)",
+        signature: "findhom(L, q, n, topshift)",
+        description: "Find all degree-n homogeneous polynomial relations among series in L.\n  Uses auto-generated X[i] labels. Returns the null space of the coefficient matrix.",
+        example: "q> e1 := etaq(1, 1, 50)\nq> findhom([theta3(50)^2, theta2(50)^2, theta4(50)^2], q, 1, 0)",
+        example_output: "polynomial relation(s) in X[1], X[2], X[3]",
     },
     FuncHelp {
         name: "findnonhom",
-        signature: "findnonhom([series], degree, topshift)",
-        description: "Find a nonhomogeneous relation of given degree among the series.\n  Includes constant and lower-degree terms.",
-        example: "q> findnonhom([f, g, h], 2, 0)",
-        example_output: "relation coefficients",
+        signature: "findnonhom(L, q, n, topshift)",
+        description: "Find all degree-<=n polynomial relations among series in L.\n  Uses auto-generated X[i] labels. Includes constant and lower-degree terms.",
+        example: "q> findnonhom([theta3(50)^2, theta2(50)^2, theta4(50)^2], q, 2, 0)",
+        example_output: "polynomial relation(s) in X[1], X[2], X[3]",
     },
     FuncHelp {
         name: "findhommodp",
-        signature: "findhommodp([series], p, degree, topshift)",
-        description: "Find a homogeneous relation among series with arithmetic mod prime p.\n  Useful when exact rational arithmetic is too expensive.",
-        example: "q> findhommodp([f, g, h], 7, 2, 0)",
-        example_output: "relation coefficients mod 7",
+        signature: "findhommodp(L, p, q, n, topshift)",
+        description: "Find degree-n homogeneous relations mod prime p.\n  Uses auto-generated X[i] labels. Note: p comes before q.",
+        example: "q> findhommodp([etaq(1, 1, 30), etaq(2, 1, 30)], 7, q, 2, 0)",
+        example_output: "polynomial relation(s) with coefficients mod p",
     },
     FuncHelp {
         name: "findmaxind",
-        signature: "findmaxind([series], topshift)",
-        description: "Find a maximally independent subset of the given series via Gaussian elimination.\n  Returns the indices of the pivot columns.",
-        example: "q> findmaxind([f, g, h, f+g], 0)",
-        example_output: "[0, 1, 2]",
+        signature: "findmaxind(L, T)",
+        description: "Find maximally linearly independent subset of series L, using T extra rows.\n  Returns 1-based indices of the independent series.",
+        example: "q> findmaxind([etaq(1, 1, 20), etaq(2, 1, 20), etaq(1, 1, 20)], 0)",
+        example_output: "[1, 2]",
     },
     FuncHelp {
         name: "findprod",
@@ -399,17 +399,17 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
     FuncHelp {
         name: "findcong",
-        signature: "findcong(series, [moduli])",
-        description: "Find partition-type congruences by checking whether sifted subsequences\n  vanish modulo each specified modulus.",
-        example: "q> findcong(partition_gf(200), [5, 7, 11])",
-        example_output: "list of (modulus, residue, prime) triples",
+        signature: "findcong(QS, T) or findcong(QS, T, LM) or findcong(QS, T, LM, XSET)",
+        description: "Auto-discover congruences in series QS up to T terms.\n  Scans all moduli 2..LM (default: floor(sqrt(T))). Optional XSET excludes specific moduli.\n  Output: [B, A, R] triples where p(A*n+B) = 0 mod R.",
+        example: "q> p := partition_gf(200)\nq> findcong(p, 200)",
+        example_output: "[4, 5, 5] (Ramanujan's p(5n+4) = 0 mod 5)",
     },
     FuncHelp {
         name: "findpoly",
-        signature: "findpoly(x, y, deg_x, deg_y, topshift)",
-        description: "Find a polynomial relation P(x, y) = 0 between two series x and y.\n  Searches for P of degree deg_x in x and deg_y in y.",
-        example: "q> findpoly(theta3(50)^4, theta2(50)^4, 2, 2, 0)",
-        example_output: "polynomial coefficients (if relation exists)",
+        signature: "findpoly(x, y, q, dx, dy) or findpoly(x, y, q, dx, dy, check)",
+        description: "Find polynomial P(X,Y)=0 with deg(X)<=dx, deg(Y)<=dy.\n  Optional check: verify the relation to O(q^check). Uses X, Y as variable names.",
+        example: "q> x := theta3(50)^4\nq> findpoly(x, theta2(50)^4, q, 2, 2)",
+        example_output: "polynomial in X, Y (if relation exists)",
     },
 
     // -----------------------------------------------------------------------
