@@ -74,12 +74,17 @@ impl fmt::Display for FormalPowerSeries {
             }
         }
 
-        // Append truncation order
-        if first {
-            // No terms were written (zero series)
-            write!(f, "O({}^{})", var, self.truncation_order)?;
-        } else {
-            write!(f, " + O({}^{})", var, self.truncation_order)?;
+        // Append truncation order (suppress for polynomial sentinel)
+        if self.truncation_order < 1_000_000_000 {
+            if first {
+                // No terms were written (zero series)
+                write!(f, "O({}^{})", var, self.truncation_order)?;
+            } else {
+                write!(f, " + O({}^{})", var, self.truncation_order)?;
+            }
+        } else if first {
+            // Polynomial with zero terms
+            write!(f, "0")?;
         }
 
         Ok(())

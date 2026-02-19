@@ -312,7 +312,7 @@ fn run_interactive(quiet: bool, verbose: bool) {
                             };
                             match qsym_cli::eval::eval_stmt_safe(stmt, &mut env) {
                                 Ok(Some(val)) => {
-                                    println!("{}", qsym_cli::format::format_value(&val));
+                                    println!("{}", qsym_cli::format::format_value(&val, &env.symbols));
                                     if let Some(t) = start {
                                         eprintln!("  [{:.3}s]", t.elapsed().as_secs_f64());
                                     }

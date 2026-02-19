@@ -723,13 +723,17 @@ fn eval_binop(
 }
 
 /// Convert a numeric value (Integer or Rational) to a constant FPS.
-fn value_to_constant_fps(val: &Value, env: &Environment) -> Option<FormalPowerSeries> {
+///
+/// Uses the given `order` as truncation order. When promoting a scalar
+/// to add/sub with an existing series, pass `fps.truncation_order()` to
+/// preserve polynomial semantics (POLYNOMIAL_ORDER sentinel).
+fn value_to_constant_fps(val: &Value, sym: qsym_core::symbol::SymbolId, order: i64) -> Option<FormalPowerSeries> {
     let qrat = match val {
         Value::Integer(n) => QRat::from(n.clone()),
         Value::Rational(r) => r.clone(),
         _ => return None,
     };
-    Some(FormalPowerSeries::monomial(env.sym_q, qrat, 0, env.default_order))
+    Some(FormalPowerSeries::monomial(sym, qrat, 0, order))
 }
 
 /// Convert a numeric value to QRat for scalar operations.
@@ -779,13 +783,13 @@ fn eval_add(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let b = value_to_qrat(&right).unwrap();
             Ok(Value::Rational(a + b))
         }
-        // Series + scalar: promote scalar to constant FPS
+        // Series + scalar: promote scalar to constant FPS (match series truncation order)
         (Value::Series(fps), _) if value_to_qrat(&right).is_some() => {
-            let const_fps = value_to_constant_fps(&right, env).unwrap();
+            let const_fps = value_to_constant_fps(&right, fps.variable(), fps.truncation_order()).unwrap();
             Ok(Value::Series(arithmetic::add(fps, &const_fps)))
         }
         (_, Value::Series(fps)) if value_to_qrat(&left).is_some() => {
-            let const_fps = value_to_constant_fps(&left, env).unwrap();
+            let const_fps = value_to_constant_fps(&left, fps.variable(), fps.truncation_order()).unwrap();
             Ok(Value::Series(arithmetic::add(&const_fps, fps)))
         }
         // Symbol + Series or Series + Symbol
@@ -830,13 +834,13 @@ fn eval_sub(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let b = value_to_qrat(&right).unwrap();
             Ok(Value::Rational(a - b))
         }
-        // Series - scalar
+        // Series - scalar (match series truncation order)
         (Value::Series(fps), _) if value_to_qrat(&right).is_some() => {
-            let const_fps = value_to_constant_fps(&right, env).unwrap();
+            let const_fps = value_to_constant_fps(&right, fps.variable(), fps.truncation_order()).unwrap();
             Ok(Value::Series(arithmetic::sub(fps, &const_fps)))
         }
         (_, Value::Series(fps)) if value_to_qrat(&left).is_some() => {
-            let const_fps = value_to_constant_fps(&left, env).unwrap();
+            let const_fps = value_to_constant_fps(&left, fps.variable(), fps.truncation_order()).unwrap();
             Ok(Value::Series(arithmetic::sub(&const_fps, fps)))
         }
         // Symbol - Series or Series - Symbol
@@ -949,7 +953,7 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
         }
         // scalar / Series -> const_fps / series
         (_, Value::Series(fps)) if value_to_qrat(&left).is_some() => {
-            let const_fps = value_to_constant_fps(&left, env).unwrap();
+            let const_fps = value_to_constant_fps(&left, fps.variable(), fps.truncation_order()).unwrap();
             let inv = arithmetic::invert(fps);
             Ok(Value::Series(arithmetic::mul(&const_fps, &inv)))
         }
@@ -3780,7 +3784,7 @@ mod tests {
         assert!(result.is_some());
         let val = result.unwrap();
         assert!(matches!(val, Value::Series(_)));
-        let text = format_value(&val);
+        let text = format_value(&val, &env.symbols);
         // (q;q)_inf = 1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + ...
         assert!(text.contains("q"), "expected 'q' in: {}", text);
         assert!(text.contains("1"), "expected '1' in: {}", text);
@@ -3794,7 +3798,7 @@ mod tests {
         let mut env = make_env();
         let stmts = parse("partition_count(50)").unwrap();
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
-        let text = format_value(&result);
+        let text = format_value(&result, &env.symbols);
         assert_eq!(text, "204226");
     }
 
@@ -3824,7 +3828,7 @@ mod tests {
         let mut env = make_env();
         let stmts = parse("theta3(20)").unwrap();
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
-        let text = format_value(&result);
+        let text = format_value(&result, &env.symbols);
         // theta3 = 1 + 2*q + 2*q^4 + ...
         assert!(text.contains("1"), "expected '1' in: {}", text);
         assert!(text.contains("q"), "expected 'q' in: {}", text);
@@ -4361,7 +4365,7 @@ mod tests {
         let mut env = make_env();
         let stmts = parse("numbpart(50)").unwrap();
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
-        let text = format_value(&result);
+        let text = format_value(&result, &env.symbols);
         assert_eq!(text, "204226");
     }
 
@@ -4398,7 +4402,7 @@ mod tests {
         let mut env = make_env();
         let stmts = parse("etaq(1,1,20)").unwrap();
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
-        let text = format_value(&result);
+        let text = format_value(&result, &env.symbols);
         assert!(text.starts_with("1"), "expected output starting with '1', got: {}", text);
         assert!(text.contains("q"), "expected 'q' in: {}", text);
     }
@@ -4412,7 +4416,7 @@ mod tests {
         eval_stmt(&stmts[0], &mut env).unwrap();
         let stmts2 = parse("%").unwrap();
         let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
-        let text = format_value(&result);
+        let text = format_value(&result, &env.symbols);
         assert_eq!(text, "42");
     }
 

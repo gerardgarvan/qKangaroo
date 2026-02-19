@@ -164,7 +164,7 @@ pub fn execute_source_with_context(
 
         match eval::eval_stmt_safe(stmt, env) {
             Ok(Some(val)) => {
-                println!("{}", format_value(&val));
+                println!("{}", format_value(&val, &env.symbols));
                 if let Some(t) = start {
                     eprintln!("  [{:.3}s]", t.elapsed().as_secs_f64());
                 }

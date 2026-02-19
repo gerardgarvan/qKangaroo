@@ -196,13 +196,13 @@ pub fn execute_command(cmd: Command, env: &mut Environment) -> CommandResult {
             )),
         },
         Command::Latex(None) => match &env.last_result {
-            Some(val) => CommandResult::Output(format_latex(val)),
+            Some(val) => CommandResult::Output(format_latex(val, &env.symbols)),
             None => CommandResult::Output(
                 "No result to display. Evaluate an expression first.".to_string(),
             ),
         },
         Command::Latex(Some(name)) => match env.get_var(&name) {
-            Some(val) => CommandResult::Output(format_latex(val)),
+            Some(val) => CommandResult::Output(format_latex(val, &env.symbols)),
             None => CommandResult::Output(format!("Unknown variable '{}'.", name)),
         },
         Command::Save(filename) => save_to_file(&filename, env),
@@ -230,7 +230,7 @@ fn save_to_file(filename: &str, env: &Environment) -> CommandResult {
     match &env.last_result {
         None => CommandResult::Output("No result to save. Evaluate an expression first.".to_string()),
         Some(val) => {
-            let content = format_value(val);
+            let content = format_value(val, &env.symbols);
             match fs::write(filename, &content) {
                 Ok(()) => CommandResult::Output(format!("Result saved to {}", filename)),
                 Err(e) => CommandResult::Output(format!("Error writing to {}: {}", filename, e)),
