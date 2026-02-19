@@ -170,7 +170,11 @@ Plans:
   3. `findhom`, `findnonhom`, `findhommodp`, `findmaxind`, `findpoly` accept Garvan's exact argument lists with explicit q
   4. `findcong(QS, T)` outputs results in Garvan's `[B, A, R]` triple format
   5. `findcong(QS, T, LM)` and `findcong(QS, T, LM, XSET)` overloaded forms work
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 36-01-PLAN.md -- Core: pub monomial generators, Garvan findcong algorithm with GCD factoring
+- [ ] 36-02-PLAN.md -- Dispatch: all 11 functions with Garvan signatures, formatting helpers, unit tests
+- [ ] 36-03-PLAN.md -- Help text updates for all functions, CLI integration tests
 
 ### Phase 37: New Functions - Theta & Jacobi
 **Goal**: The four theta/Jacobi conversion functions are available, enabling workflows that convert between theta, Jacobi product, and q-series representations
@@ -256,7 +260,7 @@ Plans:
 | 33. Symbolic Variable Foundation | v2.0 | 3/3 | Complete | 2026-02-19 |
 | 34. Product & Theta Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 35. Series Analysis Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
-| 36. Relation Discovery Signatures | v2.0 | 0/TBD | Not started | - |
+| 36. Relation Discovery Signatures | v2.0 | 0/3 | In progress | - |
 | 37. New Functions - Theta & Jacobi | v2.0 | 0/TBD | Not started | - |
 | 38. New Functions - Analysis & Discovery | v2.0 | 0/TBD | Not started | - |
 | 39. Output & Compatibility | v2.0 | 0/TBD | Not started | - |
