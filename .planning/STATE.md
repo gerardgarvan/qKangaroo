@@ -5,26 +5,26 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 36 complete, ready for Phase 37
+**Current focus:** v2.0 Maple Compatibility -- Phase 37 in progress (Plan 01 complete)
 
 ## Current Position
 
-Phase: 36 of 40 (Relation Discovery Signatures) -- COMPLETE
-Plan: 3 of 3 in current phase (36-03 complete)
-Status: Phase 36 complete, ready for Phase 37
-Last activity: 2026-02-19 -- Plan 36-03 complete (help text + integration tests for relation discovery)
+Phase: 37 of 40 (New Functions - Theta & Jacobi) -- IN PROGRESS
+Plan: 1 of 2 in current phase (37-01 complete)
+Status: Plan 37-01 complete, ready for Plan 37-02
+Last activity: 2026-02-19 -- Plan 37-01 complete (JacobiProduct type + theta/jac2prod/jac2series)
 
-Progress: [####################################          ] 103/? plans (v2.0 phases 33-40 pending)
+Progress: [####################################          ] 104/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 103
-- Total phases: 36 complete (v1.0-v1.6 + Phases 33-36), 4 planned (v2.0 phases 37-40)
+- Total plans completed: 104
+- Total phases: 36 complete (v1.0-v1.6 + Phases 33-36), 4 in progress/planned (v2.0 phases 37-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
-- Total execution time: ~8 hours
+- Total execution time: ~8.1 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -38,6 +38,7 @@ Progress: [####################################          ] 103/? plans (v2.0 pha
 | 36-01 | Pub monomial generators + findcong_garvan | 4min | 2 | 2 |
 | 36-02 | Garvan-compatible relation discovery dispatch | 5min | 1 | 1 |
 | 36-03 | Help text + integration tests | 6min | 2 | 2 |
+| 37-01 | JacobiProduct type + theta/jac2prod/jac2series | 8min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -85,6 +86,12 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 36-03: Help examples use two-line assign-then-call format matching Maple documentation style
 - 36-03: findcong integration tests use partition_gf(201) with T=200 to avoid boundary access error
 - 36-03: Script-based integration tests use colon terminators for multi-statement separation
+- 37-01: JacobiProduct uses Vec<(a,b,exponent)> sorted by (b,a) as canonical form
+- 37-01: JAC(a,b) validates b>0 but allows a=0 (degenerate case handled by etaq)
+- 37-01: theta dispatches on z type: numeric, monomial, symbol (with warning)
+- 37-01: jac2prod/jac2series use print-and-return pattern matching Phase 36 find* functions
+- 37-01: Add/sub with JacobiProduct gives helpful error directing to jac2series()
+- 37-01: env.symbols.name(sym) used for product notation formatting
 
 ### Pending Todos
 
@@ -97,5 +104,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 36-03-PLAN.md (Phase 36 complete)
-Resume file: .planning/phases/37-*/37-01-PLAN.md (next phase)
+Stopped at: Completed 37-01-PLAN.md
+Resume file: .planning/phases/37-*/37-02-PLAN.md (next plan)
