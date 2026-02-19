@@ -1208,3 +1208,235 @@ fn prodmake_old_signature_errors() {
         stderr
     );
 }
+
+// ===========================================================================
+// Phase 36: Relation Discovery Signatures -- Maple-style dispatch
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// findlincombo with SL labels
+// ---------------------------------------------------------------------------
+
+#[test]
+fn findlincombo_maple_style() {
+    // f = 1*f + 0*g, so output should contain "F1" (the label for f)
+    let tmp = write_temp_script(
+        "qk_test_findlincombo.qk",
+        "f := partition_gf(30):\ng := distinct_parts_gf(30):\nfindlincombo(f, [f, g], [F1, F2], q, 0)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findlincombo should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("F1"),
+        "output should contain label F1. stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn findlincombo_not_found() {
+    let tmp = write_temp_script(
+        "qk_test_findlincombo_nf.qk",
+        "g := etaq(1, 1, 20):\nh := etaq(2, 1, 20):\nfindlincombo(g, [h], [H], q, 0)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findlincombo not-found should exit 0. stderr: {}", stderr);
+    assert!(
+        stdout.contains("NOT A LINEAR COMBO"),
+        "should print NOT A LINEAR COMBO. stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn findlincombo_duplicate_sl_error() {
+    let tmp = write_temp_script(
+        "qk_test_findlincombo_dup.qk",
+        "f := partition_gf(20):\nfindlincombo(f, [f, f], [F, F], q, 0)",
+    );
+    let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_ne!(code, 0, "duplicate SL labels should fail");
+    assert!(
+        stderr.contains("duplicate label"),
+        "should report duplicate label. stderr: {}",
+        stderr
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn findlincombo_old_signature_error() {
+    // Old 3-arg signature should fail
+    let (code, _, stderr) = run(&["-c", "f := partition_gf(20); findlincombo(f, [f], 0)"]);
+    assert_ne!(code, 0, "old findlincombo signature should fail");
+    assert!(
+        stderr.contains("expects 5 arguments"),
+        "should report wrong arg count. stderr: {}",
+        stderr
+    );
+}
+
+// ---------------------------------------------------------------------------
+// findlincombomodp with SL and p before q
+// ---------------------------------------------------------------------------
+
+#[test]
+fn findlincombomodp_maple_style() {
+    let tmp = write_temp_script(
+        "qk_test_findlincombomodp.qk",
+        "f := partition_gf(30):\nfindlincombomodp(f, [f], [F], 7, q, 0)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findlincombomodp should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("F"),
+        "output should contain label F. stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn findlincombomodp_non_prime_error() {
+    let (code, _, stderr) = run(&["-c", "f := partition_gf(30); findlincombomodp(f, [f], [F], 4, q, 0)"]);
+    assert_ne!(code, 0, "non-prime p should fail");
+    assert!(
+        stderr.contains("not prime"),
+        "should report not prime. stderr: {}",
+        stderr
+    );
+}
+
+// ---------------------------------------------------------------------------
+// findhom with q parameter
+// ---------------------------------------------------------------------------
+
+#[test]
+fn findhom_maple_style() {
+    // theta3^4 = theta4^4 would need degree 1 among [theta3^4, theta4^4, 1]
+    // Use a simpler test: findhom on series that include a zero series => finds X[i]=0
+    let tmp = write_temp_script(
+        "qk_test_findhom.qk",
+        "findhom([theta3(50)^4, theta2(50)^4, theta4(50)^4], q, 1, 0)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findhom should succeed. stderr: {}", stderr);
+    // Should find something (theta2^4 starts at q^1 so X[2] relation)
+    assert!(
+        stdout.contains("X["),
+        "output should contain X[i] labels. stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ---------------------------------------------------------------------------
+// findhommodp with p before q
+// ---------------------------------------------------------------------------
+
+#[test]
+fn findhommodp_p_before_q() {
+    let tmp = write_temp_script(
+        "qk_test_findhommodp.qk",
+        "e1 := etaq(1, 1, 30):\ne2 := etaq(2, 1, 30):\nfindhommodp([e1, e2], 7, q, 2, 0)",
+    );
+    let (code, _stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findhommodp should succeed. stderr: {}", stderr);
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ---------------------------------------------------------------------------
+// findmaxind with 2 args
+// ---------------------------------------------------------------------------
+
+#[test]
+fn findmaxind_two_args() {
+    let tmp = write_temp_script(
+        "qk_test_findmaxind.qk",
+        "e1 := etaq(1, 1, 20):\ne2 := etaq(2, 1, 20):\nfindmaxind([e1, e2], 0)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findmaxind should succeed. stderr: {}", stderr);
+    // Should return [1, 2] (1-based indices of independent series)
+    assert!(
+        stdout.contains("[1, 2]"),
+        "should contain [1, 2] indices. stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ---------------------------------------------------------------------------
+// findpoly with q parameter
+// ---------------------------------------------------------------------------
+
+#[test]
+fn findpoly_maple_style() {
+    let tmp = write_temp_script(
+        "qk_test_findpoly.qk",
+        "x := theta3(50)^4:\ny := theta2(50)^4:\nfindpoly(x, y, q, 2, 2)",
+    );
+    let (code, _stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    // Just verify no crash (may or may not find a relation)
+    assert_eq!(code, 0, "findpoly should succeed (exit 0). stderr: {}", stderr);
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ---------------------------------------------------------------------------
+// findcong auto-scan (Garvan-style)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn findcong_garvan_auto_scan() {
+    // Use partition_gf(201) to provide T=200 terms (need one extra for boundary)
+    let tmp = write_temp_script(
+        "qk_test_findcong.qk",
+        "p := partition_gf(201):\nfindcong(p, 200)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findcong should succeed. stderr: {}", stderr);
+    // Should find Ramanujan's p(5n+4) = 0 mod 5
+    assert!(
+        stdout.contains("[4, 5, 5]"),
+        "should find [4, 5, 5] (Ramanujan congruence). stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn findcong_with_lm() {
+    // With LM=5, should find mod-5 but NOT mod-7 results
+    let tmp = write_temp_script(
+        "qk_test_findcong_lm.qk",
+        "p := partition_gf(201):\nfindcong(p, 200, 5)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findcong with LM should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("[4, 5, 5]"),
+        "should find [4, 5, 5]. stdout: {}",
+        stdout
+    );
+    // LM=5 should exclude modulus 7 results
+    assert!(
+        !stdout.contains("[5, 7, 7]"),
+        "LM=5 should NOT find mod-7 results. stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn findcong_old_signature_error() {
+    // Old (series, [moduli]) signature should fail -- list is not integer for arg 2
+    let (code, _, stderr) = run(&["-c", "p := partition_gf(50); findcong(p, [5, 7])"]);
+    assert_ne!(code, 0, "old findcong signature should fail");
+    assert!(
+        stderr.contains("must be integer") || stderr.contains("got list"),
+        "should report type error. stderr: {}",
+        stderr
+    );
+}
