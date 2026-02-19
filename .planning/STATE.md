@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 34: Product & Theta Signatures
+**Current focus:** v2.0 Maple Compatibility -- Phase 34 complete, ready for Phase 35
 
 ## Current Position
 
-Phase: 34 of 40 (Product & Theta Signatures)
-Plan: 1 of 2 in current phase
-Status: Plan 34-01 complete, ready for 34-02
-Last activity: 2026-02-19 -- Plan 34-01 complete (2/2 tasks)
+Phase: 34 of 40 (Product & Theta Signatures) -- COMPLETE
+Plan: 2 of 2 in current phase (all done)
+Status: Phase 34 complete, ready for Phase 35
+Last activity: 2026-02-19 -- Plan 34-02 complete (2/2 tasks)
 
-Progress: [################################              ] 96/? plans (v2.0 phases 33-40 pending)
+Progress: [#################################             ] 97/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 96
-- Total phases: 33 complete (v1.0-v1.6 + Phase 33), 7 planned (v2.0 phases 34-40)
+- Total plans completed: 97
+- Total phases: 34 complete (v1.0-v1.6 + Phases 33-34), 6 planned (v2.0 phases 35-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8 hours
@@ -32,6 +32,7 @@ Progress: [################################              ] 96/? plans (v2.0 phas
 | 33-02 | Symbol arithmetic | 10min | 2 | 6 |
 | 33-03 | Symbol-aware dispatch | 7min | 2 | 5 |
 | 34-01 | Product/theta Maple dispatch | 12min | 2 | 1 |
+| 34-02 | Numbpart canonical + help + tests | 6min | 2 | 4 |
 
 ## Accumulated Context
 
@@ -53,6 +54,10 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 34-01: qbin Garvan form uses tight truncation then re-wraps with POLYNOMIAL_ORDER sentinel
 - 34-01: etaq multi-delta validates non-empty list and positive deltas using EvalError::Other
 - 34-01: Used arithmetic::invert + mul for series division (no arithmetic::div exists)
+- 34-02: numbpart is canonical, partition_count is alias (reversed direction)
+- 34-02: numbpart(n,m) uses bounded_parts_gf to count bounded partitions
+- 34-02: help(partition_count) redirects to numbpart via function_help lookup
+- 34-02: Piped help tests replaced with -c flag tests (help commands only work in interactive REPL)
 
 ### Pending Todos
 
@@ -65,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 34-01-PLAN.md
-Resume file: .planning/phases/34-product-theta-signatures/34-01-SUMMARY.md
+Stopped at: Completed 34-02-PLAN.md (Phase 34 complete)
+Resume file: .planning/phases/34-product-theta-signatures/34-02-SUMMARY.md
