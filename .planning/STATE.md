@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 34 of 40 (Product & Theta Signatures)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-19 -- Phase 33 complete (3/3 plans, verified)
+Plan: 1 of 2 in current phase
+Status: Plan 34-01 complete, ready for 34-02
+Last activity: 2026-02-19 -- Plan 34-01 complete (2/2 tasks)
 
-Progress: [################################              ] 95/? plans (v2.0 phases 33-40 pending)
+Progress: [################################              ] 96/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 95
+- Total plans completed: 96
 - Total phases: 33 complete (v1.0-v1.6 + Phase 33), 7 planned (v2.0 phases 34-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
@@ -31,6 +31,7 @@ Progress: [################################              ] 95/? plans (v2.0 phas
 | 33-01 | Symbol foundation | 6min | 2 | 8 |
 | 33-02 | Symbol arithmetic | 10min | 2 | 6 |
 | 33-03 | Symbol-aware dispatch | 7min | 2 | 5 |
+| 34-01 | Product/theta Maple dispatch | 12min | 2 | 1 |
 
 ## Accumulated Context
 
@@ -48,6 +49,10 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 33-03: 3-arg aqprod(monomial, var, n) uses n for both Pochhammer count and truncation order
 - 33-03: Single-quote strings reuse Token::StringLit (no new token variant)
 - 33-03: anames() returns sorted list for deterministic output
+- 34-01: jacprod Maple-style uses JAC(a,b)/JAC(b,3b) per Garvan source, distinct from legacy JAC(a,b)
+- 34-01: qbin Garvan form uses tight truncation then re-wraps with POLYNOMIAL_ORDER sentinel
+- 34-01: etaq multi-delta validates non-empty list and positive deltas using EvalError::Other
+- 34-01: Used arithmetic::invert + mul for series division (no arithmetic::div exists)
 
 ### Pending Todos
 
@@ -60,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Phase 34 context gathered, ready to plan
-Resume file: .planning/phases/34-product-theta-signatures/34-CONTEXT.md
+Stopped at: Completed 34-01-PLAN.md
+Resume file: .planning/phases/34-product-theta-signatures/34-01-SUMMARY.md
