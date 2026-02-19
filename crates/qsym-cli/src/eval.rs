@@ -4,7 +4,7 @@
 //! arithmetic on [`Value`] types, catches panics from qsym-core, and
 //! dispatches function calls.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -487,6 +487,270 @@ fn extract_symbol_id(
             got: other.type_name().to_string(),
         }),
     }
+}
+
+/// Extract a list of Symbol values as `Vec<String>` (for SL label lists).
+fn extract_symbol_list(
+    name: &str,
+    args: &[Value],
+    index: usize,
+) -> Result<Vec<String>, EvalError> {
+    match &args[index] {
+        Value::List(items) => {
+            let mut labels = Vec::with_capacity(items.len());
+            for (i, item) in items.iter().enumerate() {
+                match item {
+                    Value::Symbol(s) => labels.push(s.clone()),
+                    other => {
+                        return Err(EvalError::Other(format!(
+                            "{}: Argument {} (SL): element {} must be a symbol, got {}",
+                            name,
+                            index + 1,
+                            i + 1,
+                            other.type_name()
+                        )));
+                    }
+                }
+            }
+            Ok(labels)
+        }
+        other => Err(EvalError::ArgType {
+            function: name.to_string(),
+            arg_index: index,
+            expected: "list of symbols",
+            got: other.type_name().to_string(),
+        }),
+    }
+}
+
+/// Check for duplicate labels in an SL list.
+fn validate_unique_labels(name: &str, labels: &[String]) -> Result<(), EvalError> {
+    let mut seen = HashSet::new();
+    for label in labels {
+        if !seen.insert(label.as_str()) {
+            return Err(EvalError::Other(format!(
+                "{}: duplicate label '{}' in SL",
+                name, label
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Simple trial division primality test.
+fn is_prime(n: i64) -> bool {
+    if n < 2 {
+        return false;
+    }
+    if n < 4 {
+        return true;
+    }
+    if n % 2 == 0 || n % 3 == 0 {
+        return false;
+    }
+    let mut i = 5i64;
+    while i * i <= n {
+        if n % i == 0 || n % (i + 2) == 0 {
+            return false;
+        }
+        i += 6;
+    }
+    true
+}
+
+/// Format a linear combination with symbolic labels.
+///
+/// For coefficients `[c1, c2, ...]` and labels `[F1, F2, ...]`, produces
+/// strings like `"12*F1 + 13*F2"`. Handles coefficient 1 (just label),
+/// -1 (just -label), 0 (skip). Replaces `"+ -"` with `"- "`.
+fn format_linear_combo(coeffs: &[QRat], labels: &[String]) -> String {
+    let mut parts = Vec::new();
+    for (c, label) in coeffs.iter().zip(labels.iter()) {
+        if c.is_zero() {
+            continue;
+        }
+        let one = QRat::from((1i64, 1i64));
+        let neg_one = QRat::from((-1i64, 1i64));
+        let coeff_str = if *c == one {
+            label.clone()
+        } else if *c == neg_one {
+            format!("-{}", label)
+        } else {
+            format!("{}*{}", c, label)
+        };
+        parts.push(coeff_str);
+    }
+    if parts.is_empty() {
+        "0".to_string()
+    } else {
+        parts.join(" + ").replace("+ -", "- ")
+    }
+}
+
+/// Format a linear combination with i64 coefficients mod p.
+fn format_linear_combo_modp(coeffs: &[i64], labels: &[String], _p: i64) -> String {
+    let mut parts = Vec::new();
+    for (&c, label) in coeffs.iter().zip(labels.iter()) {
+        if c == 0 {
+            continue;
+        }
+        let coeff_str = if c == 1 {
+            label.clone()
+        } else if c == -1 {
+            format!("-{}", label)
+        } else {
+            format!("{}*{}", c, label)
+        };
+        parts.push(coeff_str);
+    }
+    if parts.is_empty() {
+        "0".to_string()
+    } else {
+        parts.join(" + ").replace("+ -", "- ")
+    }
+}
+
+/// Format a polynomial expression from a null-space vector and monomial list.
+///
+/// For each nonzero coefficient, builds a monomial string (e.g., `X[1]^2*X[2]`)
+/// and combines with the coefficient.
+fn format_polynomial_expr(coeffs: &[QRat], monomials: &[Vec<i64>], labels: &[String]) -> String {
+    let mut parts = Vec::new();
+    for (c, mono) in coeffs.iter().zip(monomials.iter()) {
+        if c.is_zero() {
+            continue;
+        }
+        // Build monomial string
+        let mut mono_parts = Vec::new();
+        for (i, &e) in mono.iter().enumerate() {
+            if e == 0 {
+                continue;
+            }
+            if e == 1 {
+                mono_parts.push(labels[i].clone());
+            } else {
+                mono_parts.push(format!("{}^{}", labels[i], e));
+            }
+        }
+        let monomial_str = if mono_parts.is_empty() {
+            "1".to_string()
+        } else {
+            mono_parts.join("*")
+        };
+
+        let one = QRat::from((1i64, 1i64));
+        let neg_one = QRat::from((-1i64, 1i64));
+        let term = if *c == one {
+            monomial_str
+        } else if *c == neg_one {
+            format!("-{}", monomial_str)
+        } else if mono_parts.is_empty() {
+            // Just a constant term
+            format!("{}", c)
+        } else {
+            format!("{}*{}", c, monomial_str)
+        };
+        parts.push(term);
+    }
+    if parts.is_empty() {
+        "0".to_string()
+    } else {
+        parts.join(" + ").replace("+ -", "- ")
+    }
+}
+
+/// Format a polynomial expression with i64 coefficients mod p.
+fn format_polynomial_expr_modp(coeffs: &[i64], monomials: &[Vec<i64>], labels: &[String], _p: i64) -> String {
+    let mut parts = Vec::new();
+    for (&c, mono) in coeffs.iter().zip(monomials.iter()) {
+        if c == 0 {
+            continue;
+        }
+        let mut mono_parts = Vec::new();
+        for (i, &e) in mono.iter().enumerate() {
+            if e == 0 {
+                continue;
+            }
+            if e == 1 {
+                mono_parts.push(labels[i].clone());
+            } else {
+                mono_parts.push(format!("{}^{}", labels[i], e));
+            }
+        }
+        let monomial_str = if mono_parts.is_empty() {
+            "1".to_string()
+        } else {
+            mono_parts.join("*")
+        };
+
+        let term = if c == 1 {
+            monomial_str
+        } else if c == -1 {
+            format!("-{}", monomial_str)
+        } else if mono_parts.is_empty() {
+            format!("{}", c)
+        } else {
+            format!("{}*{}", c, monomial_str)
+        };
+        parts.push(term);
+    }
+    if parts.is_empty() {
+        "0".to_string()
+    } else {
+        parts.join(" + ").replace("+ -", "- ")
+    }
+}
+
+/// Format a `PolynomialRelation` as a polynomial in X, Y variables.
+fn format_findpoly_result(rel: &qseries::PolynomialRelation) -> String {
+    let mut parts = Vec::new();
+    for (i, row) in rel.coefficients.iter().enumerate() {
+        for (j, c) in row.iter().enumerate() {
+            if c.is_zero() {
+                continue;
+            }
+            // Build variable part
+            let x_part = match i {
+                0 => String::new(),
+                1 => "X".to_string(),
+                _ => format!("X^{}", i),
+            };
+            let y_part = match j {
+                0 => String::new(),
+                1 => "Y".to_string(),
+                _ => format!("Y^{}", j),
+            };
+            let var_str = match (x_part.is_empty(), y_part.is_empty()) {
+                (true, true) => String::new(),   // constant term
+                (false, true) => x_part,
+                (true, false) => y_part,
+                (false, false) => format!("{}*{}", x_part, y_part),
+            };
+
+            let one = QRat::from((1i64, 1i64));
+            let neg_one = QRat::from((-1i64, 1i64));
+            let term = if var_str.is_empty() {
+                format!("{}", c)
+            } else if *c == one {
+                var_str
+            } else if *c == neg_one {
+                format!("-{}", var_str)
+            } else {
+                format!("{}*{}", c, var_str)
+            };
+            parts.push(term);
+        }
+    }
+    if parts.is_empty() {
+        "0".to_string()
+    } else {
+        parts.join(" + ").replace("+ -", "- ")
+    }
+}
+
+/// Generate default labels X[1], X[2], ..., X[k] matching Garvan's convention.
+fn default_labels(k: usize) -> Vec<String> {
+    (1..=k).map(|i| format!("X[{}]", i)).collect()
 }
 
 /// Extract a QMonomial from an argument that is a Symbol (var^1) or a Series monomial.
@@ -1645,139 +1909,241 @@ pub fn dispatch(
         // Pattern D: target + list of candidates
 
         "findlincombo" => {
-            // findlincombo(target, [candidates...], topshift)
-            expect_args(name, args, 3)?;
+            // Maple: findlincombo(f, L, SL, q, topshift)
+            expect_args(name, args, 5)?;
             let target = extract_series(name, args, 0)?;
             let candidates = extract_series_list(name, args, 1)?;
-            let topshift = extract_i64(name, args, 2)?;
+            let labels = extract_symbol_list(name, args, 2)?;
+            let _sym = extract_symbol_id(name, args, 3, env)?;
+            let topshift = extract_i64(name, args, 4)?;
+            if labels.len() != candidates.len() {
+                return Err(EvalError::Other(format!(
+                    "{}: SL has {} labels but L has {} series",
+                    name, labels.len(), candidates.len()
+                )));
+            }
+            validate_unique_labels(name, &labels)?;
             let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
             match qseries::findlincombo(&target, &refs, topshift) {
-                Some(coeffs) => Ok(Value::List(coeffs.into_iter().map(Value::Rational).collect())),
-                None => Ok(Value::None),
+                Some(coeffs) => {
+                    let s = format_linear_combo(&coeffs, &labels);
+                    println!("{}", s);
+                    Ok(Value::String(s))
+                }
+                None => {
+                    println!("NOT A LINEAR COMBO.");
+                    Ok(Value::None)
+                }
             }
         }
 
         "findhomcombo" => {
-            // findhomcombo(target, [candidates...], degree, topshift)
-            expect_args(name, args, 4)?;
+            // Maple: findhomcombo(f, L, q, n, topshift) -- NO SL
+            expect_args(name, args, 5)?;
             let target = extract_series(name, args, 0)?;
             let candidates = extract_series_list(name, args, 1)?;
-            let degree = extract_i64(name, args, 2)?;
-            let topshift = extract_i64(name, args, 3)?;
+            let _sym = extract_symbol_id(name, args, 2, env)?;
+            let degree = extract_i64(name, args, 3)?;
+            let topshift = extract_i64(name, args, 4)?;
+            let labels = default_labels(candidates.len());
+            let monomials = qseries::generate_monomials(candidates.len(), degree);
             let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
             match qseries::findhomcombo(&target, &refs, degree, topshift) {
-                Some(coeffs) => Ok(Value::List(coeffs.into_iter().map(Value::Rational).collect())),
-                None => Ok(Value::None),
+                Some(coeffs) => {
+                    let s = format_polynomial_expr(&coeffs, &monomials, &labels);
+                    println!("{}", s);
+                    Ok(Value::String(s))
+                }
+                None => {
+                    println!("NOT A HOMOGENEOUS COMBO.");
+                    Ok(Value::None)
+                }
             }
         }
 
         "findnonhomcombo" => {
-            // findnonhomcombo(target, [candidates...], degree, topshift)
-            expect_args(name, args, 4)?;
+            // Maple: findnonhomcombo(f, L, q, n, topshift) -- NO SL
+            expect_args(name, args, 5)?;
             let target = extract_series(name, args, 0)?;
             let candidates = extract_series_list(name, args, 1)?;
-            let degree = extract_i64(name, args, 2)?;
-            let topshift = extract_i64(name, args, 3)?;
+            let _sym = extract_symbol_id(name, args, 2, env)?;
+            let degree = extract_i64(name, args, 3)?;
+            let topshift = extract_i64(name, args, 4)?;
+            let labels = default_labels(candidates.len());
+            let monomials = qseries::generate_nonhom_monomials(candidates.len(), degree);
             let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
             match qseries::findnonhomcombo(&target, &refs, degree, topshift) {
-                Some(coeffs) => Ok(Value::List(coeffs.into_iter().map(Value::Rational).collect())),
-                None => Ok(Value::None),
+                Some(coeffs) => {
+                    let s = format_polynomial_expr(&coeffs, &monomials, &labels);
+                    println!("{}", s);
+                    Ok(Value::String(s))
+                }
+                None => {
+                    println!("NOT A NON-HOMOGENEOUS COMBO.");
+                    Ok(Value::None)
+                }
             }
         }
 
         "findlincombomodp" => {
-            // findlincombomodp(target, [candidates...], p, topshift)
-            expect_args(name, args, 4)?;
+            // Maple: findlincombomodp(f, L, SL, p, q, topshift) -- p BEFORE q
+            expect_args(name, args, 6)?;
             let target = extract_series(name, args, 0)?;
             let candidates = extract_series_list(name, args, 1)?;
-            let p = extract_i64(name, args, 2)?;
-            let topshift = extract_i64(name, args, 3)?;
+            let labels = extract_symbol_list(name, args, 2)?;
+            let p = extract_i64(name, args, 3)?;
+            let _sym = extract_symbol_id(name, args, 4, env)?;
+            let topshift = extract_i64(name, args, 5)?;
+            if !is_prime(p) {
+                return Err(EvalError::Other(format!(
+                    "{}: {} is not prime", name, p
+                )));
+            }
+            if labels.len() != candidates.len() {
+                return Err(EvalError::Other(format!(
+                    "{}: SL has {} labels but L has {} series",
+                    name, labels.len(), candidates.len()
+                )));
+            }
+            validate_unique_labels(name, &labels)?;
             let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
             match qseries::findlincombomodp(&target, &refs, p, topshift) {
-                Some(coeffs) => Ok(Value::List(
-                    coeffs.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
-                )),
-                None => Ok(Value::None),
+                Some(coeffs) => {
+                    let s = format_linear_combo_modp(&coeffs, &labels, p);
+                    println!("{}", s);
+                    Ok(Value::String(s))
+                }
+                None => {
+                    println!("NOT A LINEAR COMBO MOD {}.", p);
+                    Ok(Value::None)
+                }
             }
         }
 
         "findhomcombomodp" => {
-            // findhomcombomodp(target, [candidates...], p, degree, topshift)
-            expect_args(name, args, 5)?;
+            // Maple: findhomcombomodp(f, L, p, q, n, topshift) -- NO SL, p before q
+            expect_args(name, args, 6)?;
             let target = extract_series(name, args, 0)?;
             let candidates = extract_series_list(name, args, 1)?;
             let p = extract_i64(name, args, 2)?;
-            let degree = extract_i64(name, args, 3)?;
-            let topshift = extract_i64(name, args, 4)?;
+            let _sym = extract_symbol_id(name, args, 3, env)?;
+            let degree = extract_i64(name, args, 4)?;
+            let topshift = extract_i64(name, args, 5)?;
+            if !is_prime(p) {
+                return Err(EvalError::Other(format!(
+                    "{}: {} is not prime", name, p
+                )));
+            }
+            let labels = default_labels(candidates.len());
+            let monomials = qseries::generate_monomials(candidates.len(), degree);
             let refs: Vec<&FormalPowerSeries> = candidates.iter().collect();
             match qseries::findhomcombomodp(&target, &refs, p, degree, topshift) {
-                Some(coeffs) => Ok(Value::List(
-                    coeffs.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
-                )),
-                None => Ok(Value::None),
+                Some(coeffs) => {
+                    let s = format_polynomial_expr_modp(&coeffs, &monomials, &labels, p);
+                    println!("{}", s);
+                    Ok(Value::String(s))
+                }
+                None => {
+                    println!("NOT A HOMOGENEOUS COMBO MOD {}.", p);
+                    Ok(Value::None)
+                }
             }
         }
 
         // Pattern E: list of series
 
         "findhom" => {
-            // findhom([series...], degree, topshift)
-            expect_args(name, args, 3)?;
+            // Maple: findhom(L, q, n, topshift)
+            expect_args(name, args, 4)?;
             let series_list = extract_series_list(name, args, 0)?;
-            let degree = extract_i64(name, args, 1)?;
-            let topshift = extract_i64(name, args, 2)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let degree = extract_i64(name, args, 2)?;
+            let topshift = extract_i64(name, args, 3)?;
+            let labels = default_labels(series_list.len());
+            let monomials = qseries::generate_monomials(series_list.len(), degree);
             let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
             let rows = qseries::findhom(&refs, degree, topshift);
-            Ok(Value::List(
-                rows.into_iter()
-                    .map(|row| Value::List(row.into_iter().map(Value::Rational).collect()))
-                    .collect(),
-            ))
+            if rows.is_empty() {
+                println!("NO HOMOGENEOUS RELATIONS FOUND.");
+                return Ok(Value::List(vec![]));
+            }
+            let mut exprs = Vec::new();
+            for row in &rows {
+                let s = format_polynomial_expr(row, &monomials, &labels);
+                println!("{}", s);
+                exprs.push(Value::String(s));
+            }
+            Ok(Value::List(exprs))
         }
 
         "findnonhom" => {
-            // findnonhom([series...], degree, topshift)
-            expect_args(name, args, 3)?;
+            // Maple: findnonhom(L, q, n, topshift)
+            expect_args(name, args, 4)?;
             let series_list = extract_series_list(name, args, 0)?;
-            let degree = extract_i64(name, args, 1)?;
-            let topshift = extract_i64(name, args, 2)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let degree = extract_i64(name, args, 2)?;
+            let topshift = extract_i64(name, args, 3)?;
+            let labels = default_labels(series_list.len());
+            let monomials = qseries::generate_nonhom_monomials(series_list.len(), degree);
             let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
             let rows = qseries::findnonhom(&refs, degree, topshift);
-            Ok(Value::List(
-                rows.into_iter()
-                    .map(|row| Value::List(row.into_iter().map(Value::Rational).collect()))
-                    .collect(),
-            ))
+            if rows.is_empty() {
+                println!("NO NON-HOMOGENEOUS RELATIONS FOUND.");
+                return Ok(Value::List(vec![]));
+            }
+            let mut exprs = Vec::new();
+            for row in &rows {
+                let s = format_polynomial_expr(row, &monomials, &labels);
+                println!("{}", s);
+                exprs.push(Value::String(s));
+            }
+            Ok(Value::List(exprs))
         }
 
         "findhommodp" => {
-            // findhommodp([series...], p, degree, topshift)
-            expect_args(name, args, 4)?;
+            // Maple: findhommodp(L, p, q, n, topshift) -- p BEFORE q
+            expect_args(name, args, 5)?;
             let series_list = extract_series_list(name, args, 0)?;
             let p = extract_i64(name, args, 1)?;
-            let degree = extract_i64(name, args, 2)?;
-            let topshift = extract_i64(name, args, 3)?;
+            let _sym = extract_symbol_id(name, args, 2, env)?;
+            let degree = extract_i64(name, args, 3)?;
+            let topshift = extract_i64(name, args, 4)?;
+            if !is_prime(p) {
+                return Err(EvalError::Other(format!(
+                    "{}: {} is not prime", name, p
+                )));
+            }
+            let labels = default_labels(series_list.len());
+            let monomials = qseries::generate_monomials(series_list.len(), degree);
             let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
             let rows = qseries::findhommodp(&refs, p, degree, topshift);
-            Ok(Value::List(
-                rows.into_iter()
-                    .map(|row| Value::List(
-                        row.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
-                    ))
-                    .collect(),
-            ))
+            if rows.is_empty() {
+                println!("NO HOMOGENEOUS RELATIONS MOD {} FOUND.", p);
+                return Ok(Value::List(vec![]));
+            }
+            let mut exprs = Vec::new();
+            for row in &rows {
+                let s = format_polynomial_expr_modp(row, &monomials, &labels, p);
+                println!("{}", s);
+                exprs.push(Value::String(s));
+            }
+            Ok(Value::List(exprs))
         }
 
         "findmaxind" => {
-            // findmaxind([series...], topshift)
+            // Garvan: findmaxind(L, T) -- 2 args, no q
             expect_args(name, args, 2)?;
             let series_list = extract_series_list(name, args, 0)?;
             let topshift = extract_i64(name, args, 1)?;
             let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
             let indices = qseries::findmaxind(&refs, topshift);
-            Ok(Value::List(
-                indices.into_iter().map(|i| Value::Integer(QInt::from(i as i64))).collect(),
-            ))
+            // Return 1-based indices matching Garvan convention
+            let nxfl: Vec<Value> = indices.iter()
+                .map(|&i| Value::Integer(QInt::from((i + 1) as i64)))
+                .collect();
+            let display: Vec<i64> = indices.iter().map(|&i| (i + 1) as i64).collect();
+            println!("{:?}", display);
+            Ok(Value::List(nxfl))
         }
 
         "findprod" => {
@@ -1798,31 +2164,66 @@ pub fn dispatch(
         }
 
         "findcong" => {
-            // findcong(series, [moduli...])
-            expect_args(name, args, 2)?;
+            // Maple: findcong(QS, T, [LM], [XSET]) -- 2 to 4 args
+            expect_args_range(name, args, 2, 4)?;
             let fps = extract_series(name, args, 0)?;
-            let moduli = extract_i64_list(name, args, 1)?;
-            let results = qseries::findcong(&fps, &moduli);
+            let t = extract_i64(name, args, 1)?;
+            let lm = if args.len() >= 3 {
+                Some(extract_i64(name, args, 2)?)
+            } else {
+                None
+            };
+            let xset: HashSet<i64> = if args.len() >= 4 {
+                extract_i64_list(name, args, 3)?.into_iter().collect()
+            } else {
+                HashSet::new()
+            };
+            let results = qseries::findcong_garvan(&fps, t, lm, &xset);
+            if results.is_empty() {
+                println!("NO CONGRUENCES FOUND.");
+            }
+            for c in &results {
+                println!("[{}, {}, {}]", c.residue_b, c.modulus_m, c.divisor_r);
+            }
             Ok(Value::List(
-                results.into_iter()
-                    .map(|c| congruence_to_value(&c))
-                    .collect(),
+                results.iter().map(|c| Value::List(vec![
+                    Value::Integer(QInt::from(c.residue_b)),
+                    Value::Integer(QInt::from(c.modulus_m)),
+                    Value::Integer(QInt::from(c.divisor_r)),
+                ])).collect(),
             ))
         }
 
         // Pattern F: two series
 
         "findpoly" => {
-            // findpoly(x, y, deg_x, deg_y, topshift)
-            expect_args(name, args, 5)?;
+            // Maple: findpoly(x, y, q, dx, dy, [check]) -- 5 or 6 args
+            expect_args_range(name, args, 5, 6)?;
             let x = extract_series(name, args, 0)?;
             let y = extract_series(name, args, 1)?;
-            let deg_x = extract_i64(name, args, 2)?;
-            let deg_y = extract_i64(name, args, 3)?;
-            let topshift = extract_i64(name, args, 4)?;
-            match qseries::findpoly(&x, &y, deg_x, deg_y, topshift) {
-                Some(rel) => Ok(polynomial_relation_to_value(&rel)),
-                None => Ok(Value::None),
+            let _sym = extract_symbol_id(name, args, 2, env)?;
+            let deg_x = extract_i64(name, args, 3)?;
+            let deg_y = extract_i64(name, args, 4)?;
+            let check = if args.len() == 6 {
+                Some(extract_i64(name, args, 5)?)
+            } else {
+                None
+            };
+            // Fixed topshift=10 matching Garvan's dim2 := dim1 + 10
+            match qseries::findpoly(&x, &y, deg_x, deg_y, 10) {
+                Some(rel) => {
+                    let s = format_findpoly_result(&rel);
+                    println!("The polynomial is");
+                    println!("{}", s);
+                    if let Some(check_order) = check {
+                        println!("Verification requested (check={})", check_order);
+                    }
+                    Ok(Value::String(s))
+                }
+                None => {
+                    println!("NO polynomial relation found.");
+                    Ok(Value::None)
+                }
             }
         }
 
@@ -2747,18 +3148,18 @@ fn get_signature(name: &str) -> String {
         "qetamake" => "(f, q, T)".to_string(),
         "qfactor" => "(f, q) or (f, q, T)".to_string(),
         // Group 5: Relation Discovery
-        "findlincombo" => "(target, [candidates], topshift)".to_string(),
-        "findhomcombo" => "(target, [candidates], degree, topshift)".to_string(),
-        "findnonhomcombo" => "(target, [candidates], degree, topshift)".to_string(),
-        "findlincombomodp" => "(target, [candidates], p, topshift)".to_string(),
-        "findhomcombomodp" => "(target, [candidates], p, degree, topshift)".to_string(),
-        "findhom" => "([series], degree, topshift)".to_string(),
-        "findnonhom" => "([series], degree, topshift)".to_string(),
-        "findhommodp" => "([series], p, degree, topshift)".to_string(),
-        "findmaxind" => "([series], topshift)".to_string(),
+        "findlincombo" => "(f, L, SL, q, topshift)".to_string(),
+        "findhomcombo" => "(f, L, q, n, topshift)".to_string(),
+        "findnonhomcombo" => "(f, L, q, n, topshift)".to_string(),
+        "findlincombomodp" => "(f, L, SL, p, q, topshift)".to_string(),
+        "findhomcombomodp" => "(f, L, p, q, n, topshift)".to_string(),
+        "findhom" => "(L, q, n, topshift)".to_string(),
+        "findnonhom" => "(L, q, n, topshift)".to_string(),
+        "findhommodp" => "(L, p, q, n, topshift)".to_string(),
+        "findmaxind" => "(L, T)".to_string(),
         "findprod" => "([series], max_coeff, max_exp)".to_string(),
-        "findcong" => "(series, [moduli])".to_string(),
-        "findpoly" => "(x, y, deg_x, deg_y, topshift)".to_string(),
+        "findcong" => "(QS, T) or (QS, T, LM) or (QS, T, LM, XSET)".to_string(),
+        "findpoly" => "(x, y, q, dx, dy) or (x, y, q, dx, dy, check)".to_string(),
         // Group 6: Hypergeometric
         "phi" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
         "psi" => "(upper_list, lower_list, z_num, z_den, z_pow, order)".to_string(),
@@ -4505,9 +4906,8 @@ mod tests {
     // --- Dispatch: Group 5 (Relation Discovery) ---
 
     #[test]
-    fn dispatch_findlincombo_returns_list_or_none() {
+    fn dispatch_findlincombo_maple_style() {
         let mut env = make_env();
-        // Build two simple series: partition_gf and etaq(1,1,20)
         let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
         let etq = dispatch("etaq", &[
             Value::Integer(QInt::from(1i64)),
@@ -4515,21 +4915,72 @@ mod tests {
             Value::Integer(QInt::from(20i64)),
         ], &mut env).unwrap();
         let candidates = Value::List(vec![pgf.clone(), etq.clone()]);
-        let args = vec![pgf, candidates, Value::Integer(QInt::from(5i64))];
+        let sl = Value::List(vec![
+            Value::Symbol("F1".to_string()),
+            Value::Symbol("F2".to_string()),
+        ]);
+        let args = vec![
+            pgf,
+            candidates,
+            sl,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),
+        ];
         let val = dispatch("findlincombo", &args, &mut env).unwrap();
         // Should find a combination (first basis is identical to target)
         match val {
-            Value::List(coeffs) => {
-                assert_eq!(coeffs.len(), 2);
-                // First coefficient should be 1 (target == first basis element)
+            Value::String(s) => {
+                assert!(s.contains("F1"), "expected F1 label in output: {}", s);
             }
             Value::None => {} // also acceptable depending on truncation
-            other => panic!("expected List or None, got {:?}", other),
+            other => panic!("expected String or None, got {:?}", other),
         }
     }
 
     #[test]
-    fn dispatch_findhom_returns_matrix() {
+    fn dispatch_findlincombo_duplicate_sl_errors() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let candidates = Value::List(vec![pgf.clone(), pgf.clone()]);
+        let sl = Value::List(vec![
+            Value::Symbol("F1".to_string()),
+            Value::Symbol("F1".to_string()), // duplicate
+        ]);
+        let args = vec![
+            pgf,
+            candidates,
+            sl,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(0i64)),
+        ];
+        let result = dispatch("findlincombo", &args, &mut env);
+        assert!(result.is_err(), "expected error for duplicate SL labels");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("duplicate label"), "error should mention duplicate: {}", err_msg);
+    }
+
+    #[test]
+    fn dispatch_findlincombomodp_non_prime_errors() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let candidates = Value::List(vec![pgf.clone()]);
+        let sl = Value::List(vec![Value::Symbol("F1".to_string())]);
+        let args = vec![
+            pgf,
+            candidates,
+            sl,
+            Value::Integer(QInt::from(4i64)), // not prime
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(0i64)),
+        ];
+        let result = dispatch("findlincombomodp", &args, &mut env);
+        assert!(result.is_err(), "expected error for non-prime p");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("not prime"), "error should mention not prime: {}", err_msg);
+    }
+
+    #[test]
+    fn dispatch_findhom_maple_style() {
         let mut env = make_env();
         let e1 = dispatch("etaq", &[
             Value::Integer(QInt::from(1i64)),
@@ -4539,6 +4990,7 @@ mod tests {
         let series_list = Value::List(vec![e1]);
         let args = vec![
             series_list,
+            Value::Symbol("q".to_string()),
             Value::Integer(QInt::from(2i64)),  // degree
             Value::Integer(QInt::from(5i64)),  // topshift
         ];
@@ -4547,28 +4999,63 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_findcong_returns_list_of_dicts() {
+    fn dispatch_findcong_garvan_style() {
         let mut env = make_env();
-        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(50i64))], &mut env).unwrap();
-        let moduli = Value::List(vec![
-            Value::Integer(QInt::from(5i64)),
-            Value::Integer(QInt::from(7i64)),
-        ]);
-        let val = dispatch("findcong", &[pgf, moduli], &mut env).unwrap();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(100i64))], &mut env).unwrap();
+        // findcong(pgf, 99) -- auto-scan moduli 2..floor(sqrt(99))
+        let val = dispatch("findcong", &[pgf, Value::Integer(QInt::from(99i64))], &mut env).unwrap();
         if let Value::List(congruences) = val {
-            // Should find at least the p(5n+4) congruence
             assert!(!congruences.is_empty(), "expected at least one congruence");
-            // Each entry should be a dict
-            for cong in &congruences {
-                if let Value::Dict(entries) = cong {
-                    let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
-                    assert!(keys.contains(&"modulus"));
-                    assert!(keys.contains(&"residue"));
-                    assert!(keys.contains(&"divisor"));
+            // Each entry should be a [B, A, R] triple
+            let has_5n4 = congruences.iter().any(|c| {
+                if let Value::List(items) = c {
+                    items.len() == 3
+                        && matches!(&items[0], Value::Integer(n) if n.0 == 4)
+                        && matches!(&items[1], Value::Integer(n) if n.0 == 5)
+                        && matches!(&items[2], Value::Integer(n) if n.0 == 5)
                 } else {
-                    panic!("expected Dict in congruences list, got {:?}", cong);
+                    false
                 }
-            }
+            });
+            assert!(has_5n4, "Should find Ramanujan's p(5n+4) = 0 mod 5");
+        } else {
+            panic!("expected List, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_findcong_with_lm() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(100i64))], &mut env).unwrap();
+        // findcong(pgf, 99, 5) -- restrict to moduli 2..5
+        let args = vec![
+            pgf,
+            Value::Integer(QInt::from(99i64)),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("findcong", &args, &mut env).unwrap();
+        if let Value::List(congruences) = val {
+            // Should find p(5n+4) mod 5
+            let has_5n4 = congruences.iter().any(|c| {
+                if let Value::List(items) = c {
+                    items.len() == 3
+                        && matches!(&items[0], Value::Integer(n) if n.0 == 4)
+                        && matches!(&items[1], Value::Integer(n) if n.0 == 5)
+                } else {
+                    false
+                }
+            });
+            assert!(has_5n4, "Should find p(5n+4) with lm=5");
+            // Should NOT find mod 7 results
+            let has_mod7 = congruences.iter().any(|c| {
+                if let Value::List(items) = c {
+                    items.len() == 3
+                        && matches!(&items[1], Value::Integer(n) if n.0 == 7)
+                } else {
+                    false
+                }
+            });
+            assert!(!has_mod7, "Should not find mod 7 with lm=5");
         } else {
             panic!("expected List, got {:?}", val);
         }
@@ -4592,13 +5079,19 @@ mod tests {
         let val = dispatch("findmaxind", &args, &mut env).unwrap();
         if let Value::List(indices) = val {
             assert!(!indices.is_empty());
+            // Should be 1-based indices
+            for idx in &indices {
+                if let Value::Integer(n) = idx {
+                    assert!(n.0 >= 1, "indices should be 1-based");
+                }
+            }
         } else {
             panic!("expected List, got {:?}", val);
         }
     }
 
     #[test]
-    fn dispatch_findpoly_returns_dict_or_none() {
+    fn dispatch_findpoly_maple_style() {
         let mut env = make_env();
         let e1 = dispatch("etaq", &[
             Value::Integer(QInt::from(1i64)),
@@ -4612,16 +5105,66 @@ mod tests {
         ], &mut env).unwrap();
         let args = vec![
             e1, e2,
+            Value::Symbol("q".to_string()),
             Value::Integer(QInt::from(2i64)),
             Value::Integer(QInt::from(2i64)),
-            Value::Integer(QInt::from(5i64)),
         ];
         let val = dispatch("findpoly", &args, &mut env).unwrap();
-        // Could be Dict (found relation) or None (no relation in that degree)
+        // Could be String (found relation) or None (no relation in that degree)
         match &val {
-            Value::Dict(_) | Value::None => {}
-            other => panic!("expected Dict or None, got {:?}", other),
+            Value::String(_) | Value::None => {}
+            other => panic!("expected String or None, got {:?}", other),
         }
+    }
+
+    #[test]
+    fn dispatch_findhomcombo_maple_style() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
+        let etq = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let candidates = Value::List(vec![pgf.clone(), etq.clone()]);
+        // findhomcombo(f, L, q, n, topshift) -- 5 args
+        let args = vec![
+            pgf,
+            candidates,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(1i64)), // degree 1
+            Value::Integer(QInt::from(5i64)), // topshift
+        ];
+        let val = dispatch("findhomcombo", &args, &mut env).unwrap();
+        match val {
+            Value::String(s) => {
+                // Should contain X[1] or X[2] labels
+                assert!(s.contains("X[") || s == "0", "expected X[i] labels: {}", s);
+            }
+            Value::None => {} // no combination found
+            other => panic!("expected String or None, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn dispatch_findhommodp_p_before_q() {
+        let mut env = make_env();
+        let e1 = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let series_list = Value::List(vec![e1]);
+        // findhommodp(L, p, q, n, topshift) -- 5 args, p before q
+        let args = vec![
+            series_list,
+            Value::Integer(QInt::from(5i64)),  // p
+            Value::Symbol("q".to_string()),     // q
+            Value::Integer(QInt::from(2i64)),  // degree
+            Value::Integer(QInt::from(5i64)),  // topshift
+        ];
+        let val = dispatch("findhommodp", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::List(_)));
     }
 
     // --- Dispatch: Group 6 (Hypergeometric) ---
