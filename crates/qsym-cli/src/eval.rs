@@ -2532,15 +2532,13 @@ mod tests {
     }
 
     #[test]
-    fn eval_q_creates_series() {
+    fn eval_q_returns_symbol() {
         let mut env = make_env();
-        let val = eval_expr(&AstNode::Q, &mut env).unwrap();
-        if let Value::Series(fps) = val {
-            assert_eq!(fps.coeff(1), QRat::one());
-            assert_eq!(fps.coeff(0), QRat::zero());
-            assert_eq!(fps.truncation_order(), 20);
+        let val = eval_expr(&AstNode::Variable("q".to_string()), &mut env).unwrap();
+        if let Value::Symbol(name) = val {
+            assert_eq!(name, "q");
         } else {
-            panic!("expected Series, got {:?}", val);
+            panic!("expected Symbol(\"q\"), got {:?}", val);
         }
     }
 
@@ -2566,10 +2564,14 @@ mod tests {
     }
 
     #[test]
-    fn eval_variable_not_found() {
+    fn eval_variable_not_found_returns_symbol() {
         let mut env = make_env();
-        let err = eval_expr(&AstNode::Variable("unknown".to_string()), &mut env).unwrap_err();
-        assert!(matches!(err, EvalError::UnknownVariable { .. }));
+        let val = eval_expr(&AstNode::Variable("unknown".to_string()), &mut env).unwrap();
+        if let Value::Symbol(name) = val {
+            assert_eq!(name, "unknown");
+        } else {
+            panic!("expected Symbol(\"unknown\"), got {:?}", val);
+        }
     }
 
     // --- Last result ---
@@ -2690,11 +2692,15 @@ mod tests {
     #[test]
     fn eval_series_add() {
         let mut env = make_env();
-        // q + q = 2*q
+        // Assign q-series values to variables, then add them
+        let q_fps = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, 20);
+        env.set_var("a", Value::Series(q_fps.clone()));
+        env.set_var("b", Value::Series(q_fps));
+        // a + b = 2*q
         let node = AstNode::BinOp {
             op: BinOp::Add,
-            lhs: Box::new(AstNode::Q),
-            rhs: Box::new(AstNode::Q),
+            lhs: Box::new(AstNode::Variable("a".to_string())),
+            rhs: Box::new(AstNode::Variable("b".to_string())),
         };
         let val = eval_expr(&node, &mut env).unwrap();
         if let Value::Series(fps) = val {
@@ -2707,11 +2713,14 @@ mod tests {
     #[test]
     fn eval_scalar_mul_series() {
         let mut env = make_env();
-        // 3 * q -> 3*q
+        // Assign q-series to variable, then multiply by scalar
+        let q_fps = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, 20);
+        env.set_var("s", Value::Series(q_fps));
+        // 3 * s -> 3*q
         let node = AstNode::BinOp {
             op: BinOp::Mul,
             lhs: Box::new(AstNode::Integer(3)),
-            rhs: Box::new(AstNode::Q),
+            rhs: Box::new(AstNode::Variable("s".to_string())),
         };
         let val = eval_expr(&node, &mut env).unwrap();
         if let Value::Series(fps) = val {
@@ -2724,10 +2733,13 @@ mod tests {
     #[test]
     fn eval_series_plus_integer() {
         let mut env = make_env();
-        // q + 1 -> 1 + q + O(q^20)
+        // Assign q-series to variable, then add integer
+        let q_fps = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, 20);
+        env.set_var("s", Value::Series(q_fps));
+        // s + 1 -> 1 + q + O(q^20)
         let node = AstNode::BinOp {
             op: BinOp::Add,
-            lhs: Box::new(AstNode::Q),
+            lhs: Box::new(AstNode::Variable("s".to_string())),
             rhs: Box::new(AstNode::Integer(1)),
         };
         let val = eval_expr(&node, &mut env).unwrap();

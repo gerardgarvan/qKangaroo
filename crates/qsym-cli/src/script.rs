@@ -270,9 +270,19 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_source_eval_error() {
+    fn test_execute_source_undefined_var_returns_symbol() {
+        // After Phase 33: undefined variables return Symbol values (success),
+        // not eval errors.
         let mut env = Environment::new();
         let result = execute_source("undefined_var", &mut env, false);
+        assert!(matches!(result, ScriptResult::Success));
+    }
+
+    #[test]
+    fn test_execute_source_eval_error() {
+        // Use a real eval error: wrong argument count for etaq
+        let mut env = Environment::new();
+        let result = execute_source("etaq(1)", &mut env, false);
         assert!(matches!(result, ScriptResult::EvalError(_)));
     }
 

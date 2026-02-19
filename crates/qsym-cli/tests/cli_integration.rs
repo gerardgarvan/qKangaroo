@@ -141,11 +141,12 @@ fn c_flag_parse_error() {
 
 #[test]
 fn c_flag_eval_error() {
-    let (code, _, stderr) = run(&["-c", "undefined_var"]);
+    // Use a real eval error: wrong argument count for etaq
+    let (code, _, stderr) = run(&["-c", "etaq(1)"]);
     assert_ne!(code, 0);
     assert!(
-        stderr.contains("undefined variable"),
-        "expected 'undefined variable', got stderr: {}",
+        stderr.contains("expects"),
+        "expected arg count error, got stderr: {}",
         stderr
     );
 }
@@ -501,17 +502,19 @@ fn exit_01_success_exit_code() {
 
 #[test]
 fn exit_02_eval_error_exit_code() {
-    let (code, _, stderr) = run(&["-c", "undefined_var"]);
+    // Use a real eval error: wrong argument count
+    let (code, _, stderr) = run(&["-c", "etaq(1)"]);
     assert_eq!(code, 1, "EXIT-02: eval error should exit 1");
-    assert!(stderr.contains("undefined variable"));
+    assert!(stderr.contains("expects"), "expected arg count error, got: {}", stderr);
 }
 
 #[test]
 fn exit_02_eval_error_in_script() {
-    let tmp = write_temp_script("qk_test_exit02.qk", "x := 1:\nundefined_var");
+    // Use a real eval error: wrong argument count for etaq
+    let tmp = write_temp_script("qk_test_exit02.qk", "x := 1:\netaq(1)");
     let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
     assert_eq!(code, 1, "EXIT-02: script eval error should exit 1");
-    assert!(stderr.contains("undefined variable"));
+    assert!(stderr.contains("expects"), "expected arg count error, got: {}", stderr);
     std::fs::remove_file(&tmp).ok();
 }
 
@@ -576,8 +579,8 @@ fn exit_05_file_not_found_exit_code() {
 
 #[test]
 fn exit_06_panic_invert_zero_constant() {
-    // q*etaq(1,1,5) starts at q^1 so inverting it panics
-    let tmp = write_temp_script("qk_test_exit06.qk", "1/(q * etaq(1,1,5))");
+    // etaq(1,1,5) - 1 has zero constant term, so inverting it panics
+    let tmp = write_temp_script("qk_test_exit06.qk", "1/(etaq(1,1,5) - 1)");
     let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
     assert_eq!(code, 70, "EXIT-06: caught panic should exit 70");
     // ERR-02: Should show translated message, not raw assert text.
@@ -658,9 +661,10 @@ fn err_01_parse_error_shows_filename_line_col() {
 
 #[test]
 fn err_01_eval_error_shows_filename_line() {
+    // Use a real eval error on line 5: wrong argument count
     let tmp = write_temp_script(
         "qk_test_err01_eval.qk",
-        "x := 1:\ny := 2:\nz := 3:\nw := 4:\nundefined_var",
+        "x := 1:\ny := 2:\nz := 3:\nw := 4:\netaq(1)",
     );
     let path_str = tmp.to_str().unwrap();
     let (code, _, stderr) = run(&[path_str]);
@@ -676,7 +680,8 @@ fn err_01_eval_error_shows_filename_line() {
 
 #[test]
 fn err_01_first_line_error() {
-    let tmp = write_temp_script("qk_test_err01_first.qk", "undefined_var");
+    // Use a real eval error on line 1
+    let tmp = write_temp_script("qk_test_err01_first.qk", "etaq(1)");
     let path_str = tmp.to_str().unwrap();
     let (code, _, stderr) = run(&[path_str]);
     assert_eq!(code, 1);
@@ -743,23 +748,23 @@ fn err_03_file_error_includes_os_message() {
 
 #[test]
 fn err_04_script_fail_fast() {
-    // Two errors in script separated by ';' -- only the first should appear.
-    // Use ';' to suppress output and create separate statements.
+    // Two errors in script separated by terminators -- only the first should appear.
+    // Use real eval errors: wrong argument count for different functions.
     let tmp = write_temp_script(
         "qk_test_err04.qk",
-        "x := 1:\nundefined_a;\nundefined_b",
+        "x := 1:\netaq(1);\naqprod(1)",
     );
     let (code, _, stderr) = run(&[tmp.to_str().unwrap()]);
     assert_ne!(code, 0, "should fail on first error");
-    // Should mention undefined_a but NOT undefined_b
+    // Should mention etaq but NOT aqprod (fail-fast on first error)
     assert!(
-        stderr.contains("undefined_a"),
-        "ERR-04: should report first error (undefined_a), got: {}",
+        stderr.contains("etaq"),
+        "ERR-04: should report first error (etaq), got: {}",
         stderr
     );
     assert!(
-        !stderr.contains("undefined_b"),
-        "ERR-04: should NOT report second error (undefined_b) due to fail-fast, got: {}",
+        !stderr.contains("aqprod"),
+        "ERR-04: should NOT report second error (aqprod) due to fail-fast, got: {}",
         stderr
     );
     std::fs::remove_file(&tmp).ok();
@@ -792,4 +797,36 @@ fn err_05_read_error_not_computation_failed() {
         "ERR-05: read() file error should NOT say 'computation failed', got: {}",
         stderr
     );
+}
+
+// ===========================================================================
+// SYM-01: Bare symbols (Phase 33)
+// ===========================================================================
+
+#[test]
+fn symbol_bare_variable() {
+    // Typing an undefined name returns the symbol itself
+    let (code, stdout, _) = run(&["-c", "f"]);
+    assert_eq!(code, 0, "bare symbol should succeed");
+    assert_eq!(stdout.trim(), "f");
+}
+
+#[test]
+fn symbol_q_bare() {
+    // q is now a regular symbol (no longer a keyword)
+    let (code, stdout, _) = run(&["-c", "q"]);
+    assert_eq!(code, 0, "bare q should succeed as symbol");
+    assert_eq!(stdout.trim(), "q");
+}
+
+// ===========================================================================
+// SYM-04: Assignment precedence (Phase 33)
+// ===========================================================================
+
+#[test]
+fn symbol_assignment_precedence() {
+    // Assigned variables return their value, not a symbol
+    let (code, stdout, _) = run(&["-c", "x := 42:\nx"]);
+    assert_eq!(code, 0, "assigned variable should succeed");
+    assert_eq!(stdout.trim(), "42");
 }
