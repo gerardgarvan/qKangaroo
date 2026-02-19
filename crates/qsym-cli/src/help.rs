@@ -26,7 +26,7 @@ Products:
   winquist     - Winquist product (6 parameters)
 
 Partitions:
-  partition_count    - number of partitions p(n)
+  numbpart           - number of partitions p(n) or p(n,m)
   partition_gf       - partition generating function 1/(q;q)_inf
   distinct_parts_gf  - distinct parts generating function (-q;q)_inf
   odd_parts_gf       - odd parts generating function
@@ -131,51 +131,51 @@ const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     FuncHelp {
         name: "aqprod",
-        signature: "aqprod(coeff_num, coeff_den, power, n_or_infinity, order)",
-        description: "Compute the q-Pochhammer product (a;q)_n where a = (coeff_num/coeff_den)*q^power.\n  When n is 'infinity', computes the infinite product (a;q)_inf.",
-        example: "q> aqprod(1, 1, 1, infinity, 10)",
-        example_output: "1 - q - q^2 + q^5 + q^7 + O(q^10)",
+        signature: "aqprod(a, q, n) or aqprod(a, q, infinity, T)",
+        description: "Compute the q-Pochhammer product (a;q)_n where a is a q-monomial, q is the variable, and n is a non-negative integer.\n  When n is 'infinity', use aqprod(a, q, infinity, T) with explicit truncation T.",
+        example: "q> aqprod(q^2, q, 5)",
+        example_output: "1 - q^2 - q^3 + q^5 + q^8 - q^12 - q^14",
     },
     FuncHelp {
         name: "qbin",
-        signature: "qbin(n, k, order)",
-        description: "Compute the q-binomial coefficient (Gaussian binomial) [n choose k]_q.\n  Returns a polynomial in q of degree k*(n-k).",
-        example: "q> qbin(4, 2, 20)",
-        example_output: "1 + q + 2*q^2 + q^3 + q^4 + O(q^20)",
+        signature: "qbin(q, m, n)",
+        description: "Compute the q-binomial coefficient (Gaussian binomial) [n choose m]_q.\n  Returns an exact polynomial in q of degree m*(n-m).",
+        example: "q> qbin(q, 2, 4)",
+        example_output: "1 + q + 2*q^2 + q^3 + q^4",
     },
     FuncHelp {
         name: "etaq",
-        signature: "etaq(b, t, order)",
-        description: "Compute the generalized Dedekind eta quotient q^(b*t/24) * prod_{k>=1} (1 - q^(b*k))^t.\n  The parameter b is the base and t is the exponent.",
-        example: "q> etaq(1, 1, 10)",
-        example_output: "q^(1/24) * (1 - q - q^2 + q^5 + q^7 + ...)",
-    },
-    FuncHelp {
-        name: "jacprod",
-        signature: "jacprod(a, b, order)",
-        description: "Compute the Jacobi triple product J(a,b) = prod_{k>=1} (1-q^(b*k))(1-q^(b*k-a))(1-q^(b*(k-1)+a)).\n  A fundamental building block for theta functions and partition identities.",
-        example: "q> jacprod(1, 2, 10)",
-        example_output: "1 - q - q^3 + q^6 + O(q^10)",
-    },
-    FuncHelp {
-        name: "tripleprod",
-        signature: "tripleprod(coeff_num, coeff_den, power, order)",
-        description: "Compute the Jacobi triple product (a;q)_inf * (q/a;q)_inf * (q;q)_inf\n  where a = (coeff_num/coeff_den)*q^power.",
-        example: "q> tripleprod(1, 1, 1, 10)",
-        example_output: "1 - 2*q + 2*q^4 - 2*q^9 + O(q^10)",
-    },
-    FuncHelp {
-        name: "quinprod",
-        signature: "quinprod(coeff_num, coeff_den, power, order)",
-        description: "Compute the quintuple product identity expansion.\n  The quintuple product is (a;q)_inf * (q/a;q)_inf * (a^2;q^2)_inf * (q^2/a^2;q^2)_inf * (q;q)_inf.",
-        example: "q> quinprod(1, 1, 1, 10)",
+        signature: "etaq(q, delta, T)",
+        description: "Compute the Dedekind eta quotient (q^delta; q^delta)_inf truncated to O(q^T).\n  Also accepts a list of deltas: etaq(q, [d1, d2, ...], T) computes the product of individual eta quotients.",
+        example: "q> etaq(q, 1, 10)",
         example_output: "1 - q - q^2 + q^5 + q^7 + O(q^10)",
     },
     FuncHelp {
+        name: "jacprod",
+        signature: "jacprod(a, b, q, T)",
+        description: "Compute the Jacobi product JAC(a,b)/JAC(b,3b) truncated to O(q^T).\n  Parameters: a, b are positive integers, q is the variable, T is truncation order.",
+        example: "q> jacprod(1, 5, q, 20)",
+        example_output: "1 + q + q^2 + q^3 + q^4 - q^7 - q^8 + ... + O(q^20)",
+    },
+    FuncHelp {
+        name: "tripleprod",
+        signature: "tripleprod(z, q, T)",
+        description: "Compute the Jacobi triple product (z;q)_inf * (q/z;q)_inf * (q;q)_inf truncated to O(q^T).\n  The first argument z is a q-monomial (like q^3 or -q^2).",
+        example: "q> tripleprod(q, q, 20)",
+        example_output: "1 - 2*q + 2*q^4 - 2*q^9 + 2*q^16 + O(q^20)",
+    },
+    FuncHelp {
+        name: "quinprod",
+        signature: "quinprod(z, q, T)",
+        description: "Compute the quintuple product expansion truncated to O(q^T).\n  The first argument z is a q-monomial.",
+        example: "q> quinprod(q, q, 20)",
+        example_output: "1 - q - q^2 + q^5 + q^7 + O(q^20)",
+    },
+    FuncHelp {
         name: "winquist",
-        signature: "winquist(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)",
-        description: "Compute the Winquist product with parameters a = (a_cn/a_cd)*q^a_p and b = (b_cn/b_cd)*q^b_p.\n  A product of 10 theta-type factors used in partition congruence proofs.",
-        example: "q> winquist(1, 1, 1, 1, 1, 2, 10)",
+        signature: "winquist(a, b, q, T)",
+        description: "Compute the Winquist product with q-monomial parameters a, b truncated to O(q^T).\n  A product of 10 theta-type factors used in partition congruence proofs.",
+        example: "q> winquist(q, q^2, q, 10)",
         example_output: "(series in q truncated to order 10)",
     },
 
@@ -183,10 +183,10 @@ const FUNC_HELP: &[FuncHelp] = &[
     // Group 2: Partitions (7)
     // -----------------------------------------------------------------------
     FuncHelp {
-        name: "partition_count",
-        signature: "partition_count(n)",
-        description: "Compute the number of partitions p(n) using the pentagonal number recurrence.\n  Returns an integer, not a series.",
-        example: "q> partition_count(100)",
+        name: "numbpart",
+        signature: "numbpart(n) or numbpart(n, m)",
+        description: "Compute the number of partitions p(n). With two arguments, compute the number of partitions of n with largest part at most m.",
+        example: "q> numbpart(100)",
         example_output: "190569292",
     },
     FuncHelp {
@@ -733,9 +733,12 @@ const FUNC_HELP: &[FuncHelp] = &[
 
 /// Return per-function help for the given name, or `None` if unrecognized.
 ///
-/// Only canonical function names are matched -- Maple aliases return `None`.
+/// Canonical function names are matched directly. The alias `partition_count`
+/// redirects to `numbpart`.
 pub fn function_help(name: &str) -> Option<String> {
-    FUNC_HELP.iter().find(|h| h.name == name).map(|h| {
+    // Redirect partition_count to numbpart
+    let lookup = if name == "partition_count" { "numbpart" } else { name };
+    FUNC_HELP.iter().find(|h| h.name == lookup).map(|h| {
         format!(
             "{}\n\n  {}\n\n  Example:\n    {}\n    {}",
             h.signature, h.description, h.example, h.example_output
@@ -792,8 +795,10 @@ mod tests {
     #[test]
     fn general_help_no_maple_aliases() {
         let text = general_help();
+        // numbpart is now canonical (it SHOULD appear in general help)
+        // partition_count is now the alias (it should NOT appear)
         let aliases = [
-            "numbpart",
+            "partition_count",
             "qphihyper",
             "qpsihyper",
             "qgauss",
@@ -806,10 +811,15 @@ mod tests {
         for alias in &aliases {
             assert!(
                 !text.contains(alias),
-                "general_help should not contain Maple alias: {}",
+                "general_help should not contain alias: {}",
                 alias
             );
         }
+        // numbpart should appear since it's now canonical
+        assert!(
+            text.contains("numbpart"),
+            "general_help should contain canonical name numbpart"
+        );
     }
 
     #[test]
@@ -838,17 +848,24 @@ mod tests {
 
     #[test]
     fn function_help_maple_alias_returns_none() {
-        // Maple aliases should NOT have help entries
-        assert!(function_help("numbpart").is_none());
+        // Maple aliases should NOT have help entries (except partition_count which redirects)
         assert!(function_help("qphihyper").is_none());
         assert!(function_help("qgosper").is_none());
+    }
+
+    #[test]
+    fn function_help_partition_count_redirects_to_numbpart() {
+        let help = function_help("partition_count");
+        assert!(help.is_some(), "partition_count should redirect to numbpart");
+        let text = help.unwrap();
+        assert!(text.contains("numbpart"), "help should show numbpart content");
     }
 
     #[test]
     fn every_canonical_function_has_help_entry() {
         let canonical: Vec<&str> = vec![
             "aqprod", "qbin", "etaq", "jacprod", "tripleprod", "quinprod", "winquist",
-            "partition_count", "partition_gf", "distinct_parts_gf", "odd_parts_gf",
+            "numbpart", "partition_gf", "distinct_parts_gf", "odd_parts_gf",
             "bounded_parts_gf", "rank_gf", "crank_gf",
             "theta2", "theta3", "theta4",
             "sift", "qdegree", "lqdegree", "qfactor",

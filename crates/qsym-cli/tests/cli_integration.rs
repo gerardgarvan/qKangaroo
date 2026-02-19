@@ -967,3 +967,138 @@ fn sym_01_long_name_symbol() {
     assert_eq!(code, 0, "SYM-01: long names should work");
     assert_eq!(stdout.trim(), "myVariable");
 }
+
+// ===========================================================================
+// Phase 34: Product & Theta Signatures -- Maple-style dispatch
+// ===========================================================================
+
+#[test]
+fn maple_jacprod_4arg() {
+    let (code, stdout, _) = run(&["-c", "jacprod(1, 5, q, 20)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("q"), "jacprod(1,5,q,20) should produce series in q");
+    assert!(stdout.contains("O(q^20)"), "should have truncation");
+}
+
+#[test]
+fn maple_tripleprod_3arg() {
+    let (code, stdout, _) = run(&["-c", "tripleprod(q, q, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^10)"), "should have truncation at 10");
+}
+
+#[test]
+fn maple_quinprod_3arg() {
+    let (code, stdout, _) = run(&["-c", "quinprod(q, q, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^10)"), "should have truncation");
+}
+
+#[test]
+fn maple_winquist_4arg() {
+    let (code, _stdout, _) = run(&["-c", "winquist(q, q^2, q, 10)"]);
+    assert_eq!(code, 0);
+    // winquist should produce a series
+}
+
+#[test]
+fn maple_qbin_garvan_3arg() {
+    let (code, stdout, _) = run(&["-c", "qbin(q, 2, 4)"]);
+    assert_eq!(code, 0);
+    // qbin(q,2,4) = [4 choose 2]_q = 1 + q + 2*q^2 + q^3 + q^4
+    assert!(stdout.contains("1 + q + 2*q^2 + q^3 + q^4"), "exact polynomial expected");
+    assert!(!stdout.contains("O(q^"), "exact polynomial should not have O() truncation");
+}
+
+#[test]
+fn maple_qbin_4arg_with_truncation() {
+    let (code, stdout, _) = run(&["-c", "qbin(4, 2, q, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("q"), "should contain series terms");
+}
+
+#[test]
+fn maple_etaq_multi_delta() {
+    let (code, stdout, _) = run(&["-c", "etaq(q, [1, 2], 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^10)"), "should have truncation");
+}
+
+#[test]
+fn maple_etaq_single_delta() {
+    let (code, stdout, _) = run(&["-c", "etaq(q, 3, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^10)"), "should have truncation");
+}
+
+#[test]
+fn numbpart_primary_name() {
+    let (code, stdout, _) = run(&["-c", "numbpart(100)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("190569292"), "numbpart(100) = 190569292");
+}
+
+#[test]
+fn numbpart_small() {
+    let (code, stdout, _) = run(&["-c", "numbpart(5)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("7"), "numbpart(5) = 7");
+}
+
+#[test]
+fn numbpart_bounded() {
+    let (code, stdout, _) = run(&["-c", "numbpart(5, 3)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("5"), "numbpart(5, 3) = 5");
+}
+
+#[test]
+fn partition_count_alias_still_works() {
+    let (code, stdout, _) = run(&["-c", "partition_count(100)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("190569292"), "partition_count alias should still work");
+}
+
+#[test]
+fn legacy_jacprod_3arg_still_works() {
+    let (code, stdout, _) = run(&["-c", "jacprod(1, 5, 20)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^20)"), "legacy jacprod should still work");
+}
+
+#[test]
+fn legacy_tripleprod_4arg_still_works() {
+    let (code, stdout, _) = run(&["-c", "tripleprod(1, 1, 1, 20)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^20)"), "legacy tripleprod should still work");
+}
+
+#[test]
+fn legacy_qbin_3arg_still_works() {
+    let (code, stdout, _) = run(&["-c", "qbin(4, 2, 20)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("q"), "legacy qbin should still work");
+}
+
+#[test]
+fn legacy_etaq_3arg_still_works() {
+    let (code, stdout, _) = run(&["-c", "etaq(1, 1, 20)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("O(q^20)"), "legacy etaq should still work");
+}
+
+#[test]
+fn numbpart_zero() {
+    // numbpart(0) = 1 (empty partition)
+    let (code, stdout, _) = run(&["-c", "numbpart(0)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("1"), "numbpart(0) = 1");
+}
+
+#[test]
+fn numbpart_bounded_zero_max() {
+    // numbpart(5, 0) = 0 (no parts allowed)
+    let (code, stdout, _) = run(&["-c", "numbpart(5, 0)"]);
+    assert_eq!(code, 0);
+    assert_eq!(stdout.trim(), "0", "numbpart(5, 0) = 0");
+}

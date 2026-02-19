@@ -56,7 +56,7 @@ impl ReplHelper {
             // Group 1: Products (7)
             "aqprod", "qbin", "etaq", "jacprod", "tripleprod", "quinprod", "winquist",
             // Group 2: Partitions (7)
-            "partition_count", "partition_gf", "distinct_parts_gf", "odd_parts_gf",
+            "numbpart", "partition_gf", "distinct_parts_gf", "odd_parts_gf",
             "bounded_parts_gf", "rank_gf", "crank_gf",
             // Group 3: Theta (3)
             "theta2", "theta3", "theta4",
@@ -306,10 +306,19 @@ mod tests {
     #[test]
     fn complete_no_maple_aliases() {
         let h = ReplHelper::new();
-        // Maple aliases should NOT appear in completions
+        // partition_count is now an alias and should NOT appear in completions
+        let (_, pairs) = h.complete_inner("part", 4);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(!displays.contains(&"partition_count"), "alias partition_count should not appear");
+    }
+
+    #[test]
+    fn complete_numbpart_canonical() {
+        let h = ReplHelper::new();
+        // numbpart is now canonical and SHOULD appear in completions
         let (_, pairs) = h.complete_inner("numb", 4);
         let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
-        assert!(!displays.contains(&"numbpart"), "Maple alias numbpart should not appear");
+        assert!(displays.contains(&"numbpart"), "canonical numbpart should appear");
     }
 
     // -- Validator tests (via is_incomplete) --------------------------------
