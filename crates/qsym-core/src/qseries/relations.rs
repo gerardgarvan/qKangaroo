@@ -155,7 +155,7 @@ pub fn findlincombo(
 /// Generate all k-tuples of non-negative integers that sum to `degree`.
 ///
 /// Returns a vector of exponent tuples, each of length `k`.
-fn generate_monomials(k: usize, degree: i64) -> Vec<Vec<i64>> {
+pub fn generate_monomials(k: usize, degree: i64) -> Vec<Vec<i64>> {
     let mut result = Vec::new();
     let mut current = vec![0i64; k];
     generate_monomials_recursive(k, degree, 0, &mut current, &mut result);
@@ -179,6 +179,20 @@ fn generate_monomials_recursive(
         current[pos] = val;
         generate_monomials_recursive(k, remaining - val, pos + 1, current, result);
     }
+}
+
+/// Generate all k-tuples of non-negative integers with total degree 0, 1, ..., `max_degree`.
+///
+/// This is the non-homogeneous variant of [`generate_monomials`], collecting monomials
+/// across all degrees up to `max_degree`. Used by `findnonhom` and `findnonhomcombo`
+/// for output formatting.
+pub fn generate_nonhom_monomials(k: usize, max_degree: i64) -> Vec<Vec<i64>> {
+    let mut all_monomials = Vec::new();
+    for d in 0..=max_degree {
+        let monos = generate_monomials(k, d);
+        all_monomials.extend(monos);
+    }
+    all_monomials
 }
 
 /// Compute the product series[0]^exponents[0] * series[1]^exponents[1] * ...
@@ -467,6 +481,158 @@ pub fn findcong(f: &FormalPowerSeries, moduli: &[i64]) -> Vec<Congruence> {
                         modulus_m: m,
                         residue_b: j,
                         divisor_r: r,
+                    });
+                }
+            }
+        }
+    }
+
+    results
+}
+
+/// Factor a positive integer into prime-power pairs using trial division.
+///
+/// Returns `Vec<(prime, exponent)>` sorted by prime.
+/// For `n <= 1`, returns an empty vector.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert_eq!(trial_factor(12), vec![(2, 2), (3, 1)]);
+/// assert_eq!(trial_factor(25), vec![(5, 2)]);
+/// ```
+pub fn trial_factor(n: i64) -> Vec<(i64, u32)> {
+    if n <= 1 {
+        return Vec::new();
+    }
+    let mut factors = Vec::new();
+    let mut rem = n;
+
+    // Factor out 2
+    if rem % 2 == 0 {
+        let mut exp = 0u32;
+        while rem % 2 == 0 {
+            rem /= 2;
+            exp += 1;
+        }
+        factors.push((2i64, exp));
+    }
+
+    // Factor out odd numbers 3, 5, 7, ...
+    let mut d = 3i64;
+    while d * d <= rem {
+        if rem % d == 0 {
+            let mut exp = 0u32;
+            while rem % d == 0 {
+                rem /= d;
+                exp += 1;
+            }
+            factors.push((d, exp));
+        }
+        d += 2;
+    }
+
+    // If remainder > 1, it's a prime factor
+    if rem > 1 {
+        factors.push((rem, 1));
+    }
+
+    factors
+}
+
+/// Discover congruences among coefficients using Garvan's auto-scan algorithm.
+///
+/// Unlike [`findcong`] which takes an explicit list of moduli and checks a fixed set of
+/// test primes, this function automatically scans all moduli from 2 to `lm` (defaulting
+/// to floor(sqrt(t))), computes the GCD of coefficient subsequences, and uses trial
+/// factoring to discover all prime-power divisors.
+///
+/// This matches the behavior of Garvan's `findcong` in the Maple `qseries` package.
+///
+/// # Arguments
+///
+/// - `f`: the input series whose coefficients are tested for congruences
+/// - `t`: truncation upper bound (coefficients up to index t are examined)
+/// - `lm`: optional maximum modulus (default: floor(sqrt(t)))
+/// - `xset`: set of prime powers to exclude from results
+///
+/// # Returns
+///
+/// All discovered congruences as `[modulus_m, residue_b, divisor_r]` triples.
+pub fn findcong_garvan(
+    f: &FormalPowerSeries,
+    t: i64,
+    lm: Option<i64>,
+    xset: &std::collections::HashSet<i64>,
+) -> Vec<Congruence> {
+    let lm_val = lm.unwrap_or_else(|| (t as f64).sqrt().floor() as i64);
+    let mut results = Vec::new();
+
+    for m in 2..=lm_val {
+        for r in 0..m {
+            // max_n = (t - r) / m, skip if negative
+            if t < r {
+                continue;
+            }
+            let max_n = (t - r) / m;
+
+            // Collect coefficients f(m*n + r) for n = 0..=max_n
+            let mut nonzero_coeffs: Vec<rug::Integer> = Vec::new();
+            let mut all_zero = true;
+
+            for n in 0..=max_n {
+                let idx = m * n + r;
+                let c = f.coeff(idx);
+
+                // Check that coefficient is an integer (denominator == 1)
+                let one = rug::Integer::from(1);
+                if c.denom() != &one {
+                    // Non-integer coefficient -- skip this (m, r) pair
+                    all_zero = false; // not meaningful, just break
+                    nonzero_coeffs.clear();
+                    break;
+                }
+
+                if !c.is_zero() {
+                    all_zero = false;
+                    nonzero_coeffs.push(c.numer().clone());
+                }
+            }
+
+            // Skip if all zero or if we had non-integer coefficients
+            if all_zero || nonzero_coeffs.is_empty() {
+                continue;
+            }
+
+            // Compute GCD of all nonzero coefficients
+            let gcd = nonzero_coeffs.iter().fold(rug::Integer::from(0), |acc, c| {
+                let abs_c = rug::Integer::from(c.abs_ref());
+                rug::Integer::from(acc.gcd_ref(&abs_c))
+            });
+
+            if gcd <= 1 {
+                continue;
+            }
+
+            // Factor the GCD
+            let gcd_i64 = gcd.to_i64().unwrap_or(0);
+            if gcd_i64 <= 1 {
+                continue;
+            }
+
+            let factors = trial_factor(gcd_i64);
+
+            // For each prime power p^e, if p^e not in xset, add congruence
+            for &(p, e) in &factors {
+                let mut pe = 1i64;
+                for _ in 0..e {
+                    pe *= p;
+                }
+                if !xset.contains(&pe) {
+                    results.push(Congruence {
+                        modulus_m: m,
+                        residue_b: r,
+                        divisor_r: pe,
                     });
                 }
             }
