@@ -1372,13 +1372,37 @@ pub fn dispatch(
         // Group 2: Partitions (FUNC-02) -- 7 functions
         // =================================================================
 
-        "partition_count" => {
-            // partition_count(n)
-            expect_args(name, args, 1)?;
-            let n = extract_i64(name, args, 0)?;
-            let result = qseries::partition_count(n);
-            // partition_count returns QRat (always integer-valued)
-            Ok(Value::Integer(QInt(result.0.numer().clone())))
+        "numbpart" => {
+            if args.len() == 1 {
+                // numbpart(n) -- count all partitions of n
+                let n = extract_i64(name, args, 0)?;
+                let result = qseries::partition_count(n);
+                Ok(Value::Integer(QInt(result.0.numer().clone())))
+            } else if args.len() == 2 {
+                // numbpart(n, m) -- count partitions of n with max part <= m
+                let n = extract_i64(name, args, 0)?;
+                let m = extract_i64(name, args, 1)?;
+                if m <= 0 {
+                    // 0 parts means only p(0,m)=1 when n=0
+                    if n == 0 {
+                        Ok(Value::Integer(QInt::from(1i64)))
+                    } else {
+                        Ok(Value::Integer(QInt::from(0i64)))
+                    }
+                } else {
+                    // Use bounded_parts_gf(m, sym, n+1) and extract coefficient of q^n
+                    let gf = qseries::bounded_parts_gf(m, env.sym_q, n + 1);
+                    let coeff = gf.coeff(n);
+                    Ok(Value::Integer(QInt(coeff.0.numer().clone())))
+                }
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1 or 2".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
         }
 
         "partition_gf" => {
@@ -2635,7 +2659,7 @@ fn get_signature(name: &str) -> String {
         "quinprod" => "(z, q, T) or (coeff_num, coeff_den, power, order)".to_string(),
         "winquist" => "(a, b, q, T) or (a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)".to_string(),
         // Group 2: Partitions
-        "partition_count" => "(n)".to_string(),
+        "numbpart" => "(n) or (n, m)".to_string(),
         "partition_gf" => "(order)".to_string(),
         "distinct_parts_gf" => "(order)".to_string(),
         "odd_parts_gf" => "(order)".to_string(),
@@ -2718,7 +2742,7 @@ fn get_signature(name: &str) -> String {
 /// Case-insensitive lookup. If no alias matches, returns the input unchanged.
 fn resolve_alias(name: &str) -> String {
     match name.to_lowercase().as_str() {
-        "numbpart" => "partition_count".to_string(),
+        "partition_count" => "numbpart".to_string(),
         "rankgf" => "rank_gf".to_string(),
         "crankgf" => "crank_gf".to_string(),
         "qphihyper" => "phi".to_string(),
@@ -2751,7 +2775,7 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "partition_gf", "distinct_parts_gf", "odd_parts_gf", "bounded_parts_gf",
     "rank_gf", "crank_gf",
     // Pattern B: No-session
-    "partition_count",
+    "numbpart",
     // Pattern C: Series-input analysis
     "sift", "qdegree", "lqdegree", "qfactor",
     "prodmake", "etamake", "jacprodmake", "mprodmake", "qetamake",
@@ -2791,7 +2815,7 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
 
 /// All alias names for fuzzy matching.
 const ALL_ALIAS_NAMES: &[&str] = &[
-    "numbpart", "rankgf", "crankgf", "qphihyper", "qpsihyper",
+    "partition_count", "rankgf", "crankgf", "qphihyper", "qpsihyper",
     "qgauss", "proveid", "qzeil", "qzeilberger", "qpetkovsek",
     "qgosper", "findlincombo_modp", "findhom_modp", "findhomcombo_modp", "search_id",
     "g2", "g3",
@@ -3365,12 +3389,12 @@ mod tests {
 
     #[test]
     fn resolve_alias_numbpart() {
-        assert_eq!(resolve_alias("numbpart"), "partition_count");
+        assert_eq!(resolve_alias("partition_count"), "numbpart");
     }
 
     #[test]
     fn resolve_alias_case_insensitive() {
-        assert_eq!(resolve_alias("NUMBPART"), "partition_count");
+        assert_eq!(resolve_alias("PARTITION_COUNT"), "numbpart");
         assert_eq!(resolve_alias("QZeil"), "q_zeilberger");
     }
 
@@ -3382,6 +3406,7 @@ mod tests {
 
     #[test]
     fn resolve_alias_all_maple_names() {
+        assert_eq!(resolve_alias("partition_count"), "numbpart");
         assert_eq!(resolve_alias("rankgf"), "rank_gf");
         assert_eq!(resolve_alias("crankgf"), "crank_gf");
         assert_eq!(resolve_alias("qphihyper"), "phi");
@@ -3838,10 +3863,10 @@ mod tests {
     // --- Dispatch: Group 2 (Partitions) ---
 
     #[test]
-    fn dispatch_partition_count_5() {
+    fn dispatch_numbpart_5() {
         let mut env = make_env();
         let args = vec![Value::Integer(QInt::from(5i64))];
-        let val = dispatch("partition_count", &args, &mut env).unwrap();
+        let val = dispatch("numbpart", &args, &mut env).unwrap();
         if let Value::Integer(n) = val {
             assert_eq!(n, QInt::from(7i64));
         } else {
@@ -3850,12 +3875,39 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_partition_count_50() {
+    fn dispatch_numbpart_100() {
         let mut env = make_env();
-        let args = vec![Value::Integer(QInt::from(50i64))];
-        let val = dispatch("partition_count", &args, &mut env).unwrap();
+        let args = vec![Value::Integer(QInt::from(100i64))];
+        let val = dispatch("numbpart", &args, &mut env).unwrap();
         if let Value::Integer(n) = val {
-            assert_eq!(n, QInt::from(204226i64));
+            assert_eq!(n, QInt::from(190569292i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_numbpart_bounded() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(5i64)), Value::Integer(QInt::from(3i64))];
+        let val = dispatch("numbpart", &args, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            // Partitions of 5 with max part 3: 3+2, 3+1+1, 2+2+1, 2+1+1+1, 1+1+1+1+1
+            assert_eq!(n, QInt::from(5i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_partition_count_alias() {
+        // partition_count is now an alias for numbpart -- should still work via resolve_alias
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(5i64))];
+        let resolved = resolve_alias("partition_count");
+        let val = dispatch(&resolved, &args, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(7i64));
         } else {
             panic!("expected Integer, got {:?}", val);
         }
