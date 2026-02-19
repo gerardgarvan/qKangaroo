@@ -1102,3 +1102,109 @@ fn numbpart_bounded_zero_max() {
     assert_eq!(code, 0);
     assert_eq!(stdout.trim(), "0", "numbpart(5, 0) = 0");
 }
+
+// ===========================================================================
+// Phase 35: Series Analysis Signatures -- Maple-style dispatch
+// ===========================================================================
+
+#[test]
+fn sift_maple_5arg() {
+    let (code, stdout, _) = run(&["-c", "f := partition_gf(50); sift(f, q, 5, 4, 50)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("q"), "sift should produce series in q");
+    // Coefficients of q^(5i+4) from partition_gf: first term p(4)=5
+    assert!(stdout.contains("5"), "should contain coefficient 5 (= p(4))");
+}
+
+#[test]
+fn sift_maple_invalid_residue() {
+    let (code, _, stderr) = run(&["-c", "f := partition_gf(50); sift(f, q, 5, 7, 50)"]);
+    assert_ne!(code, 0, "sift with k >= n should fail");
+    assert!(
+        stderr.contains("residue"),
+        "error should mention 'residue', got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn prodmake_maple_3arg() {
+    let (code, stdout, _) = run(&["-c", "f := partition_gf(30); prodmake(f, q, 15)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("exponents"), "prodmake should return exponents dict");
+    assert!(stdout.contains("terms_used"), "prodmake should return terms_used field");
+}
+
+#[test]
+fn etamake_maple_3arg() {
+    let (code, stdout, _) = run(&["-c", "f := partition_gf(30); etamake(f, q, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("factors"), "etamake should return factors dict");
+}
+
+#[test]
+fn jacprodmake_maple_3arg() {
+    let (code, stdout, _) = run(&["-c", "f := jacprod(1, 5, q, 30); jacprodmake(f, q, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("factors"), "jacprodmake should return factors");
+    assert!(stdout.contains("is_exact"), "jacprodmake should return is_exact flag");
+}
+
+#[test]
+fn jacprodmake_maple_4arg_with_period() {
+    let (code, stdout, _) = run(&["-c", "f := jacprod(1, 5, q, 30); jacprodmake(f, q, 10, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("factors"), "jacprodmake with period filter should return factors");
+}
+
+#[test]
+fn mprodmake_maple_3arg() {
+    let (code, stdout, _) = run(&["-c", "f := distinct_parts_gf(30); mprodmake(f, q, 10)"]);
+    assert_eq!(code, 0);
+    // mprodmake returns a plain dict like {1: 1, 2: 1, ...}
+    assert!(stdout.contains("1:"), "mprodmake should return a dict with exponents");
+}
+
+#[test]
+fn qetamake_maple_3arg() {
+    let (code, stdout, _) = run(&["-c", "f := partition_gf(30); qetamake(f, q, 10)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("factors"), "qetamake should return factors");
+}
+
+#[test]
+fn qfactor_maple_2arg() {
+    let (code, stdout, _) = run(&["-c", "f := aqprod(q, q, 5, 20); qfactor(f, q)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("factors"), "qfactor should return factors dict");
+    assert!(stdout.contains("is_exact"), "qfactor should return is_exact flag");
+}
+
+#[test]
+fn qfactor_maple_3arg() {
+    let (code, stdout, _) = run(&["-c", "f := aqprod(q, q, 5, 20); qfactor(f, q, 20)"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("factors"), "qfactor 3-arg should return factors dict");
+}
+
+#[test]
+fn sift_old_signature_errors() {
+    let (code, _, stderr) = run(&["-c", "sift(partition_gf(30), 5, 0)"]);
+    assert_ne!(code, 0, "old sift signature should fail");
+    assert!(
+        stderr.contains("expects 5 arguments"),
+        "should report wrong arg count, got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn prodmake_old_signature_errors() {
+    let (code, _, stderr) = run(&["-c", "prodmake(partition_gf(30), 10)"]);
+    assert_ne!(code, 0, "old prodmake signature should fail");
+    assert!(
+        stderr.contains("expects 3 arguments"),
+        "should report wrong arg count, got: {}",
+        stderr
+    );
+}
