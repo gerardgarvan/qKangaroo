@@ -18,6 +18,15 @@ use crate::ast::{AstNode, BinOp, Stmt, Terminator};
 use crate::environment::Environment;
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/// Sentinel truncation order for exact polynomials (no O(...) in display).
+/// Chosen to be large enough to never interfere with real truncation orders,
+/// but small enough to avoid overflow in min() comparisons.
+pub(crate) const POLYNOMIAL_ORDER: i64 = 1_000_000_000;
+
+// ---------------------------------------------------------------------------
 // Value enum
 // ---------------------------------------------------------------------------
 
@@ -646,7 +655,7 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
 
         AstNode::Neg(inner) => {
             let val = eval_expr(inner, env)?;
-            eval_negate(val)
+            eval_negate(val, env)
         }
 
         AstNode::BinOp { op, lhs, rhs } => {
@@ -676,11 +685,15 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
 // ---------------------------------------------------------------------------
 
 /// Negate a value.
-fn eval_negate(val: Value) -> Result<Value, EvalError> {
+fn eval_negate(val: Value, env: &mut Environment) -> Result<Value, EvalError> {
     match val {
         Value::Series(fps) => Ok(Value::Series(arithmetic::negate(&fps))),
         Value::Integer(n) => Ok(Value::Integer(-n)),
         Value::Rational(r) => Ok(Value::Rational(-r)),
+        Value::Symbol(name) => {
+            let fps = symbol_to_series(&name, env);
+            Ok(Value::Series(arithmetic::negate(&fps)))
+        }
         other => Err(EvalError::TypeError {
             operation: "unary -".to_string(),
             left: other.type_name().to_string(),
@@ -698,14 +711,14 @@ fn eval_binop(
     op: BinOp,
     left: Value,
     right: Value,
-    env: &Environment,
+    env: &mut Environment,
 ) -> Result<Value, EvalError> {
     match op {
         BinOp::Add => eval_add(left, right, env),
         BinOp::Sub => eval_sub(left, right, env),
         BinOp::Mul => eval_mul(left, right, env),
         BinOp::Div => eval_div(left, right, env),
-        BinOp::Pow => eval_pow(left, right),
+        BinOp::Pow => eval_pow(left, right, env),
     }
 }
 
@@ -728,7 +741,34 @@ fn value_to_qrat(val: &Value) -> Option<QRat> {
     }
 }
 
-fn eval_add(left: Value, right: Value, env: &Environment) -> Result<Value, EvalError> {
+/// Promote a symbol to a FPS monomial (var^1) with polynomial truncation order.
+fn symbol_to_series(name: &str, env: &mut Environment) -> FormalPowerSeries {
+    let sym_id = env.symbols.intern(name);
+    FormalPowerSeries::monomial(sym_id, QRat::one(), 1, POLYNOMIAL_ORDER)
+}
+
+/// Try to promote a value to a FPS for mixed arithmetic with series.
+/// Symbols become var^1 monomials; integers/rationals become constants.
+fn value_to_series(val: &Value, env: &mut Environment) -> Option<FormalPowerSeries> {
+    match val {
+        Value::Symbol(name) => Some(symbol_to_series(name, env)),
+        Value::Integer(n) => {
+            let sym_q = env.sym_q;
+            Some(FormalPowerSeries::monomial(sym_q, QRat::from(n.clone()), 0, POLYNOMIAL_ORDER))
+        }
+        Value::Rational(r) => {
+            let sym_q = env.sym_q;
+            Some(FormalPowerSeries::monomial(sym_q, r.clone(), 0, POLYNOMIAL_ORDER))
+        }
+        Value::Series(_) => {
+            // Already a series; handled by dedicated match arms
+            None
+        }
+        _ => None,
+    }
+}
+
+fn eval_add(left: Value, right: Value, env: &mut Environment) -> Result<Value, EvalError> {
     match (&left, &right) {
         (Value::Series(a), Value::Series(b)) => Ok(Value::Series(arithmetic::add(a, b))),
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a.clone() + b.clone())),
@@ -748,6 +788,29 @@ fn eval_add(left: Value, right: Value, env: &Environment) -> Result<Value, EvalE
             let const_fps = value_to_constant_fps(&left, env).unwrap();
             Ok(Value::Series(arithmetic::add(&const_fps, fps)))
         }
+        // Symbol + Series or Series + Symbol
+        (Value::Symbol(_), Value::Series(fps)) => {
+            let sym_fps = value_to_series(&left, env).unwrap();
+            Ok(Value::Series(arithmetic::add(&sym_fps, fps)))
+        }
+        (Value::Series(fps), Value::Symbol(_)) => {
+            let sym_fps = value_to_series(&right, env).unwrap();
+            Ok(Value::Series(arithmetic::add(fps, &sym_fps)))
+        }
+        // Symbol involved: promote both sides to series
+        (Value::Symbol(_), _) | (_, Value::Symbol(_)) => {
+            let a = value_to_series(&left, env);
+            let b = value_to_series(&right, env);
+            if let (Some(fa), Some(fb)) = (a, b) {
+                Ok(Value::Series(arithmetic::add(&fa, &fb)))
+            } else {
+                Err(EvalError::TypeError {
+                    operation: "+".to_string(),
+                    left: left.type_name().to_string(),
+                    right: right.type_name().to_string(),
+                })
+            }
+        }
         _ => Err(EvalError::TypeError {
             operation: "+".to_string(),
             left: left.type_name().to_string(),
@@ -756,7 +819,7 @@ fn eval_add(left: Value, right: Value, env: &Environment) -> Result<Value, EvalE
     }
 }
 
-fn eval_sub(left: Value, right: Value, env: &Environment) -> Result<Value, EvalError> {
+fn eval_sub(left: Value, right: Value, env: &mut Environment) -> Result<Value, EvalError> {
     match (&left, &right) {
         (Value::Series(a), Value::Series(b)) => Ok(Value::Series(arithmetic::sub(a, b))),
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a.clone() - b.clone())),
@@ -776,6 +839,29 @@ fn eval_sub(left: Value, right: Value, env: &Environment) -> Result<Value, EvalE
             let const_fps = value_to_constant_fps(&left, env).unwrap();
             Ok(Value::Series(arithmetic::sub(&const_fps, fps)))
         }
+        // Symbol - Series or Series - Symbol
+        (Value::Symbol(_), Value::Series(fps)) => {
+            let sym_fps = value_to_series(&left, env).unwrap();
+            Ok(Value::Series(arithmetic::sub(&sym_fps, fps)))
+        }
+        (Value::Series(fps), Value::Symbol(_)) => {
+            let sym_fps = value_to_series(&right, env).unwrap();
+            Ok(Value::Series(arithmetic::sub(fps, &sym_fps)))
+        }
+        // Symbol involved: promote both sides to series
+        (Value::Symbol(_), _) | (_, Value::Symbol(_)) => {
+            let a = value_to_series(&left, env);
+            let b = value_to_series(&right, env);
+            if let (Some(fa), Some(fb)) = (a, b) {
+                Ok(Value::Series(arithmetic::sub(&fa, &fb)))
+            } else {
+                Err(EvalError::TypeError {
+                    operation: "-".to_string(),
+                    left: left.type_name().to_string(),
+                    right: right.type_name().to_string(),
+                })
+            }
+        }
         _ => Err(EvalError::TypeError {
             operation: "-".to_string(),
             left: left.type_name().to_string(),
@@ -784,7 +870,7 @@ fn eval_sub(left: Value, right: Value, env: &Environment) -> Result<Value, EvalE
     }
 }
 
-fn eval_mul(left: Value, right: Value, _env: &Environment) -> Result<Value, EvalError> {
+fn eval_mul(left: Value, right: Value, env: &mut Environment) -> Result<Value, EvalError> {
     match (&left, &right) {
         (Value::Series(a), Value::Series(b)) => Ok(Value::Series(arithmetic::mul(a, b))),
         (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a.clone() * b.clone())),
@@ -805,6 +891,29 @@ fn eval_mul(left: Value, right: Value, _env: &Environment) -> Result<Value, Eval
             let s = value_to_qrat(&right).unwrap();
             Ok(Value::Series(arithmetic::scalar_mul(&s, fps)))
         }
+        // Symbol * Series or Series * Symbol
+        (Value::Symbol(_), Value::Series(fps)) => {
+            let sym_fps = value_to_series(&left, env).unwrap();
+            Ok(Value::Series(arithmetic::mul(&sym_fps, fps)))
+        }
+        (Value::Series(fps), Value::Symbol(_)) => {
+            let sym_fps = value_to_series(&right, env).unwrap();
+            Ok(Value::Series(arithmetic::mul(fps, &sym_fps)))
+        }
+        // Symbol involved: promote both sides to series
+        (Value::Symbol(_), _) | (_, Value::Symbol(_)) => {
+            let a = value_to_series(&left, env);
+            let b = value_to_series(&right, env);
+            if let (Some(fa), Some(fb)) = (a, b) {
+                Ok(Value::Series(arithmetic::mul(&fa, &fb)))
+            } else {
+                Err(EvalError::TypeError {
+                    operation: "*".to_string(),
+                    left: left.type_name().to_string(),
+                    right: right.type_name().to_string(),
+                })
+            }
+        }
         _ => Err(EvalError::TypeError {
             operation: "*".to_string(),
             left: left.type_name().to_string(),
@@ -813,7 +922,7 @@ fn eval_mul(left: Value, right: Value, _env: &Environment) -> Result<Value, Eval
     }
 }
 
-fn eval_div(left: Value, right: Value, env: &Environment) -> Result<Value, EvalError> {
+fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, EvalError> {
     match (&left, &right) {
         (Value::Series(a), Value::Series(b)) => {
             let inv = arithmetic::invert(b);
@@ -844,6 +953,13 @@ fn eval_div(left: Value, right: Value, env: &Environment) -> Result<Value, EvalE
             let inv = arithmetic::invert(fps);
             Ok(Value::Series(arithmetic::mul(&const_fps, &inv)))
         }
+        // Symbol / scalar -> series / scalar
+        (Value::Symbol(_), _) if value_to_qrat(&right).is_some() => {
+            let sym_fps = value_to_series(&left, env).unwrap();
+            let s = value_to_qrat(&right).unwrap();
+            let inv_s = QRat::one() / s;
+            Ok(Value::Series(arithmetic::scalar_mul(&inv_s, &sym_fps)))
+        }
         _ => Err(EvalError::TypeError {
             operation: "/".to_string(),
             left: left.type_name().to_string(),
@@ -852,7 +968,7 @@ fn eval_div(left: Value, right: Value, env: &Environment) -> Result<Value, EvalE
     }
 }
 
-fn eval_pow(left: Value, right: Value) -> Result<Value, EvalError> {
+fn eval_pow(left: Value, right: Value, env: &mut Environment) -> Result<Value, EvalError> {
     match (&left, &right) {
         (Value::Series(fps), Value::Integer(n)) => {
             let exp = n.0.to_i64().ok_or_else(|| EvalError::Other(
@@ -893,6 +1009,15 @@ fn eval_pow(left: Value, right: Value) -> Result<Value, EvalError> {
                 result = QRat::one() / result;
             }
             Ok(Value::Rational(result))
+        }
+        // Symbol ^ Integer -> monomial series
+        (Value::Symbol(name), Value::Integer(n)) => {
+            let exp = n.0.to_i64().ok_or_else(|| EvalError::Other(
+                "exponent too large".to_string(),
+            ))?;
+            let sym_id = env.symbols.intern(name);
+            let fps = FormalPowerSeries::monomial(sym_id, QRat::one(), exp, POLYNOMIAL_ORDER);
+            Ok(Value::Series(fps))
         }
         _ => Err(EvalError::TypeError {
             operation: "^".to_string(),
@@ -2746,6 +2871,159 @@ mod tests {
         if let Value::Series(fps) = val {
             assert_eq!(fps.coeff(0), QRat::one());
             assert_eq!(fps.coeff(1), QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    // --- Symbol Arithmetic ---
+
+    #[test]
+    fn eval_symbol_pow() {
+        // q^2 -> Series with one term at power 2, coefficient 1
+        let mut env = make_env();
+        let node = AstNode::BinOp {
+            op: BinOp::Pow,
+            lhs: Box::new(AstNode::Variable("q".to_string())),
+            rhs: Box::new(AstNode::Integer(2)),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(2), QRat::one());
+            assert_eq!(fps.coeff(0), QRat::zero());
+            assert_eq!(fps.coeff(1), QRat::zero());
+            assert!(fps.truncation_order() >= POLYNOMIAL_ORDER);
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_symbol_pow_negative() {
+        // q^(-1) -> Series with one term at power -1
+        let mut env = make_env();
+        let node = AstNode::BinOp {
+            op: BinOp::Pow,
+            lhs: Box::new(AstNode::Variable("q".to_string())),
+            rhs: Box::new(AstNode::Neg(Box::new(AstNode::Integer(1)))),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(-1), QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_symbol_mul_int() {
+        // 2*q^3 -> Series with one term at power 3, coefficient 2
+        let mut env = make_env();
+        // Build: 2 * (q ^ 3)
+        let node = AstNode::BinOp {
+            op: BinOp::Mul,
+            lhs: Box::new(AstNode::Integer(2)),
+            rhs: Box::new(AstNode::BinOp {
+                op: BinOp::Pow,
+                lhs: Box::new(AstNode::Variable("q".to_string())),
+                rhs: Box::new(AstNode::Integer(3)),
+            }),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(3), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(0), QRat::zero());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_symbol_add() {
+        // q + 1 -> Series with two terms (constant 1, power 1 coefficient 1)
+        let mut env = make_env();
+        let node = AstNode::BinOp {
+            op: BinOp::Add,
+            lhs: Box::new(AstNode::Variable("q".to_string())),
+            rhs: Box::new(AstNode::Integer(1)),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_polynomial_arithmetic() {
+        // (q+1)*(q+1) -> 1 + 2*q + q^2
+        let mut env = make_env();
+        let q_plus_1 = AstNode::BinOp {
+            op: BinOp::Add,
+            lhs: Box::new(AstNode::Variable("q".to_string())),
+            rhs: Box::new(AstNode::Integer(1)),
+        };
+        let node = AstNode::BinOp {
+            op: BinOp::Mul,
+            lhs: Box::new(q_plus_1.clone()),
+            rhs: Box::new(q_plus_1),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(2), QRat::one());
+            assert!(fps.truncation_order() >= POLYNOMIAL_ORDER);
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_symbol_negate() {
+        // -q -> Series with one term at power 1, coefficient -1
+        let mut env = make_env();
+        let node = AstNode::Neg(Box::new(AstNode::Variable("q".to_string())));
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(1), -QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_symbol_sub() {
+        // q - 1 -> Series with constant -1 and q^1 coefficient 1
+        let mut env = make_env();
+        let node = AstNode::BinOp {
+            op: BinOp::Sub,
+            lhs: Box::new(AstNode::Variable("q".to_string())),
+            rhs: Box::new(AstNode::Integer(1)),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(0), -QRat::one());
+            assert_eq!(fps.coeff(1), QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn eval_symbol_div_scalar() {
+        // q / 2 -> Series with one term at power 1, coefficient 1/2
+        let mut env = make_env();
+        let node = AstNode::BinOp {
+            op: BinOp::Div,
+            lhs: Box::new(AstNode::Variable("q".to_string())),
+            rhs: Box::new(AstNode::Integer(2)),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.coeff(1), QRat::from((1i64, 2i64)));
         } else {
             panic!("expected Series, got {:?}", val);
         }
