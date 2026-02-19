@@ -46,6 +46,8 @@ pub enum Value {
     None,
     /// The infinity keyword.
     Infinity,
+    /// A symbolic variable name (undefined name fallback, Maple-like).
+    Symbol(String),
 }
 
 impl Value {
@@ -62,6 +64,7 @@ impl Value {
             Value::String(_) => "string",
             Value::None => "none",
             Value::Infinity => "infinity",
+            Value::Symbol(_) => "symbol",
         }
     }
 }
@@ -619,17 +622,6 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
             Ok(Value::Integer(QInt(int)))
         }
 
-        AstNode::Q => {
-            // Create the monomial series q^1 + O(q^N)
-            let fps = FormalPowerSeries::monomial(
-                env.sym_q,
-                QRat::one(),
-                1,
-                env.default_order,
-            );
-            Ok(Value::Series(fps))
-        }
-
         AstNode::Infinity => Ok(Value::Infinity),
 
         AstNode::StringLit(s) => Ok(Value::String(s.clone())),
@@ -641,9 +633,7 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
 
         AstNode::Variable(name) => match env.get_var(name) {
             Some(val) => Ok(val.clone()),
-            None => Err(EvalError::UnknownVariable {
-                name: name.clone(),
-            }),
+            None => Ok(Value::Symbol(name.clone())),
         },
 
         AstNode::List(items) => {

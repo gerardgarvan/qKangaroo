@@ -29,8 +29,6 @@ pub enum AstNode {
     Integer(i64),
     /// Large integer literal (decimal string, evaluator converts to QInt).
     BigInteger(String),
-    /// The `q` indeterminate.
-    Q,
     /// The `infinity` keyword.
     Infinity,
     /// String literal value.
@@ -93,8 +91,11 @@ mod tests {
 
     #[test]
     fn ast_q_and_infinity() {
-        assert_ne!(AstNode::Q, AstNode::Infinity);
-        assert_eq!(AstNode::Q, AstNode::Q);
+        assert_ne!(AstNode::Variable("q".to_string()), AstNode::Infinity);
+        assert_eq!(
+            AstNode::Variable("q".to_string()),
+            AstNode::Variable("q".to_string())
+        );
     }
 
     #[test]
@@ -127,7 +128,7 @@ mod tests {
     fn ast_func_call() {
         let node = AstNode::FuncCall {
             name: "aqprod".to_string(),
-            args: vec![AstNode::Q, AstNode::Integer(10)],
+            args: vec![AstNode::Variable("q".to_string()), AstNode::Integer(10)],
         };
         if let AstNode::FuncCall { name, args } = &node {
             assert_eq!(name, "aqprod");
@@ -160,7 +161,7 @@ mod tests {
         assert_eq!(stmt.terminator, Terminator::Semi);
 
         let stmt2 = Stmt {
-            node: AstNode::Q,
+            node: AstNode::Variable("q".to_string()),
             terminator: Terminator::Colon,
         };
         assert_eq!(stmt2.terminator, Terminator::Colon);

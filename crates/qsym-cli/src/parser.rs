@@ -145,10 +145,6 @@ impl Parser {
                 self.advance();
                 AstNode::BigInteger(s)
             }
-            Token::Q => {
-                self.advance();
-                AstNode::Q
-            }
             Token::Infinity => {
                 self.advance();
                 AstNode::Infinity
@@ -326,7 +322,6 @@ fn token_name(token: &Token) -> String {
         Token::Integer(n) => format!("integer '{}'", n),
         Token::BigInteger(s) => format!("integer '{}'", s),
         Token::Infinity => "'infinity'".to_string(),
-        Token::Q => "'q'".to_string(),
         Token::Ident(name) => format!("identifier '{}'", name),
         Token::Plus => "'+'".to_string(),
         Token::Minus => "'-'".to_string(),
@@ -372,7 +367,7 @@ mod tests {
             stmt.node,
             AstNode::FuncCall {
                 name: "aqprod".to_string(),
-                args: vec![AstNode::Q, AstNode::Q, AstNode::Infinity, AstNode::Integer(20)],
+                args: vec![AstNode::Variable("q".to_string()), AstNode::Variable("q".to_string()), AstNode::Infinity, AstNode::Integer(20)],
             }
         );
     }
@@ -588,7 +583,7 @@ mod tests {
             node,
             AstNode::BinOp {
                 op: BinOp::Pow,
-                lhs: Box::new(AstNode::Q),
+                lhs: Box::new(AstNode::Variable("q".to_string())),
                 rhs: Box::new(AstNode::Integer(5)),
             }
         );
@@ -636,7 +631,7 @@ mod tests {
                     lhs: Box::new(AstNode::Integer(3)),
                     rhs: Box::new(AstNode::FuncCall {
                         name: "aqprod".to_string(),
-                        args: vec![AstNode::Q, AstNode::Q, AstNode::Infinity, AstNode::Integer(20)],
+                        args: vec![AstNode::Variable("q".to_string()), AstNode::Variable("q".to_string()), AstNode::Infinity, AstNode::Integer(20)],
                     }),
                 }),
                 rhs: Box::new(AstNode::Integer(1)),
@@ -672,7 +667,7 @@ mod tests {
     #[test]
     fn test_q_keyword() {
         let node = parse_expr("q");
-        assert_eq!(node, AstNode::Q);
+        assert_eq!(node, AstNode::Variable("q".to_string()));
     }
 
     #[test]

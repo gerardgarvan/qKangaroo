@@ -1,7 +1,8 @@
 //! Token types for the q-Kangaroo lexer.
 //!
 //! Covers the full Maple-style grammar: integer literals, operators,
-//! delimiters, keywords (q, infinity), and statement terminators.
+//! delimiters, keywords (infinity), identifiers (including `q`), and
+//! statement terminators.
 
 /// A lexical token produced by the lexer.
 #[derive(Debug, Clone, PartialEq)]
@@ -12,9 +13,7 @@ pub enum Token {
     BigInteger(String),
     /// The `infinity` keyword.
     Infinity,
-    /// The `q` keyword (reserved indeterminate, not a variable).
-    Q,
-    /// Identifier: function names (aqprod, etaq, ETAR) and user variables (f, g).
+    /// Identifier: function names (aqprod, etaq, ETAR), user variables (f, g), and `q`.
     Ident(String),
     /// Double-quoted string literal.
     StringLit(String),
@@ -87,7 +86,7 @@ mod tests {
 
     #[test]
     fn token_variants_distinct() {
-        assert_ne!(Token::Q, Token::Infinity);
+        assert_ne!(Token::Ident("q".to_string()), Token::Infinity);
         assert_ne!(Token::Plus, Token::Minus);
         assert_ne!(Token::Semi, Token::Colon);
     }

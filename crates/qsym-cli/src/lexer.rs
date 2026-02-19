@@ -142,7 +142,6 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             let word = &input[start..pos];
             let token = match word {
                 "infinity" => Token::Infinity,
-                "q" => Token::Q,
                 _ => Token::Ident(word.to_string()),
             };
             tokens.push(SpannedToken {
@@ -247,7 +246,7 @@ mod tests {
     #[test]
     fn test_keywords() {
         let toks = tokens("q infinity");
-        assert_eq!(toks, vec![Token::Q, Token::Infinity, Token::Eof]);
+        assert_eq!(toks, vec![Token::Ident("q".to_string()), Token::Infinity, Token::Eof]);
     }
 
     #[test]
@@ -274,9 +273,9 @@ mod tests {
             vec![
                 Token::Ident("aqprod".to_string()),
                 Token::LParen,
-                Token::Q,
+                Token::Ident("q".to_string()),
                 Token::Comma,
-                Token::Q,
+                Token::Ident("q".to_string()),
                 Token::Comma,
                 Token::Infinity,
                 Token::Comma,
@@ -343,7 +342,7 @@ mod tests {
     #[test]
     fn test_whitespace_handling() {
         let toks = tokens("  q  ");
-        assert_eq!(toks, vec![Token::Q, Token::Eof]);
+        assert_eq!(toks, vec![Token::Ident("q".to_string()), Token::Eof]);
     }
 
     #[test]

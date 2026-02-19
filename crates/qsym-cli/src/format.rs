@@ -39,6 +39,7 @@ pub fn format_value(val: &Value) -> String {
         Value::String(s) => s.clone(),
         Value::None => "NONE".to_string(),
         Value::Infinity => "infinity".to_string(),
+        Value::Symbol(name) => name.clone(),
     }
 }
 
@@ -136,6 +137,7 @@ pub fn format_latex(val: &Value) -> String {
         Value::String(s) => format!("\\text{{{}}}", s),
         Value::None => "\\text{NONE}".to_string(),
         Value::Infinity => "\\infty".to_string(),
+        Value::Symbol(name) => name.clone(),
     }
 }
 
