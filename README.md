@@ -51,6 +51,10 @@ python check_install.py          # End-user checks
 python check_install.py --dev    # + build-from-source checks
 ```
 
+## Documentation
+
+The **[q-Kangaroo Reference Manual](q-kangaroo-manual.pdf)** covers all 81 functions with formal mathematical definitions, REPL examples, worked research workflows, and a complete Maple migration guide.
+
 ## Features
 
 - **q-Pochhammer symbols** -- finite, infinite, and bilateral products with exact rational coefficients
