@@ -509,7 +509,7 @@ mod tests {
         let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, POLYNOMIAL_ORDER);
         let val = Value::Series(fps);
         let result = format_value(&val, &reg);
-        assert_eq!(result, "1 + 2*q + q^2");
+        assert_eq!(result, "q^2 + 2*q + 1");
         assert!(!result.contains("O("), "polynomial should not have O(...)");
     }
 
@@ -623,7 +623,7 @@ mod tests {
         let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, POLYNOMIAL_ORDER);
         let val = Value::Series(fps);
         let result = format_latex(&val, &reg);
-        assert_eq!(result, "1 + q^{2}");
+        assert_eq!(result, "q^{2} + 1");
         assert!(!result.contains("O("), "polynomial LaTeX should not have O(...)");
     }
 

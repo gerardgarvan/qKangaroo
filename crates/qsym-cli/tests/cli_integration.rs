@@ -1006,7 +1006,7 @@ fn maple_qbin_garvan_3arg() {
     let (code, stdout, _) = run(&["-c", "qbin(q, 2, 4)"]);
     assert_eq!(code, 0);
     // qbin(q,2,4) = [4 choose 2]_q = 1 + q + 2*q^2 + q^3 + q^4
-    assert!(stdout.contains("1 + q + 2*q^2 + q^3 + q^4"), "exact polynomial expected");
+    assert!(stdout.contains("q^4 + q^3 + 2*q^2 + q + 1"), "exact polynomial expected (descending)");
     assert!(!stdout.contains("O(q^"), "exact polynomial should not have O() truncation");
 }
 
@@ -1474,8 +1474,8 @@ fn theta_numeric_z() {
     let (code, stdout, stderr) = run(&["-c", "theta(1, q, 5)"]);
     assert_eq!(code, 0, "theta should succeed. stderr: {}", stderr);
     assert!(
-        stdout.contains("1 + 2*q + 2*q^4"),
-        "expected theta coefficients: {}",
+        stdout.contains("2*q^4 + 2*q + 1"),
+        "expected theta coefficients (descending): {}",
         stdout
     );
 }
@@ -1486,8 +1486,8 @@ fn jac2series_single_factor() {
     let (code, stdout, stderr) = run(&["-c", "jac2series(JAC(1,1), q, 10)"]);
     assert_eq!(code, 0, "jac2series should succeed. stderr: {}", stderr);
     assert!(
-        stdout.contains("1 - q"),
-        "expected (q;q)_inf series start: {}",
+        stdout.contains("q^7 + q^5"),
+        "expected (q;q)_inf descending series start: {}",
         stdout
     );
 }
