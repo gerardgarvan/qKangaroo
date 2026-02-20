@@ -74,33 +74,33 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCRIPT-01 | — | Pending |
-| SCRIPT-02 | — | Pending |
-| SCRIPT-03 | — | Pending |
-| SCRIPT-04 | — | Pending |
-| SCRIPT-05 | — | Pending |
-| SCRIPT-06 | — | Pending |
-| SCRIPT-07 | — | Pending |
-| SERIES-01 | — | Pending |
-| SERIES-02 | — | Pending |
-| SERIES-03 | — | Pending |
-| POLY-01 | — | Pending |
-| POLY-02 | — | Pending |
-| BIVAR-01 | — | Pending |
-| BIVAR-02 | — | Pending |
-| BIVAR-03 | — | Pending |
-| BIVAR-04 | — | Pending |
-| UTIL-01 | — | Pending |
-| UTIL-02 | — | Pending |
-| DOC-01 | — | Pending |
-| DOC-02 | — | Pending |
-| DOC-03 | — | Pending |
+| SCRIPT-01 | Phase 41 | Pending |
+| SCRIPT-02 | Phase 42 | Pending |
+| SCRIPT-03 | Phase 42 | Pending |
+| SCRIPT-04 | Phase 42 | Pending |
+| SCRIPT-05 | Phase 42 | Pending |
+| SCRIPT-06 | Phase 41 | Pending |
+| SCRIPT-07 | Phase 41 | Pending |
+| SERIES-01 | Phase 43 | Pending |
+| SERIES-02 | Phase 43 | Pending |
+| SERIES-03 | Phase 43 | Pending |
+| POLY-01 | Phase 44 | Pending |
+| POLY-02 | Phase 44 | Pending |
+| BIVAR-01 | Phase 45 | Pending |
+| BIVAR-02 | Phase 45 | Pending |
+| BIVAR-03 | Phase 45 | Pending |
+| BIVAR-04 | Phase 45 | Pending |
+| UTIL-01 | Phase 43 | Pending |
+| UTIL-02 | Phase 43 | Pending |
+| DOC-01 | Phase 46 | Pending |
+| DOC-02 | Phase 46 | Pending |
+| DOC-03 | Phase 46 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after roadmap creation*

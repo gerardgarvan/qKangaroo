@@ -10,6 +10,7 @@
 - v1.5 Interactive REPL - Phases 24-28 (shipped 2026-02-18)
 - v1.6 CLI Hardening & Manual - Phases 29-32 (shipped 2026-02-18)
 - v2.0 Maple Compatibility - Phases 33-40 (shipped 2026-02-20)
+- **v3.0 Scripting & Bivariate Series - Phases 41-46 (in progress)**
 
 ## Phases
 
@@ -117,7 +118,89 @@ See `.planning/milestones/v2.0-ROADMAP.md` for details.
 
 </details>
 
+### v3.0 Scripting & Bivariate Series (In Progress)
+
+**Milestone Goal:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo -- adding scripting language features (for-loops, procedures, conditionals), expression operations (series truncation, expansion, polynomial factoring, substitution), and bivariate (z,q)-series support for tripleprod/quinprod/winquist with symbolic z.
+
+- [ ] **Phase 41: Control Flow Parsing** - Parser and AST support for for-loops, if/elif/else conditionals, boolean/comparison operators
+- [ ] **Phase 42: Procedures & Evaluation** - Procedure definitions, local variables, RETURN, option remember, and control flow evaluation
+- [ ] **Phase 43: Expression Operations** - series() truncation, expand(), runtime q-exponent arithmetic, floor(), legendre()
+- [ ] **Phase 44: Polynomial Operations** - factor() cyclotomic/irreducible factoring, subs() variable substitution
+- [ ] **Phase 45: Bivariate Series** - New Laurent-in-z-with-FPS-coefficients data type, tripleprod/quinprod/winquist with symbolic z, bivariate arithmetic
+- [ ] **Phase 46: Documentation** - Manual chapter on scripting, help entries for new syntax, worked qmaple.pdf example reproductions
+
+## Phase Details
+
+### Phase 41: Control Flow Parsing
+**Goal**: Users can write for-loops and if/elif/else conditionals that parse correctly into AST nodes with boolean and comparison operators
+**Depends on**: Phase 40 (v2.0 complete)
+**Requirements**: SCRIPT-01, SCRIPT-06, SCRIPT-07
+**Success Criteria** (what must be TRUE):
+  1. User can type `for n from 1 to 5 do print(n) od` and it parses without error into a ForLoop AST node with variable name, start/end bounds, and body statements
+  2. User can type `if x > 0 then A elif x = 0 then B else C fi` and it parses into a conditional AST node with condition, then-branch, elif-branches, and else-branch
+  3. User can use all six comparison operators (`=`, `<>`, `<`, `>`, `<=`, `>=`) and three boolean operators (`and`, `or`, `not`) in expressions, with correct precedence (not binds tighter than and, and binds tighter than or)
+  4. For-loop and if/else blocks can contain multiple semicolon-separated statements in their bodies
+**Plans**: TBD
+
+### Phase 42: Procedures & Evaluation
+**Goal**: Users can define and call named procedures with local variables, early return, and memoization, and all control flow (for, if) evaluates correctly
+**Depends on**: Phase 41
+**Requirements**: SCRIPT-02, SCRIPT-03, SCRIPT-04, SCRIPT-05
+**Success Criteria** (what must be TRUE):
+  1. User can define `f := proc(n) local k; k := n*n; k; end` and call `f(5)` to get 25, with local variable `k` not leaking into global scope
+  2. User can use `RETURN(value)` inside a procedure to exit early and produce a value
+  3. User can add `option remember` to a procedure and observe that repeated calls with the same arguments return cached results
+  4. For-loops evaluate correctly: `for n from 1 to 5 do n^2 od` iterates with the loop variable properly scoped
+  5. If/elif/else/fi conditionals evaluate correctly: only the matching branch executes, boolean operators short-circuit
+**Plans**: TBD
+
+### Phase 43: Expression Operations
+**Goal**: Users can truncate series, expand products, use runtime arithmetic in q-exponents, and compute floor/legendre
+**Depends on**: Phase 42
+**Requirements**: SERIES-01, SERIES-02, SERIES-03, UTIL-01, UTIL-02
+**Success Criteria** (what must be TRUE):
+  1. User can call `series(aqprod(q,q,50), q, 10)` and get a series truncated to O(q^10), regardless of the original truncation order
+  2. User can call `expand(aqprod(q,q,5) * aqprod(q^2,q^2,5))` and get the product expanded into a single polynomial/series form
+  3. User can write `for n from 0 to 4 do aqprod(q^(n*n), q, 20) od` and the `q^(n*n)` evaluates correctly for each integer n, including expressions like `q^(k*(3*k+1)/2)` where k is a loop variable
+  4. User can call `floor(7/3)` to get 2 and `floor(-7/3)` to get -3 (standard mathematical floor)
+  5. User can call `legendre(2, 5)` to get -1, matching the Legendre symbol (2/5)
+**Plans**: TBD
+
+### Phase 44: Polynomial Operations
+**Goal**: Users can factor polynomials in q and substitute values into expressions
+**Depends on**: Phase 43
+**Requirements**: POLY-01, POLY-02
+**Success Criteria** (what must be TRUE):
+  1. User can call `factor(1 - q^6)` and get a factored form showing cyclotomic factors like `(1-q)(1+q)(1-q+q^2)(1+q+q^2)`
+  2. User can call `factor()` on a polynomial produced by series computation and get meaningful irreducible factors over the rationals
+  3. User can call `subs(q=1, series_expr)` to evaluate a series at q=1 (getting a rational number), and `subs(q=q^2, expr)` to transform q-exponents
+**Plans**: TBD
+
+### Phase 45: Bivariate Series
+**Goal**: Users can compute tripleprod, quinprod, and winquist with symbolic z variables, getting Laurent polynomials in z with q-series coefficients, and perform arithmetic on these bivariate values
+**Depends on**: Phase 41 (control flow for testing), Phase 43 (expression operations)
+**Requirements**: BIVAR-01, BIVAR-02, BIVAR-03, BIVAR-04
+**Success Criteria** (what must be TRUE):
+  1. User can call `tripleprod(z, q, 10)` with z as a symbolic variable and get output displaying a Laurent polynomial in z where each coefficient is a q-series truncated to O(q^10)
+  2. User can call `quinprod(z, q, 10)` with symbolic z and get the quintuple product as a bivariate Laurent polynomial matching Garvan's output format
+  3. User can call `winquist(a, b, q, 10)` with symbolic a, b and get the Winquist product as a bivariate expression in a, b with q-series coefficients
+  4. User can add, subtract, multiply, and negate bivariate series values and get correct bivariate results
+**Plans**: TBD
+
+### Phase 46: Documentation
+**Goal**: All new v3.0 features are documented in the PDF manual, help system, and worked examples reproducing Garvan's tutorial
+**Depends on**: Phases 41-45
+**Requirements**: DOC-01, DOC-02, DOC-03
+**Success Criteria** (what must be TRUE):
+  1. PDF manual contains a "Scripting Language" chapter documenting for-loop syntax, if/elif/else/fi syntax, proc/end definitions, local variables, option remember, RETURN, and boolean/comparison operators with runnable examples
+  2. User can type `help for`, `help proc`, `help if`, `help series`, `help factor`, `help subs` in the REPL and get syntax documentation with examples
+  3. Worked examples section includes at least 3 reproductions of key examples from Garvan's qmaple.pdf tutorial, demonstrating for-loops with series computation, procedure definitions with memoization, and bivariate product identities
+**Plans**: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 41 -> 42 -> 43 -> 44 -> 45 -> 46
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -161,3 +244,9 @@ See `.planning/milestones/v2.0-ROADMAP.md` for details.
 | 38. New Functions - Analysis & Discovery | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 39. Output & Compatibility | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 40. Documentation | v2.0 | 5/5 | Complete | 2026-02-20 |
+| 41. Control Flow Parsing | v3.0 | 0/TBD | Not started | - |
+| 42. Procedures & Evaluation | v3.0 | 0/TBD | Not started | - |
+| 43. Expression Operations | v3.0 | 0/TBD | Not started | - |
+| 44. Polynomial Operations | v3.0 | 0/TBD | Not started | - |
+| 45. Bivariate Series | v3.0 | 0/TBD | Not started | - |
+| 46. Documentation | v3.0 | 0/TBD | Not started | - |
