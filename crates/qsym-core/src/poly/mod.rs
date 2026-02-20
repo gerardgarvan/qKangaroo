@@ -4,9 +4,12 @@
 //! Invariant: the vector is either empty (zero polynomial) or the last element is nonzero.
 
 pub mod arithmetic;
+pub mod cyclotomic;
+pub mod factor;
 pub mod gcd;
 pub mod ratfunc;
 
+pub use factor::{Factorization, factor_over_q};
 pub use gcd::{poly_gcd, poly_resultant};
 pub use ratfunc::QRatRationalFunc;
 
