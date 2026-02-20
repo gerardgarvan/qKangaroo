@@ -1549,6 +1549,95 @@ macro_rules! dispatch_mock_theta {
     }};
 }
 
+/// Euclidean GCD on i64 (handles negative inputs via abs).
+fn gcd_i64(a: i64, b: i64) -> i64 {
+    let (mut x, mut y) = (a.abs(), b.abs());
+    while y != 0 {
+        let tmp = y;
+        y = x % y;
+        x = tmp;
+    }
+    x
+}
+
+/// Shared helper for checkprod and findprod dispatch: check if series is a nice product.
+///
+/// Returns Value::List matching Garvan's output format:
+/// - `[a, 1]` for nice product (all exponents < m_threshold)
+/// - `[a, max_exp]` for not nice
+/// - `[[a, c0], -1]` for non-integer leading coefficient
+fn checkprod_impl(fps: &FormalPowerSeries, m_threshold: i64, q_order: i64) -> Value {
+    // Step 1: Find valuation a
+    let a = fps.min_order().unwrap_or(0);
+
+    // Step 2: Get leading coefficient c0
+    let c0 = fps.coeff(a);
+    let one = rug::Integer::from(1u32);
+
+    // Check integer-divisibility of leading coefficient
+    if c0.denom() != &one {
+        // Non-integer leading coefficient
+        return Value::List(vec![
+            Value::List(vec![
+                Value::Integer(QInt::from(a)),
+                Value::Rational(c0),
+            ]),
+            Value::Integer(QInt::from(-1i64)),
+        ]);
+    }
+
+    // Step 3: Run prodmake (internally normalizes: strips q^a and divides by c0)
+    let product = qseries::prodmake(fps, q_order);
+
+    // Step 4: Find max |exponent|
+    let max_exp = product.exponents.values()
+        .map(|rat| {
+            rat.numer().to_i64().unwrap_or(i64::MAX).abs()
+        })
+        .max()
+        .unwrap_or(0);
+
+    // Step 5: Return result
+    if max_exp < m_threshold {
+        Value::List(vec![
+            Value::Integer(QInt::from(a)),
+            Value::Integer(QInt::from(1i64)),
+        ])
+    } else {
+        Value::List(vec![
+            Value::Integer(QInt::from(a)),
+            Value::Integer(QInt::from(max_exp)),
+        ])
+    }
+}
+
+/// Check if a checkprod result is "nice" (second element is Integer(1)).
+/// Returns the valuation `a` if nice, None otherwise.
+fn is_nice_checkprod_result(result: &Value) -> Option<i64> {
+    if let Value::List(items) = result {
+        if items.len() == 2 {
+            if let (Value::Integer(a), Value::Integer(code)) = (&items[0], &items[1]) {
+                if *code == QInt::from(1i64) {
+                    return a.0.to_i64();
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Odometer-style increment of coefficient vector entries in [-max_coeff, max_coeff].
+fn increment_coeffs(coeffs: &mut [i64], max_coeff: i64) -> bool {
+    for c in coeffs.iter_mut().rev() {
+        *c += 1;
+        if *c <= max_coeff {
+            return true;
+        }
+        *c = -max_coeff;
+    }
+    false
+}
+
 /// Dispatch a function call by name.
 ///
 /// Resolves aliases, then matches against the canonical function name.
@@ -1962,6 +2051,16 @@ pub fn dispatch(
             }
         }
 
+        "lqdegree0" => {
+            // Garvan: lqdegree0(qexp) -- lowest q-degree (alias of lqdegree for FPS)
+            expect_args(name, args, 1)?;
+            let fps = extract_series(name, args, 0)?;
+            match fps.min_order() {
+                Some(d) => Ok(Value::Integer(QInt::from(d))),
+                None => Ok(Value::None),
+            }
+        }
+
         "prodmake" => {
             // Maple: prodmake(f, q, T)
             expect_args(name, args, 3)?;
@@ -2054,6 +2153,49 @@ pub fn dispatch(
                     signature: get_signature(name),
                 })
             }
+        }
+
+        "checkmult" => {
+            // Garvan: checkmult(QS, T) or checkmult(QS, T, 'yes')
+            expect_args_range(name, args, 2, 3)?;
+            let fps = extract_series(name, args, 0)?;
+            let t = extract_i64(name, args, 1)?;
+            let print_all = args.len() == 3 && matches!(&args[2], Value::String(s) if s == "yes");
+
+            let mut failures: Vec<(i64, i64)> = Vec::new();
+            let half_t = t / 2;
+            'outer: for m in 2..=half_t {
+                for n in m..=half_t {
+                    if m * n > t { break; }
+                    if gcd_i64(m, n) != 1 { continue; }
+                    let fm = fps.coeff(m);
+                    let fn_ = fps.coeff(n);
+                    let fmn = fps.coeff(m * n);
+                    if fm.clone() * fn_ != fmn {
+                        failures.push((m, n));
+                        if !print_all { break 'outer; }
+                    }
+                }
+            }
+
+            if failures.is_empty() {
+                println!("MULTIPLICATIVE");
+                Ok(Value::Integer(QInt::from(1i64)))
+            } else {
+                for (m, n) in &failures {
+                    println!("NOT MULTIPLICATIVE at ({}, {})", m, n);
+                }
+                Ok(Value::Integer(QInt::from(0i64)))
+            }
+        }
+
+        "checkprod" => {
+            // Garvan: checkprod(f, M, Q) -- check if series is nice product
+            expect_args(name, args, 3)?;
+            let fps = extract_series(name, args, 0)?;
+            let m_threshold = extract_i64(name, args, 1)?;
+            let q_order = extract_i64(name, args, 2)?;
+            Ok(checkprod_impl(&fps, m_threshold, q_order))
         }
 
         // =================================================================
@@ -2301,20 +2443,52 @@ pub fn dispatch(
         }
 
         "findprod" => {
-            // findprod([series...], max_coeff, max_exp)
-            expect_args(name, args, 3)?;
+            // Garvan: findprod(FL, T, M, Q) -- exhaustive search for product identities
+            expect_args(name, args, 4)?;
             let series_list = extract_series_list(name, args, 0)?;
             let max_coeff = extract_i64(name, args, 1)?;
-            let max_exp = extract_i64(name, args, 2)?;
-            let refs: Vec<&FormalPowerSeries> = series_list.iter().collect();
-            let results = qseries::findprod(&refs, max_coeff, max_exp);
-            Ok(Value::List(
-                results.into_iter()
-                    .map(|row| Value::List(
-                        row.into_iter().map(|c| Value::Integer(QInt::from(c))).collect(),
-                    ))
-                    .collect(),
-            ))
+            let m_threshold = extract_i64(name, args, 2)?;
+            let q_order = extract_i64(name, args, 3)?;
+
+            let k = series_list.len();
+            let mut results: Vec<Value> = Vec::new();
+
+            // Iterate coefficient vectors from [-max_coeff, ..., -max_coeff]
+            // to [max_coeff, ..., max_coeff] using odometer increment
+            let mut coeffs = vec![-max_coeff; k];
+            loop {
+                // Skip zero vector
+                if coeffs.iter().any(|&c| c != 0) {
+                    // Primitive vector check: gcd of absolute values == 1
+                    let g = coeffs.iter().fold(0i64, |acc, &c| gcd_i64(acc, c.abs()));
+                    if g <= 1 {
+                        // Form linear combination
+                        let trunc = q_order.min(
+                            series_list.iter().map(|s| s.truncation_order()).min().unwrap()
+                        );
+                        let var = series_list[0].variable();
+                        let mut combo = FormalPowerSeries::zero(var, trunc);
+                        for (s, &c) in series_list.iter().zip(coeffs.iter()) {
+                            if c == 0 { continue; }
+                            let scaled = arithmetic::scalar_mul(&QRat::from((c, 1i64)), s);
+                            combo = arithmetic::add(&combo, &scaled);
+                        }
+
+                        if !combo.is_zero() {
+                            let result = checkprod_impl(&combo, m_threshold, q_order);
+                            if let Some(a) = is_nice_checkprod_result(&result) {
+                                let mut row = vec![Value::Integer(QInt::from(a))];
+                                row.extend(coeffs.iter().map(|&c| Value::Integer(QInt::from(c))));
+                                results.push(Value::List(row));
+                            }
+                        }
+                    }
+                }
+                if !increment_coeffs(&mut coeffs, max_coeff) {
+                    break;
+                }
+            }
+            Ok(Value::List(results))
         }
 
         "findcong" => {
@@ -3462,6 +3636,9 @@ fn get_signature(name: &str) -> String {
         "sift" => "(s, q, n, k, T)".to_string(),
         "qdegree" => "(series)".to_string(),
         "lqdegree" => "(series)".to_string(),
+        "lqdegree0" => "(f)".to_string(),
+        "checkmult" => "(QS, T) or (QS, T, 'yes')".to_string(),
+        "checkprod" => "(f, M, Q)".to_string(),
         "prodmake" => "(f, q, T)".to_string(),
         "etamake" => "(f, q, T)".to_string(),
         "jacprodmake" => "(f, q, T) or (f, q, T, P)".to_string(),
@@ -3478,7 +3655,7 @@ fn get_signature(name: &str) -> String {
         "findnonhom" => "(L, q, n, topshift)".to_string(),
         "findhommodp" => "(L, p, q, n, topshift)".to_string(),
         "findmaxind" => "(L, T)".to_string(),
-        "findprod" => "([series], max_coeff, max_exp)".to_string(),
+        "findprod" => "(FL, T, M, Q)".to_string(),
         "findcong" => "(QS, T) or (QS, T, LM) or (QS, T, LM, XSET)".to_string(),
         "findpoly" => "(x, y, q, dx, dy) or (x, y, q, dx, dy, check)".to_string(),
         // Group 6: Hypergeometric
@@ -3571,7 +3748,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern B: No-session
     "numbpart",
     // Pattern C: Series-input analysis
-    "sift", "qdegree", "lqdegree", "qfactor",
+    "sift", "qdegree", "lqdegree", "lqdegree0", "qfactor",
+    "checkmult", "checkprod",
     "prodmake", "etamake", "jacprodmake", "mprodmake", "qetamake",
     // Pattern D: Target + candidates
     "findlincombo", "findhomcombo", "findnonhomcombo",
@@ -5887,8 +6065,8 @@ mod tests {
         // + 2 (prove_eta_id, search_identities)
         // = should be near 79
         assert!(
-            count >= 75,
-            "expected at least 75 function names in ALL_FUNCTION_NAMES, got {}",
+            count >= 78,
+            "expected at least 78 function names in ALL_FUNCTION_NAMES, got {}",
             count
         );
     }
