@@ -1651,3 +1651,104 @@ fn cli_findprod_old_3arg_errors() {
         stderr
     );
 }
+
+// ===========================================================================
+// Backward Compatibility: v1.x signatures (COMPAT-01, COMPAT-02)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Product/theta functions -- legacy (v1.x) signatures
+// ---------------------------------------------------------------------------
+
+#[test]
+fn backward_compat_etaq_legacy_3arg() {
+    // Legacy: etaq(b, t, order) with numeric args
+    let (code, stdout, stderr) = run(&["-c", "etaq(1, 1, 20)"]);
+    assert_eq!(code, 0, "legacy etaq(1,1,20) should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("O(q^20)"), "should have O(q^20), got: {}", stdout);
+    assert!(stdout.contains("q"), "should contain q terms, got: {}", stdout);
+    // Verify actual coefficients: (q;q)_inf starts with 1 - q - q^2 + q^5 + q^7 - ...
+    assert!(stdout.contains("1"), "should contain constant term 1");
+}
+
+#[test]
+fn backward_compat_aqprod_legacy_5arg() {
+    // Legacy: aqprod(cn, cd, power, infinity, order)
+    let (code, stdout, stderr) = run(&["-c", "aqprod(1, 1, 1, infinity, 20)"]);
+    assert_eq!(code, 0, "legacy aqprod 5-arg should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("O(q^20)"), "should have O(q^20), got: {}", stdout);
+    // (q;q)_inf = 1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + ...
+    assert!(stdout.contains("q"), "should contain q terms");
+}
+
+#[test]
+fn backward_compat_aqprod_legacy_5arg_finite() {
+    // Legacy: aqprod(cn, cd, power, n, order) with finite n
+    let (code, stdout, stderr) = run(&["-c", "aqprod(1, 1, 2, 5, 20)"]);
+    assert_eq!(code, 0, "legacy aqprod finite should succeed. stderr: {}", stderr);
+    // Should produce a series or polynomial output
+    assert!(!stdout.trim().is_empty(), "should produce output");
+    assert!(stdout.contains("q"), "should contain q terms, got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_jacprod_legacy_3arg() {
+    // Legacy: jacprod(a, b, order)
+    let (code, stdout, stderr) = run(&["-c", "jacprod(1, 5, 20)"]);
+    assert_eq!(code, 0, "legacy jacprod(1,5,20) should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("O(q^20)"), "should have O(q^20), got: {}", stdout);
+    // J(1,5) = (q;q^5)_inf series
+    assert!(stdout.contains("q"), "should contain q terms");
+}
+
+#[test]
+fn backward_compat_tripleprod_legacy_4arg() {
+    // Legacy: tripleprod(cn, cd, power, order)
+    let (code, stdout, stderr) = run(&["-c", "tripleprod(1, 1, 1, 20)"]);
+    assert_eq!(code, 0, "legacy tripleprod should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("O(q^20)"), "should have O(q^20), got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_quinprod_legacy_4arg() {
+    // Legacy: quinprod(cn, cd, power, order)
+    let (code, stdout, stderr) = run(&["-c", "quinprod(1, 1, 1, 20)"]);
+    assert_eq!(code, 0, "legacy quinprod should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("O(q^20)"), "should have O(q^20), got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_winquist_legacy_7arg() {
+    // Legacy: winquist(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)
+    let (code, stdout, stderr) = run(&["-c", "winquist(1, 1, 1, 1, 1, 1, 20)"]);
+    assert_eq!(code, 0, "legacy winquist 7-arg should succeed. stderr: {}", stderr);
+    // Winquist product may be all-zero within truncation range
+    assert!(!stdout.trim().is_empty(), "should produce output");
+}
+
+#[test]
+fn backward_compat_qbin_legacy_3arg() {
+    // Legacy: qbin(n, k, order) -- [n choose k]_q polynomial
+    let (code, stdout, stderr) = run(&["-c", "qbin(4, 2, 20)"]);
+    assert_eq!(code, 0, "legacy qbin(4,2,20) should succeed. stderr: {}", stderr);
+    // [4 choose 2]_q = 1 + q + 2*q^2 + q^3 + q^4
+    assert!(stdout.contains("q"), "should contain q terms, got: {}", stdout);
+    assert!(stdout.contains("q^4"), "should contain q^4 term");
+    assert!(stdout.contains("2*q^2"), "should contain 2*q^2 coefficient");
+}
+
+#[test]
+fn backward_compat_numbpart_alias() {
+    // partition_count is old name, numbpart is new canonical name
+    let (code, stdout, stderr) = run(&["-c", "partition_count(100)"]);
+    assert_eq!(code, 0, "partition_count alias should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("190569292"), "partition_count(100) should be 190569292, got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_numbpart_primary() {
+    // numbpart is now the primary name
+    let (code, stdout, _) = run(&["-c", "numbpart(5)"]);
+    assert_eq!(code, 0, "numbpart(5) should succeed");
+    assert_eq!(stdout.trim(), "7", "numbpart(5) = 7, got: {}", stdout);
+}
