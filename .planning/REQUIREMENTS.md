@@ -63,7 +63,7 @@
 
 - [x] **OUT-01**: Relation discovery functions print results using symbolic labels (SL for findlincombo/findlincombomodp, X[i] auto-labels for others) matching Maple's output format
 - [x] **OUT-02**: `findcong` output format matches Garvan's `[B, A, R]` triple format
-- [ ] **OUT-03**: Series display uses Maple-style polynomial ordering when appropriate
+- [x] **OUT-03**: Series display uses Maple-style polynomial ordering when appropriate
 
 ## Documentation
 
@@ -76,8 +76,8 @@
 
 ## Backward Compatibility
 
-- [ ] **COMPAT-01**: Existing v1.x function signatures continue to work as aliases (no breaking changes for users of current calling conventions)
-- [ ] **COMPAT-02**: All existing tests pass with no regressions
+- [x] **COMPAT-01**: Existing v1.x function signatures continue to work as aliases (no breaking changes for users of current calling conventions)
+- [x] **COMPAT-02**: All existing tests pass with no regressions
 
 ## Traceability
 
@@ -124,12 +124,12 @@
 | NEW-09 | Phase 38 | Complete |
 | OUT-01 | Phase 36 | Complete |
 | OUT-02 | Phase 36 | Complete |
-| OUT-03 | Phase 39 | Pending |
+| OUT-03 | Phase 39 | Complete |
 | DOC-01 | Phase 40 | Pending |
 | DOC-02 | Phase 40 | Pending |
 | DOC-03 | Phase 40 | Pending |
 | DOC-04 | Phase 40 | Pending |
 | DOC-05 | Phase 40 | Pending |
 | DOC-06 | Phase 40 | Pending |
-| COMPAT-01 | Phase 39 | Pending |
-| COMPAT-02 | Phase 39 | Pending |
+| COMPAT-01 | Phase 39 | Complete |
+| COMPAT-02 | Phase 39 | Complete |

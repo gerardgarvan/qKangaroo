@@ -111,7 +111,7 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 - [x] **Phase 36: Relation Discovery Signatures** - All find* functions accept Garvan's signatures with symbolic labels -- 2026-02-19
 - [x] **Phase 37: New Functions - Theta & Jacobi** - theta, jac2prod, jac2series, qs2jaccombo implemented -- 2026-02-19
 - [x] **Phase 38: New Functions - Analysis & Discovery** - checkmult, checkprod, lqdegree0, findprod implemented (zqfactor deferred) -- 2026-02-19
-- [ ] **Phase 39: Output & Compatibility** - Maple-style display, backward compat verified, all tests green
+- [x] **Phase 39: Output & Compatibility** - Maple-style display, backward compat verified, all tests green -- 2026-02-19
 - [ ] **Phase 40: Documentation** - Manual, help, tab completion, migration guide all updated
 
 ## Phase Details
@@ -215,8 +215,8 @@ Plans:
   3. The full existing test suite (281 core + 549 CLI tests) passes with zero regressions
 **Plans:** 2 plans
 Plans:
-- [ ] 39-01-PLAN.md -- Descending display ordering in format_series()/fps_to_latex(), test assertion updates, help example updates
-- [ ] 39-02-PLAN.md -- Backward compatibility integration test suite for all v1.x signatures
+- [x] 39-01-PLAN.md -- Descending display ordering in format_series()/fps_to_latex(), test assertion updates, help example updates
+- [x] 39-02-PLAN.md -- Backward compatibility integration test suite for all v1.x signatures
 
 ### Phase 40: Documentation
 **Goal**: All documentation reflects the new Maple-compatible signatures so users can learn the system from any entry point
@@ -272,5 +272,5 @@ Plans:
 | 36. Relation Discovery Signatures | v2.0 | 3/3 | Complete | 2026-02-19 |
 | 37. New Functions - Theta & Jacobi | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 38. New Functions - Analysis & Discovery | v2.0 | 2/2 | Complete | 2026-02-19 |
-| 39. Output & Compatibility | v2.0 | 0/TBD | Not started | - |
+| 39. Output & Compatibility | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 40. Documentation | v2.0 | 0/TBD | Not started | - |
