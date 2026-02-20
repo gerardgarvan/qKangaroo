@@ -71,8 +71,14 @@ pub enum Token {
     Else,
     /// `fi` conditional end.
     Fi,
-    /// `end` keyword (reserved for `end do`/`end if`).
+    /// `end` keyword (reserved for `end do`/`end if`/`end proc`).
     End,
+    /// `proc` procedure definition keyword.
+    Proc,
+    /// `local` local variable declaration keyword.
+    Local,
+    /// `option` procedure option keyword (e.g., `option remember`).
+    OptionKw,
 
     // --- Boolean operators ---
     /// `and` boolean conjunction.

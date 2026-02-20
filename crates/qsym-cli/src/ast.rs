@@ -112,6 +112,13 @@ pub enum AstNode {
         elif_branches: Vec<(AstNode, Vec<Stmt>)>,
         else_body: Option<Vec<Stmt>>,
     },
+    /// Procedure definition: `proc(params) [local vars;] [option opts;] body; end [proc]`.
+    ProcDef {
+        params: Vec<String>,
+        locals: Vec<String>,
+        options: Vec<String>,
+        body: Vec<Stmt>,
+    },
 }
 
 /// Statement terminator kind.

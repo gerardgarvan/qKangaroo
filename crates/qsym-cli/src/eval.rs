@@ -1076,6 +1076,10 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
         AstNode::IfExpr { condition, then_body, elif_branches, else_body } => {
             eval_if_expr(condition, then_body, elif_branches, else_body.as_deref(), env)
         }
+
+        AstNode::ProcDef { .. } => {
+            Err(EvalError::Other("procedure evaluation not yet implemented".to_string()))
+        }
     }
 }
 

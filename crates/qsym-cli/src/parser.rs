@@ -238,6 +238,43 @@ impl Parser {
                     body,
                 }
             }
+            Token::Proc => {
+                self.advance(); // consume 'proc'
+                self.expect(&Token::LParen, "'(' after 'proc'")?;
+                let params = self.parse_ident_list()?;
+                self.expect(&Token::RParen, "')' to close proc parameters")?;
+
+                // Optional: local declarations
+                let locals = if *self.peek() == Token::Local {
+                    self.advance(); // consume 'local'
+                    let names = self.parse_ident_list()?;
+                    self.expect(&Token::Semi, "';' after local declarations")?;
+                    names
+                } else {
+                    vec![]
+                };
+
+                // Optional: option declarations
+                let options = if *self.peek() == Token::OptionKw {
+                    self.advance(); // consume 'option'
+                    let names = self.parse_ident_list()?;
+                    self.expect(&Token::Semi, "';' after option declarations")?;
+                    names
+                } else {
+                    vec![]
+                };
+
+                // Body statements until 'end'
+                let body = self.parse_stmt_sequence(&[Token::End])?;
+                self.expect(&Token::End, "'end' to close proc")?;
+
+                // Optional 'proc' after 'end' (Maple allows "end proc")
+                if *self.peek() == Token::Proc {
+                    self.advance();
+                }
+
+                AstNode::ProcDef { params, locals, options, body }
+            }
             Token::If => {
                 self.advance(); // consume 'if'
                 let condition = self.expr_bp(0)?;
@@ -424,6 +461,35 @@ impl Parser {
         Ok(args)
     }
 
+    /// Parse a comma-separated list of identifiers.
+    ///
+    /// Returns empty vec if next token is not an Ident. Stops when the next
+    /// token after an identifier is not a Comma (does NOT consume terminator).
+    fn parse_ident_list(&mut self) -> Result<Vec<String>, ParseError> {
+        let mut names = Vec::new();
+        if let Token::Ident(ref name) = self.peek().clone() {
+            names.push(name.clone());
+            self.advance();
+            while *self.peek() == Token::Comma {
+                self.advance(); // consume comma
+                match self.peek().clone() {
+                    Token::Ident(ref name) => {
+                        names.push(name.clone());
+                        self.advance();
+                    }
+                    _ => {
+                        let span = self.peek_span();
+                        return Err(ParseError::new(
+                            "expected identifier after ','".to_string(),
+                            span,
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(names)
+    }
+
     /// Parse a sequence of statements until a terminator token is seen.
     /// The terminating token is NOT consumed.
     fn parse_stmt_sequence(&mut self, terminators: &[Token]) -> Result<Vec<Stmt>, ParseError> {
@@ -511,6 +577,9 @@ fn token_name(token: &Token) -> String {
         Token::Else => "'else'".to_string(),
         Token::Fi => "'fi'".to_string(),
         Token::End => "'end'".to_string(),
+        Token::Proc => "'proc'".to_string(),
+        Token::Local => "'local'".to_string(),
+        Token::OptionKw => "'option'".to_string(),
         Token::And => "'and'".to_string(),
         Token::Or => "'or'".to_string(),
         Token::Not => "'not'".to_string(),
@@ -1509,6 +1578,100 @@ mod tests {
             assert!(matches!(&then_body[0].node, AstNode::ForLoop { .. }));
         } else {
             panic!("Expected IfExpr");
+        }
+    }
+
+    // =======================================================
+    // PARSE-13: Procedure definitions
+    // =======================================================
+
+    #[test]
+    fn test_parse_proc_simple() {
+        let node = parse_expr("proc(n) n*n; end");
+        if let AstNode::ProcDef { params, locals, options, body } = &node {
+            assert_eq!(params, &["n"]);
+            assert!(locals.is_empty());
+            assert!(options.is_empty());
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("Expected ProcDef, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_parse_proc_locals() {
+        let node = parse_expr("proc(n) local k; k := n; end");
+        if let AstNode::ProcDef { params, locals, .. } = &node {
+            assert_eq!(params, &["n"]);
+            assert_eq!(locals, &["k"]);
+        } else {
+            panic!("Expected ProcDef");
+        }
+    }
+
+    #[test]
+    fn test_parse_proc_option_remember() {
+        let node = parse_expr("proc(n) option remember; n; end");
+        if let AstNode::ProcDef { options, .. } = &node {
+            assert_eq!(options, &["remember"]);
+        } else {
+            panic!("Expected ProcDef");
+        }
+    }
+
+    #[test]
+    fn test_parse_proc_full() {
+        let node = parse_expr("proc(n) local k; option remember; k := n*n; k; end");
+        if let AstNode::ProcDef { params, locals, options, body } = &node {
+            assert_eq!(params, &["n"]);
+            assert_eq!(locals, &["k"]);
+            assert_eq!(options, &["remember"]);
+            assert_eq!(body.len(), 2);
+        } else {
+            panic!("Expected ProcDef");
+        }
+    }
+
+    #[test]
+    fn test_parse_proc_end_proc() {
+        let node = parse_expr("proc(n) n; end proc");
+        if let AstNode::ProcDef { params, .. } = &node {
+            assert_eq!(params, &["n"]);
+        } else {
+            panic!("Expected ProcDef");
+        }
+    }
+
+    #[test]
+    fn test_parse_proc_empty_params() {
+        let node = parse_expr("proc() 42; end");
+        if let AstNode::ProcDef { params, body, .. } = &node {
+            assert!(params.is_empty());
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("Expected ProcDef");
+        }
+    }
+
+    #[test]
+    fn test_parse_proc_multiple_locals() {
+        let node = parse_expr("proc(a, b) local x, y, z; x; end");
+        if let AstNode::ProcDef { params, locals, .. } = &node {
+            assert_eq!(params, &["a", "b"]);
+            assert_eq!(locals, &["x", "y", "z"]);
+        } else {
+            panic!("Expected ProcDef");
+        }
+    }
+
+    #[test]
+    fn test_parse_proc_assign() {
+        let node = parse_expr("f := proc(n) n; end");
+        if let AstNode::Assign { name, value } = &node {
+            assert_eq!(name, "f");
+            assert!(matches!(value.as_ref(), AstNode::ProcDef { .. }));
+        } else {
+            panic!("Expected Assign with ProcDef, got {:?}", node);
         }
     }
 }

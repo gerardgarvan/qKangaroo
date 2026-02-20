@@ -178,6 +178,9 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
                 "else" => Token::Else,
                 "fi" => Token::Fi,
                 "end" => Token::End,
+                "proc" => Token::Proc,
+                "local" => Token::Local,
+                "option" => Token::OptionKw,
                 "and" => Token::And,
                 "or" => Token::Or,
                 "not" => Token::Not,
@@ -585,5 +588,27 @@ mod tests {
                 Token::Ident("z".to_string()), Token::Eof,
             ]
         );
+    }
+
+    // =======================================================
+    // Procedure keyword lexing
+    // =======================================================
+
+    #[test]
+    fn test_lex_proc_keyword() {
+        let toks = tokens("proc");
+        assert_eq!(toks, vec![Token::Proc, Token::Eof]);
+    }
+
+    #[test]
+    fn test_lex_local_keyword() {
+        let toks = tokens("local");
+        assert_eq!(toks, vec![Token::Local, Token::Eof]);
+    }
+
+    #[test]
+    fn test_lex_option_keyword() {
+        let toks = tokens("option");
+        assert_eq!(toks, vec![Token::OptionKw, Token::Eof]);
     }
 }
