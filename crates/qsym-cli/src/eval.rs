@@ -562,6 +562,21 @@ fn is_prime(n: i64) -> bool {
     true
 }
 
+/// Format JacobiProduct factors as display string for qs2jaccombo output.
+fn format_jacobi_product_value(factors: &[(i64, i64, i64)]) -> String {
+    if factors.is_empty() {
+        return "1".to_string();
+    }
+    let parts: Vec<String> = factors.iter().map(|&(a, b, exp)| {
+        if exp == 1 {
+            format!("JAC({},{})", a, b)
+        } else {
+            format!("JAC({},{})^({})", a, b, exp)
+        }
+    }).collect();
+    parts.join("*")
+}
+
 /// Format a linear combination with symbolic labels.
 ///
 /// For coefficients `[c1, c2, ...]` and labels `[F1, F2, ...]`, produces
@@ -2896,6 +2911,71 @@ pub fn dispatch(
             Ok(Value::Series(fps))
         }
 
+        "qs2jaccombo" => {
+            expect_args(name, args, 3)?;
+            let f = extract_series(name, args, 0)?;
+            let sym = extract_symbol_id(name, args, 1, env)?;
+            let order = extract_i64(name, args, 2)?;
+
+            // Phase A: Try single JAC product via jacprodmake
+            let jpform = qseries::jacprodmake(&f, order);
+            if jpform.is_exact {
+                let mut factors: Vec<(i64, i64, i64)> = jpform.factors.iter()
+                    .map(|(&(a, b), &exp)| (a, b, exp))
+                    .collect();
+                factors.sort_by_key(|&(a, b, _)| (b, a));
+                let jp_str = format_jacobi_product_value(&factors);
+                let result_str = if jpform.scalar == QRat::from((1i64, 1i64)) {
+                    jp_str
+                } else {
+                    format!("{}*{}", jpform.scalar, jp_str)
+                };
+                println!("{}", result_str);
+                return Ok(Value::String(result_str));
+            }
+
+            // Phase B: Generate candidate JAC basis from identified periods
+            let mut periods: Vec<i64> = jpform.factors.keys().map(|&(_, b)| b).collect();
+            periods.sort();
+            periods.dedup();
+
+            // If no periods found, try small periods 2..min(order, 20)
+            if periods.is_empty() {
+                periods = (2..=std::cmp::min(order, 20)).collect();
+            }
+
+            // Generate candidate (a,b) pairs and expand each to FPS
+            let mut candidate_labels: Vec<String> = Vec::new();
+            let mut candidate_fps: Vec<FormalPowerSeries> = Vec::new();
+
+            for &b in &periods {
+                for a in 1..b {
+                    let fps = qseries::etaq(a, b, sym, order);
+                    candidate_labels.push(format!("JAC({},{})", a, b));
+                    candidate_fps.push(fps);
+                }
+            }
+
+            if candidate_fps.is_empty() {
+                println!("No Jacobi product decomposition found");
+                return Ok(Value::Series(f));
+            }
+
+            // Build references for findlincombo
+            let refs: Vec<&FormalPowerSeries> = candidate_fps.iter().collect();
+            match qseries::findlincombo(&f, &refs, 0) {
+                Some(coeffs) => {
+                    let formula = format_linear_combo(&coeffs, &candidate_labels);
+                    println!("{}", formula);
+                    Ok(Value::String(formula))
+                }
+                None => {
+                    println!("No Jacobi product decomposition found");
+                    Ok(Value::Series(f))
+                }
+            }
+        }
+
         // =================================================================
         // Unknown function
         // =================================================================
@@ -3442,6 +3522,7 @@ fn get_signature(name: &str) -> String {
         "theta" => "(z, q, T) -- general theta series sum(z^i * q^(i^2), i=-T..T)".to_string(),
         "jac2prod" => "(JP, q, T) -- convert Jacobi product to explicit product form".to_string(),
         "jac2series" => "(JP, q, T) -- convert Jacobi product to q-series".to_string(),
+        "qs2jaccombo" => "(f, q, T) -- decompose q-series into sum of Jacobi products".to_string(),
         _ => String::new(),
     }
 }
@@ -3525,7 +3606,7 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern N: Variable management
     "anames", "restart",
     // Pattern O: Jacobi Products
-    "JAC", "theta", "jac2prod", "jac2series",
+    "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
 ];
 
 /// All alias names for fuzzy matching.
@@ -6286,5 +6367,51 @@ mod tests {
         } else {
             panic!("expected Series");
         }
+    }
+
+    // --- qs2jaccombo tests ---
+
+    #[test]
+    fn dispatch_qs2jaccombo_single_product() {
+        let mut env = make_env();
+        // (q;q)_inf is a single Jacobi product JAC(1,1)
+        // jacprodmake should recognize this as a single product
+        let sym_q = env.sym_q;
+        let f = qseries::etaq(1, 1, sym_q, 30);
+        let args = vec![
+            Value::Series(f),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(30i64)),
+        ];
+        let val = dispatch("qs2jaccombo", &args, &mut env).unwrap();
+        // Should find some JAC decomposition (either single product or linear combination)
+        match &val {
+            Value::String(s) => {
+                assert!(s.contains("JAC"), "expected JAC in result: {}", s);
+            }
+            _ => {
+                panic!("expected String result for Euler function, got {:?}", val);
+            }
+        }
+    }
+
+    #[test]
+    fn dispatch_qs2jaccombo_returns_without_error() {
+        let mut env = make_env();
+        // qs2jaccombo should not error regardless of input -- it either finds
+        // a decomposition (String) or returns the input series
+        let sym_q = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0, QRat::from((1i64, 1i64)));
+        coeffs.insert(3, QRat::from((7i64, 1i64)));
+        coeffs.insert(17, QRat::from((-3i64, 1i64)));
+        let f = FormalPowerSeries::from_coeffs(sym_q, coeffs, 5);
+        let args = vec![
+            Value::Series(f),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("qs2jaccombo", &args, &mut env);
+        assert!(val.is_ok(), "qs2jaccombo should not error: {:?}", val.err());
     }
 }
