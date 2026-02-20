@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v3.0 Phase 44 - Polynomial Operations (plan 01 complete)
+**Current focus:** v3.0 Phase 44 - Polynomial Operations (complete)
 
 ## Current Position
 
-Phase: 44 of 46 (Polynomial Operations)
-Plan: 1 of 2 in phase 44
-Status: Plan 44-01 complete, ready for plan 44-02
-Last activity: 2026-02-20 -- Plan 44-01 executed (2 tasks, 29 new tests, 746 total)
+Phase: 44 of 46 (Polynomial Operations) -- COMPLETE
+Plan: 2 of 2 in phase 44 (all plans complete)
+Status: Phase 44 complete, ready for phase 45
+Last activity: 2026-02-20 -- Plan 44-02 executed (2 tasks, 13 new tests, 732 total)
 
-Progress: [==========================================........] 85% (124/~145 plans est.)
+Progress: [==========================================........] 86% (125/~145 plans est.)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 124
-- Total phases: 43 complete (v1.0-v2.0 + Phases 41-43), 3 remaining (v3.0)
+- Total plans completed: 125
+- Total phases: 44 complete (v1.0-v2.0 + Phases 41-44), 2 remaining (v3.0)
 - Total milestones: 8 complete (v1.0-v1.6, v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~9.1 hours
@@ -33,6 +33,7 @@ Progress: [==========================================........] 85% (124/~145 pla
 | 43 | 01 | 9 min | 2 | 3 |
 | 43 | 02 | 7 min | 2 | 3 |
 | 44 | 01 | 8 min | 2 | 7 |
+| 44 | 02 | 5 min | 2 | 3 |
 
 ## Accumulated Context
 
@@ -63,6 +64,10 @@ v2.0 decisions archived in .planning/milestones/v2.0-phases/.
 - 44-01: fps_to_qratpoly requires POLYNOMIAL_ORDER sentinel to reject truncated series
 - 44-01: Negative leading coefficient handled by negating both scalar and primitive part
 - 44-01: Factor display uses descending degree order within each parenthesized factor
+- 44-02: AST interception catches Compare(Eq) before evaluation so q=1 is not converted to Bool
+- 44-02: evaluate_fps_at_rational handles negative exponents via inversion with zero-check
+- 44-02: Exponent scaling preserves POLYNOMIAL_ORDER sentinel for exact polynomials
+- 44-02: Mismatched variable name in subs returns target unchanged (no-op, not error)
 
 ### Pending Todos
 
@@ -75,5 +80,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 44-01-PLAN.md
+Stopped at: Completed 44-02-PLAN.md (Phase 44 complete)
 Resume file: N/A
