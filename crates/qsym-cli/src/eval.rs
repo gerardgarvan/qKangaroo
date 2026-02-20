@@ -3669,6 +3669,42 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Number Theory (UTIL-01, UTIL-02)
+        // =================================================================
+
+        "floor" => {
+            expect_args(name, args, 1)?;
+            match &args[0] {
+                Value::Integer(_) => Ok(args[0].clone()),
+                Value::Rational(r) => {
+                    let result = rug::Integer::from(r.0.floor_ref());
+                    Ok(Value::Integer(QInt(result)))
+                }
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "number (integer or rational)",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "legendre" => {
+            expect_args(name, args, 2)?;
+            let m = extract_i64(name, args, 0)?;
+            let p = extract_i64(name, args, 1)?;
+            if p < 3 || p % 2 == 0 {
+                return Err(EvalError::Other(format!(
+                    "legendre: second argument must be an odd prime >= 3, got {}", p
+                )));
+            }
+            let m_int = rug::Integer::from(m);
+            let p_int = rug::Integer::from(p);
+            let result = m_int.legendre(&p_int);
+            Ok(Value::Integer(QInt::from(result as i64)))
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -4218,6 +4254,9 @@ fn get_signature(name: &str) -> String {
         "jac2prod" => "(JP, q, T) -- convert Jacobi product to explicit product form".to_string(),
         "jac2series" => "(JP, q, T) -- convert Jacobi product to q-series".to_string(),
         "qs2jaccombo" => "(f, q, T) -- decompose q-series into sum of Jacobi products".to_string(),
+        // Group P: Number theory
+        "floor" => "(x)".to_string(),
+        "legendre" => "(m, p)".to_string(),
         _ => String::new(),
     }
 }
@@ -4248,6 +4287,7 @@ fn resolve_alias(name: &str) -> String {
         "search_id" => "search_identities".to_string(),
         "g2" => "universal_mock_theta_g2".to_string(),
         "g3" => "universal_mock_theta_g3".to_string(),
+        "l" => "legendre".to_string(),
         _ => name.to_string(),
     }
 }
@@ -4303,6 +4343,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "anames", "restart",
     // Pattern O: Jacobi Products
     "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
+    // Pattern P: Number theory
+    "floor", "legendre",
 ];
 
 /// All alias names for fuzzy matching.
@@ -4310,7 +4352,7 @@ const ALL_ALIAS_NAMES: &[&str] = &[
     "partition_count", "rankgf", "crankgf", "qphihyper", "qpsihyper",
     "qgauss", "proveid", "qzeil", "qzeilberger", "qpetkovsek",
     "qgosper", "findlincombo_modp", "findhom_modp", "findhomcombo_modp", "search_id",
-    "g2", "g3",
+    "g2", "g3", "L",
 ];
 
 /// Find function names similar to `unknown` using edit distance.
@@ -8296,5 +8338,120 @@ mod tests {
         } else {
             panic!("x should be restored to 99 after proc error");
         }
+    }
+
+    // --- floor() tests ---
+
+    #[test]
+    fn dispatch_floor_integer() {
+        let mut env = make_env();
+        let val = dispatch("floor", &[Value::Integer(QInt::from(7i64))], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(7i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_floor_rational_positive() {
+        let mut env = make_env();
+        let val = dispatch("floor", &[Value::Rational(QRat::from((7i64, 3i64)))], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(2i64)); // floor(7/3) = 2
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_floor_rational_negative() {
+        let mut env = make_env();
+        let val = dispatch("floor", &[Value::Rational(QRat::from((-7i64, 3i64)))], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(-3i64)); // floor(-7/3) = -3
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_floor_exact_integer_rational() {
+        let mut env = make_env();
+        let val = dispatch("floor", &[Value::Rational(QRat::from((6i64, 3i64)))], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(2i64)); // floor(6/3) = floor(2) = 2
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_floor_wrong_type() {
+        let mut env = make_env();
+        let fps = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, 20);
+        let result = dispatch("floor", &[Value::Series(fps)], &mut env);
+        assert!(result.is_err());
+    }
+
+    // --- legendre() tests ---
+
+    #[test]
+    fn dispatch_legendre_basic() {
+        let mut env = make_env();
+        let val = dispatch("legendre", &[
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(-1i64)); // legendre(2, 5) = -1
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_legendre_zero() {
+        let mut env = make_env();
+        let val = dispatch("legendre", &[
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(0i64)); // legendre(5, 5) = 0
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_legendre_one() {
+        let mut env = make_env();
+        let val = dispatch("legendre", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(7i64)),
+        ], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(1i64)); // legendre(1, 7) = 1
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_legendre_invalid_p() {
+        let mut env = make_env();
+        let result = dispatch("legendre", &[
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(4i64)),
+        ], &mut env);
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("odd prime"), "got: {}", msg);
+    }
+
+    #[test]
+    fn dispatch_legendre_alias_l() {
+        assert_eq!(resolve_alias("L"), "legendre".to_string());
     }
 }

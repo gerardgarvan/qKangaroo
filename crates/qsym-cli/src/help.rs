@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 89 functions + session commands.
+//! - [`general_help`]: grouped listing of all 91 functions + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 
 // ---------------------------------------------------------------------------
@@ -106,6 +106,10 @@ Identity Proving:
   q_petkovsek           - q-Petkovsek recurrence solver
   prove_nonterminating  - nonterminating identity proof (Python API only)
 
+Number Theory:
+  floor          - floor of a rational number
+  legendre       - Legendre symbol (m/p) for odd prime p
+
 Commands:
   help [function]   - show this help or help for a specific function
   set precision N   - set default truncation order (currently: 20)
@@ -134,7 +138,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 89 function help entries.
+/// All 91 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -798,6 +802,24 @@ const FUNC_HELP: &[FuncHelp] = &[
         example: "q> f := etaq(q, 1, 30): qs2jaccombo(f, q, 30)",
         example_output: "JAC(1,1)",
     },
+
+    // -----------------------------------------------------------------------
+    // Group 12: Number Theory (2)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "floor",
+        signature: "floor(x)",
+        description: "Compute the floor (greatest integer <= x) of a number.\n  For integers, returns the input unchanged. For rationals, returns the largest integer <= x.\n  Alias: none.",
+        example: "q> floor(-7/3)",
+        example_output: "-3",
+    },
+    FuncHelp {
+        name: "legendre",
+        signature: "legendre(m, p)",
+        description: "Compute the Legendre symbol (m/p) where p is an odd prime >= 3.\n  Returns -1, 0, or 1. Uses GMP's optimized algorithm.\n  Alias: L(m, p). Note: p is not checked for primality.",
+        example: "q> legendre(2, 5)",
+        example_output: "-1",
+    },
 ];
 
 /// Return per-function help for the given name, or `None` if unrecognized.
@@ -805,8 +827,12 @@ const FUNC_HELP: &[FuncHelp] = &[
 /// Canonical function names are matched directly. The alias `partition_count`
 /// redirects to `numbpart`.
 pub fn function_help(name: &str) -> Option<String> {
-    // Redirect partition_count to numbpart
-    let lookup = if name == "partition_count" { "numbpart" } else { name };
+    // Redirect aliases to canonical names
+    let lookup = match name {
+        "partition_count" => "numbpart",
+        "L" => "legendre",
+        _ => name,
+    };
     FUNC_HELP.iter().find(|h| h.name == lookup).map(|h| {
         format!(
             "{}\n\n  {}\n\n  Example:\n    {}\n    {}",
@@ -836,6 +862,7 @@ mod tests {
             "Hypergeometric:",
             "Mock Theta & Bailey:",
             "Identity Proving:",
+            "Number Theory:",
         ] {
             assert!(
                 text.contains(category),
@@ -962,8 +989,9 @@ mod tests {
             "q_gosper", "q_zeilberger", "verify_wz", "q_petkovsek",
             "prove_nonterminating",
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
+            "floor", "legendre",
         ];
-        assert_eq!(canonical.len(), 89, "test list should have 89 entries");
+        assert_eq!(canonical.len(), 91, "test list should have 91 entries");
 
         for name in &canonical {
             assert!(
@@ -978,8 +1006,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            89,
-            "FUNC_HELP should have exactly 89 entries, got {}",
+            91,
+            "FUNC_HELP should have exactly 91 entries, got {}",
             FUNC_HELP.len()
         );
     }
@@ -993,5 +1021,38 @@ mod tests {
             !text.contains("coming soon"),
             "help should not contain 'coming soon'"
         );
+    }
+
+    #[test]
+    fn general_help_contains_number_theory_category() {
+        let text = general_help();
+        assert!(text.contains("Number Theory:"), "general_help missing Number Theory category");
+        assert!(text.contains("floor"), "general_help missing floor");
+        assert!(text.contains("legendre"), "general_help missing legendre");
+    }
+
+    #[test]
+    fn function_help_floor_returns_some() {
+        let help = function_help("floor");
+        assert!(help.is_some(), "floor should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("floor"), "help should contain function name");
+        assert!(text.contains("greatest integer"), "help should contain description");
+    }
+
+    #[test]
+    fn function_help_legendre_returns_some() {
+        let help = function_help("legendre");
+        assert!(help.is_some(), "legendre should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("Legendre symbol"), "help should contain description");
+    }
+
+    #[test]
+    fn function_help_l_redirects_to_legendre() {
+        let help = function_help("L");
+        assert!(help.is_some(), "L should redirect to legendre");
+        let text = help.unwrap();
+        assert!(text.contains("Legendre symbol"), "help should show legendre content");
     }
 }
