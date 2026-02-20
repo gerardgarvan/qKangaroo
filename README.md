@@ -53,7 +53,7 @@ python check_install.py --dev    # + build-from-source checks
 
 ## Documentation
 
-The **[q-Kangaroo Reference Manual](q-kangaroo-manual.pdf)** covers all 81 functions with formal mathematical definitions, REPL examples, worked research workflows, and a complete Maple migration guide.
+The **[q-Kangaroo Reference Manual](q-kangaroo-manual.pdf)** covers all 89 functions with formal mathematical definitions, REPL examples, worked research workflows, and a complete Maple migration guide.
 
 ## Features
 

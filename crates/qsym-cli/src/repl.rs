@@ -15,7 +15,7 @@ use rustyline::{Context, Helper, Highlighter, Hinter};
 
 /// Line-editing helper with tab completion and bracket validation.
 ///
-/// - **Functions:** All 88 canonical function names auto-complete with `(`.
+/// - **Functions:** All 91 canonical function names auto-complete with `(`.
 /// - **Commands:** `help`, `quit`, `exit`, `clear`, `set` complete at line start.
 /// - **Variables:** User-defined names synced after each eval via
 ///   [`update_var_names`](ReplHelper::update_var_names).
@@ -49,7 +49,7 @@ impl ReplHelper {
         self.var_names = var_names;
     }
 
-    /// All 88 canonical function names -- must match eval.rs ALL_FUNCTION_NAMES
+    /// All 91 canonical function names -- must match eval.rs ALL_FUNCTION_NAMES
     /// exactly. NO Maple aliases.
     fn canonical_function_names() -> Vec<&'static str> {
         vec![
@@ -60,9 +60,10 @@ impl ReplHelper {
             "bounded_parts_gf", "rank_gf", "crank_gf",
             // Group 3: Theta (3)
             "theta2", "theta3", "theta4",
-            // Group 4: Analysis (9)
-            "sift", "qdegree", "lqdegree", "qfactor",
+            // Group 4: Analysis (12)
+            "sift", "qdegree", "lqdegree", "lqdegree0", "qfactor",
             "prodmake", "etamake", "jacprodmake", "mprodmake", "qetamake",
+            "checkmult", "checkprod",
             // Group 5: Relations (12)
             "findlincombo", "findhomcombo", "findnonhomcombo",
             "findlincombomodp", "findhomcombomodp",
@@ -209,15 +210,15 @@ impl Validator for ReplHelper {
 mod tests {
     use super::*;
 
-    /// The canonical function list must have exactly 83 entries,
+    /// The canonical function list must have exactly 91 entries,
     /// matching eval.rs ALL_FUNCTION_NAMES.
     #[test]
     fn canonical_function_count() {
         let names = ReplHelper::canonical_function_names();
         assert_eq!(
             names.len(),
-            88,
-            "expected 88 canonical function names, got {}",
+            91,
+            "expected 91 canonical function names, got {}",
             names.len()
         );
     }
