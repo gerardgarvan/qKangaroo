@@ -10,6 +10,7 @@
 //! - `truncation_order` is always tracked explicitly
 
 pub mod arithmetic;
+pub mod bivariate;
 pub mod display;
 pub mod generator;
 
