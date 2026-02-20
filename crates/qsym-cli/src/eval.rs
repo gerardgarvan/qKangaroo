@@ -3669,6 +3669,106 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Expression Operations (SERIES-01, SERIES-02)
+        // =================================================================
+
+        "series" => {
+            expect_args(name, args, 3)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            let order = extract_i64(name, args, 2)?;
+
+            if order <= 0 {
+                return Ok(Value::Series(FormalPowerSeries::zero(env.sym_q, 0)));
+            }
+
+            match &args[0] {
+                Value::Series(fps) => {
+                    let effective_order = order.min(fps.truncation_order());
+                    let new_coeffs: BTreeMap<i64, QRat> = fps.iter()
+                        .filter(|(&k, _)| k < effective_order)
+                        .map(|(&k, v)| (k, v.clone()))
+                        .collect();
+                    Ok(Value::Series(FormalPowerSeries::from_coeffs(
+                        fps.variable(), new_coeffs, effective_order
+                    )))
+                }
+                Value::JacobiProduct(factors) => {
+                    let fps = jacobi_product_to_fps(factors, env.sym_q, order);
+                    Ok(Value::Series(fps))
+                }
+                Value::Integer(n) => {
+                    let mut coeffs = BTreeMap::new();
+                    if !n.0.is_zero() {
+                        coeffs.insert(0, QRat::from(n.clone()));
+                    }
+                    Ok(Value::Series(FormalPowerSeries::from_coeffs(
+                        env.sym_q, coeffs, order
+                    )))
+                }
+                Value::Rational(r) => {
+                    let mut coeffs = BTreeMap::new();
+                    if !r.0.numer().is_zero() {
+                        coeffs.insert(0, r.clone());
+                    }
+                    Ok(Value::Series(FormalPowerSeries::from_coeffs(
+                        env.sym_q, coeffs, order
+                    )))
+                }
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "series, Jacobi product, integer, or rational",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "expand" => {
+            expect_args_range(name, args, 1, 3)?;
+
+            if args.len() == 1 {
+                match &args[0] {
+                    Value::Series(_) => Ok(args[0].clone()),
+                    Value::JacobiProduct(factors) => {
+                        let fps = jacobi_product_to_fps(factors, env.sym_q, env.default_order);
+                        Ok(Value::Series(fps))
+                    }
+                    Value::Integer(_) | Value::Rational(_) => Ok(args[0].clone()),
+                    other => Err(EvalError::ArgType {
+                        function: name.to_string(),
+                        arg_index: 0,
+                        expected: "series, Jacobi product, integer, or rational",
+                        got: other.type_name().to_string(),
+                    }),
+                }
+            } else if args.len() == 3 {
+                let _sym = extract_symbol_id(name, args, 1, env)?;
+                let order = extract_i64(name, args, 2)?;
+
+                match &args[0] {
+                    Value::Series(_) => Ok(args[0].clone()),
+                    Value::JacobiProduct(factors) => {
+                        let fps = jacobi_product_to_fps(factors, env.sym_q, order);
+                        Ok(Value::Series(fps))
+                    }
+                    other => Err(EvalError::ArgType {
+                        function: name.to_string(),
+                        arg_index: 0,
+                        expected: "series or Jacobi product",
+                        got: other.type_name().to_string(),
+                    }),
+                }
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1 or 3".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
+        }
+
+        // =================================================================
         // Number Theory (UTIL-01, UTIL-02)
         // =================================================================
 
@@ -4254,6 +4354,9 @@ fn get_signature(name: &str) -> String {
         "jac2prod" => "(JP, q, T) -- convert Jacobi product to explicit product form".to_string(),
         "jac2series" => "(JP, q, T) -- convert Jacobi product to q-series".to_string(),
         "qs2jaccombo" => "(f, q, T) -- decompose q-series into sum of Jacobi products".to_string(),
+        // Group Q: Expression operations
+        "series" => "(expr, q, T)".to_string(),
+        "expand" => "(expr) or (expr, q, T)".to_string(),
         // Group P: Number theory
         "floor" => "(x)".to_string(),
         "legendre" => "(m, p)".to_string(),
@@ -4343,6 +4446,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "anames", "restart",
     // Pattern O: Jacobi Products
     "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
+    // Pattern Q: Expression operations
+    "series", "expand",
     // Pattern P: Number theory
     "floor", "legendre",
 ];
@@ -8453,5 +8558,187 @@ mod tests {
     #[test]
     fn dispatch_legendre_alias_l() {
         assert_eq!(resolve_alias("L"), "legendre".to_string());
+    }
+
+    // --- series() tests ---
+
+    #[test]
+    fn dispatch_series_truncate_down() {
+        let mut env = make_env();
+        // Create (q;q)_inf to O(q^20)
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Infinity,
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let series_val = dispatch("aqprod", &args, &mut env).unwrap();
+        if let Value::Series(ref fps) = series_val {
+            assert_eq!(fps.truncation_order(), 20);
+        } else {
+            panic!("expected series");
+        }
+        // Now truncate to T=10
+        let trunc_args = vec![
+            series_val,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let result = dispatch("series", &trunc_args, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.truncation_order(), 10);
+            for (&k, _) in fps.iter() {
+                assert!(k < 10, "found coefficient at k={} >= 10", k);
+            }
+        } else {
+            panic!("expected series");
+        }
+    }
+
+    #[test]
+    fn dispatch_series_truncate_up_capped() {
+        let mut env = make_env();
+        // Create (q;q)_inf to O(q^10)
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Infinity,
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let series_val = dispatch("aqprod", &args, &mut env).unwrap();
+        // Try to truncate to T=100 -> should cap at 10
+        let trunc_args = vec![
+            series_val,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(100i64)),
+        ];
+        let result = dispatch("series", &trunc_args, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.truncation_order(), 10, "should be min(100, 10) = 10");
+        } else {
+            panic!("expected series");
+        }
+    }
+
+    #[test]
+    fn dispatch_series_jacobi_product() {
+        let mut env = make_env();
+        // Create JAC(1,5) * JAC(4,5)
+        let jac1 = dispatch("JAC", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        let jac4 = dispatch("JAC", &[
+            Value::Integer(QInt::from(4i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        // Multiply them
+        let product = eval_mul(jac1, jac4, &mut env).unwrap();
+        assert!(matches!(product, Value::JacobiProduct(_)));
+        // Call series on JacobiProduct
+        let args = vec![
+            product,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(15i64)),
+        ];
+        let result = dispatch("series", &args, &mut env).unwrap();
+        assert!(matches!(result, Value::Series(_)));
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.truncation_order(), 15);
+        }
+    }
+
+    #[test]
+    fn dispatch_series_integer() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(3i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let result = dispatch("series", &args, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.truncation_order(), 10);
+            // Should have constant term 3
+            let coeff0 = fps.iter().find(|(&k, _)| k == 0);
+            assert!(coeff0.is_some(), "should have constant term");
+            let (_, val) = coeff0.unwrap();
+            assert_eq!(*val, QRat::from((3i64, 1i64)));
+        } else {
+            panic!("expected series");
+        }
+    }
+
+    // --- expand() tests ---
+
+    #[test]
+    fn dispatch_expand_series_identity() {
+        let mut env = make_env();
+        // Create a series
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Infinity,
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let series_val = dispatch("aqprod", &args, &mut env).unwrap();
+        let expand_result = dispatch("expand", &[series_val.clone()], &mut env).unwrap();
+        // Should return same series
+        assert!(matches!(expand_result, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_expand_jacobi_product() {
+        let mut env = make_env();
+        let jac1 = dispatch("JAC", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        let jac4 = dispatch("JAC", &[
+            Value::Integer(QInt::from(4i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        let product = eval_mul(jac1, jac4, &mut env).unwrap();
+        let result = dispatch("expand", &[product], &mut env).unwrap();
+        assert!(matches!(result, Value::Series(_)));
+    }
+
+    #[test]
+    fn dispatch_expand_integer_identity() {
+        let mut env = make_env();
+        let result = dispatch("expand", &[Value::Integer(QInt::from(3i64))], &mut env).unwrap();
+        assert!(matches!(result, Value::Integer(_)));
+        if let Value::Integer(n) = result {
+            assert_eq!(n, QInt::from(3i64));
+        }
+    }
+
+    #[test]
+    fn dispatch_expand_3arg_jacobi() {
+        let mut env = make_env();
+        let jac1 = dispatch("JAC", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        let args = vec![
+            jac1,
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(15i64)),
+        ];
+        let result = dispatch("expand", &args, &mut env).unwrap();
+        assert!(matches!(result, Value::Series(_)));
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.truncation_order(), 15);
+        }
+    }
+
+    #[test]
+    fn dispatch_expand_wrong_type() {
+        let mut env = make_env();
+        let result = dispatch("expand", &[Value::Bool(true)], &mut env);
+        assert!(result.is_err());
     }
 }

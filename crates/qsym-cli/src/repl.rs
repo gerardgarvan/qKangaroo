@@ -92,6 +92,8 @@ impl ReplHelper {
             "anames", "restart",
             // Group 10: Jacobi Products (5)
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
+            // Group Q: Expression Operations (2)
+            "series", "expand",
             // Group P: Number Theory (2)
             "floor", "legendre",
         ]
@@ -282,8 +284,8 @@ mod tests {
         let names = ReplHelper::canonical_function_names();
         assert_eq!(
             names.len(),
-            93,
-            "expected 93 canonical function names, got {}",
+            95,
+            "expected 95 canonical function names, got {}",
             names.len()
         );
     }
