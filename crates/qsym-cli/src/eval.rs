@@ -14,6 +14,7 @@ use qsym_core::number::{QInt, QRat};
 use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
 use qsym_core::qseries::{HypergeometricSeries, BilateralHypergeometricSeries};
 use qsym_core::series::arithmetic;
+use qsym_core::series::bivariate::{self as bv, BivariateSeries};
 use qsym_core::series::FormalPowerSeries;
 use qsym_core::symbol::SymbolId;
 
@@ -86,6 +87,8 @@ pub enum Value {
     JacobiProduct(Vec<(i64, i64, i64)>),
     /// User-defined procedure.
     Procedure(Procedure),
+    /// Bivariate series: Laurent polynomial in outer variable with FPS coefficients.
+    BivariateSeries(BivariateSeries),
 }
 
 impl Value {
@@ -105,6 +108,7 @@ impl Value {
             Value::Symbol(_) => "symbol",
             Value::JacobiProduct(_) => "jacobi_product",
             Value::Procedure(_) => "procedure",
+            Value::BivariateSeries(_) => "bivariate_series",
         }
     }
 }
@@ -1527,6 +1531,7 @@ fn eval_negate(val: Value, env: &mut Environment) -> Result<Value, EvalError> {
             let fps = symbol_to_series(&name, env);
             Ok(Value::Series(arithmetic::negate(&fps)))
         }
+        Value::BivariateSeries(bs) => Ok(Value::BivariateSeries(bv::bivariate_negate(&bs))),
         other => Err(EvalError::TypeError {
             operation: "unary -".to_string(),
             left: other.type_name().to_string(),
@@ -1648,6 +1653,32 @@ fn eval_add(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                 })
             }
         }
+        // BivariateSeries + BivariateSeries
+        (Value::BivariateSeries(a), Value::BivariateSeries(b)) => {
+            Ok(Value::BivariateSeries(bv::bivariate_add(a, b)))
+        }
+        // BivariateSeries + scalar
+        (Value::BivariateSeries(bs), _) if value_to_qrat(&right).is_some() => {
+            let s = value_to_qrat(&right).unwrap();
+            let const_fps = FormalPowerSeries::monomial(bs.inner_variable, s, 0, bs.truncation_order);
+            let rhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, const_fps);
+            Ok(Value::BivariateSeries(bv::bivariate_add(bs, &rhs)))
+        }
+        (_, Value::BivariateSeries(bs)) if value_to_qrat(&left).is_some() => {
+            let s = value_to_qrat(&left).unwrap();
+            let const_fps = FormalPowerSeries::monomial(bs.inner_variable, s, 0, bs.truncation_order);
+            let lhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, const_fps);
+            Ok(Value::BivariateSeries(bv::bivariate_add(&lhs, bs)))
+        }
+        // BivariateSeries + Series
+        (Value::BivariateSeries(bs), Value::Series(fps)) => {
+            let rhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, fps.clone());
+            Ok(Value::BivariateSeries(bv::bivariate_add(bs, &rhs)))
+        }
+        (Value::Series(fps), Value::BivariateSeries(bs)) => {
+            let lhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, fps.clone());
+            Ok(Value::BivariateSeries(bv::bivariate_add(&lhs, bs)))
+        }
         // JacobiProduct in add -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
             Err(EvalError::Other(format!(
@@ -1705,6 +1736,32 @@ fn eval_sub(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                     right: right.type_name().to_string(),
                 })
             }
+        }
+        // BivariateSeries - BivariateSeries
+        (Value::BivariateSeries(a), Value::BivariateSeries(b)) => {
+            Ok(Value::BivariateSeries(bv::bivariate_sub(a, b)))
+        }
+        // BivariateSeries - scalar
+        (Value::BivariateSeries(bs), _) if value_to_qrat(&right).is_some() => {
+            let s = value_to_qrat(&right).unwrap();
+            let const_fps = FormalPowerSeries::monomial(bs.inner_variable, s, 0, bs.truncation_order);
+            let rhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, const_fps);
+            Ok(Value::BivariateSeries(bv::bivariate_sub(bs, &rhs)))
+        }
+        (_, Value::BivariateSeries(bs)) if value_to_qrat(&left).is_some() => {
+            let s = value_to_qrat(&left).unwrap();
+            let const_fps = FormalPowerSeries::monomial(bs.inner_variable, s, 0, bs.truncation_order);
+            let lhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, const_fps);
+            Ok(Value::BivariateSeries(bv::bivariate_sub(&lhs, bs)))
+        }
+        // BivariateSeries - Series
+        (Value::BivariateSeries(bs), Value::Series(fps)) => {
+            let rhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, fps.clone());
+            Ok(Value::BivariateSeries(bv::bivariate_sub(bs, &rhs)))
+        }
+        (Value::Series(fps), Value::BivariateSeries(bs)) => {
+            let lhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, fps.clone());
+            Ok(Value::BivariateSeries(bv::bivariate_sub(&lhs, bs)))
         }
         // JacobiProduct in sub -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
@@ -1764,6 +1821,26 @@ fn eval_mul(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                     right: right.type_name().to_string(),
                 })
             }
+        }
+        // BivariateSeries * BivariateSeries
+        (Value::BivariateSeries(a), Value::BivariateSeries(b)) => {
+            Ok(Value::BivariateSeries(bv::bivariate_mul(a, b)))
+        }
+        // BivariateSeries * scalar
+        (Value::BivariateSeries(bs), _) if value_to_qrat(&right).is_some() => {
+            let s = value_to_qrat(&right).unwrap();
+            Ok(Value::BivariateSeries(bv::bivariate_scalar_mul(&s, bs)))
+        }
+        (_, Value::BivariateSeries(bs)) if value_to_qrat(&left).is_some() => {
+            let s = value_to_qrat(&left).unwrap();
+            Ok(Value::BivariateSeries(bv::bivariate_scalar_mul(&s, bs)))
+        }
+        // BivariateSeries * Series
+        (Value::BivariateSeries(bs), Value::Series(fps)) => {
+            Ok(Value::BivariateSeries(bv::bivariate_fps_mul(fps, bs)))
+        }
+        (Value::Series(fps), Value::BivariateSeries(bs)) => {
+            Ok(Value::BivariateSeries(bv::bivariate_fps_mul(fps, bs)))
         }
         // JacobiProduct * JacobiProduct
         (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
@@ -9199,6 +9276,78 @@ mod tests {
             assert_eq!(fps.coeff(1), QRat::one());
         } else {
             panic!("expected Series unchanged, got {:?}", result);
+        }
+    }
+
+    // --- BivariateSeries arithmetic tests ---
+
+    fn make_test_bivariate(env: &mut Environment) -> Value {
+        use qsym_core::series::bivariate::BivariateSeries;
+        let sym_q = env.symbols.intern("q");
+        // q*z + O(q^10)
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 1, 10);
+        let bs = BivariateSeries::from_single_term("z".to_string(), 1, fps);
+        Value::BivariateSeries(bs)
+    }
+
+    #[test]
+    fn eval_bivariate_type_name() {
+        let mut env = make_env();
+        let val = make_test_bivariate(&mut env);
+        assert_eq!(val.type_name(), "bivariate_series");
+    }
+
+    #[test]
+    fn eval_bivariate_negate() {
+        let mut env = make_env();
+        let val = make_test_bivariate(&mut env);
+        let neg = eval_negate(val, &mut env).unwrap();
+        if let Value::BivariateSeries(bs) = neg {
+            let z1 = bs.terms.get(&1).unwrap();
+            assert_eq!(z1.coeff(1), -QRat::one());
+        } else {
+            panic!("expected BivariateSeries, got {:?}", neg);
+        }
+    }
+
+    #[test]
+    fn eval_bivariate_add() {
+        let mut env = make_env();
+        let a = make_test_bivariate(&mut env);
+        let b = make_test_bivariate(&mut env);
+        let sum = eval_add(a, b, &mut env).unwrap();
+        if let Value::BivariateSeries(bs) = sum {
+            let z1 = bs.terms.get(&1).unwrap();
+            assert_eq!(z1.coeff(1), QRat::from((2i64, 1i64)));
+        } else {
+            panic!("expected BivariateSeries, got {:?}", sum);
+        }
+    }
+
+    #[test]
+    fn eval_bivariate_mul_scalar() {
+        let mut env = make_env();
+        let bv = make_test_bivariate(&mut env);
+        let three = Value::Integer(QInt::from(3i64));
+        let result = eval_mul(bv, three, &mut env).unwrap();
+        if let Value::BivariateSeries(bs) = result {
+            let z1 = bs.terms.get(&1).unwrap();
+            assert_eq!(z1.coeff(1), QRat::from((3i64, 1i64)));
+        } else {
+            panic!("expected BivariateSeries, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_bivariate_sub() {
+        let mut env = make_env();
+        let a = make_test_bivariate(&mut env);
+        let b = make_test_bivariate(&mut env);
+        let diff = eval_sub(a, b, &mut env).unwrap();
+        if let Value::BivariateSeries(bs) = diff {
+            assert!(bs.is_zero(), "expected zero after subtracting identical series");
+        } else {
+            panic!("expected BivariateSeries, got {:?}", diff);
         }
     }
 }

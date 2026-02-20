@@ -11,6 +11,7 @@ use std::cmp::Ordering;
 use std::fmt::Write;
 
 use qsym_core::number::QRat;
+use qsym_core::series::bivariate::BivariateSeries;
 use qsym_core::series::FormalPowerSeries;
 use qsym_core::symbol::SymbolRegistry;
 
@@ -43,6 +44,7 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Infinity => "infinity".to_string(),
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product(factors),
+        Value::BivariateSeries(bs) => format_bivariate(bs, symbols),
         Value::Procedure(proc) => {
             let params = proc.params.join(", ");
             format!("proc({}) ... end proc", params)
@@ -126,7 +128,7 @@ fn format_dict(entries: &[(String, Value)], symbols: &SymbolRegistry) -> String 
 ///
 /// Polynomials (with `POLYNOMIAL_ORDER` sentinel) display without `O(...)`.
 /// Truncated series display with `O(var^N)`.
-fn format_series(fps: &FormalPowerSeries, symbols: &SymbolRegistry) -> String {
+pub(crate) fn format_series(fps: &FormalPowerSeries, symbols: &SymbolRegistry) -> String {
     let var = symbols.name(fps.variable());
     let trunc = fps.truncation_order();
     let is_polynomial = trunc >= POLYNOMIAL_ORDER;
@@ -200,6 +202,211 @@ fn format_series(fps: &FormalPowerSeries, symbols: &SymbolRegistry) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// Bivariate series formatting
+// ---------------------------------------------------------------------------
+
+/// Format a `BivariateSeries` as a human-readable string.
+///
+/// Output looks like: `(q + q^2)*z + (1 - q)*z^(-1) + O(q^10)`
+/// Single-term FPS coefficients are displayed inline without parentheses.
+fn format_bivariate(bs: &BivariateSeries, symbols: &SymbolRegistry) -> String {
+    let var = &bs.outer_variable;
+    let inner_var = symbols.name(bs.inner_variable);
+    let trunc = bs.truncation_order;
+    let is_polynomial = trunc >= POLYNOMIAL_ORDER;
+    let mut out = String::new();
+    let mut first = true;
+
+    // Iterate in descending z-exponent order
+    for (&z_exp, fps) in bs.terms.iter().rev() {
+        if fps.is_zero() {
+            continue;
+        }
+        let fps_str = format_series(fps, symbols);
+        let is_multiterm = fps.num_nonzero() > 1;
+
+        if z_exp == 0 {
+            // z^0 term: just the FPS string
+            if first {
+                out.push_str(&fps_str);
+            } else {
+                // fps_str might start with '-', handle sign
+                if fps_str.starts_with('-') {
+                    let _ = write!(out, " - {}", &fps_str[1..]);
+                } else {
+                    let _ = write!(out, " + {}", fps_str);
+                }
+            }
+        } else {
+            let z_part = format_z_power(var, z_exp);
+            if is_multiterm {
+                // Strip O(...) from fps_str for coefficient display
+                let coeff_str = strip_truncation(&fps_str);
+                if first {
+                    let _ = write!(out, "({})*{}", coeff_str, z_part);
+                } else {
+                    let _ = write!(out, " + ({})*{}", coeff_str, z_part);
+                }
+            } else {
+                // Single-term FPS: inline coefficient*z^k
+                let coeff_str = strip_truncation(&fps_str);
+                if first {
+                    if coeff_str == "1" {
+                        out.push_str(&z_part);
+                    } else if coeff_str == "-1" {
+                        let _ = write!(out, "-{}", z_part);
+                    } else {
+                        let _ = write!(out, "{}*{}", coeff_str, z_part);
+                    }
+                } else {
+                    if coeff_str == "1" {
+                        let _ = write!(out, " + {}", z_part);
+                    } else if coeff_str == "-1" {
+                        let _ = write!(out, " - {}", z_part);
+                    } else if coeff_str.starts_with('-') {
+                        let _ = write!(out, " - {}*{}", &coeff_str[1..], z_part);
+                    } else {
+                        let _ = write!(out, " + {}*{}", coeff_str, z_part);
+                    }
+                }
+            }
+        }
+        first = false;
+    }
+
+    // Append truncation order
+    if !is_polynomial {
+        if first {
+            let _ = write!(out, "O({}^{})", inner_var, trunc);
+        } else {
+            let _ = write!(out, " + O({}^{})", inner_var, trunc);
+        }
+    } else if first {
+        out.push('0');
+    }
+
+    out
+}
+
+/// Format the z-power part for display.
+fn format_z_power(var: &str, z_exp: i64) -> String {
+    match z_exp {
+        0 => String::new(),
+        1 => var.to_string(),
+        -1 => format!("{}^(-1)", var),
+        e if e > 1 => format!("{}^{}", var, e),
+        e => format!("{}^({})", var, e),
+    }
+}
+
+/// Strip the trailing ` + O(...)` from an FPS string for coefficient display.
+fn strip_truncation(s: &str) -> String {
+    if let Some(pos) = s.rfind(" + O(") {
+        s[..pos].to_string()
+    } else if s.starts_with("O(") {
+        // Zero series with only truncation marker
+        "0".to_string()
+    } else {
+        s.to_string()
+    }
+}
+
+/// Format a `BivariateSeries` as LaTeX.
+fn format_bivariate_latex(bs: &BivariateSeries, symbols: &SymbolRegistry) -> String {
+    let var = &bs.outer_variable;
+    let inner_var = symbols.name(bs.inner_variable);
+    let trunc = bs.truncation_order;
+    let is_polynomial = trunc >= POLYNOMIAL_ORDER;
+    let mut out = String::new();
+    let mut first = true;
+
+    for (&z_exp, fps) in bs.terms.iter().rev() {
+        if fps.is_zero() {
+            continue;
+        }
+        let fps_latex = fps_to_latex_inner(fps, symbols);
+        let is_multiterm = fps.num_nonzero() > 1;
+
+        if z_exp == 0 {
+            if first {
+                out.push_str(&fps_latex);
+            } else if fps_latex.starts_with('-') {
+                let _ = write!(out, " - {}", &fps_latex[1..]);
+            } else {
+                let _ = write!(out, " + {}", fps_latex);
+            }
+        } else {
+            let z_part = format_z_power_latex(var, z_exp);
+            if is_multiterm {
+                if first {
+                    let _ = write!(out, "\\left({}\\right){}", fps_latex, z_part);
+                } else {
+                    let _ = write!(out, " + \\left({}\\right){}", fps_latex, z_part);
+                }
+            } else {
+                if first {
+                    if fps_latex == "1" {
+                        out.push_str(&z_part);
+                    } else if fps_latex == "-1" {
+                        let _ = write!(out, "-{}", z_part);
+                    } else {
+                        let _ = write!(out, "{} {}", fps_latex, z_part);
+                    }
+                } else {
+                    if fps_latex == "1" {
+                        let _ = write!(out, " + {}", z_part);
+                    } else if fps_latex == "-1" {
+                        let _ = write!(out, " - {}", z_part);
+                    } else if fps_latex.starts_with('-') {
+                        let _ = write!(out, " - {} {}", &fps_latex[1..], z_part);
+                    } else {
+                        let _ = write!(out, " + {} {}", fps_latex, z_part);
+                    }
+                }
+            }
+        }
+        first = false;
+    }
+
+    if !is_polynomial {
+        if first {
+            let _ = write!(out, "O({}^{{{}}})", inner_var, trunc);
+        } else {
+            let _ = write!(out, " + O({}^{{{}}})", inner_var, trunc);
+        }
+    } else if first {
+        out.push('0');
+    }
+
+    out
+}
+
+/// Format z^k in LaTeX.
+fn format_z_power_latex(var: &str, z_exp: i64) -> String {
+    match z_exp {
+        0 => String::new(),
+        1 => var.to_string(),
+        e => format!("{}^{{{}}}", var, e),
+    }
+}
+
+/// Convert a FPS to LaTeX (for bivariate coefficient display, without O(...)).
+fn fps_to_latex_inner(fps: &FormalPowerSeries, symbols: &SymbolRegistry) -> String {
+    let var = symbols.name(fps.variable());
+    let terms: Vec<(&i64, &QRat)> = fps.iter().rev().collect();
+
+    if terms.is_empty() {
+        return "0".to_string();
+    }
+
+    let mut result = String::new();
+    for (i, (k, c)) in terms.iter().enumerate() {
+        latex_term(&mut result, i == 0, **k, c, var);
+    }
+    result
+}
+
+// ---------------------------------------------------------------------------
 // LaTeX formatting
 // ---------------------------------------------------------------------------
 
@@ -260,6 +467,7 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Infinity => "\\infty".to_string(),
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product_latex(factors),
+        Value::BivariateSeries(bs) => format_bivariate_latex(bs, symbols),
         Value::Procedure(proc) => {
             format!("\\text{{proc}}({})", proc.params.join(", "))
         }
@@ -688,5 +896,84 @@ mod tests {
         let val = Value::JacobiProduct(vec![(1, 5, 1), (2, 5, 2)]);
         let result = format_latex(&val, &reg);
         assert_eq!(result, "(q^{1};q^{5})_{\\infty} \\cdot (q^{2};q^{5})_{\\infty}^{2}");
+    }
+
+    // -- BivariateSeries format tests ------------------------------------------
+
+    fn make_bivariate_two_terms() -> (SymbolRegistry, Value) {
+        use qsym_core::series::bivariate::BivariateSeries;
+        use std::collections::BTreeMap;
+
+        let mut reg = SymbolRegistry::new();
+        let sym_q = reg.intern("q");
+        // z^1 -> q, z^{-1} -> q  (two Laurent terms)
+        let mut terms = BTreeMap::new();
+        terms.insert(1, FormalPowerSeries::monomial(sym_q, QRat::one(), 1, 10));
+        terms.insert(-1, FormalPowerSeries::monomial(sym_q, QRat::one(), 1, 10));
+        let bs = BivariateSeries {
+            outer_variable: "z".to_string(),
+            terms,
+            inner_variable: sym_q,
+            truncation_order: 10,
+        };
+        (reg, Value::BivariateSeries(bs))
+    }
+
+    #[test]
+    fn format_bivariate_two_terms() {
+        let (reg, val) = make_bivariate_two_terms();
+        let result = format_value(&val, &reg);
+        // z^1 -> q*z, z^{-1} -> q*z^(-1)
+        assert!(result.contains("q*z"), "expected 'q*z' in: {}", result);
+        assert!(result.contains("z^(-1)"), "expected 'z^(-1)' in: {}", result);
+        assert!(result.contains("O(q^10)"), "expected 'O(q^10)' in: {}", result);
+    }
+
+    #[test]
+    fn format_bivariate_zero() {
+        use qsym_core::series::bivariate::BivariateSeries;
+
+        let mut reg = SymbolRegistry::new();
+        let sym_q = reg.intern("q");
+        let bs = BivariateSeries::zero("z".to_string(), sym_q, 10);
+        let val = Value::BivariateSeries(bs);
+        let result = format_value(&val, &reg);
+        assert_eq!(result, "O(q^10)");
+    }
+
+    #[test]
+    fn format_bivariate_latex_two_terms() {
+        let (reg, val) = make_bivariate_two_terms();
+        let result = format_latex(&val, &reg);
+        assert!(result.contains("q"), "expected 'q' in: {}", result);
+        assert!(result.contains("z"), "expected 'z' in: {}", result);
+        assert!(result.contains("O(q^{10})"), "expected 'O(q^{{10}})' in: {}", result);
+    }
+
+    #[test]
+    fn format_bivariate_multiterm_coefficient() {
+        use qsym_core::series::bivariate::BivariateSeries;
+        use std::collections::BTreeMap;
+
+        let mut reg = SymbolRegistry::new();
+        let sym_q = reg.intern("q");
+        // z^1 -> (q + q^2) -- multi-term FPS, should be parenthesized
+        let mut coeffs = std::collections::BTreeMap::new();
+        coeffs.insert(1, QRat::one());
+        coeffs.insert(2, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, 10);
+        let mut terms = BTreeMap::new();
+        terms.insert(1, fps);
+        let bs = BivariateSeries {
+            outer_variable: "z".to_string(),
+            terms,
+            inner_variable: sym_q,
+            truncation_order: 10,
+        };
+        let val = Value::BivariateSeries(bs);
+        let result = format_value(&val, &reg);
+        // Multi-term coefficient should be parenthesized: (q^2 + q)*z
+        assert!(result.contains("("), "expected parenthesized coefficient in: {}", result);
+        assert!(result.contains(")*z"), "expected ')*z' in: {}", result);
     }
 }
