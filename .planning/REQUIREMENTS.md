@@ -49,10 +49,10 @@
 
 ## New Functions
 
-- [ ] **NEW-01**: `theta(z, q, T)` -- general theta function returning sum(z^i * q^(i^2), i=-T..T)
-- [ ] **NEW-02**: `jac2prod(JP, q, T)` -- convert Jacobi product expression to q-product form
-- [ ] **NEW-03**: `jac2series(JP, q, T)` -- convert Jacobi product expression to q-series
-- [ ] **NEW-04**: `qs2jaccombo(f, q, T)` -- convert sum of q-series to sum of jacprods
+- [x] **NEW-01**: `theta(z, q, T)` -- general theta function returning sum(z^i * q^(i^2), i=-T..T) with numeric, q-monomial, and symbol z handling
+- [x] **NEW-02**: `jac2prod(JP, q, T)` -- convert Jacobi product expression to explicit product notation, prints and returns FPS
+- [x] **NEW-03**: `jac2series(JP, q, T)` -- convert Jacobi product expression to q-series, prints and returns FPS
+- [x] **NEW-04**: `qs2jaccombo(f, q, T)` -- decompose q-series into linear combination of Jacobi products via jacprodmake + findlincombo
 - [ ] **NEW-05**: `checkmult(f, q, T)` -- check if q-series coefficients are multiplicative
 - [ ] **NEW-06**: `checkprod(f, q, T)` -- validate that q-series represents a well-formed product
 - [ ] **NEW-07**: `lqdegree0(f, q)` -- lowest degree in q (monomial version, distinct from lqdegree)
@@ -113,10 +113,10 @@
 | SIG-24 | Phase 36 | Complete |
 | SIG-25 | Phase 36 | Complete |
 | SIG-26 | Phase 34 | Complete |
-| NEW-01 | Phase 37 | Pending |
-| NEW-02 | Phase 37 | Pending |
-| NEW-03 | Phase 37 | Pending |
-| NEW-04 | Phase 37 | Pending |
+| NEW-01 | Phase 37 | Complete |
+| NEW-02 | Phase 37 | Complete |
+| NEW-03 | Phase 37 | Complete |
+| NEW-04 | Phase 37 | Complete |
 | NEW-05 | Phase 38 | Pending |
 | NEW-06 | Phase 38 | Pending |
 | NEW-07 | Phase 38 | Pending |
