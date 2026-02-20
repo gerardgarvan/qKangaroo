@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 39 in progress (plan 01 of 02 complete)
+**Current focus:** v2.0 Maple Compatibility -- Phase 39 complete, Phase 40 next
 
 ## Current Position
 
 Phase: 39 of 40 (Output Compatibility)
-Plan: 1 of 2 in current phase
-Status: Plan 39-01 complete, ready for 39-02
-Last activity: 2026-02-20 -- Plan 39-01 complete (descending power ordering)
+Plan: 2 of 2 in current phase (COMPLETE)
+Status: Phase 39 complete, ready for Phase 40
+Last activity: 2026-02-20 -- Plan 39-02 complete (backward compatibility tests)
 
-Progress: [#####################################         ] 109/? plans (v2.0 phases 33-40)
+Progress: [######################################        ] 110/? plans (v2.0 phases 33-40)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 109
-- Total phases: 38 complete (v1.0-v1.6 + Phases 33-38), 1 in progress (39), 1 planned (40)
+- Total plans completed: 110
+- Total phases: 39 complete (v1.0-v1.6 + Phases 33-39), 1 planned (40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8.5 hours
@@ -43,6 +43,7 @@ Progress: [#####################################         ] 109/? plans (v2.0 pha
 | 38-01 | Analysis/discovery dispatch (lqdegree0/checkmult/checkprod/findprod) | 6min | 2 | 1 |
 | 38-02 | Help text + integration tests | 3min | 2 | 2 |
 | 39-01 | Descending power ordering | 7min | 2 | 5 |
+| 39-02 | Backward compatibility tests | 5min | 2 | 1 |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 38-02: findprod description updated to 'search for product identities in series list'
 - 39-01: FormalPowerSeries::iter() returns impl DoubleEndedIterator to enable .rev()
 - 39-01: fps_to_latex() uses iter().rev().collect() to reverse terms Vec once
+- 39-02: winquist legacy is 7-arg (not 4-arg as plan stated) -- corrected test
+- 39-02: etaq has no 4-arg legacy form -- skipped backward_compat_etaq_legacy_4arg
+- 39-02: All backward_compat tests validate output correctness, not just exit code 0
 
 ### Pending Todos
 
@@ -120,5 +124,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 39-01-PLAN.md (descending power ordering)
-Resume file: .planning/phases/39-output-compatibility/39-02-PLAN.md
+Stopped at: Completed 39-02-PLAN.md (backward compatibility tests) -- Phase 39 complete
+Resume file: .planning/phases/40-testing-validation/ (next phase)
