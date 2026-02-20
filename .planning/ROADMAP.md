@@ -200,7 +200,10 @@ Plans:
   3. `checkprod(f, 10, 30)` returns [a, 1] for nice products (all exponents < 10) or [a, max_exp] otherwise, silently
   4. `lqdegree0(f)` returns the lowest q-degree of an FPS value
   5. `findprod([f1,f2,f3], 3, 10, 30)` searches for integer linear combinations with |coeff| <= 3 that yield nice products per checkprod, returns list of [valuation, coeff_vector] pairs silently
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 38-01-PLAN.md -- All 4 function dispatch arms (lqdegree0, checkmult, checkprod, findprod) + helpers + unit tests
+- [ ] 38-02-PLAN.md -- Help text for all 4 functions, general help listing, CLI integration tests
 
 ### Phase 39: Output & Compatibility
 **Goal**: Series display matches Maple conventions and all existing v1.x calling conventions still work as aliases
