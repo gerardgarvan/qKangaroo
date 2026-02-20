@@ -44,6 +44,7 @@ Progress: [########################################      ] 114/115 plans (v2.0 p
 | 38-02 | Help text + integration tests | 3min | 2 | 2 |
 | 39-01 | Descending power ordering | 7min | 2 | 5 |
 | 39-02 | Backward compatibility tests | 5min | 2 | 1 |
+| 40-03 | Peripheral doc fixes (counts, tab completion, README) | 3min | 2 | 7 |
 | 40-04 | Maple migration guide rewrite | 2min | 1 | 1 |
 
 ## Accumulated Context
@@ -113,6 +114,9 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 39-02: winquist legacy is 7-arg (not 4-arg as plan stated) -- corrected test
 - 39-02: etaq has no 4-arg legacy form -- skipped backward_compat_etaq_legacy_4arg
 - 39-02: All backward_compat tests validate output correctness, not just exit code 0
+- 40-03: Chapter 04 function listing expanded from 8 groups to 9 (added Jacobi Products) with full enumeration
+- 40-03: DOC-02 confirmed: help.rs already fully updated with 89 Garvan-canonical entries
+- 40-03: DOC-04 confirmed: Python API uses own calling conventions, unaffected by v2.0 changes
 - 40-04: Migration guide organized by workflow (eta products, series analysis, congruences, relations, theta/Jacobi, products) not alphabetically
 - 40-04: Two-column tables confirm identical syntax rather than only listing differences
 - 40-04: Hypergeometric triple encoding identified as main remaining divergence area
