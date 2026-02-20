@@ -44,6 +44,7 @@ Progress: [########################################      ] 114/115 plans (v2.0 p
 | 38-02 | Help text + integration tests | 3min | 2 | 2 |
 | 39-01 | Descending power ordering | 7min | 2 | 5 |
 | 39-02 | Backward compatibility tests | 5min | 2 | 1 |
+| 40-01 | Manual chapters 05-07 Garvan signatures | 6min | 2 | 3 |
 | 40-03 | Peripheral doc fixes (counts, tab completion, README) | 3min | 2 | 7 |
 | 40-02 | Series Analysis & Relations manual chapters | 4min | 2 | 2 |
 | 40-04 | Maple migration guide rewrite | 2min | 1 | 1 |
@@ -115,6 +116,9 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 39-02: winquist legacy is 7-arg (not 4-arg as plan stated) -- corrected test
 - 39-02: etaq has no 4-arg legacy form -- skipped backward_compat_etaq_legacy_4arg
 - 39-02: All backward_compat tests validate output correctness, not just exit code 0
+- 40-01: Chapter 05 has 11 func-entry blocks (7 original + 4 Jacobi); theta placed in ch07 per domain
+- 40-01: Garvan cross-references added to chapter intro and aqprod description per CONTEXT.md
+- 40-01: General theta entry placed before theta2/3/4 specializations in chapter 07
 - 40-02: All legacy manual signatures replaced entirely -- no dual-signature documentation entries
 - 40-02: New functions lqdegree0/checkmult/checkprod placed after qetamake in chapter 08
 - 40-02: findcong entry shows all 3 overloaded forms with [B, A, R] output format
@@ -138,5 +142,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 40-02-PLAN.md (Series Analysis & Relations chapters)
+Stopped at: Completed 40-01-PLAN.md (Manual chapters 05-07 Garvan signatures)
 Resume file: .planning/phases/40-documentation/
