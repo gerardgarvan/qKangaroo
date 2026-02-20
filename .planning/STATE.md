@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 40 complete
+**Current focus:** v2.0 Maple Compatibility -- SHIPPED 2026-02-20
 
 ## Current Position
 
 Phase: 40 of 40 (Documentation)
 Plan: 5 of 5 in current phase (COMPLETE)
-Status: Phase 40 complete -- all 5 plans executed
-Last activity: 2026-02-20 -- Completed 40-05 (Worked examples Garvan rewrite)
+Status: Phase 40 complete -- all 5 plans executed + gap closure
+Last activity: 2026-02-20 -- v2.0 Maple Compatibility milestone complete
 
 Progress: [##########################################    ] 115/115 plans (v2.0 phases 33-40)
 
@@ -22,7 +22,7 @@ Progress: [##########################################    ] 115/115 plans (v2.0 p
 
 - Total plans completed: 115
 - Total phases: 40 complete (v1.0-v1.6 + Phases 33-40)
-- Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
+- Total milestones: 8 complete (v1.0-v1.6, v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8.5 hours
 
@@ -147,5 +147,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 40-05-PLAN.md (Worked examples Garvan rewrite) -- Phase 40 complete
-Resume file: .planning/phases/40-documentation/
+Stopped at: v2.0 Maple Compatibility milestone shipped
+Resume file: N/A -- all milestones complete

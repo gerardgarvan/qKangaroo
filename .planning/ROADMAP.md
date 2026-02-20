@@ -9,7 +9,7 @@
 - v1.4 Installation & Build Guide - Phases 22-23 (shipped 2026-02-17)
 - v1.5 Interactive REPL - Phases 24-28 (shipped 2026-02-18)
 - v1.6 CLI Hardening & Manual - Phases 29-32 (shipped 2026-02-18)
-- v2.0 Maple Compatibility - Phases 33-40 (in progress)
+- v2.0 Maple Compatibility - Phases 33-40 (shipped 2026-02-20)
 
 ## Phases
 
@@ -112,7 +112,7 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 - [x] **Phase 37: New Functions - Theta & Jacobi** - theta, jac2prod, jac2series, qs2jaccombo implemented -- 2026-02-19
 - [x] **Phase 38: New Functions - Analysis & Discovery** - checkmult, checkprod, lqdegree0, findprod implemented (zqfactor deferred) -- 2026-02-19
 - [x] **Phase 39: Output & Compatibility** - Maple-style display, backward compat verified, all tests green -- 2026-02-19
-- [ ] **Phase 40: Documentation** - Manual, help, tab completion, migration guide all updated
+- [x] **Phase 40: Documentation** - Manual, help, tab completion, migration guide all updated -- 2026-02-20
 
 ## Phase Details
 
@@ -230,11 +230,11 @@ Plans:
   5. Python API docstrings and README quick-start reflect any signature changes
 **Plans:** 5 plans
 Plans:
-- [ ] 40-01-PLAN.md -- Products (ch05), Partitions (ch06), Theta (ch07) Garvan signature overhaul + 5 new entries
-- [ ] 40-02-PLAN.md -- Series Analysis (ch08), Relations (ch09) Garvan signature overhaul + 3 new entries
-- [ ] 40-03-PLAN.md -- Function count fixes (ch00-04, ch02), numbpart rename, tab completion fix, README, help/Python verification
-- [ ] 40-04-PLAN.md -- Migration guide (ch14) complete workflow-oriented rewrite
-- [ ] 40-05-PLAN.md -- Worked examples (ch13) rewrite with Garvan-canonical signatures and descending output order
+- [x] 40-01-PLAN.md -- Products (ch05), Partitions (ch06), Theta (ch07) Garvan signature overhaul + 5 new entries
+- [x] 40-02-PLAN.md -- Series Analysis (ch08), Relations (ch09) Garvan signature overhaul + 3 new entries
+- [x] 40-03-PLAN.md -- Function count fixes (ch00-04, ch02), numbpart rename, tab completion fix, README, help/Python verification
+- [x] 40-04-PLAN.md -- Migration guide (ch14) complete workflow-oriented rewrite
+- [x] 40-05-PLAN.md -- Worked examples (ch13) rewrite with Garvan-canonical signatures and descending output order
 
 ## Progress
 
@@ -279,4 +279,4 @@ Plans:
 | 37. New Functions - Theta & Jacobi | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 38. New Functions - Analysis & Discovery | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 39. Output & Compatibility | v2.0 | 2/2 | Complete | 2026-02-19 |
-| 40. Documentation | v2.0 | 0/5 | Not started | - |
+| 40. Documentation | v2.0 | 5/5 | Complete | 2026-02-20 |
