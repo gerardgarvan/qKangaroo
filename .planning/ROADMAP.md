@@ -155,7 +155,10 @@ Plans:
   3. User can add `option remember` to a procedure and observe that repeated calls with the same arguments return cached results
   4. For-loops evaluate correctly: `for n from 1 to 5 do n^2 od` iterates with the loop variable properly scoped
   5. If/elif/else/fi conditionals evaluate correctly: only the matching branch executes, boolean operators short-circuit
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 42-01-PLAN.md -- Control flow evaluation (compare, bool, for, if) and RETURN/EarlyReturn support
+- [ ] 42-02-PLAN.md -- Procedure parsing, definition, calling, local scoping, memoization, format, and REPL multiline
 
 ### Phase 43: Expression Operations
 **Goal**: Users can truncate series, expand products, use runtime arithmetic in q-exponents, and compute floor/legendre
@@ -248,7 +251,7 @@ Phases execute in numeric order: 41 -> 42 -> 43 -> 44 -> 45 -> 46
 | 39. Output & Compatibility | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 40. Documentation | v2.0 | 5/5 | Complete | 2026-02-20 |
 | 41. Control Flow Parsing | v3.0 | 0/2 | Not started | - |
-| 42. Procedures & Evaluation | v3.0 | 0/TBD | Not started | - |
+| 42. Procedures & Evaluation | v3.0 | 0/2 | Not started | - |
 | 43. Expression Operations | v3.0 | 0/TBD | Not started | - |
 | 44. Polynomial Operations | v3.0 | 0/TBD | Not started | - |
 | 45. Bivariate Series | v3.0 | 0/TBD | Not started | - |
