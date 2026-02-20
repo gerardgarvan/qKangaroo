@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 40 of 40 (Documentation)
-Plan: 0 of 5 in current phase (PLANNED)
-Status: Phase 40 planned (5 plans, 1 wave), ready for execution
-Last activity: 2026-02-20 -- Phase 40 plans created and verified
+Plan: 4 of 5 in current phase (EXECUTING)
+Status: Phase 40 executing -- plans 01-04 complete
+Last activity: 2026-02-20 -- Completed 40-04 (Maple Migration Guide)
 
-Progress: [######################################        ] 110/? plans (v2.0 phases 33-40)
+Progress: [########################################      ] 114/115 plans (v2.0 phases 33-40)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 110
-- Total phases: 39 complete (v1.0-v1.6 + Phases 33-39), 1 planned (40)
+- Total plans completed: 114
+- Total phases: 39 complete (v1.0-v1.6 + Phases 33-39), 1 executing (40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8.5 hours
@@ -44,6 +44,7 @@ Progress: [######################################        ] 110/? plans (v2.0 pha
 | 38-02 | Help text + integration tests | 3min | 2 | 2 |
 | 39-01 | Descending power ordering | 7min | 2 | 5 |
 | 39-02 | Backward compatibility tests | 5min | 2 | 1 |
+| 40-04 | Maple migration guide rewrite | 2min | 1 | 1 |
 
 ## Accumulated Context
 
@@ -112,6 +113,9 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 39-02: winquist legacy is 7-arg (not 4-arg as plan stated) -- corrected test
 - 39-02: etaq has no 4-arg legacy form -- skipped backward_compat_etaq_legacy_4arg
 - 39-02: All backward_compat tests validate output correctness, not just exit code 0
+- 40-04: Migration guide organized by workflow (eta products, series analysis, congruences, relations, theta/Jacobi, products) not alphabetically
+- 40-04: Two-column tables confirm identical syntax rather than only listing differences
+- 40-04: Hypergeometric triple encoding identified as main remaining divergence area
 
 ### Pending Todos
 
@@ -124,5 +128,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 40 plans created and verified (5 plans, 1 wave)
+Stopped at: Completed 40-04-PLAN.md (Maple Migration Guide)
 Resume file: .planning/phases/40-documentation/
