@@ -5,26 +5,26 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 37 in progress (Plan 01 complete)
+**Current focus:** v2.0 Maple Compatibility -- Phase 37 complete, ready for Phase 38
 
 ## Current Position
 
-Phase: 37 of 40 (New Functions - Theta & Jacobi) -- IN PROGRESS
-Plan: 1 of 2 in current phase (37-01 complete)
-Status: Plan 37-01 complete, ready for Plan 37-02
-Last activity: 2026-02-19 -- Plan 37-01 complete (JacobiProduct type + theta/jac2prod/jac2series)
+Phase: 37 of 40 (New Functions - Theta & Jacobi) -- COMPLETE
+Plan: 2 of 2 in current phase (all plans complete)
+Status: Phase 37 complete, ready for Phase 38
+Last activity: 2026-02-20 -- Plan 37-02 complete (qs2jaccombo + help + integration tests)
 
-Progress: [####################################          ] 104/? plans (v2.0 phases 33-40 pending)
+Progress: [####################################          ] 106/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 104
-- Total phases: 36 complete (v1.0-v1.6 + Phases 33-36), 4 in progress/planned (v2.0 phases 37-40)
+- Total plans completed: 106
+- Total phases: 37 complete (v1.0-v1.6 + Phases 33-37), 3 in progress/planned (v2.0 phases 38-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
-- Total execution time: ~8.1 hours
+- Total execution time: ~8.4 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -39,6 +39,7 @@ Progress: [####################################          ] 104/? plans (v2.0 pha
 | 36-02 | Garvan-compatible relation discovery dispatch | 5min | 1 | 1 |
 | 36-03 | Help text + integration tests | 6min | 2 | 2 |
 | 37-01 | JacobiProduct type + theta/jac2prod/jac2series | 8min | 2 | 2 |
+| 37-02 | qs2jaccombo + help + integration tests | 9min | 2 | 4 |
 
 ## Accumulated Context
 
@@ -92,6 +93,10 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 37-01: jac2prod/jac2series use print-and-return pattern matching Phase 36 find* functions
 - 37-01: Add/sub with JacobiProduct gives helpful error directing to jac2series()
 - 37-01: env.symbols.name(sym) used for product notation formatting
+- 37-02: qs2jaccombo Phase A uses jacprodmake is_exact; Phase B uses findlincombo over candidate JAC basis
+- 37-02: Candidate JAC basis generated from periods identified by jacprodmake, fallback to 2..min(T,20)
+- 37-02: Help integration tests cannot use -c flag (help is REPL command); use functional tests instead
+- 37-02: complete_theta test updated from 3 to 4 candidates (theta added alongside theta2/3/4)
 
 ### Pending Todos
 
@@ -103,6 +108,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-19
-Stopped at: Completed 37-01-PLAN.md
-Resume file: .planning/phases/37-*/37-02-PLAN.md (next plan)
+Last session: 2026-02-20
+Stopped at: Completed 37-02-PLAN.md (Phase 37 complete)
+Resume file: .planning/phases/38-*/38-01-PLAN.md (next phase)
