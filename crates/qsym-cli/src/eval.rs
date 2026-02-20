@@ -1053,6 +1053,36 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 return Err(EvalError::EarlyReturn(val));
             }
 
+            // Special-case: subs(var=val, expr) with AST-level interception
+            // The first arg is parsed as AstNode::Compare(Eq), which we intercept
+            // before evaluation to avoid q=1 becoming Bool.
+            if name == "subs" {
+                if args.len() != 2 {
+                    return Err(EvalError::WrongArgCount {
+                        function: "subs".to_string(),
+                        expected: "2".to_string(),
+                        got: args.len(),
+                        signature: "subs(var=val, expr)".to_string(),
+                    });
+                }
+                match &args[0] {
+                    AstNode::Compare { op: CompOp::Eq, lhs, rhs } => {
+                        let var_name = match lhs.as_ref() {
+                            AstNode::Variable(vname) => vname.clone(),
+                            _ => return Err(EvalError::Other(
+                                "subs: left side of = must be a variable name".into()
+                            )),
+                        };
+                        let sub_value = eval_expr(rhs, env)?;
+                        let target = eval_expr(&args[1], env)?;
+                        return perform_substitution(&var_name, sub_value, target, env);
+                    }
+                    _ => return Err(EvalError::Other(
+                        "subs: first argument must be var=value (e.g., subs(q=1, expr))".into()
+                    )),
+                }
+            }
+
             // Check if name refers to a user-defined procedure
             if let Some(Value::Procedure(proc_val)) = env.get_var(name).cloned() {
                 let mut evaluated = Vec::with_capacity(args.len());
@@ -3849,6 +3879,141 @@ pub fn dispatch(
 }
 
 // ---------------------------------------------------------------------------
+// subs() substitution logic
+// ---------------------------------------------------------------------------
+
+/// Perform variable substitution on a target value.
+///
+/// Supports:
+/// - `subs(q=rational, Series)` -- evaluate polynomial at a rational point
+/// - `subs(q=0, Series)` -- return constant term
+/// - `subs(q=q^k, Series)` -- scale all exponents by k
+/// - `subs(q=anything, non-Series)` -- return target unchanged (constant)
+fn perform_substitution(
+    var_name: &str,
+    sub_value: Value,
+    target: Value,
+    env: &mut Environment,
+) -> Result<Value, EvalError> {
+    // For non-Series targets, substitution is a no-op (constant)
+    let fps = match &target {
+        Value::Series(fps) => fps,
+        Value::Integer(_) | Value::Rational(_) | Value::Bool(_)
+        | Value::String(_) | Value::None | Value::Infinity | Value::Symbol(_) => {
+            return Ok(target);
+        }
+        _ => return Ok(target),
+    };
+
+    // Check that the variable name matches the series variable
+    let series_var_name = env.symbols.name(fps.variable()).to_string();
+    if series_var_name != var_name {
+        // Variable doesn't match -- return target unchanged
+        return Ok(target);
+    }
+
+    match sub_value {
+        // Case: subs(q=integer, Series) -- evaluate at integer point
+        Value::Integer(ref n) => {
+            let rat = QRat::from(n.clone());
+            evaluate_fps_at_rational(fps, &rat)
+        }
+        // Case: subs(q=rational, Series) -- evaluate at rational point
+        Value::Rational(ref r) => {
+            evaluate_fps_at_rational(fps, r)
+        }
+        // Case: subs(q=Series, Series) -- check for q^k pattern (exponent scaling)
+        Value::Series(ref sub_fps) => {
+            // Detect if sub_value is q^k for some positive integer k
+            if sub_fps.variable() != fps.variable() {
+                return Err(EvalError::Other(
+                    "subs: substitution series must use the same variable".into()
+                ));
+            }
+            let terms: Vec<_> = sub_fps.iter().collect();
+            if terms.len() != 1 {
+                return Err(EvalError::Other(
+                    "subs: substitution value must be q^k for some positive integer k".into()
+                ));
+            }
+            let (&exp, coeff) = terms[0];
+            if *coeff != QRat::one() || exp <= 0 {
+                return Err(EvalError::Other(
+                    "subs: substitution value must be q^k for some positive integer k".into()
+                ));
+            }
+            let k = exp;
+
+            // Scale exponents: each (e, c) -> (e*k, c)
+            let mut new_coeffs = BTreeMap::new();
+            for (&e, c) in fps.iter() {
+                new_coeffs.insert(e * k, c.clone());
+            }
+
+            // Scale truncation order
+            let new_trunc = if fps.truncation_order() == POLYNOMIAL_ORDER {
+                POLYNOMIAL_ORDER
+            } else {
+                fps.truncation_order() * k
+            };
+
+            Ok(Value::Series(FormalPowerSeries::from_coeffs(
+                fps.variable(),
+                new_coeffs,
+                new_trunc,
+            )))
+        }
+        _ => Err(EvalError::Other(
+            "subs: substitution value must be a number or q^k expression".into()
+        )),
+    }
+}
+
+/// Evaluate a FPS at a rational point: sum c_k * val^k over all terms.
+fn evaluate_fps_at_rational(
+    fps: &FormalPowerSeries,
+    val: &QRat,
+) -> Result<Value, EvalError> {
+    let mut result = QRat::zero();
+
+    for (&exp, coeff) in fps.iter() {
+        if exp == 0 {
+            // c * val^0 = c
+            result = &result + coeff;
+        } else if exp > 0 {
+            // c * val^exp
+            let mut power = QRat::one();
+            for _ in 0..exp {
+                power = &power * val;
+            }
+            result = &result + &(coeff * &power);
+        } else {
+            // Negative exponent: c * val^exp = c / val^|exp|
+            if val.is_zero() {
+                return Err(EvalError::Other(format!(
+                    "subs: cannot evaluate at 0 with negative exponent q^{}",
+                    exp
+                )));
+            }
+            let abs_exp = (-exp) as u64;
+            let mut power = QRat::one();
+            for _ in 0..abs_exp {
+                power = &power * val;
+            }
+            let inv_power = &QRat::one() / &power;
+            result = &result + &(coeff * &inv_power);
+        }
+    }
+
+    // Return Integer if denominator is 1, otherwise Rational
+    if result.denom() == &rug::Integer::from(1) {
+        Ok(Value::Integer(QInt::from(rug::Integer::from(result.numer()))))
+    } else {
+        Ok(Value::Rational(result))
+    }
+}
+
+// ---------------------------------------------------------------------------
 // FPS -> QRatPoly conversion (for factor() dispatch)
 // ---------------------------------------------------------------------------
 
@@ -4439,6 +4604,8 @@ fn get_signature(name: &str) -> String {
         "legendre" => "(m, p)".to_string(),
         // Group R: Polynomial operations
         "factor" => "(poly)".to_string(),
+        // Group S: Substitution
+        "subs" => "(var=val, expr)".to_string(),
         _ => String::new(),
     }
 }
@@ -4531,6 +4698,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "floor", "legendre",
     // Pattern R: Polynomial operations
     "factor",
+    // Pattern S: Substitution
+    "subs",
 ];
 
 /// All alias names for fuzzy matching.
@@ -8870,6 +9039,166 @@ mod tests {
             assert!(s.contains("42"), "constant factoring should show the constant: got {}", s);
         } else {
             panic!("factor should return Value::String");
+        }
+    }
+
+    // --- subs() substitution tests ---
+
+    #[test]
+    fn subs_q_equals_1_sums_coefficients() {
+        // subs(q=1, 1 + q + q^2) = 3
+        let mut env = make_env();
+        let stmts = crate::parser::parse("subs(q=1, 1 + q + q^2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        if let Value::Integer(n) = result {
+            assert_eq!(n, QInt::from(3i64));
+        } else {
+            panic!("expected Integer(3), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_q_equals_0_returns_constant_term() {
+        // subs(q=0, 1 + q + q^2) = 1
+        let mut env = make_env();
+        let stmts = crate::parser::parse("subs(q=0, 1 + q + q^2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        if let Value::Integer(n) = result {
+            assert_eq!(n, QInt::from(1i64));
+        } else {
+            panic!("expected Integer(1), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_q_equals_half_evaluates_rational() {
+        // subs(q=1/2, 1 + q + q^2) = 1 + 1/2 + 1/4 = 7/4
+        let mut env = make_env();
+        let stmts = crate::parser::parse("subs(q=1/2, 1 + q + q^2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        if let Value::Rational(r) = result {
+            assert_eq!(r, QRat::from((7i64, 4i64)));
+        } else {
+            panic!("expected Rational(7/4), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_q_squared_scales_exponents() {
+        // subs(q=q^2, 1 + q + q^2) -> 1 + q^2 + q^4
+        let mut env = make_env();
+        let stmts = crate::parser::parse("subs(q=q^2, 1 + q + q^2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.coeff(0), QRat::one(), "constant term should be 1");
+            assert_eq!(fps.coeff(2), QRat::one(), "q^2 coefficient should be 1");
+            assert_eq!(fps.coeff(4), QRat::one(), "q^4 coefficient should be 1");
+            assert_eq!(fps.coeff(1), QRat::zero(), "q^1 coefficient should be 0");
+            assert_eq!(fps.coeff(3), QRat::zero(), "q^3 coefficient should be 0");
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_q_squared_scales_truncation_order() {
+        // For a truncated series, q->q^2 should double the truncation order
+        let mut env = make_env();
+        let sym_q = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0i64, QRat::one());
+        coeffs.insert(1i64, QRat::one());
+        coeffs.insert(2i64, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, 10);
+        let target = Value::Series(fps);
+
+        // sub_value: q^2
+        let sub_fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 2, POLYNOMIAL_ORDER);
+        let sub_value = Value::Series(sub_fps);
+
+        let result = perform_substitution("q", sub_value, target, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.truncation_order(), 20, "truncation order should be doubled");
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(2), QRat::one());
+            assert_eq!(fps.coeff(4), QRat::one());
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_q_squared_polynomial_preserves_polynomial_order() {
+        // For exact polynomials (POLYNOMIAL_ORDER), q->q^2 should preserve POLYNOMIAL_ORDER
+        let mut env = make_env();
+        let sym_q = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0i64, QRat::one());
+        coeffs.insert(1i64, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, POLYNOMIAL_ORDER);
+        let target = Value::Series(fps);
+
+        let sub_fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 2, POLYNOMIAL_ORDER);
+        let sub_value = Value::Series(sub_fps);
+
+        let result = perform_substitution("q", sub_value, target, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.truncation_order(), POLYNOMIAL_ORDER);
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_on_non_series_returns_unchanged() {
+        let mut env = make_env();
+        let target = Value::Integer(QInt::from(42i64));
+        let sub_value = Value::Integer(QInt::from(1i64));
+        let result = perform_substitution("q", sub_value, target, &mut env).unwrap();
+        if let Value::Integer(n) = result {
+            assert_eq!(n, QInt::from(42i64));
+        } else {
+            panic!("expected Integer(42), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_wrong_arg_count_errors() {
+        let mut env = make_env();
+        // subs with 1 arg should error
+        let stmts = crate::parser::parse("subs(q=1)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env);
+        assert!(result.is_err() || matches!(result, Ok(Some(Value::None))),
+            "subs with 1 arg should error");
+    }
+
+    #[test]
+    fn subs_without_equals_errors() {
+        let mut env = make_env();
+        // subs(1, 2) -- first arg is not var=val
+        let stmts = crate::parser::parse("subs(1, 2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env);
+        assert!(result.is_err(), "subs without = in first arg should error");
+    }
+
+    #[test]
+    fn subs_mismatched_variable_returns_unchanged() {
+        // subs(x=1, 1+q+q^2) where series is in q, not x -> return unchanged
+        let mut env = make_env();
+        let sym_q = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0i64, QRat::one());
+        coeffs.insert(1i64, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs.clone(), POLYNOMIAL_ORDER);
+        let target = Value::Series(fps);
+        let sub_value = Value::Integer(QInt::from(1i64));
+
+        let result = perform_substitution("x", sub_value, target, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::one());
+        } else {
+            panic!("expected Series unchanged, got {:?}", result);
         }
     }
 }
