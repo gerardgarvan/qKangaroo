@@ -103,7 +103,7 @@ including optional modulus limits and exclusion sets:
 #repl-block("q> p := partition_gf(200):\nq> findcong(p, 200)\n[4, 5, 5]\n[5, 7, 7]\n[6, 11, 11]")
 
 Output format matches Garvan: `[B, A, R]` triples where
-$p(A n + B) equiv 0 pmod(R)$.
+$p(A n + B) equiv 0 space (mod R)$.
 
 
 == Discovering Relations
