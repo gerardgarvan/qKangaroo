@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 38 Plan 01 complete, ready for Plan 02
+**Current focus:** v2.0 Maple Compatibility -- Phase 38 complete, ready for Phase 39
 
 ## Current Position
 
-Phase: 38 of 40 (New Functions - Analysis & Discovery) -- IN PROGRESS
-Plan: 1 of 2 in current phase (Plan 01 complete)
-Status: Plan 38-01 complete, ready for Plan 38-02
-Last activity: 2026-02-20 -- Plan 38-01 complete (lqdegree0/checkmult/checkprod/findprod dispatch)
+Phase: 38 of 40 (New Functions - Analysis & Discovery) -- COMPLETE
+Plan: 2 of 2 in current phase (all plans complete)
+Status: Phase 38 complete, ready for Phase 39
+Last activity: 2026-02-20 -- Plan 38-02 complete (help text + integration tests)
 
-Progress: [####################################          ] 107/? plans (v2.0 phases 33-40 pending)
+Progress: [####################################          ] 108/? plans (v2.0 phases 33-40 pending)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 107
-- Total phases: 37 complete (v1.0-v1.6 + Phases 33-37), 1 in progress (Phase 38), 2 planned (39-40)
+- Total plans completed: 108
+- Total phases: 38 complete (v1.0-v1.6 + Phases 33-38), 2 planned (39-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8.5 hours
@@ -41,6 +41,7 @@ Progress: [####################################          ] 107/? plans (v2.0 pha
 | 37-01 | JacobiProduct type + theta/jac2prod/jac2series | 8min | 2 | 2 |
 | 37-02 | qs2jaccombo + help + integration tests | 9min | 2 | 4 |
 | 38-01 | Analysis/discovery dispatch (lqdegree0/checkmult/checkprod/findprod) | 6min | 2 | 1 |
+| 38-02 | Help text + integration tests | 3min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -102,6 +103,8 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 38-01: gcd_i64 private helper in eval.rs (not reusing qsym-core private gcd)
 - 38-01: Old 3-arg findprod fully replaced by new 4-arg Garvan version
 - 38-01: Value comparison in tests uses pattern matching (Value lacks PartialEq)
+- 38-02: checkmult/checkprod placed in Series Analysis section of general help (not Relations)
+- 38-02: findprod description updated to 'search for product identities in series list'
 
 ### Pending Todos
 
@@ -114,5 +117,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 38-01-PLAN.md (analysis/discovery dispatch functions)
-Resume file: .planning/phases/38-*/38-02-PLAN.md (help text + integration tests)
+Stopped at: Completed 38-02-PLAN.md (help text + integration tests) -- Phase 38 complete
+Resume file: .planning/phases/39-*/39-01-PLAN.md
