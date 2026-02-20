@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 40 planned, ready for execution
+**Current focus:** v2.0 Maple Compatibility -- Phase 40 executing
 
 ## Current Position
 
 Phase: 40 of 40 (Documentation)
 Plan: 4 of 5 in current phase (EXECUTING)
 Status: Phase 40 executing -- plans 01-04 complete
-Last activity: 2026-02-20 -- Completed 40-04 (Maple Migration Guide)
+Last activity: 2026-02-20 -- Completed 40-02 (Series Analysis & Relations chapters)
 
 Progress: [########################################      ] 114/115 plans (v2.0 phases 33-40)
 
@@ -45,6 +45,7 @@ Progress: [########################################      ] 114/115 plans (v2.0 p
 | 39-01 | Descending power ordering | 7min | 2 | 5 |
 | 39-02 | Backward compatibility tests | 5min | 2 | 1 |
 | 40-03 | Peripheral doc fixes (counts, tab completion, README) | 3min | 2 | 7 |
+| 40-02 | Series Analysis & Relations manual chapters | 4min | 2 | 2 |
 | 40-04 | Maple migration guide rewrite | 2min | 1 | 1 |
 
 ## Accumulated Context
@@ -114,6 +115,11 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 39-02: winquist legacy is 7-arg (not 4-arg as plan stated) -- corrected test
 - 39-02: etaq has no 4-arg legacy form -- skipped backward_compat_etaq_legacy_4arg
 - 39-02: All backward_compat tests validate output correctness, not just exit code 0
+- 40-02: All legacy manual signatures replaced entirely -- no dual-signature documentation entries
+- 40-02: New functions lqdegree0/checkmult/checkprod placed after qetamake in chapter 08
+- 40-02: findcong entry shows all 3 overloaded forms with [B, A, R] output format
+- 40-02: findprod entry explicitly notes completely different semantics from legacy version
+- 40-02: findmaxind documented as 1-based indices per Garvan convention
 - 40-03: Chapter 04 function listing expanded from 8 groups to 9 (added Jacobi Products) with full enumeration
 - 40-03: DOC-02 confirmed: help.rs already fully updated with 89 Garvan-canonical entries
 - 40-03: DOC-04 confirmed: Python API uses own calling conventions, unaffected by v2.0 changes
@@ -132,5 +138,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 40-04-PLAN.md (Maple Migration Guide)
+Stopped at: Completed 40-02-PLAN.md (Series Analysis & Relations chapters)
 Resume file: .planning/phases/40-documentation/
