@@ -16,21 +16,25 @@ intimately connected to infinite products via Euler's identity:
 
 $ sum_(n >= 0) p(n) q^n = product_(k >= 1) frac(1, 1 - q^k) $
 
-q-Kangaroo provides seven partition functions: one that returns a single
-integer $p(n)$, and six that return generating functions as formal power
-series in $q$, including generating functions for distinct parts, odd parts,
-bounded parts, rank, and crank statistics.
+q-Kangaroo provides seven partition functions: `numbpart`, which returns
+a single integer $p(n)$ (or $p(n, m)$ for bounded partitions), and six
+that return generating functions as formal power series in $q$, including
+generating functions for distinct parts, odd parts, bounded parts, rank,
+and crank statistics.
 
 == Function Reference
 
 #func-entry(
-  name: "partition_count",
-  signature: "partition_count(n)",
+  name: "numbpart",
+  signature: "numbpart(n) or numbpart(n, m)",
   description: [
     Compute the number of partitions $p(n)$ of the non-negative integer $n$.
+    With two arguments, `numbpart(n, m)` computes $p(n, m)$: the number of
+    partitions of $n$ with largest part at most $m$.
     Unlike the other partition functions, this returns a single integer rather
     than a power series. Internally, it uses the pentagonal number recurrence
     for efficient computation.
+    #index[numbpart]
     #index[partition count]
     #index[pentagonal number theorem]
   ],
@@ -42,26 +46,31 @@ bounded parts, rank, and crank statistics.
     $ p(n) = sum_(k != 0) (-1)^(k+1) p(n - k(3k-1)\/2) $
 
     with $p(0) = 1$ and $p(n) = 0$ for $n < 0$.
+
+    The two-argument form $p(n, m)$ counts partitions of $n$ into parts of
+    size at most $m$, computed via bounded partition generating functions.
   ],
   params: (
     ([n], [Integer], [The non-negative integer to partition]),
+    ([m], [Integer (optional)], [Maximum allowed part size; if omitted, all parts are allowed]),
   ),
   examples: (
-    ("partition_count(5)",
+    ("numbpart(5)",
      "7"),
-    ("partition_count(10)",
-     "42"),
-    ("partition_count(100)",
+    ("numbpart(100)",
      "190569292"),
-    ("partition_count(200)",
+    ("numbpart(200)",
      "3972999029388"),
+    ("numbpart(10, 3)",
+     "14"),
   ),
   edge-cases: (
     [$n$ must be a non-negative integer.],
     [Returns an integer, not a series. To get the generating function, use `partition_gf`.],
     [Uses exact arbitrary-precision integer arithmetic, so large values of $n$ are supported.],
+    [The legacy name `partition_count` remains as an alias for `numbpart`.],
   ),
-  related: ("partition_gf", "distinct_parts_gf", "odd_parts_gf"),
+  related: ("partition_gf", "distinct_parts_gf", "odd_parts_gf", "bounded_parts_gf"),
 )
 
 #func-entry(
@@ -90,7 +99,7 @@ bounded parts, rank, and crank statistics.
     [The series begins $1 + q + 2q^2 + 3q^3 + 5q^4 + dots.h.c$, matching the well-known partition numbers.],
     [At `order = 1`, returns just `1 + O(q)`.],
   ),
-  related: ("partition_count", "distinct_parts_gf", "odd_parts_gf", "bounded_parts_gf", "aqprod"),
+  related: ("numbpart", "distinct_parts_gf", "odd_parts_gf", "bounded_parts_gf", "aqprod"),
 )
 
 #func-entry(
