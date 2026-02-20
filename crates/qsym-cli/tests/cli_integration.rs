@@ -1752,3 +1752,134 @@ fn backward_compat_numbpart_primary() {
     assert_eq!(code, 0, "numbpart(5) should succeed");
     assert_eq!(stdout.trim(), "7", "numbpart(5) = 7, got: {}", stdout);
 }
+
+// ---------------------------------------------------------------------------
+// Series analysis functions -- Maple signatures (Phase 35 changes)
+// Note: Phase 35 broke backward compat for sift/prodmake/etamake etc.
+// Old signatures intentionally error. Tests here verify NEW Maple signatures.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn backward_compat_sift_maple_5arg() {
+    let (code, stdout, stderr) = run(&["-c", "f := partition_gf(50); sift(f, q, 5, 0, 50)"]);
+    assert_eq!(code, 0, "sift maple 5-arg should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("q"), "sift should produce series in q, got: {}", stdout);
+    // p(0)=1 is the first coefficient at q^0 in the sifted series
+    assert!(stdout.contains("1"), "should contain coefficient 1");
+}
+
+#[test]
+fn backward_compat_prodmake_maple_3arg() {
+    let (code, stdout, stderr) = run(&["-c", "f := partition_gf(30); prodmake(f, q, 15)"]);
+    assert_eq!(code, 0, "prodmake maple 3-arg should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("exponents"), "prodmake should return exponents dict, got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_etamake_maple_3arg() {
+    let (code, stdout, stderr) = run(&["-c", "f := partition_gf(30); etamake(f, q, 10)"]);
+    assert_eq!(code, 0, "etamake maple 3-arg should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("factors"), "etamake should return factors dict, got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_qfactor_maple_2arg() {
+    let (code, stdout, stderr) = run(&["-c", "f := aqprod(q, q, 5, 20); qfactor(f, q)"]);
+    assert_eq!(code, 0, "qfactor maple 2-arg should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("factors"), "qfactor should return factors dict, got: {}", stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Relation discovery functions -- Garvan signatures (Phase 36 changes)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn backward_compat_findlincombo_garvan() {
+    let tmp = write_temp_script(
+        "qk_test_bc_findlincombo.qk",
+        "f := partition_gf(30):\ng := distinct_parts_gf(30):\nfindlincombo(f, [f, g], [F1, F2], q, 0)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findlincombo garvan should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("F1"),
+        "output should contain label F1. stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn backward_compat_findcong_garvan() {
+    let tmp = write_temp_script(
+        "qk_test_bc_findcong.qk",
+        "p := partition_gf(201):\nfindcong(p, 200)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "findcong garvan should succeed. stderr: {}", stderr);
+    // Should find Ramanujan's p(5n+4) = 0 mod 5
+    assert!(
+        stdout.contains("[4, 5, 5]"),
+        "should find [4, 5, 5] (Ramanujan congruence). stdout: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+// ---------------------------------------------------------------------------
+// New functions (Phases 37-38) -- no legacy to preserve, verify they work
+// ---------------------------------------------------------------------------
+
+#[test]
+fn backward_compat_theta_new() {
+    let (code, stdout, stderr) = run(&["-c", "theta(1, q, 5)"]);
+    assert_eq!(code, 0, "theta should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("q"), "theta should produce series in q, got: {}", stdout);
+    // theta(1, q, 5) = 2*q^4 + 2*q + 1 + O(q^5)
+    assert!(stdout.contains("2*q^4"), "should contain 2*q^4 term, got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_jac2series_new() {
+    let (code, stdout, stderr) = run(&["-c", "jac2series(JAC(1,1), q, 10)"]);
+    assert_eq!(code, 0, "jac2series should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("q"), "jac2series should produce series in q, got: {}", stdout);
+    // (q;q)_inf = 1 - q - q^2 + q^5 + q^7 + O(q^10)
+    assert!(stdout.contains("O(q^10)"), "should have O(q^10), got: {}", stdout);
+}
+
+#[test]
+fn backward_compat_checkmult_new() {
+    let (code, _stdout, stderr) = run(&["-c", "f := partition_gf(50); checkmult(f, 30)"]);
+    assert_eq!(code, 0, "checkmult should succeed. stderr: {}", stderr);
+    // checkmult returns 0 for non-multiplicative
+}
+
+#[test]
+fn backward_compat_lqdegree0_new() {
+    let (code, stdout, stderr) = run(&["-c", "f := partition_gf(20); lqdegree0(f)"]);
+    assert_eq!(code, 0, "lqdegree0 should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("0"), "lqdegree0 of partition_gf should be 0, got: {}", stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Cross-validation: legacy vs Garvan signatures produce identical results
+// ---------------------------------------------------------------------------
+
+#[test]
+fn backward_compat_etaq_legacy_matches_garvan() {
+    // Compute both legacy etaq(1,1,20) and Garvan etaq(q,1,20) and subtract
+    let tmp = write_temp_script(
+        "qk_test_bc_etaq_crossval.qk",
+        "a := etaq(1, 1, 20):\nb := etaq(q, 1, 20):\na - b",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "cross-validation should succeed. stderr: {}", stderr);
+    // Difference should be zero -- only truncation marker remains
+    assert!(
+        stdout.trim() == "O(q^20)" || stdout.trim() == "0",
+        "legacy and Garvan should produce identical results, difference should be O(q^20) or 0, got: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
