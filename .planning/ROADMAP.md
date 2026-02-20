@@ -191,15 +191,15 @@ Plans:
 - [x] 37-02-PLAN.md -- qs2jaccombo dispatch, help text for all 5 functions, tab completion, integration tests
 
 ### Phase 38: New Functions - Analysis & Discovery
-**Goal**: Five new analysis/discovery functions are available, completing the Garvan function inventory
+**Goal**: Four analysis/discovery functions are available (checkmult, checkprod, lqdegree0, findprod), completing the univariate Garvan function inventory
 **Depends on**: Phase 35
-**Requirements**: NEW-05, NEW-06, NEW-07, NEW-08, NEW-09
+**Requirements**: NEW-05, NEW-06, NEW-07, NEW-09 (NEW-08 zqfactor deferred -- requires bivariate infrastructure)
 **Success Criteria** (what must be TRUE):
-  1. `checkmult(f, q, 30)` correctly reports whether the coefficients of a q-series are multiplicative
-  2. `checkprod(f, q, 30)` validates whether a q-series represents a well-formed product and reports the result
-  3. `lqdegree0(f, q)` returns the lowest q-degree (distinct from existing `lqdegree` which works on series values)
-  4. `zqfactor(f, z, q)` factors a bivariate (z,q)-series into (z,q)-product form
-  5. `findprod(L, q, maxcoeff, maxexp)` searches for a product identity matching the given series list
+  1. `checkmult(f, 30)` correctly reports whether coefficients are multiplicative up to q^30, printing first failing (m,n) pair or "MULTIPLICATIVE", returning 1 or 0
+  2. `checkmult(f, 30, 'yes')` prints ALL failing (m,n) pairs instead of stopping at first
+  3. `checkprod(f, 10, 30)` returns [a, 1] for nice products (all exponents < 10) or [a, max_exp] otherwise, silently
+  4. `lqdegree0(f)` returns the lowest q-degree of an FPS value
+  5. `findprod([f1,f2,f3], 3, 10, 30)` searches for integer linear combinations with |coeff| <= 3 that yield nice products per checkprod, returns list of [valuation, coeff_vector] pairs silently
 **Plans**: TBD
 
 ### Phase 39: Output & Compatibility

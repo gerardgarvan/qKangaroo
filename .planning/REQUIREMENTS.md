@@ -53,11 +53,11 @@
 - [x] **NEW-02**: `jac2prod(JP, q, T)` -- convert Jacobi product expression to explicit product notation, prints and returns FPS
 - [x] **NEW-03**: `jac2series(JP, q, T)` -- convert Jacobi product expression to q-series, prints and returns FPS
 - [x] **NEW-04**: `qs2jaccombo(f, q, T)` -- decompose q-series into linear combination of Jacobi products via jacprodmake + findlincombo
-- [ ] **NEW-05**: `checkmult(f, q, T)` -- check if q-series coefficients are multiplicative
-- [ ] **NEW-06**: `checkprod(f, q, T)` -- validate that q-series represents a well-formed product
-- [ ] **NEW-07**: `lqdegree0(f, q)` -- lowest degree in q (monomial version, distinct from lqdegree)
-- [ ] **NEW-08**: `zqfactor(f, z, q)` -- factor (z,q)-series into (z,q)-product form
-- [ ] **NEW-09**: `findprod(L, q, maxcoeff, maxexp)` -- find product identity matching Garvan's signature
+- [ ] **NEW-05**: `checkmult(QS, T)` and `checkmult(QS, T, yes)` -- check if q-series coefficients are multiplicative; optional 3rd arg prints all failures instead of stopping at first
+- [ ] **NEW-06**: `checkprod(f, M, Q)` -- check if q-series is a "nice" formal product using prodmake; M is max absolute exponent threshold, Q is truncation order; returns [a, 1] for nice product, [a, max_exp] otherwise
+- [ ] **NEW-07**: `lqdegree0(qexp)` -- lowest q-degree of a single monomial term (1 arg, supports fractional exponents); lqdegree maps this over summands
+- [ ] **NEW-08**: `zqfactor(F, z, q, N)` and `zqfactor(F, z, q, N, buglim)` -- factor bivariate (z,q)-series into product of (1 - c*z^i*q^j) factors via greedy iterative algorithm; buglim defaults to 1000
+- [ ] **NEW-09**: `findprod(FL, T, M, Q)` -- exhaustive search over integer coefficient vectors |c_i| <= T for linear combinations of FL that are "nice products" per checkprod(combo, M, Q); returns list of [valuation, coefficient_vector] pairs
 
 ## Output & Display
 
@@ -120,7 +120,7 @@
 | NEW-05 | Phase 38 | Pending |
 | NEW-06 | Phase 38 | Pending |
 | NEW-07 | Phase 38 | Pending |
-| NEW-08 | Phase 38 | Pending |
+| NEW-08 | Deferred | Pending (requires bivariate infrastructure) |
 | NEW-09 | Phase 38 | Pending |
 | OUT-01 | Phase 36 | Complete |
 | OUT-02 | Phase 36 | Complete |
