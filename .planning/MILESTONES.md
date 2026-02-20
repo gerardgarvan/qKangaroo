@@ -206,3 +206,43 @@ See STATE.md Accumulated Context for full decision log.
 - 13 plans in ~45 min (avg 3.5 min/plan)
 - UAT: 14/14 tests passed (7 Phase 31 + 7 Phase 32)
 - Total project: 92 plans across 32 phases (v1.0-v1.6)
+
+## v2.0: Maple Compatibility (Complete)
+
+**Shipped:** 2026-02-20
+**Phases:** 33-40 (21 plans, 8 phases)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 33 | Symbolic variable foundation — bare symbol names, q-as-parameter, q-monomial arguments, Value::Symbol type |
+| 34 | Product & theta Garvan signatures — aqprod/etaq/jacprod/tripleprod/quinprod/winquist/qbin all accept Maple-exact arg lists; numbpart canonical |
+| 35 | Series analysis Garvan signatures — sift/prodmake/etamake/jacprodmake/mprodmake/qetamake/qfactor with explicit q and T |
+| 36 | Relation discovery Garvan signatures — all 12 find* functions with symbolic labels, findcong auto-discover algorithm |
+| 37 | New theta/Jacobi functions — theta(z,q,T), JAC constructor, jac2prod, jac2series, qs2jaccombo |
+| 38 | New analysis/discovery functions — checkmult, checkprod, lqdegree0, findprod |
+| 39 | Output & backward compatibility — descending power display, all v1.x signatures preserved as aliases |
+| 40 | Documentation — 89-function PDF manual, workflow-oriented migration guide, worked examples rewrite |
+
+### Key Accomplishments
+
+- Every Garvan qseries function callable with exact Maple syntax — researchers copy-paste from worksheets
+- 8 new functions implemented (theta, jac2prod, jac2series, qs2jaccombo, checkmult, checkprod, lqdegree0, findprod)
+- Value::Symbol + q-monomial infrastructure enabling Maple-style bare-variable expressions
+- Symbolic labels in relation discovery output (findlincombo prints "12*F1 + 13*F2")
+- Complete documentation overhaul: 89-function PDF manual, workflow-oriented migration guide, 6 worked examples
+- Full backward compatibility — all v1.x function signatures continue working as aliases
+
+### Known Gaps
+
+- NEW-08 (zqfactor): Bivariate (z,q)-series factoring deferred — requires bivariate infrastructure not yet in engine
+
+### Key Metrics
+
+- 43 v2.0 requirements: 42/43 complete (1 deferred)
+- 65 commits, 97 files changed, +20,241 / -1,497 lines
+- 20,288 lines Rust core + 12,198 lines CLI + 4,625 lines Typst manual
+- 21 plans in ~120 min (avg 6 min/plan)
+- Timeline: 2026-02-19 to 2026-02-20 (2 days)
+- Total project: 115 plans across 40 phases (v1.0-v2.0)

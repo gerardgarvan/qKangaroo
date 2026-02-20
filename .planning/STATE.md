@@ -2,7 +2,7 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-18)
+See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
 **Current focus:** v2.0 Maple Compatibility -- SHIPPED 2026-02-20

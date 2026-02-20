@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (19,900+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) and an interactive REPL (`q-kangaroo` zero-dependency standalone executable, 9,200+ lines) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, and machine-assisted identity proving that Garvan's packages don't cover.
+An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (20,200+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) and an interactive REPL (`q-kangaroo` zero-dependency standalone executable, 12,100+ lines, 89 functions with Garvan-exact Maple syntax) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, and machine-assisted identity proving that Garvan's packages don't cover.
 
 ## Core Value
 
@@ -10,7 +10,7 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ## Current State
 
-**v1.6 shipped.** The project now provides two access paths for researchers:
+**v2.0 shipped.** The project provides two access paths for researchers:
 
 **Python API** (`pip install q-kangaroo`):
 - 79 DSL functions across 13 groups with research-quality docstrings
@@ -20,16 +20,19 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 **Interactive REPL** (`q-kangaroo` standalone executable):
 - Zero-dependency standalone binary — static GMP/MPFR/MPC linking, no DLLs needed
-- Maple-style syntax with hand-written Pratt parser
-- All 81 canonical function names + 16 Maple aliases
+- Maple-exact syntax — researchers copy-paste from Garvan's Maple worksheets
+- 89 canonical function names with Garvan-compatible calling conventions
+- Bare symbol variables, q-monomials as parameters, symbolic labels in output
+- 8 new functions: theta, jac2prod, jac2series, qs2jaccombo, checkmult, checkprod, lqdegree0, findprod
 - Script execution (`q-kangaroo script.qk`), pipe input, `-c` expression mode
 - 7 distinct exit codes (sysexits-compatible) with filename:line:col error diagnostics
-- Tab completion (auto-paren), 8-category help system, persistent history
+- Tab completion (auto-paren), 9-category help system, persistent history
 - LaTeX output and save-to-file commands
 
 **Documentation:**
-- 81-function PDF reference manual (Typst, 4,191 lines) with formal mathematics
-- 6 worked examples with scholarly citations, complete Maple migration table
+- 89-function PDF reference manual (Typst, 4,625 lines) with formal mathematics
+- Workflow-oriented Maple migration guide with two-column comparison tables
+- 6 worked examples with Garvan-canonical signatures, scholarly citations
 - CI-compiled PDF included in GitHub release artifacts
 
 **Infrastructure:**
@@ -38,13 +41,13 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - q-Petkovsek recurrence solver, nonterminating proofs, transformation chain discovery
 
 **Codebase:**
-- 19,936 lines Rust core (`crates/qsym-core/src/`)
-- 9,199 lines CLI (`crates/qsym-cli/src/`)
+- 20,288 lines Rust core (`crates/qsym-core/src/`)
+- 12,198 lines CLI (`crates/qsym-cli/src/`)
 - 6,320 lines Python API (`crates/qsym-python/src/`)
-- 4,191 lines Typst manual (`manual/`)
+- 4,625 lines Typst manual (`manual/`)
 - ~47,000 lines documentation (`docs/` including notebooks)
-- 836 Rust core tests + 349 CLI tests + 9 Python integration tests
-- 92 plans across 32 phases (v1.0-v1.6)
+- 863 Rust core tests + 570 CLI tests + 9 Python integration tests
+- 115 plans across 40 phases (v1.0-v2.0)
 
 ## Requirements
 
@@ -85,14 +88,16 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - Error hardening: 7 sysexits exit codes, filename:line:col diagnostics, panic translation -- v1.6
 - 81-function PDF reference manual with formal math, worked examples, and Maple migration table -- v1.6
 - CLI UX polish: --help, --quiet, --verbose, pipe support, read() in REPL -- v1.6
+- Maple-exact function signatures: all qseries/thetaids functions callable with Garvan's argument conventions -- v2.0
+- Symbolic variables: bare names, q-as-parameter, q-monomial arguments -- v2.0
+- 8 new Garvan functions: theta, jac2prod, jac2series, qs2jaccombo, checkmult, checkprod, lqdegree0, findprod -- v2.0
+- Symbolic labels in relation discovery output, findcong auto-discover algorithm -- v2.0
+- Descending power display, full backward compatibility with v1.x signatures -- v2.0
+- 89-function PDF manual with Garvan-canonical signatures, workflow-oriented migration guide -- v2.0
 
 ### Active
 
-**v2.0: Maple Compatibility** — Make q-Kangaroo's REPL a drop-in replacement for Garvan's Maple qseries package:
-- Symbolic variable names (bare `q`, `f`, `x` work without `:=` declaration)
-- Maple-exact function signatures (match Garvan's calling conventions from qseries v1.3)
-- Missing Garvan functions implemented (checkmult, checkprod, jac2prod, jac2series, lqdegree0, qs2jaccombo, theta, zqfactor)
-- Manual UAT testing of every function against Garvan's documentation
+(No active milestone — all planned milestones shipped)
 
 ### Future
 
@@ -153,6 +158,14 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Custom panic hook | Suppresses raw Rust backtrace for clean error output | Good |
 | Typst for PDF manual (not LaTeX) | Faster compilation, cleaner syntax, CI-friendly | Good |
 | PDF as standalone release artifact | Not bundled in binary archive; separate download for docs | Good |
+| Value::Symbol for bare names | Undefined names become Symbol values, not errors; enables Maple-style expressions | Good |
+| q-monomial infrastructure | q^n parsed as special expression, enables aqprod(q^2, q, 5) syntax | Good |
+| numbpart canonical (not partition_count) | Matches Maple naming; partition_count kept as alias | Good |
+| JacobiProduct value type | Enables JAC(a,b) constructor + arithmetic for theta/Jacobi workflows | Good |
+| Descending power display | Matches Maple output conventions; DoubleEndedIterator for FPS | Good |
+| zqfactor deferred | Requires bivariate (z,q)-series infrastructure not yet in engine | Deferred |
+| Garvan-exact argument positions | Verified against Garvan's Maple source, not just docs | Good |
+| Workflow-oriented migration guide | Task-based sections ("Computing eta products") vs alphabetical alias table | Good |
 
 ---
-*Last updated: 2026-02-18 after v2.0 milestone started*
+*Last updated: 2026-02-20 after v2.0 milestone shipped*
