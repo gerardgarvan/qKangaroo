@@ -183,7 +183,10 @@ Plans:
   1. User can call `factor(1 - q^6)` and get a factored form showing cyclotomic factors like `(1-q)(1+q)(1-q+q^2)(1+q+q^2)`
   2. User can call `factor()` on a polynomial produced by series computation and get meaningful irreducible factors over the rationals
   3. User can call `subs(q=1, series_expr)` to evaluate a series at q=1 (getting a rational number), and `subs(q=q^2, expr)` to transform q-exponents
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 44-01-PLAN.md -- Core cyclotomic/factor modules, CLI factor() dispatch, help, completion
+- [ ] 44-02-PLAN.md -- subs() AST interception, substitution logic, help, completion
 
 ### Phase 45: Bivariate Series
 **Goal**: Users can compute tripleprod, quinprod, and winquist with symbolic z variables, getting Laurent polynomials in z with q-series coefficients, and perform arithmetic on these bivariate values
@@ -255,7 +258,7 @@ Phases execute in numeric order: 41 -> 42 -> 43 -> 44 -> 45 -> 46
 | 40. Documentation | v2.0 | 5/5 | Complete | 2026-02-20 |
 | 41. Control Flow Parsing | v3.0 | 2/2 | Complete | 2026-02-20 |
 | 42. Procedures & Evaluation | v3.0 | 2/2 | Complete | 2026-02-20 |
-| 43. Expression Operations | v3.0 | 0/2 | Not started | - |
-| 44. Polynomial Operations | v3.0 | 0/TBD | Not started | - |
+| 43. Expression Operations | v3.0 | 2/2 | Complete | 2026-02-20 |
+| 44. Polynomial Operations | v3.0 | 0/2 | Not started | - |
 | 45. Bivariate Series | v3.0 | 0/TBD | Not started | - |
 | 46. Documentation | v3.0 | 0/TBD | Not started | - |
