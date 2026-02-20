@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 91 functions + session commands.
+//! - [`general_help`]: grouped listing of all 93 functions + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 
 // ---------------------------------------------------------------------------
@@ -45,6 +45,10 @@ Jacobi Products:
   jac2prod     - convert Jacobi product to explicit product form
   jac2series   - convert Jacobi product to q-series
   qs2jaccombo  - decompose q-series into sum of Jacobi products
+
+Expression Operations:
+  series         - truncate a series to O(q^T): series(f, q, T)
+  expand         - expand products into polynomial/series form
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -138,7 +142,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 91 function help entries.
+/// All 93 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -804,6 +808,24 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
 
     // -----------------------------------------------------------------------
+    // Group 13: Expression Operations (2)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "series",
+        signature: "series(expr, q, T)",
+        description: "Truncate a q-series to O(q^T). If expr is already computed to order N, the result has order min(T, N).\n  Also accepts Jacobi products (converts then truncates) and integers/rationals (wraps as constant series).\n  The q argument is for Maple compatibility and is validated but not used.",
+        example: "q> f := aqprod(q, q, infinity, 50): series(f, q, 10)",
+        example_output: "-q^7 - q^5 + q^2 + q + 1 + O(q^10)",
+    },
+    FuncHelp {
+        name: "expand",
+        signature: "expand(expr) or expand(expr, q, T)",
+        description: "Expand a product expression into polynomial or series form.\n  For Series values, returns unchanged. For Jacobi products, converts to q-series.\n  The 1-argument form uses the current precision; the 3-argument form uses explicit truncation order T.",
+        example: "q> expand(JAC(1,5) * JAC(4,5), q, 20)",
+        example_output: "... + q^7 - q^4 - q + 1 + O(q^20)",
+    },
+
+    // -----------------------------------------------------------------------
     // Group 12: Number Theory (2)
     // -----------------------------------------------------------------------
     FuncHelp {
@@ -862,6 +884,7 @@ mod tests {
             "Hypergeometric:",
             "Mock Theta & Bailey:",
             "Identity Proving:",
+            "Expression Operations:",
             "Number Theory:",
         ] {
             assert!(
@@ -989,9 +1012,10 @@ mod tests {
             "q_gosper", "q_zeilberger", "verify_wz", "q_petkovsek",
             "prove_nonterminating",
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
+            "series", "expand",
             "floor", "legendre",
         ];
-        assert_eq!(canonical.len(), 91, "test list should have 91 entries");
+        assert_eq!(canonical.len(), 93, "test list should have 93 entries");
 
         for name in &canonical {
             assert!(
@@ -1006,8 +1030,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            91,
-            "FUNC_HELP should have exactly 91 entries, got {}",
+            93,
+            "FUNC_HELP should have exactly 93 entries, got {}",
             FUNC_HELP.len()
         );
     }
@@ -1054,5 +1078,32 @@ mod tests {
         assert!(help.is_some(), "L should redirect to legendre");
         let text = help.unwrap();
         assert!(text.contains("Legendre symbol"), "help should show legendre content");
+    }
+
+    #[test]
+    fn function_help_series_returns_some() {
+        let help = function_help("series");
+        assert!(help.is_some(), "series should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("series"), "help should contain function name");
+        assert!(text.contains("Truncate"), "help should contain description");
+        assert!(text.contains("O(q^T)"), "help should mention truncation");
+    }
+
+    #[test]
+    fn function_help_expand_returns_some() {
+        let help = function_help("expand");
+        assert!(help.is_some(), "expand should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("expand"), "help should contain function name");
+        assert!(text.contains("Expand"), "help should contain description");
+    }
+
+    #[test]
+    fn general_help_contains_expression_operations_category() {
+        let text = general_help();
+        assert!(text.contains("Expression Operations:"), "general_help missing Expression Operations category");
+        assert!(text.contains("series"), "general_help missing series");
+        assert!(text.contains("expand"), "general_help missing expand");
     }
 }
