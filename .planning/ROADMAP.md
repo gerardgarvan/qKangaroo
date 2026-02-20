@@ -170,7 +170,10 @@ Plans:
   3. User can write `for n from 0 to 4 do aqprod(q^(n*n), q, 20) od` and the `q^(n*n)` evaluates correctly for each integer n, including expressions like `q^(k*(3*k+1)/2)` where k is a loop variable
   4. User can call `floor(7/3)` to get 2 and `floor(-7/3)` to get -3 (standard mathematical floor)
   5. User can call `legendre(2, 5)` to get -1, matching the Legendre symbol (2/5)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 43-01-PLAN.md -- eval_pow Rational exponent arms, floor(), legendre(), L alias, help entries
+- [ ] 43-02-PLAN.md -- series() truncation, expand() product expansion, help entries
 
 ### Phase 44: Polynomial Operations
 **Goal**: Users can factor polynomials in q and substitute values into expressions
@@ -250,9 +253,9 @@ Phases execute in numeric order: 41 -> 42 -> 43 -> 44 -> 45 -> 46
 | 38. New Functions - Analysis & Discovery | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 39. Output & Compatibility | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 40. Documentation | v2.0 | 5/5 | Complete | 2026-02-20 |
-| 41. Control Flow Parsing | v3.0 | 0/2 | Not started | - |
-| 42. Procedures & Evaluation | v3.0 | 0/2 | Not started | - |
-| 43. Expression Operations | v3.0 | 0/TBD | Not started | - |
+| 41. Control Flow Parsing | v3.0 | 2/2 | Complete | 2026-02-20 |
+| 42. Procedures & Evaluation | v3.0 | 2/2 | Complete | 2026-02-20 |
+| 43. Expression Operations | v3.0 | 0/2 | Not started | - |
 | 44. Polynomial Operations | v3.0 | 0/TBD | Not started | - |
 | 45. Bivariate Series | v3.0 | 0/TBD | Not started | - |
 | 46. Documentation | v3.0 | 0/TBD | Not started | - |
