@@ -15,7 +15,7 @@ use rustyline::{Context, Helper, Highlighter, Hinter};
 
 /// Line-editing helper with tab completion and bracket validation.
 ///
-/// - **Functions:** All 83 canonical function names auto-complete with `(`.
+/// - **Functions:** All 88 canonical function names auto-complete with `(`.
 /// - **Commands:** `help`, `quit`, `exit`, `clear`, `set` complete at line start.
 /// - **Variables:** User-defined names synced after each eval via
 ///   [`update_var_names`](ReplHelper::update_var_names).
@@ -49,7 +49,7 @@ impl ReplHelper {
         self.var_names = var_names;
     }
 
-    /// All 83 canonical function names -- must match eval.rs ALL_FUNCTION_NAMES
+    /// All 88 canonical function names -- must match eval.rs ALL_FUNCTION_NAMES
     /// exactly. NO Maple aliases.
     fn canonical_function_names() -> Vec<&'static str> {
         vec![
@@ -89,6 +89,8 @@ impl ReplHelper {
             "prove_nonterminating",
             // Group 9: Variable Management (2)
             "anames", "restart",
+            // Group 10: Jacobi Products (5)
+            "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
         ]
     }
 
@@ -214,8 +216,8 @@ mod tests {
         let names = ReplHelper::canonical_function_names();
         assert_eq!(
             names.len(),
-            83,
-            "expected 83 canonical function names, got {}",
+            88,
+            "expected 88 canonical function names, got {}",
             names.len()
         );
     }
@@ -243,11 +245,12 @@ mod tests {
     }
 
     #[test]
-    fn complete_theta_returns_three_candidates() {
+    fn complete_theta_returns_four_candidates() {
         let h = ReplHelper::new();
         let (_, pairs) = h.complete_inner("theta", 5);
-        assert_eq!(pairs.len(), 3);
+        assert_eq!(pairs.len(), 4);
         let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"theta"));
         assert!(displays.contains(&"theta2"));
         assert!(displays.contains(&"theta3"));
         assert!(displays.contains(&"theta4"));

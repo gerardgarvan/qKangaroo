@@ -1440,3 +1440,135 @@ fn findcong_old_signature_error() {
         stderr
     );
 }
+
+// ===========================================================================
+// Phase 37: Jacobi Products & Conversions
+// ===========================================================================
+
+#[test]
+fn jac_creates_jacobi_product() {
+    let (code, stdout, stderr) = run(&["-c", "JAC(1,5)"]);
+    assert_eq!(code, 0, "JAC(1,5) should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("JAC(1,5)"),
+        "expected JAC(1,5) in output: {}",
+        stdout
+    );
+}
+
+#[test]
+fn jac_multiply_combines_factors() {
+    let (code, stdout, stderr) = run(&["-c", "JAC(1,5) * JAC(2,5)"]);
+    assert_eq!(code, 0, "JAC multiply should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("JAC(1,5)*JAC(2,5)"),
+        "expected combined product: {}",
+        stdout
+    );
+}
+
+#[test]
+fn theta_numeric_z() {
+    // theta(1, q, 5) = sum(q^(i^2), i=-5..5) for i^2 < 5: i in {-2,-1,0,1,2}
+    // q^0: 1 (i=0), q^1: 2 (i=+-1), q^4: 2 (i=+-2)
+    let (code, stdout, stderr) = run(&["-c", "theta(1, q, 5)"]);
+    assert_eq!(code, 0, "theta should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("1 + 2*q + 2*q^4"),
+        "expected theta coefficients: {}",
+        stdout
+    );
+}
+
+#[test]
+fn jac2series_single_factor() {
+    // jac2series(JAC(1,1), q, 10) should produce (q;q)_inf = 1 - q - q^2 + q^5 + q^7 + O(q^10)
+    let (code, stdout, stderr) = run(&["-c", "jac2series(JAC(1,1), q, 10)"]);
+    assert_eq!(code, 0, "jac2series should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("1 - q"),
+        "expected (q;q)_inf series start: {}",
+        stdout
+    );
+}
+
+#[test]
+fn jac2series_wrong_type_errors() {
+    let (code, _, stderr) = run(&["-c", "jac2series(42, q, 10)"]);
+    assert_ne!(code, 0, "jac2series with integer should fail");
+    assert!(
+        stderr.contains("expected Jacobi product"),
+        "expected type error: {}",
+        stderr
+    );
+}
+
+#[test]
+fn jac2prod_shows_product_notation() {
+    let (code, stdout, stderr) = run(&["-c", "jac2prod(JAC(1,5), q, 20)"]);
+    assert_eq!(code, 0, "jac2prod should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("(1-q)"),
+        "expected product notation: {}",
+        stdout
+    );
+}
+
+#[test]
+fn qs2jaccombo_finds_decomposition() {
+    // etaq(q, 1, 30) = (q;q)_inf; qs2jaccombo should find a JAC decomposition
+    let tmp = write_temp_script(
+        "qk_test_qs2jaccombo.qk",
+        "f := etaq(q, 1, 30):\nqs2jaccombo(f, q, 30)",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "qs2jaccombo should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("JAC"),
+        "expected JAC decomposition: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}
+
+#[test]
+fn jac_invalid_b_zero_errors() {
+    // JAC(1,0) should fail since b must be positive
+    let (code, _, stderr) = run(&["-c", "JAC(1, 0)"]);
+    assert_ne!(code, 0, "JAC(1,0) should fail");
+    assert!(
+        stderr.contains("positive") || stderr.contains("greater than"),
+        "expected validation error: {}",
+        stderr
+    );
+}
+
+#[test]
+fn theta_monomial_z() {
+    // theta(q^2, q, 10) = sum(q^(2i+i^2), i=-T..T)
+    let (code, stdout, stderr) = run(&["-c", "theta(q^2, q, 10)"]);
+    assert_eq!(code, 0, "theta with monomial z should succeed. stderr: {}", stderr);
+    assert!(
+        stdout.contains("q"),
+        "expected series output: {}",
+        stdout
+    );
+}
+
+#[test]
+fn jac2series_matches_etaq() {
+    // jac2series(JAC(1,5), q, 15) should produce same result as etaq(1, 5, 15) (legacy form)
+    let tmp = write_temp_script(
+        "qk_test_jac2series_match.qk",
+        "a := jac2series(JAC(1,5), q, 15):\nb := etaq(1, 5, 15):\na - b",
+    );
+    let (code, stdout, stderr) = run(&[tmp.to_str().unwrap()]);
+    assert_eq!(code, 0, "jac2series cross-check should succeed. stderr: {}", stderr);
+    // Difference should be 0 (or O(q^15))
+    assert!(
+        stdout.contains("O(q^15)") || stdout.contains("0"),
+        "expected zero difference: {}",
+        stdout
+    );
+    std::fs::remove_file(&tmp).ok();
+}

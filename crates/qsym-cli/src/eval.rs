@@ -3561,7 +3561,7 @@ fn resolve_alias(name: &str) -> String {
 // Fuzzy matching for "Did you mean?" suggestions
 // ---------------------------------------------------------------------------
 
-/// All canonical function names (79 functions) for fuzzy matching.
+/// All canonical function names (84 functions) for fuzzy matching.
 const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern A: Series generators
     "aqprod", "qbin", "etaq", "jacprod", "tripleprod", "quinprod", "winquist",

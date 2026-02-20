@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 81 functions + session commands.
+//! - [`general_help`]: grouped listing of all 86 functions + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 
 // ---------------------------------------------------------------------------
@@ -35,9 +35,16 @@ Partitions:
   crank_gf           - crank generating function C(z;q)
 
 Theta Functions:
+  theta    - general theta series sum(z^i*q^(i^2), i=-T..T)
   theta2   - Jacobi theta_2(q)
   theta3   - Jacobi theta_3(q)
   theta4   - Jacobi theta_4(q)
+
+Jacobi Products:
+  JAC          - Jacobi product factor (q^a;q^b)_inf
+  jac2prod     - convert Jacobi product to explicit product form
+  jac2series   - convert Jacobi product to q-series
+  qs2jaccombo  - decompose q-series into sum of Jacobi products
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -729,6 +736,44 @@ const FUNC_HELP: &[FuncHelp] = &[
         example: "q> prove_nonterminating(...)",
         example_output: "Error: prove_nonterminating requires the Python API",
     },
+    // -----------------------------------------------------------------------
+    // Group 11: Jacobi Products & Conversions (5)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "JAC",
+        signature: "JAC(a, b)",
+        description: "Create a Jacobi product factor (q^a;q^b)_inf. JacobiProduct values support *, /, and ^ operations.\n  Use jac2series() or jac2prod() to expand to a q-series.",
+        example: "q> jp := JAC(1,5) * JAC(4,5)",
+        example_output: "JAC(1,5)*JAC(4,5)",
+    },
+    FuncHelp {
+        name: "theta",
+        signature: "theta(z, q, T)",
+        description: "Compute the general theta series sum(z^i * q^(i^2), i=-T..T).\n  z can be numeric (integer/rational) or a q-monomial like q^2.\n  If z is an unassigned symbol, prints a warning.",
+        example: "q> theta(1, q, 5)",
+        example_output: "1 + 2*q + 2*q^4 + O(q^5)",
+    },
+    FuncHelp {
+        name: "jac2prod",
+        signature: "jac2prod(JP, q, T)",
+        description: "Convert a Jacobi product expression to explicit product notation.\n  JP must be a JacobiProduct value (created with JAC(a,b)).\n  Prints product notation like (1-q)(1-q^6)(1-q^11)... and returns the expanded q-series.",
+        example: "q> jac2prod(JAC(1,5), q, 20)",
+        example_output: "(1-q)(1-q^6)(1-q^11)(1-q^16)",
+    },
+    FuncHelp {
+        name: "jac2series",
+        signature: "jac2series(JP, q, T)",
+        description: "Convert a Jacobi product expression to a truncated q-series.\n  JP must be a JacobiProduct value (created with JAC(a,b)).\n  Prints and returns the series expansion.",
+        example: "q> jac2series(JAC(1,5) * JAC(4,5), q, 20)",
+        example_output: "1 - q - q^4 + q^7 + ... + O(q^20)",
+    },
+    FuncHelp {
+        name: "qs2jaccombo",
+        signature: "qs2jaccombo(f, q, T)",
+        description: "Decompose a q-series into a linear combination of Jacobi products.\n  First tries single-product decomposition via jacprodmake, then tries linear combination.\n  Prints the JAC formula if found, or 'No Jacobi product decomposition found' otherwise.",
+        example: "q> f := etaq(q, 1, 30): qs2jaccombo(f, q, 30)",
+        example_output: "JAC(1,1)",
+    },
 ];
 
 /// Return per-function help for the given name, or `None` if unrecognized.
@@ -761,6 +806,7 @@ mod tests {
             "Products:",
             "Partitions:",
             "Theta Functions:",
+            "Jacobi Products:",
             "Series Analysis:",
             "Relations:",
             "Hypergeometric:",
@@ -890,8 +936,9 @@ mod tests {
             "prove_eta_id", "search_identities",
             "q_gosper", "q_zeilberger", "verify_wz", "q_petkovsek",
             "prove_nonterminating",
+            "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
         ];
-        assert_eq!(canonical.len(), 81, "test list should have 81 entries");
+        assert_eq!(canonical.len(), 86, "test list should have 86 entries");
 
         for name in &canonical {
             assert!(
@@ -906,8 +953,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            81,
-            "FUNC_HELP should have exactly 81 entries, got {}",
+            86,
+            "FUNC_HELP should have exactly 86 entries, got {}",
             FUNC_HELP.len()
         );
     }
