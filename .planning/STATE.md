@@ -5,26 +5,26 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v3.0 Phase 43 - Expression Operations (complete)
+**Current focus:** v3.0 Phase 44 - Polynomial Operations (plan 01 complete)
 
 ## Current Position
 
-Phase: 43 of 46 (Expression Operations) -- COMPLETE
-Plan: 2 of 2 in phase 43 (all plans complete)
-Status: Phase 43 complete, ready for phase 44
-Last activity: 2026-02-20 -- Plan 43-02 executed (2 tasks, 12 new tests, 715 total)
+Phase: 44 of 46 (Polynomial Operations)
+Plan: 1 of 2 in phase 44
+Status: Plan 44-01 complete, ready for plan 44-02
+Last activity: 2026-02-20 -- Plan 44-01 executed (2 tasks, 29 new tests, 746 total)
 
-Progress: [==========================================........] 85% (123/~145 plans est.)
+Progress: [==========================================........] 85% (124/~145 plans est.)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 123
+- Total plans completed: 124
 - Total phases: 43 complete (v1.0-v2.0 + Phases 41-43), 3 remaining (v3.0)
 - Total milestones: 8 complete (v1.0-v1.6, v2.0)
 - Average duration: ~5 min/plan
-- Total execution time: ~9.0 hours
+- Total execution time: ~9.1 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -32,6 +32,7 @@ Progress: [==========================================........] 85% (123/~145 pla
 | 42 | 02 | 7 min | 2 | 7 |
 | 43 | 01 | 9 min | 2 | 3 |
 | 43 | 02 | 7 min | 2 | 3 |
+| 44 | 01 | 8 min | 2 | 7 |
 
 ## Accumulated Context
 
@@ -58,6 +59,10 @@ v2.0 decisions archived in .planning/milestones/v2.0-phases/.
 - 43-02: expand() 1-arg form uses env.default_order for JacobiProduct conversion
 - 43-02: expand() accepts 1 or 3 args, rejects 2 with clear error
 - 43-02: series() accepts JacobiProduct, Integer, Rational in addition to Series
+- 44-01: Cyclotomic trial division scans from highest n down to 1 for correct factor discovery
+- 44-01: fps_to_qratpoly requires POLYNOMIAL_ORDER sentinel to reject truncated series
+- 44-01: Negative leading coefficient handled by negating both scalar and primitive part
+- 44-01: Factor display uses descending degree order within each parenthesized factor
 
 ### Pending Todos
 
@@ -70,5 +75,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 43-02-PLAN.md (Phase 43 complete)
+Stopped at: Completed 44-01-PLAN.md
 Resume file: N/A
