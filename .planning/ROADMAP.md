@@ -213,7 +213,10 @@ Plans:
   1. Series output uses Maple-style polynomial ordering (descending powers) when appropriate
   2. Every v1.x function signature (e.g., `etaq(1, 20)` without explicit q) continues to work and returns the same result
   3. The full existing test suite (281 core + 549 CLI tests) passes with zero regressions
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 39-01-PLAN.md -- Descending display ordering in format_series()/fps_to_latex(), test assertion updates, help example updates
+- [ ] 39-02-PLAN.md -- Backward compatibility integration test suite for all v1.x signatures
 
 ### Phase 40: Documentation
 **Goal**: All documentation reflects the new Maple-compatible signatures so users can learn the system from any entry point
