@@ -6592,4 +6592,132 @@ mod tests {
         let val = dispatch("qs2jaccombo", &args, &mut env);
         assert!(val.is_ok(), "qs2jaccombo should not error: {:?}", val.err());
     }
+
+    // --- Phase 38 analysis/discovery tests ---
+
+    #[test]
+    fn dispatch_lqdegree0_returns_min_order() {
+        let mut env = make_env();
+        // etaq(1,1,20) = prod (1-q^n) starts at q^0 (constant term 1)
+        let eta = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("lqdegree0", &[eta], &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(0i64));
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_checkmult_partition_not_multiplicative() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(50i64))], &mut env).unwrap();
+        let val = dispatch("checkmult", &[pgf, Value::Integer(QInt::from(30i64))], &mut env).unwrap();
+        // partition function is NOT multiplicative
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(0i64));
+        } else {
+            panic!("expected Integer(0), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_checkmult_with_yes_prints_all() {
+        let mut env = make_env();
+        let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(50i64))], &mut env).unwrap();
+        let val = dispatch("checkmult", &[
+            pgf,
+            Value::Integer(QInt::from(30i64)),
+            Value::String("yes".to_string()),
+        ], &mut env).unwrap();
+        // Still returns 0 (not multiplicative), but prints all failures
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(0i64));
+        } else {
+            panic!("expected Integer(0), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_checkprod_eta_nice_product() {
+        let mut env = make_env();
+        // etaq(1,1,30) = prod (1-q^n)^1 which is a nice product
+        let eta = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(30i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("checkprod", &[
+            eta,
+            Value::Integer(QInt::from(10i64)),  // M threshold
+            Value::Integer(QInt::from(30i64)),  // Q order
+        ], &mut env).unwrap();
+        // Should be [a, 1] for a nice product
+        if let Value::List(items) = &val {
+            assert_eq!(items.len(), 2);
+            // Second element should be 1 (nice)
+            if let Value::Integer(code) = &items[1] {
+                assert_eq!(*code, QInt::from(1i64), "expected nice product code 1");
+            } else {
+                panic!("expected Integer code, got {:?}", items[1]);
+            }
+        } else {
+            panic!("expected List, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_findprod_garvan_4arg() {
+        let mut env = make_env();
+        // Create two eta quotients as a simple test
+        let e1 = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(30i64)),
+        ], &mut env).unwrap();
+        let e2 = dispatch("etaq", &[
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(30i64)),
+        ], &mut env).unwrap();
+        let val = dispatch("findprod", &[
+            Value::List(vec![e1, e2]),
+            Value::Integer(QInt::from(2i64)),   // T: max |coeff|
+            Value::Integer(QInt::from(10i64)),  // M: max exponent threshold
+            Value::Integer(QInt::from(30i64)),  // Q: truncation order
+        ], &mut env).unwrap();
+        // Should return a list (possibly empty, possibly with results)
+        if let Value::List(results) = &val {
+            // Each result should be [valuation, c1, c2, ...]
+            for row in results {
+                if let Value::List(items) = row {
+                    assert!(items.len() >= 3, "each result should have valuation + k coefficients");
+                } else {
+                    panic!("expected List row, got {:?}", row);
+                }
+            }
+        } else {
+            panic!("expected List, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_findprod_old_3arg_errors() {
+        let mut env = make_env();
+        let e1 = dispatch("etaq", &[
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        let result = dispatch("findprod", &[
+            Value::List(vec![e1]),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env);
+        assert!(result.is_err(), "old 3-arg findprod should now error (expects 4 args)");
+    }
 }
