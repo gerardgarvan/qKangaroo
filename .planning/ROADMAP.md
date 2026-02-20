@@ -110,7 +110,7 @@ See `.planning/milestones/v1.6-ROADMAP.md` for details.
 - [x] **Phase 35: Series Analysis Signatures** - Series analysis functions accept Garvan's exact calling conventions -- 2026-02-19
 - [x] **Phase 36: Relation Discovery Signatures** - All find* functions accept Garvan's signatures with symbolic labels -- 2026-02-19
 - [x] **Phase 37: New Functions - Theta & Jacobi** - theta, jac2prod, jac2series, qs2jaccombo implemented -- 2026-02-19
-- [ ] **Phase 38: New Functions - Analysis & Discovery** - checkmult, checkprod, lqdegree0, zqfactor, findprod implemented
+- [x] **Phase 38: New Functions - Analysis & Discovery** - checkmult, checkprod, lqdegree0, findprod implemented (zqfactor deferred) -- 2026-02-19
 - [ ] **Phase 39: Output & Compatibility** - Maple-style display, backward compat verified, all tests green
 - [ ] **Phase 40: Documentation** - Manual, help, tab completion, migration guide all updated
 
@@ -202,8 +202,8 @@ Plans:
   5. `findprod([f1,f2,f3], 3, 10, 30)` searches for integer linear combinations with |coeff| <= 3 that yield nice products per checkprod, returns list of [valuation, coeff_vector] pairs silently
 **Plans:** 2 plans
 Plans:
-- [ ] 38-01-PLAN.md -- All 4 function dispatch arms (lqdegree0, checkmult, checkprod, findprod) + helpers + unit tests
-- [ ] 38-02-PLAN.md -- Help text for all 4 functions, general help listing, CLI integration tests
+- [x] 38-01-PLAN.md -- All 4 function dispatch arms (lqdegree0, checkmult, checkprod, findprod) + helpers + unit tests
+- [x] 38-02-PLAN.md -- Help text for all 4 functions, general help listing, CLI integration tests
 
 ### Phase 39: Output & Compatibility
 **Goal**: Series display matches Maple conventions and all existing v1.x calling conventions still work as aliases
@@ -268,6 +268,6 @@ Plans:
 | 35. Series Analysis Signatures | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 36. Relation Discovery Signatures | v2.0 | 3/3 | Complete | 2026-02-19 |
 | 37. New Functions - Theta & Jacobi | v2.0 | 2/2 | Complete | 2026-02-19 |
-| 38. New Functions - Analysis & Discovery | v2.0 | 0/TBD | Not started | - |
+| 38. New Functions - Analysis & Discovery | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 39. Output & Compatibility | v2.0 | 0/TBD | Not started | - |
 | 40. Documentation | v2.0 | 0/TBD | Not started | - |
