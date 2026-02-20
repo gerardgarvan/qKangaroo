@@ -228,12 +228,13 @@ Plans:
   3. Tab completion includes all new function names (theta, jac2prod, jac2series, qs2jaccombo, checkmult, checkprod, lqdegree0, zqfactor, findprod, numbpart)
   4. Maple migration guide shows side-by-side examples where q-Kangaroo syntax is now identical to Maple (no translation needed)
   5. Python API docstrings and README quick-start reflect any signature changes
-**Plans:** 4 plans
+**Plans:** 5 plans
 Plans:
 - [ ] 40-01-PLAN.md -- Products (ch05), Partitions (ch06), Theta (ch07) Garvan signature overhaul + 5 new entries
 - [ ] 40-02-PLAN.md -- Series Analysis (ch08), Relations (ch09) Garvan signature overhaul + 3 new entries
-- [ ] 40-03-PLAN.md -- Function count fixes, numbpart rename, tab completion fix, README, help/Python verification
+- [ ] 40-03-PLAN.md -- Function count fixes (ch00-04, ch02), numbpart rename, tab completion fix, README, help/Python verification
 - [ ] 40-04-PLAN.md -- Migration guide (ch14) complete workflow-oriented rewrite
+- [ ] 40-05-PLAN.md -- Worked examples (ch13) rewrite with Garvan-canonical signatures and descending output order
 
 ## Progress
 
@@ -278,4 +279,4 @@ Plans:
 | 37. New Functions - Theta & Jacobi | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 38. New Functions - Analysis & Discovery | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 39. Output & Compatibility | v2.0 | 2/2 | Complete | 2026-02-19 |
-| 40. Documentation | v2.0 | 0/4 | Not started | - |
+| 40. Documentation | v2.0 | 0/5 | Not started | - |
