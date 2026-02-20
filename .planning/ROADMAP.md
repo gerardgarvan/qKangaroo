@@ -212,7 +212,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Series output uses Maple-style polynomial ordering (descending powers) when appropriate
   2. Every v1.x function signature (e.g., `etaq(1, 20)` without explicit q) continues to work and returns the same result
-  3. The full existing test suite (836 core + 294 CLI tests) passes with zero regressions
+  3. The full existing test suite (281 core + 549 CLI tests) passes with zero regressions
 **Plans**: TBD
 
 ### Phase 40: Documentation
