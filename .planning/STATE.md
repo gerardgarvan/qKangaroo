@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 40 executing
+**Current focus:** v2.0 Maple Compatibility -- Phase 40 complete
 
 ## Current Position
 
 Phase: 40 of 40 (Documentation)
-Plan: 4 of 5 in current phase (EXECUTING)
-Status: Phase 40 executing -- plans 01-04 complete
-Last activity: 2026-02-20 -- Completed 40-02 (Series Analysis & Relations chapters)
+Plan: 5 of 5 in current phase (COMPLETE)
+Status: Phase 40 complete -- all 5 plans executed
+Last activity: 2026-02-20 -- Completed 40-05 (Worked examples Garvan rewrite)
 
-Progress: [########################################      ] 114/115 plans (v2.0 phases 33-40)
+Progress: [##########################################    ] 115/115 plans (v2.0 phases 33-40)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 114
-- Total phases: 39 complete (v1.0-v1.6 + Phases 33-39), 1 executing (40)
+- Total plans completed: 115
+- Total phases: 40 complete (v1.0-v1.6 + Phases 33-40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8.5 hours
@@ -48,6 +48,7 @@ Progress: [########################################      ] 114/115 plans (v2.0 p
 | 40-03 | Peripheral doc fixes (counts, tab completion, README) | 3min | 2 | 7 |
 | 40-02 | Series Analysis & Relations manual chapters | 4min | 2 | 2 |
 | 40-04 | Maple migration guide rewrite | 2min | 1 | 1 |
+| 40-05 | Worked examples Garvan rewrite | 20min | 1 | 2 |
 
 ## Accumulated Context
 
@@ -130,6 +131,10 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 40-04: Migration guide organized by workflow (eta products, series analysis, congruences, relations, theta/Jacobi, products) not alphabetically
 - 40-04: Two-column tables confirm identical syntax rather than only listing differences
 - 40-04: Hypergeometric triple encoding identified as main remaining divergence area
+- 40-05: etaq Garvan dispatch fixed: t=delta instead of t=1 (bug fix for delta>1)
+- 40-05: Jacobi triple product uses eta-quotient verification (engine cannot express (-q;q^2)_inf via aqprod)
+- 40-05: Mock theta section restructured: rhs=mf+4*mpsi to demonstrate findlincombo (Watson relation not verifiable)
+- 40-05: findcong examples use findcong(QS, T, LM) form showing compound congruences
 
 ### Pending Todos
 
@@ -142,5 +147,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 40-01-PLAN.md (Manual chapters 05-07 Garvan signatures)
+Stopped at: Completed 40-05-PLAN.md (Worked examples Garvan rewrite) -- Phase 40 complete
 Resume file: .planning/phases/40-documentation/
