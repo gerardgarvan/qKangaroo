@@ -182,16 +182,16 @@ const FUNC_HELP: &[FuncHelp] = &[
     FuncHelp {
         name: "tripleprod",
         signature: "tripleprod(z, q, T)",
-        description: "Compute the Jacobi triple product (z;q)_inf * (q/z;q)_inf * (q;q)_inf truncated to O(q^T).\n  The first argument z is a q-monomial (like q^3 or -q^2).",
-        example: "q> tripleprod(q, q, 20)",
-        example_output: "2*q^16 - 2*q^9 + 2*q^4 - 2*q + 1 + O(q^20)",
+        description: "Compute the Jacobi triple product (z;q)_inf * (q/z;q)_inf * (q;q)_inf truncated to O(q^T).\n  The first argument z is a q-monomial (like q^3 or -q^2).\n  When z is a symbolic variable (different from q), returns a bivariate Laurent polynomial\n  in z with q-series coefficients, computed via the sum form: sum(-1)^n z^n q^(n(n-1)/2).",
+        example: "q> tripleprod(z, q, 10)",
+        example_output: "... + z^2*q - z + 1 - z^(-1)*q + z^(-2)*q^3 + ... + O(q^10)",
     },
     FuncHelp {
         name: "quinprod",
         signature: "quinprod(z, q, T)",
-        description: "Compute the quintuple product expansion truncated to O(q^T).\n  The first argument z is a q-monomial.",
-        example: "q> quinprod(q, q, 20)",
-        example_output: "q^7 + q^5 - q^2 - q + 1 + O(q^20)",
+        description: "Compute the quintuple product expansion truncated to O(q^T).\n  The first argument z is a q-monomial.\n  When z is a symbolic variable (different from q), returns a bivariate Laurent polynomial\n  in z with q-series coefficients, computed via: sum(z^(3m) - z^(-3m-1)) q^(m(3m+1)/2).",
+        example: "q> quinprod(z, q, 10)",
+        example_output: "... + z^3*q^2 - z^2*q + z^0 - z^(-1) - z^(-3)*q + z^(-4)*q^2 + ... + O(q^10)",
     },
     FuncHelp {
         name: "winquist",
@@ -1161,5 +1161,23 @@ mod tests {
     fn general_help_contains_subs() {
         let text = general_help();
         assert!(text.contains("subs"), "general_help should contain subs");
+    }
+
+    #[test]
+    fn function_help_tripleprod_mentions_bivariate() {
+        let help = function_help("tripleprod");
+        assert!(help.is_some(), "tripleprod should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("symbolic") || text.contains("bivariate"),
+            "tripleprod help should mention symbolic z or bivariate");
+    }
+
+    #[test]
+    fn function_help_quinprod_mentions_bivariate() {
+        let help = function_help("quinprod");
+        assert!(help.is_some(), "quinprod should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("symbolic") || text.contains("bivariate"),
+            "quinprod help should mention symbolic z or bivariate");
     }
 }
