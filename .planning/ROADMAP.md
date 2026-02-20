@@ -140,7 +140,10 @@ See `.planning/milestones/v2.0-ROADMAP.md` for details.
   2. User can type `if x > 0 then A elif x = 0 then B else C fi` and it parses into a conditional AST node with condition, then-branch, elif-branches, and else-branch
   3. User can use all six comparison operators (`=`, `<>`, `<`, `>`, `<=`, `>=`) and three boolean operators (`and`, `or`, `not`) in expressions, with correct precedence (not binds tighter than and, and binds tighter than or)
   4. For-loop and if/else blocks can contain multiple semicolon-separated statements in their bodies
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 41-01-PLAN.md -- Tokens, AST types, lexer extensions, and parser comparison/boolean operator support
+- [ ] 41-02-PLAN.md -- For-loop and if/elif/else parsing with statement sequences and REPL multiline detection
 
 ### Phase 42: Procedures & Evaluation
 **Goal**: Users can define and call named procedures with local variables, early return, and memoization, and all control flow (for, if) evaluates correctly
@@ -244,7 +247,7 @@ Phases execute in numeric order: 41 -> 42 -> 43 -> 44 -> 45 -> 46
 | 38. New Functions - Analysis & Discovery | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 39. Output & Compatibility | v2.0 | 2/2 | Complete | 2026-02-19 |
 | 40. Documentation | v2.0 | 5/5 | Complete | 2026-02-20 |
-| 41. Control Flow Parsing | v3.0 | 0/TBD | Not started | - |
+| 41. Control Flow Parsing | v3.0 | 0/2 | Not started | - |
 | 42. Procedures & Evaluation | v3.0 | 0/TBD | Not started | - |
 | 43. Expression Operations | v3.0 | 0/TBD | Not started | - |
 | 44. Polynomial Operations | v3.0 | 0/TBD | Not started | - |
