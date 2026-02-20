@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 93 functions + session commands.
+//! - [`general_help`]: grouped listing of all 94 functions + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 
 // ---------------------------------------------------------------------------
@@ -49,6 +49,9 @@ Jacobi Products:
 Expression Operations:
   series         - truncate a series to O(q^T): series(f, q, T)
   expand         - expand products into polynomial/series form
+
+Polynomial Operations:
+  factor         - factor a polynomial in q into irreducible factors
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -142,7 +145,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 93 function help entries.
+/// All 94 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -826,6 +829,17 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
 
     // -----------------------------------------------------------------------
+    // Group 14: Polynomial Operations (1)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "factor",
+        signature: "factor(poly)",
+        description: "Factor a polynomial in q into irreducible factors over the rationals.\n  The argument must be an exact polynomial (not a truncated series). Use expand() to convert products first.",
+        example: "q> factor(1 - q^6)",
+        example_output: "(1-q)(1+q)(1-q+q^2)(1+q+q^2)",
+    },
+
+    // -----------------------------------------------------------------------
     // Group 12: Number Theory (2)
     // -----------------------------------------------------------------------
     FuncHelp {
@@ -885,6 +899,7 @@ mod tests {
             "Mock Theta & Bailey:",
             "Identity Proving:",
             "Expression Operations:",
+            "Polynomial Operations:",
             "Number Theory:",
         ] {
             assert!(
@@ -1013,9 +1028,10 @@ mod tests {
             "prove_nonterminating",
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
             "series", "expand",
+            "factor",
             "floor", "legendre",
         ];
-        assert_eq!(canonical.len(), 93, "test list should have 93 entries");
+        assert_eq!(canonical.len(), 94, "test list should have 94 entries");
 
         for name in &canonical {
             assert!(
@@ -1030,8 +1046,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            93,
-            "FUNC_HELP should have exactly 93 entries, got {}",
+            94,
+            "FUNC_HELP should have exactly 94 entries, got {}",
             FUNC_HELP.len()
         );
     }
@@ -1105,5 +1121,22 @@ mod tests {
         assert!(text.contains("Expression Operations:"), "general_help missing Expression Operations category");
         assert!(text.contains("series"), "general_help missing series");
         assert!(text.contains("expand"), "general_help missing expand");
+    }
+
+    #[test]
+    fn general_help_contains_polynomial_operations_category() {
+        let text = general_help();
+        assert!(text.contains("Polynomial Operations:"), "general_help missing Polynomial Operations category");
+        assert!(text.contains("factor"), "general_help missing factor");
+    }
+
+    #[test]
+    fn function_help_factor_returns_some() {
+        let help = function_help("factor");
+        assert!(help.is_some(), "factor should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("factor"), "help should contain function name");
+        assert!(text.contains("irreducible"), "help should contain description");
+        assert!(text.contains("factor(1 - q^6)"), "help should contain example");
     }
 }

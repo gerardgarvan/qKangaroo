@@ -3805,6 +3805,37 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Polynomial Operations (POLY-01)
+        // =================================================================
+
+        "factor" => {
+            expect_args(name, args, 1)?;
+            match &args[0] {
+                Value::Series(fps) => {
+                    let qrp = fps_to_qratpoly(fps).map_err(EvalError::Other)?;
+                    let factorization = qsym_core::poly::factor_over_q(&qrp);
+                    let display = factorization.display_with_var("q");
+                    Ok(Value::String(display))
+                }
+                Value::Integer(n) => {
+                    if n.is_zero() {
+                        return Err(EvalError::Other("cannot factor zero".to_string()));
+                    }
+                    let qrp = qsym_core::QRatPoly::from_vec(vec![QRat::from(n.clone())]);
+                    let factorization = qsym_core::poly::factor_over_q(&qrp);
+                    let display = factorization.display_with_var("q");
+                    Ok(Value::String(display))
+                }
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "polynomial series or integer",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -3815,6 +3846,52 @@ pub fn dispatch(
             })
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// FPS -> QRatPoly conversion (for factor() dispatch)
+// ---------------------------------------------------------------------------
+
+/// Convert a FormalPowerSeries to a QRatPoly for polynomial operations.
+///
+/// Requires that the FPS has `POLYNOMIAL_ORDER` truncation (i.e., it's an exact
+/// polynomial, not a truncated series). Returns `Err` with a user-facing message
+/// if the conversion is not possible.
+fn fps_to_qratpoly(fps: &FormalPowerSeries) -> Result<qsym_core::QRatPoly, String> {
+    if fps.truncation_order() != POLYNOMIAL_ORDER {
+        return Err(
+            "cannot factor truncated series -- use expand() to get an exact polynomial".to_string(),
+        );
+    }
+    if fps.is_zero() {
+        return Err("cannot factor zero polynomial".to_string());
+    }
+
+    // Check for negative exponents
+    if let Some((&min_exp, _)) = fps.iter().next() {
+        if min_exp < 0 {
+            return Err(format!(
+                "polynomial has negative exponent q^{}",
+                min_exp
+            ));
+        }
+    }
+
+    // Get max exponent
+    let max_exp = fps
+        .iter()
+        .last()
+        .map(|(&e, _)| e)
+        .unwrap_or(0);
+
+    // Build dense coefficient vector
+    let len = (max_exp + 1) as usize;
+    let mut coeffs = vec![QRat::zero(); len];
+    for (&exp, coeff) in fps.iter() {
+        coeffs[exp as usize] = coeff.clone();
+    }
+
+    Ok(qsym_core::QRatPoly::from_vec(coeffs))
 }
 
 // ---------------------------------------------------------------------------
@@ -4360,6 +4437,8 @@ fn get_signature(name: &str) -> String {
         // Group P: Number theory
         "floor" => "(x)".to_string(),
         "legendre" => "(m, p)".to_string(),
+        // Group R: Polynomial operations
+        "factor" => "(poly)".to_string(),
         _ => String::new(),
     }
 }
@@ -4450,6 +4529,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "series", "expand",
     // Pattern P: Number theory
     "floor", "legendre",
+    // Pattern R: Polynomial operations
+    "factor",
 ];
 
 /// All alias names for fuzzy matching.
@@ -8740,5 +8821,55 @@ mod tests {
         let mut env = make_env();
         let result = dispatch("expand", &[Value::Bool(true)], &mut env);
         assert!(result.is_err());
+    }
+
+    // --- factor() dispatch tests ---
+
+    #[test]
+    fn dispatch_factor_1_minus_q6() {
+        let mut env = make_env();
+        // Build 1 - q^6 as an exact polynomial FPS
+        let sym_q = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0i64, QRat::one());
+        coeffs.insert(6i64, QRat::from((-1i64, 1i64)));
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, POLYNOMIAL_ORDER);
+        let result = dispatch("factor", &[Value::Series(fps)], &mut env).unwrap();
+        if let Value::String(s) = result {
+            assert!(s.contains("1-q") || s.contains("-1+q") || s.contains("q-1"),
+                "should contain (q-1) factor: got {}", s);
+            assert!(s.contains("q+1") || s.contains("1+q"),
+                "should contain (q+1) factor: got {}", s);
+            assert!(s.contains("q^2"),
+                "should contain degree-2 factors: got {}", s);
+        } else {
+            panic!("factor should return Value::String, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_factor_truncated_series_error() {
+        let mut env = make_env();
+        // Build a truncated series (truncation_order != POLYNOMIAL_ORDER)
+        let sym_q = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0i64, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, 10);
+        let result = dispatch("factor", &[Value::Series(fps)], &mut env);
+        assert!(result.is_err(), "factor of truncated series should error");
+        if let Err(EvalError::Other(msg)) = result {
+            assert!(msg.contains("truncated"), "error should mention truncated: got {}", msg);
+        }
+    }
+
+    #[test]
+    fn dispatch_factor_constant() {
+        let mut env = make_env();
+        let result = dispatch("factor", &[Value::Integer(QInt::from(42i64))], &mut env).unwrap();
+        if let Value::String(s) = result {
+            assert!(s.contains("42"), "constant factoring should show the constant: got {}", s);
+        } else {
+            panic!("factor should return Value::String");
+        }
     }
 }
