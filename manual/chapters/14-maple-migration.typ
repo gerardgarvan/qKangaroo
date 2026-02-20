@@ -1,272 +1,296 @@
-// 14-maple-migration.typ -- Maple Migration Quick Reference
+// 14-maple-migration.typ -- Maple Migration Guide
 #import "../template.typ": *
 
-= Maple Migration Quick Reference
+= Maple Migration Guide
 #index-main[Maple migration]
-#index[aliases]
+#index[Maple compatibility]
+#index[Garvan packages]
 
-Users familiar with Frank Garvan's Maple packages (`qseries`, `thetaids`,
-`ETA`) can use q-Kangaroo as a direct replacement for most operations.
-The tables below map Maple function names to their q-Kangaroo equivalents.
-q-Kangaroo also accepts most Maple names as aliases at the REPL prompt,
-so existing muscle memory transfers immediately.
+q-Kangaroo v2.0 accepts Frank Garvan's exact Maple calling conventions for
+all `qseries` and `thetaids` functions.  Researchers can copy commands
+directly from Maple worksheets and run them at the `q>` prompt.  This guide
+is organised by workflow --- look up what you want to do, and the table shows
+side-by-side syntax.  Where Maple and q-Kangaroo syntax is identical (most
+functions), the table confirms it.  Where differences remain, they are
+highlighted.
 
-== Alias Table
-#index("Maple migration", "alias table")
+== Overview
+#index("Maple migration", "overview")
 
-The following 17 Maple function names are recognised as aliases in
-q-Kangaroo. You can type either name at the `q>` prompt:
+Most `qseries` functions now use *identical syntax* between Maple and
+q-Kangaroo.  Key examples: `aqprod`, `etaq`, `sift`, `prodmake`,
+`findlincombo`, `findcong` --- all accept Garvan's exact argument lists.
+
+The remaining differences fall into three categories:
+
++ *Hypergeometric series* use integer-triple encoding `(num, den, pow)`
+  instead of symbolic parameters.
++ *Some function names differ* from Maple, but aliases are accepted
+  (`proveid`, `qzeil`, `qgosper`, etc.).
++ *Session conventions* match Maple: `:=` for assignment, `:` to suppress
+  output.  No session object is needed at the REPL.
+
+
+== Computing Eta Products
+#index("Maple migration", "eta products")
+#index[etaq]
+#index[etamake]
+
+Maple and q-Kangaroo use identical syntax for eta-product computation:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple Name*], [*q-Kangaroo Name*], [*Notes*],
+    [*Maple*], [*q-Kangaroo*],
   ),
-  [`numbpart`], [`partition_count`], [Integer output (not a series)],
-  [`rankgf`], [`rank_gf`], [Dyson rank generating function],
-  [`crankgf`], [`crank_gf`], [Andrews-Garvan crank generating function],
-  [`qphihyper`], [`phi`], [Basic hypergeometric ${}_r phi_s$],
-  [`qpsihyper`], [`psi`], [Bilateral hypergeometric ${}_r psi_s$],
-  [`qgauss`], [`try_summation`], [Tries q-Gauss, q-Vandermonde, q-Chu-Vandermonde],
-  [`proveid`], [`prove_eta_id`], [Eta-quotient identity prover (valence formula)],
-  [`qzeil`], [`q_zeilberger`], [Creative telescoping (shortened alias)],
-  [`qzeilberger`], [`q_zeilberger`], [Creative telescoping (alternative spelling)],
-  [`qpetkovsek`], [`q_petkovsek`], [q-hypergeometric recurrence solver],
-  [`qgosper`], [`q_gosper`], [Indefinite q-hypergeometric summation],
-  [`findlincombo_modp`], [`findlincombomodp`], [Underscore removed],
-  [`findhom_modp`], [`findhommodp`], [Underscore removed],
-  [`findhomcombo_modp`], [`findhomcombomodp`], [Underscore removed],
-  [`search_id`], [`search_identities`], [Expanded name],
-  [`g2`], [`universal_mock_theta_g2`], [Zwegers $g_2$ short alias],
-  [`g3`], [`universal_mock_theta_g3`], [Zwegers $g_3$ short alias],
+  [`etaq(q, 1, 20)`], [`etaq(q, 1, 20)`],
+  [`etaq(q, \[1,2,3\], 20)`], [`etaq(q, \[1,2,3\], 20)`],
+  [`etamake(f, q, 10)`], [`etamake(f, q, 10)`],
+  [`prodmake(f, q, 10)`], [`prodmake(f, q, 10)`],
 )
 
-#index("Maple functions", "numbpart")
-#index("Maple functions", "rankgf")
-#index("Maple functions", "crankgf")
-#index("Maple functions", "qphihyper")
-#index("Maple functions", "qpsihyper")
-#index("Maple functions", "qgauss")
-#index("Maple functions", "proveid")
-#index("Maple functions", "qzeil")
-#index("Maple functions", "qzeilberger")
-#index("Maple functions", "qpetkovsek")
-#index("Maple functions", "qgosper")
-#index("Maple functions", "findlincombo_modp")
-#index("Maple functions", "findhom_modp")
-#index("Maple functions", "findhomcombo_modp")
-#index("Maple functions", "search_id")
-#index("Maple functions", "g2")
-#index("Maple functions", "g3")
-
-All aliases are case-insensitive. You can type `numbpart(100)` or
-`NUMBPART(100)` at the REPL and both resolve to `partition_count(100)`.
+Syntax is identical.  No translation needed.
 
 
-== Complete Function Mapping
-#index("Maple migration", "complete mapping")
+== Analysing Series
+#index("Maple migration", "series analysis")
+#index[sift]
+#index[prodmake]
 
-The following table maps every Maple function from Garvan's packages to its
-q-Kangaroo equivalent. Functions marked *Extension* have no Maple
-counterpart.
-
-=== Group 1: Pochhammer and q-Binomial
+All series-analysis functions accept Garvan's exact signatures:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Maple*], [*q-Kangaroo*],
   ),
-  [`aqprod(a, q, n)`], [`aqprod(num, den, pow, n, order)`], [Monomial $a = frac("num", "den") q^"pow"$],
-  [`aqprod(a, q, infinity)`], [`aqprod(num, den, pow, infinity, order)`], [$n =$ `infinity` for $(a;q)_oo$],
-  [`qbin(n, k, q)`], [`qbin(n, k, order)`], [Gaussian binomial $binom(n, k)_q$],
+  [`sift(f, q, 5, 4, 50)`], [`sift(f, q, 5, 4, 50)`],
+  [`prodmake(f, q, 20)`], [`prodmake(f, q, 20)`],
+  [`mprodmake(f, q, 20)`], [`mprodmake(f, q, 20)`],
+  [`qfactor(f, q)`], [`qfactor(f, q)`],
+  [`checkmult(f, 30)`], [`checkmult(f, 30)`],
+  [`checkprod(f, 10, 30)`], [`checkprod(f, 10, 30)`],
 )
 
-=== Group 2: Named Products
+Syntax is identical.
+
+
+== Finding Congruences
+#index("Maple migration", "congruences")
+#index[findcong]
+
+The congruence-discovery function accepts Garvan's exact signatures
+including optional modulus limits and exclusion sets:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Maple*], [*q-Kangaroo*],
   ),
-  [`etaq(d, t, q, N)`], [`etaq(b, t, order)`], [$q^(b t\/24) product (1 - q^(b k))^t$],
-  [`jacprod(a, b, q, N)`], [`jacprod(a, b, order)`], [Jacobi triple product $J(a, b)$],
-  [`tripleprod(z, b, t, q, N)`], [`tripleprod(num, den, pow, order)`], [Triple product with $z$ parameter],
-  [`quinprod(z, q, N)`], [`quinprod(num, den, pow, order)`], [Quintuple product],
-  [`winquist(a, b, q, N)`], [`winquist(a_n, a_d, a_p, b_n, b_d, b_p, order)`], [Winquist 10-factor product],
+  [`findcong(QS, T)`], [`findcong(QS, T)`],
+  [`findcong(QS, T, LM)`], [`findcong(QS, T, LM)`],
+  [`findcong(QS, T, LM, XSET)`], [`findcong(QS, T, LM, XSET)`],
 )
 
-=== Group 3: Theta Functions
+*Worked example --- discovering Ramanujan's congruences:*
+
+#repl-block("q> p := partition_gf(200):\nq> findcong(p, 200)\n[4, 5, 5]\n[5, 7, 7]\n[6, 11, 11]")
+
+Output format matches Garvan: `[B, A, R]` triples where
+$p(A n + B) equiv 0 pmod(R)$.
+
+
+== Discovering Relations
+#index("Maple migration", "relations")
+#index[findlincombo]
+#index[findhomcombo]
+#index[findprod]
+#index[findpoly]
+
+All relation-discovery functions accept Garvan's exact signatures including
+symbolic labels:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Maple*], [*q-Kangaroo*],
   ),
-  [`theta2(q, N)`], [`theta2(order)`], [$theta_2(q)$ in $q^(1\/4)$ convention],
-  [`theta3(q, N)`], [`theta3(order)`], [$theta_3(q) = sum q^(n^2)$],
-  [`theta4(q, N)`], [`theta4(order)`], [$theta_4(q) = sum (-1)^n q^(n^2)$],
+  [`findlincombo(f, L, SL, q, 0)`], [`findlincombo(f, L, SL, q, 0)`],
+  [`findhomcombo(f, L, q, 2, 0)`], [`findhomcombo(f, L, q, 2, 0)`],
+  [`findprod(FL, 2, 10, 30)`], [`findprod(FL, 2, 10, 30)`],
+  [`findpoly(x, y, q, 2, 2)`], [`findpoly(x, y, q, 2, 2)`],
+  [`findmaxind(L, 0)`], [`findmaxind(L, 0)`],
+  [`findhom(L, q, 2, 0)`], [`findhom(L, q, 2, 0)`],
+  [`findnonhom(L, q, 2, 0)`], [`findnonhom(L, q, 2, 0)`],
 )
 
-=== Group 4: Partition Functions
+All relation functions accept Garvan's exact signatures including symbolic
+labels.
+
+
+== Theta Functions and Jacobi Products
+#index("Maple migration", "theta functions")
+#index("Maple migration", "Jacobi products")
+#index[theta]
+#index[JAC]
+#index[jac2prod]
+#index[jac2series]
+#index[qs2jaccombo]
+
+Theta and Jacobi product operations use identical syntax:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Maple*], [*q-Kangaroo*],
   ),
-  [`numbpart(n)`], [`partition_count(n)`], [Exact $p(n)$ as integer],
-  [`seq(numbpart(n), ...)`], [`partition_gf(order)`], [$1\/(q;q)_oo$ as series],
-  [`rankgf(z, q, N)`], [`rank_gf(z_num, z_den, order)`], [Dyson rank GF $R(z;q)$],
-  [`crankgf(z, q, N)`], [`crank_gf(z_num, z_den, order)`], [Andrews-Garvan crank GF $C(z;q)$],
-  [---], [`distinct_parts_gf(order)`], [*Extension:* $(-q;q)_oo$],
-  [---], [`odd_parts_gf(order)`], [*Extension:* $1\/(q;q^2)_oo$],
-  [---], [`bounded_parts_gf(max, order)`], [*Extension:* parts $<= "max"$],
+  [`theta(z, q, T)`], [`theta(z, q, T)`],
+  [`JAC(1,5) * JAC(4,5)`], [`JAC(1,5) * JAC(4,5)`],
+  [`jac2prod(JP, q, T)`], [`jac2prod(JP, q, T)`],
+  [`jac2series(JP, q, T)`], [`jac2series(JP, q, T)`],
+  [`qs2jaccombo(f, q, T)`], [`qs2jaccombo(f, q, T)`],
 )
 
-=== Group 5: Series Analysis
+All Jacobi product operations use identical syntax.
+
+
+== Product Functions
+#index("Maple migration", "product functions")
+#index[aqprod]
+#index[jacprod]
+#index[tripleprod]
+#index[quinprod]
+#index[winquist]
+#index[qbin]
+
+All product-construction functions accept Garvan's calling conventions:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Maple*], [*q-Kangaroo*],
   ),
-  [`sift(f, m, j)`], [`sift(series, m, j)`], [Extract $a_(m n + j)$ subsequence],
-  [---], [`qdegree(series)`], [*Extension:* highest $q$-power],
-  [---], [`lqdegree(series)`], [*Extension:* lowest $q$-power],
-  [`qfactor(f, q, N)`], [`qfactor(series)`], [Factor into $(1 - q^i)$ factors],
-  [`prodmake(f, q, N)`], [`prodmake(series, n)`], [Andrews' product algorithm],
-  [`etamake(f, q, N)`], [`etamake(series, n)`], [Eta-quotient form],
-  [---], [`jacprodmake(series, n)`], [*Extension:* Jacobi product form],
-  [`mprodmake(f, q, N)`], [`mprodmake(series, n)`], [$(1+q^n)$ product form],
-  [---], [`qetamake(series, n)`], [*Extension:* combined eta/q-Pochhammer form],
+  [`aqprod(q^2, q, 5)`], [`aqprod(q^2, q, 5)`],
+  [`aqprod(q, q, infinity, 20)`], [`aqprod(q, q, infinity, 20)`],
+  [`jacprod(1, 5, q, 30)`], [`jacprod(1, 5, q, 30)`],
+  [`tripleprod(q^3, q, 20)`], [`tripleprod(q^3, q, 20)`],
+  [`quinprod(q^2, q, 20)`], [`quinprod(q^2, q, 20)`],
+  [`winquist(q, q^2, q, 10)`], [`winquist(q, q^2, q, 10)`],
+  [`qbin(q, 2, 4)`], [`qbin(q, 2, 4)`],
 )
 
-=== Group 6: Relation Discovery (Exact)
+Syntax is identical for all product functions.
+
+
+== Remaining Differences
+#index("Maple migration", "remaining differences")
+
+While most syntax is now identical, a few areas still require translation:
+
+=== Hypergeometric Series
+#index("Maple migration", "hypergeometric encoding")
+
+This is the main area where syntax differs.  Maple uses symbolic parameters;
+q-Kangaroo encodes $q$-monomials as integer triples `(num, den, pow)`
+representing $frac("num", "den") dot q^"pow"$.
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Maple*], [*q-Kangaroo*],
   ),
-  [`findlincombo(...)`], [`findlincombo(target, candidates, topshift)`], [$"target" = sum c_i f_i$],
-  [`findhom(...)`], [`findhom(series_list, degree, topshift)`], [Homogeneous polynomial relation],
-  [`findhomcombo(...)`], [`findhomcombo(target, cands, degree, topshift)`], [Homogeneous combo],
-  [`findnonhom(...)`], [`findnonhom(series_list, degree, topshift)`], [Non-homogeneous relation],
-  [`findnonhomcombo(...)`], [`findnonhomcombo(target, cands, deg, topshift)`], [Non-homogeneous combo],
-  [`findprod(...)`], [`findprod(series_list, max_coeff, max_exp)`], [Product identity search],
-  [`findmaxind(...)`], [`findmaxind(series_list, topshift)`], [Maximal independent subset],
-  [`findpoly(...)`], [`findpoly(series_list, degree, topshift)`], [Polynomial relation],
+  [`qphihyper([a,b],[c],q,z,N)`], [`phi([(n,d,p),...], [...], z_n, z_d, z_p, N)`],
+  [`qpsihyper([a,b],[c],q,z,N)`], [`psi([(n,d,p),...], [...], z_n, z_d, z_p, N)`],
+  [`qgauss([a,b],[c],q,z,N)`], [`try_summation(upper, lower, z_n, z_d, z_p, N)`],
 )
 
-=== Group 7: Relation Discovery (Modular)
+For example, the Maple parameter `q^3` becomes the triple `(1, 1, 3)` and
+`1/2*q^5` becomes `(1, 2, 5)`.
+
+=== Function Name Aliases
+#index("Maple migration", "aliases")
+
+Some function names differ from Garvan's packages, but the Maple names are
+accepted as aliases at the `q>` prompt:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (1fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Maple Name*], [*q-Kangaroo Canonical (alias accepted)*],
   ),
-  [`findcong(f, moduli, q, N)`], [`findcong(series, moduli)`], [Discover congruences $a_(m n + j) equiv 0$],
-  [`findlincombo_modp(...)`], [`findlincombomodp(target, cands, p, topshift)`], [Linear relation mod $p$],
-  [`findhom_modp(...)`], [`findhommodp(series_list, p, degree, topshift)`], [Polynomial mod $p$],
-  [`findhomcombo_modp(...)`], [`findhomcombomodp(target, cands, p, deg, topshift)`], [Combo mod $p$],
+  [`proveid`], [`prove_eta_id` (alias: `proveid`)],
+  [`qZeil`], [`q_zeilberger` (alias: `qzeil`)],
+  [`qgosper`], [`q_gosper` (alias: `qgosper`)],
+  [`rankgf`], [`rank_gf` (alias: `rankgf`)],
+  [`crankgf`], [`crank_gf` (alias: `crankgf`)],
+  [`numbpart`], [`numbpart` (also: `partition_count`)],
+  [`g2`], [`universal_mock_theta_g2` (alias: `g2`)],
+  [`g3`], [`universal_mock_theta_g3` (alias: `g3`)],
 )
 
-=== Group 8: Hypergeometric
+All aliases are case-insensitive: `numbpart(100)` and `NUMBPART(100)` both
+work.
+
+=== Partition Counting
+
+Maple's `numbpart(n)` is q-Kangaroo's canonical name.  Both `numbpart(n)`
+and `partition_count(n)` are accepted.  The two-argument form
+`numbpart(n, m)` counts partitions of $n$ with largest part at most $m$.
+
+=== Session Conventions
+
+q-Kangaroo's REPL uses the same conventions as Maple:
+
+- `:=` for assignment (`f := partition_gf(50)`)
+- `:` at end of statement suppresses output
+- `%` refers to the last result (like Maple's `%`)
+
+
+== Quick Reference Card
+#index("Maple migration", "quick reference")
+
+The most commonly used functions, at a glance:
 
 #table(
-  columns: (1fr, 1fr, 2fr),
+  columns: (2fr, 1fr),
   inset: 6pt,
   stroke: 0.5pt + luma(180),
   table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
+    [*Function Call*], [*Status*],
   ),
-  [`qphihyper([a1,...], [b1,...], q, z, N)`], [`phi(upper, lower, z_n, z_d, z_p, order)`], [${}_r phi_s$ basic hypergeometric],
-  [`qpsihyper([a1,...], [b1,...], q, z, N)`], [`psi(upper, lower, z_n, z_d, z_p, order)`], [${}_r psi_s$ bilateral],
-  [`qgauss(...)`], [`try_summation(upper, lower, z_n, z_d, z_p, order)`], [Classical summation formulas],
-  [`heine1(...)`], [`heine1(upper, lower, z_n, z_d, z_p, order)`], [Heine transform I],
-  [`heine2(...)`], [`heine2(upper, lower, z_n, z_d, z_p, order)`], [Heine transform II],
-  [`heine3(...)`], [`heine3(upper, lower, z_n, z_d, z_p, order)`], [Heine transform III],
-  [---], [`sears_transform(upper, lower, z_n, z_d, z_p, order)`], [*Extension:* Sears balanced ${}_4 phi_3$],
-  [---], [`watson_transform(upper, lower, z_n, z_d, z_p, order)`], [*Extension:* Watson ${}_8 phi_7 arrow.r {}_4 phi_3$],
-  [---], [`find_transformation_chain(...)`], [*Extension:* BFS transformation search],
+  [`etaq(q, delta, T)`], [Identical],
+  [`aqprod(a, q, n)`], [Identical],
+  [`sift(f, q, n, k, T)`], [Identical],
+  [`prodmake(f, q, T)`], [Identical],
+  [`findcong(QS, T)`], [Identical],
+  [`findlincombo(f, L, SL, q, 0)`], [Identical],
+  [`findprod(FL, T, M, Q)`], [Identical],
+  [`numbpart(n)`], [Identical],
+  [`theta(z, q, T)`], [Identical],
+  [`JAC(a, b)`], [Identical],
+  [`jacprod(a, b, q, T)`], [Identical],
+  [`phi(upper, lower, z_n, z_d, z_p, N)`], [Triple encoding],
+  [`proveid(...)`], [Alias accepted],
+  [`qzeil(...)`], [Alias accepted],
 )
 
-=== Group 9: Identity Proving
-
-#table(
-  columns: (1fr, 1fr, 2fr),
-  inset: 6pt,
-  stroke: 0.5pt + luma(180),
-  table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
-  ),
-  [`proveid(lhs, rhs, level)`], [`prove_eta_id(lhs_factors, rhs_factors, level)`], [Valence formula proof],
-  [---], [`search_identities(query, type)`], [*Extension:* identity database search],
-  [`qgosper(...)`], [`q_gosper(upper, lower, z_n, z_d, z_p, q_n, q_d)`], [Indefinite summation],
-  [`qZeil(...)`], [`q_zeilberger(upper, lower, z, n, q, max_order)`], [Creative telescoping],
-  [---], [`verify_wz(upper, lower, z, n, q, max_order, max_k)`], [*Extension:* WZ certificate verification],
-  [`qPetkovsek(...)`], [`q_petkovsek(coefficients, q_num, q_den)`], [Recurrence solver],
-  [---], [`prove_nonterminating(...)`], [*Extension:* Chen-Hou-Mu proof],
-)
-
-=== Group 10: Mock Theta, Appell-Lerch, and Bailey
-
-#table(
-  columns: (1fr, 1fr, 2fr),
-  inset: 6pt,
-  stroke: 0.5pt + luma(180),
-  table.header(
-    [*Maple*], [*q-Kangaroo*], [*Notes*],
-  ),
-  [---], [`mock_theta_f3` ... `mock_theta_rho3`], [*Extension:* 7 third-order mock theta functions],
-  [---], [`mock_theta_f0_5` ... `mock_theta_cap_f1_5`], [*Extension:* 10 fifth-order mock theta functions],
-  [---], [`mock_theta_cap_f0_7` ... `cap_f2_7`], [*Extension:* 3 seventh-order mock theta functions],
-  [---], [`appell_lerch_m(a_pow, z_pow, order)`], [*Extension:* Appell-Lerch sum $m(a, z, q)$],
-  [`g2(...)`], [`universal_mock_theta_g2(a_pow, order)`], [Zwegers $g_2(a; q)$],
-  [`g3(...)`], [`universal_mock_theta_g3(a_pow, order)`], [Zwegers $g_3(a; q)$],
-  [---], [`bailey_weak_lemma(...)`], [*Extension:* apply Bailey's weak lemma],
-  [---], [`bailey_apply_lemma(...)`], [*Extension:* apply Bailey's full lemma],
-  [---], [`bailey_chain(...)`], [*Extension:* iterate Bailey chain to depth $d$],
-  [---], [`bailey_discover(...)`], [*Extension:* discover Bailey pair proof],
-)
-
-
-== Key Differences
-#index("Maple migration", "key differences")
-
-- *Parameter encoding.* Maple uses symbolic parameters ($a$, $b$, $z$);
-  q-Kangaroo encodes monomials as integer triples `(num, den, pow)`
-  representing $frac("num", "den") dot q^"pow"$. For example, the Maple
-  parameter `q^3` becomes `(1, 1, 3)` and `1/2*q^5` becomes `(1, 2, 5)`.
-
-- *Series display.* q-Kangaroo uses $q$ as the indeterminate (not $x$).
-  Truncation is shown as $O(q^N)$ where $N$ is the truncation order.
-
-- *Assignment.* Both Maple and q-Kangaroo use `:=` for variable assignment.
-  In q-Kangaroo, `:` at the end of a statement suppresses output
-  (analogous to Maple's terminating colon).
-
-- *No symbolic parameters.* q-Kangaroo works with concrete $q$-series,
-  not formal symbols. All parameters are evaluated numerically before
-  series construction.
-
-- *No session argument.* In the REPL, functions are called directly
-  (`partition_gf(20)`) without a session object. The Python API requires
-  a `QSession` first argument, but the CLI does not.
+Functions marked *Identical* accept exactly the syntax shown in Garvan's
+Maple documentation.  Functions marked *Triple encoding* use `(num, den, pow)`
+integer triples in place of symbolic $q$-monomials.  Functions marked
+*Alias accepted* use a different canonical name but accept the Maple name.
