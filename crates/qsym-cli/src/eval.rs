@@ -15,7 +15,7 @@ use qsym_core::series::arithmetic;
 use qsym_core::series::FormalPowerSeries;
 use qsym_core::symbol::SymbolId;
 
-use crate::ast::{AstNode, BinOp, Stmt, Terminator};
+use crate::ast::{AstNode, BinOp, BoolBinOp, CompOp, Stmt, Terminator};
 use crate::environment::Environment;
 
 // ---------------------------------------------------------------------------
@@ -120,6 +120,9 @@ pub enum EvalError {
     Panic(String),
     /// Other error.
     Other(String),
+    /// Early return from a procedure body (RETURN(value)).
+    /// If this propagates to top level, it means RETURN was used outside a procedure.
+    EarlyReturn(Value),
 }
 
 impl fmt::Display for EvalError {
@@ -172,6 +175,9 @@ impl fmt::Display for EvalError {
             }
             EvalError::Other(msg) => {
                 write!(f, "Error: {}", msg)
+            }
+            EvalError::EarlyReturn(_) => {
+                write!(f, "Error: RETURN used outside of a procedure")
             }
         }
     }
@@ -1007,6 +1013,20 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
         }
 
         AstNode::FuncCall { name, args } => {
+            // Special-case: RETURN(value) produces EarlyReturn error
+            if name == "RETURN" {
+                if args.len() != 1 {
+                    return Err(EvalError::WrongArgCount {
+                        function: "RETURN".to_string(),
+                        expected: "1".to_string(),
+                        got: args.len(),
+                        signature: "RETURN(value)".to_string(),
+                    });
+                }
+                let val = eval_expr(&args[0], env)?;
+                return Err(EvalError::EarlyReturn(val));
+            }
+
             let mut evaluated = Vec::with_capacity(args.len());
             for arg in args {
                 evaluated.push(eval_expr(arg, env)?);
@@ -1028,10 +1048,320 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
             Ok(val)
         }
 
-        AstNode::Compare { .. } | AstNode::Not(_) | AstNode::BoolOp { .. }
-        | AstNode::ForLoop { .. } | AstNode::IfExpr { .. } => {
-            Err(EvalError::Other("control flow not yet implemented".to_string()))
+        AstNode::Compare { op, lhs, rhs } => {
+            let left = eval_expr(lhs, env)?;
+            let right = eval_expr(rhs, env)?;
+            eval_compare(*op, left, right)
         }
+
+        AstNode::Not(inner) => {
+            let val = eval_expr(inner, env)?;
+            match val {
+                Value::Bool(b) => Ok(Value::Bool(!b)),
+                other => Err(EvalError::Other(format!(
+                    "operand of 'not' must be bool, got {}",
+                    other.type_name()
+                ))),
+            }
+        }
+
+        AstNode::BoolOp { op, lhs, rhs } => {
+            eval_bool_op(*op, lhs, rhs, env)
+        }
+
+        AstNode::ForLoop { var, from, to, by, body } => {
+            eval_for_loop(var, from, to, by.as_deref(), body, env)
+        }
+
+        AstNode::IfExpr { condition, then_body, elif_branches, else_body } => {
+            eval_if_expr(condition, then_body, elif_branches, else_body.as_deref(), env)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Control flow evaluation
+// ---------------------------------------------------------------------------
+
+/// Test whether a value is truthy (for use in conditions).
+///
+/// - Bool: direct boolean value
+/// - Integer: nonzero is true (Maple convention)
+/// - Other types: error
+fn is_truthy(val: &Value) -> Result<bool, EvalError> {
+    match val {
+        Value::Bool(b) => Ok(*b),
+        Value::Integer(n) => Ok(!n.is_zero()),
+        other => Err(EvalError::Other(format!(
+            "expected boolean or integer in condition, got {}",
+            other.type_name()
+        ))),
+    }
+}
+
+/// Evaluate a comparison expression.
+///
+/// Supports Integer, Rational, Symbol (equality only), and Bool (equality only).
+/// Mixed Integer/Rational comparisons promote the Integer to Rational.
+fn eval_compare(op: CompOp, left: Value, right: Value) -> Result<Value, EvalError> {
+    match (&left, &right) {
+        // Integer vs Integer
+        (Value::Integer(a), Value::Integer(b)) => {
+            let result = match op {
+                CompOp::Eq => a == b,
+                CompOp::NotEq => a != b,
+                CompOp::Less => a < b,
+                CompOp::Greater => a > b,
+                CompOp::LessEq => a <= b,
+                CompOp::GreaterEq => a >= b,
+            };
+            Ok(Value::Bool(result))
+        }
+        // Rational vs Rational
+        (Value::Rational(a), Value::Rational(b)) => {
+            let result = match op {
+                CompOp::Eq => a == b,
+                CompOp::NotEq => a != b,
+                CompOp::Less => a < b,
+                CompOp::Greater => a > b,
+                CompOp::LessEq => a <= b,
+                CompOp::GreaterEq => a >= b,
+            };
+            Ok(Value::Bool(result))
+        }
+        // Integer vs Rational (promote Integer to Rational)
+        (Value::Integer(a), Value::Rational(b)) => {
+            let a_rat = QRat::from(a.clone());
+            let result = match op {
+                CompOp::Eq => a_rat == *b,
+                CompOp::NotEq => a_rat != *b,
+                CompOp::Less => a_rat < *b,
+                CompOp::Greater => a_rat > *b,
+                CompOp::LessEq => a_rat <= *b,
+                CompOp::GreaterEq => a_rat >= *b,
+            };
+            Ok(Value::Bool(result))
+        }
+        // Rational vs Integer (promote Integer to Rational)
+        (Value::Rational(a), Value::Integer(b)) => {
+            let b_rat = QRat::from(b.clone());
+            let result = match op {
+                CompOp::Eq => *a == b_rat,
+                CompOp::NotEq => *a != b_rat,
+                CompOp::Less => *a < b_rat,
+                CompOp::Greater => *a > b_rat,
+                CompOp::LessEq => *a <= b_rat,
+                CompOp::GreaterEq => *a >= b_rat,
+            };
+            Ok(Value::Bool(result))
+        }
+        // Symbol vs Symbol (equality only)
+        (Value::Symbol(a), Value::Symbol(b)) => {
+            match op {
+                CompOp::Eq => Ok(Value::Bool(a == b)),
+                CompOp::NotEq => Ok(Value::Bool(a != b)),
+                _ => Err(EvalError::TypeError {
+                    operation: format!("{}", match op {
+                        CompOp::Less => "<",
+                        CompOp::Greater => ">",
+                        CompOp::LessEq => "<=",
+                        CompOp::GreaterEq => ">=",
+                        _ => unreachable!(),
+                    }),
+                    left: "symbol".to_string(),
+                    right: "symbol".to_string(),
+                }),
+            }
+        }
+        // Bool vs Bool (equality only)
+        (Value::Bool(a), Value::Bool(b)) => {
+            match op {
+                CompOp::Eq => Ok(Value::Bool(a == b)),
+                CompOp::NotEq => Ok(Value::Bool(a != b)),
+                _ => Err(EvalError::TypeError {
+                    operation: format!("{}", match op {
+                        CompOp::Less => "<",
+                        CompOp::Greater => ">",
+                        CompOp::LessEq => "<=",
+                        CompOp::GreaterEq => ">=",
+                        _ => unreachable!(),
+                    }),
+                    left: "bool".to_string(),
+                    right: "bool".to_string(),
+                }),
+            }
+        }
+        // All other combinations
+        _ => Err(EvalError::TypeError {
+            operation: "comparison".to_string(),
+            left: left.type_name().to_string(),
+            right: right.type_name().to_string(),
+        }),
+    }
+}
+
+/// Evaluate a short-circuit boolean operation.
+///
+/// Takes AST nodes (not Values) so that the right-hand side is only evaluated
+/// when needed.
+fn eval_bool_op(
+    op: BoolBinOp,
+    lhs: &AstNode,
+    rhs: &AstNode,
+    env: &mut Environment,
+) -> Result<Value, EvalError> {
+    let left_val = eval_expr(lhs, env)?;
+    match op {
+        BoolBinOp::And => {
+            match &left_val {
+                Value::Bool(false) => Ok(Value::Bool(false)),
+                Value::Bool(true) => {
+                    let right_val = eval_expr(rhs, env)?;
+                    match &right_val {
+                        Value::Bool(_) => Ok(right_val),
+                        _ => Err(EvalError::Other(format!(
+                            "operand of 'and' must be bool, got {}",
+                            right_val.type_name()
+                        ))),
+                    }
+                }
+                _ => Err(EvalError::Other(format!(
+                    "operand of 'and' must be bool, got {}",
+                    left_val.type_name()
+                ))),
+            }
+        }
+        BoolBinOp::Or => {
+            match &left_val {
+                Value::Bool(true) => Ok(Value::Bool(true)),
+                Value::Bool(false) => {
+                    let right_val = eval_expr(rhs, env)?;
+                    match &right_val {
+                        Value::Bool(_) => Ok(right_val),
+                        _ => Err(EvalError::Other(format!(
+                            "operand of 'or' must be bool, got {}",
+                            right_val.type_name()
+                        ))),
+                    }
+                }
+                _ => Err(EvalError::Other(format!(
+                    "operand of 'or' must be bool, got {}",
+                    left_val.type_name()
+                ))),
+            }
+        }
+    }
+}
+
+/// Evaluate a sequence of statements, returning the value of the last one.
+///
+/// Propagates EarlyReturn errors upward (only procedures catch them).
+fn eval_stmt_sequence(stmts: &[Stmt], env: &mut Environment) -> Result<Value, EvalError> {
+    let mut result = Value::None;
+    for stmt in stmts {
+        result = eval_expr(&stmt.node, env)?;
+    }
+    Ok(result)
+}
+
+/// Extract an i64 from a Value (for loop bounds).
+fn value_to_i64(val: &Value, context: &str) -> Result<i64, EvalError> {
+    match val {
+        Value::Integer(n) => n.0.to_i64().ok_or_else(|| {
+            EvalError::Other(format!("{}: integer too large for loop bound", context))
+        }),
+        other => Err(EvalError::Other(format!(
+            "{}: expected integer, got {}",
+            context,
+            other.type_name()
+        ))),
+    }
+}
+
+/// Evaluate a for loop.
+///
+/// Saves and restores the loop variable so it does not leak into the outer
+/// scope. Returns the value of the last iteration's body, or Value::None
+/// if zero iterations.
+fn eval_for_loop(
+    var: &str,
+    from_node: &AstNode,
+    to_node: &AstNode,
+    by_node: Option<&AstNode>,
+    body: &[Stmt],
+    env: &mut Environment,
+) -> Result<Value, EvalError> {
+    let from_val = eval_expr(from_node, env)?;
+    let to_val = eval_expr(to_node, env)?;
+    let start = value_to_i64(&from_val, "for-loop 'from'")?;
+    let end = value_to_i64(&to_val, "for-loop 'to'")?;
+
+    let step = match by_node {
+        Some(node) => {
+            let by_val = eval_expr(node, env)?;
+            let s = value_to_i64(&by_val, "for-loop 'by'")?;
+            if s == 0 {
+                return Err(EvalError::Other("for-loop step cannot be zero".to_string()));
+            }
+            s
+        }
+        None => 1,
+    };
+
+    // Save the current value of the loop variable
+    let saved = env.variables.remove(var);
+
+    let mut i = start;
+
+    // Run the loop body, ensuring we restore the variable on all exit paths
+    let loop_result = (|| -> Result<Value, EvalError> {
+        let mut last = Value::None;
+        while (step > 0 && i <= end) || (step < 0 && i >= end) {
+            env.set_var(var, Value::Integer(QInt::from(i)));
+            last = eval_stmt_sequence(body, env)?;
+            i += step;
+        }
+        Ok(last)
+    })();
+
+    // Restore the loop variable (on success, error, or EarlyReturn)
+    match &saved {
+        Some(old_val) => env.set_var(var, old_val.clone()),
+        None => { env.variables.remove(var); }
+    }
+
+    loop_result
+}
+
+/// Evaluate an if/elif/else expression.
+///
+/// Returns the value of the selected branch, or Value::None if no branch
+/// matches and there is no else clause.
+fn eval_if_expr(
+    condition: &AstNode,
+    then_body: &[Stmt],
+    elif_branches: &[(AstNode, Vec<Stmt>)],
+    else_body: Option<&[Stmt]>,
+    env: &mut Environment,
+) -> Result<Value, EvalError> {
+    // Check the main if condition
+    let cond_val = eval_expr(condition, env)?;
+    if is_truthy(&cond_val)? {
+        return eval_stmt_sequence(then_body, env);
+    }
+
+    // Check elif branches
+    for (elif_cond, elif_body) in elif_branches {
+        let elif_val = eval_expr(elif_cond, env)?;
+        if is_truthy(&elif_val)? {
+            return eval_stmt_sequence(elif_body, env);
+        }
+    }
+
+    // Else branch (if present)
+    match else_body {
+        Some(body) => eval_stmt_sequence(body, env),
+        None => Ok(Value::None),
     }
 }
 
@@ -3849,7 +4179,7 @@ fn edit_distance(a: &str, b: &str) -> usize {
 mod tests {
     use super::*;
     use crate::environment::Environment;
-    use crate::ast::{AstNode, BinOp, Stmt, Terminator};
+    use crate::ast::{AstNode, BinOp, BoolBinOp, CompOp, Stmt, Terminator};
     use qsym_core::number::{QInt, QRat};
 
     fn make_env() -> Environment {
@@ -6725,5 +7055,790 @@ mod tests {
             Value::Integer(QInt::from(5i64)),
         ], &mut env);
         assert!(result.is_err(), "old 3-arg findprod should now error (expects 4 args)");
+    }
+
+    // --- Control flow evaluation tests ---
+
+    #[test]
+    fn test_compare_integers() {
+        let mut env = make_env();
+        // 3 < 5 is true
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Integer(3)),
+            rhs: Box::new(AstNode::Integer(5)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // 5 < 3 is false
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Integer(5)),
+            rhs: Box::new(AstNode::Integer(3)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+
+        // 3 = 3 is true
+        let node = AstNode::Compare {
+            op: CompOp::Eq,
+            lhs: Box::new(AstNode::Integer(3)),
+            rhs: Box::new(AstNode::Integer(3)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // 3 <> 3 is false
+        let node = AstNode::Compare {
+            op: CompOp::NotEq,
+            lhs: Box::new(AstNode::Integer(3)),
+            rhs: Box::new(AstNode::Integer(3)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+
+        // 5 > 3 is true
+        let node = AstNode::Compare {
+            op: CompOp::Greater,
+            lhs: Box::new(AstNode::Integer(5)),
+            rhs: Box::new(AstNode::Integer(3)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // 3 <= 3 is true
+        let node = AstNode::Compare {
+            op: CompOp::LessEq,
+            lhs: Box::new(AstNode::Integer(3)),
+            rhs: Box::new(AstNode::Integer(3)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // 3 >= 5 is false
+        let node = AstNode::Compare {
+            op: CompOp::GreaterEq,
+            lhs: Box::new(AstNode::Integer(3)),
+            rhs: Box::new(AstNode::Integer(5)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_compare_rationals() {
+        let mut env = make_env();
+        // Set up 1/3 and 1/2 as variables
+        env.set_var("a", Value::Rational(QRat::from((1i64, 3i64))));
+        env.set_var("b", Value::Rational(QRat::from((1i64, 2i64))));
+
+        // 1/3 < 1/2 is true
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Variable("a".to_string())),
+            rhs: Box::new(AstNode::Variable("b".to_string())),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_compare_mixed_int_rat() {
+        let mut env = make_env();
+        env.set_var("r", Value::Rational(QRat::from((3i64, 2i64))));
+
+        // 1 < 3/2 is true
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Integer(1)),
+            rhs: Box::new(AstNode::Variable("r".to_string())),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // 3/2 < 2 is true (Rational vs Integer)
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Variable("r".to_string())),
+            rhs: Box::new(AstNode::Integer(2)),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_compare_symbols_eq() {
+        let mut env = make_env();
+        // symbol "x" = symbol "x" is true (both undefined -> Symbol)
+        let node = AstNode::Compare {
+            op: CompOp::Eq,
+            lhs: Box::new(AstNode::Variable("x".to_string())),
+            rhs: Box::new(AstNode::Variable("x".to_string())),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // symbol "x" = symbol "y" is false
+        let node = AstNode::Compare {
+            op: CompOp::Eq,
+            lhs: Box::new(AstNode::Variable("x".to_string())),
+            rhs: Box::new(AstNode::Variable("y".to_string())),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+
+        // symbol "x" <> symbol "y" is true
+        let node = AstNode::Compare {
+            op: CompOp::NotEq,
+            lhs: Box::new(AstNode::Variable("x".to_string())),
+            rhs: Box::new(AstNode::Variable("y".to_string())),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // Ordering on symbols is an error
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Variable("x".to_string())),
+            rhs: Box::new(AstNode::Variable("y".to_string())),
+        };
+        assert!(eval_expr(&node, &mut env).is_err());
+    }
+
+    #[test]
+    fn test_compare_bools_eq() {
+        let mut env = make_env();
+        env.set_var("t", Value::Bool(true));
+        env.set_var("f", Value::Bool(false));
+
+        // true = true is true
+        let node = AstNode::Compare {
+            op: CompOp::Eq,
+            lhs: Box::new(AstNode::Variable("t".to_string())),
+            rhs: Box::new(AstNode::Variable("t".to_string())),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // true <> false is true
+        let node = AstNode::Compare {
+            op: CompOp::NotEq,
+            lhs: Box::new(AstNode::Variable("t".to_string())),
+            rhs: Box::new(AstNode::Variable("f".to_string())),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // Ordering on bools is an error
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Variable("t".to_string())),
+            rhs: Box::new(AstNode::Variable("f".to_string())),
+        };
+        assert!(eval_expr(&node, &mut env).is_err());
+    }
+
+    #[test]
+    fn test_not_bool() {
+        let mut env = make_env();
+        env.set_var("t", Value::Bool(true));
+        env.set_var("f", Value::Bool(false));
+
+        // not true = false
+        let node = AstNode::Not(Box::new(AstNode::Variable("t".to_string())));
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+
+        // not false = true
+        let node = AstNode::Not(Box::new(AstNode::Variable("f".to_string())));
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // not on non-bool is error
+        let node = AstNode::Not(Box::new(AstNode::Integer(42)));
+        assert!(eval_expr(&node, &mut env).is_err());
+    }
+
+    #[test]
+    fn test_bool_and_short_circuit() {
+        let mut env = make_env();
+        // false and (1/0 which would error) returns false without evaluating rhs
+        // We use an undefined function call as the rhs that would error if evaluated
+        let node = AstNode::BoolOp {
+            op: BoolBinOp::And,
+            lhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(5)),
+                rhs: Box::new(AstNode::Integer(3)),
+            }), // evaluates to false
+            rhs: Box::new(AstNode::FuncCall {
+                name: "NONEXISTENT_CRASH_FUNCTION".to_string(),
+                args: vec![],
+            }),
+        };
+        // This should return false, not error
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+
+        // true and true = true
+        let node = AstNode::BoolOp {
+            op: BoolBinOp::And,
+            lhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(3)),
+                rhs: Box::new(AstNode::Integer(5)),
+            }), // true
+            rhs: Box::new(AstNode::Compare {
+                op: CompOp::Eq,
+                lhs: Box::new(AstNode::Integer(1)),
+                rhs: Box::new(AstNode::Integer(1)),
+            }), // true
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // true and false = false
+        let node = AstNode::BoolOp {
+            op: BoolBinOp::And,
+            lhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(3)),
+                rhs: Box::new(AstNode::Integer(5)),
+            }), // true
+            rhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(5)),
+                rhs: Box::new(AstNode::Integer(3)),
+            }), // false
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_bool_or_short_circuit() {
+        let mut env = make_env();
+        // true or (error) returns true without evaluating rhs
+        let node = AstNode::BoolOp {
+            op: BoolBinOp::Or,
+            lhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(3)),
+                rhs: Box::new(AstNode::Integer(5)),
+            }), // true
+            rhs: Box::new(AstNode::FuncCall {
+                name: "NONEXISTENT_CRASH_FUNCTION".to_string(),
+                args: vec![],
+            }),
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // false or true = true
+        let node = AstNode::BoolOp {
+            op: BoolBinOp::Or,
+            lhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(5)),
+                rhs: Box::new(AstNode::Integer(3)),
+            }), // false
+            rhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(3)),
+                rhs: Box::new(AstNode::Integer(5)),
+            }), // true
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(true)));
+
+        // false or false = false
+        let node = AstNode::BoolOp {
+            op: BoolBinOp::Or,
+            lhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(5)),
+                rhs: Box::new(AstNode::Integer(3)),
+            }), // false
+            rhs: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(5)),
+                rhs: Box::new(AstNode::Integer(3)),
+            }), // false
+        };
+        assert!(matches!(eval_expr(&node, &mut env).unwrap(), Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_for_loop_basic() {
+        let mut env = make_env();
+        // for n from 1 to 5 do n^2 od -> returns 25 (last iteration)
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(1)),
+            to: Box::new(AstNode::Integer(5)),
+            by: None,
+            body: vec![Stmt {
+                node: AstNode::BinOp {
+                    op: BinOp::Pow,
+                    lhs: Box::new(AstNode::Variable("n".to_string())),
+                    rhs: Box::new(AstNode::Integer(2)),
+                },
+                terminator: Terminator::Implicit,
+            }],
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(25i64));
+        } else {
+            panic!("expected Integer(25), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_for_loop_scoping() {
+        let mut env = make_env();
+        // Set n = 99 before the loop
+        env.set_var("n", Value::Integer(QInt::from(99i64)));
+
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(1)),
+            to: Box::new(AstNode::Integer(3)),
+            by: None,
+            body: vec![Stmt {
+                node: AstNode::Variable("n".to_string()),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        eval_expr(&node, &mut env).unwrap();
+
+        // After loop, n should be restored to 99
+        if let Some(Value::Integer(n)) = env.get_var("n") {
+            assert_eq!(*n, QInt::from(99i64));
+        } else {
+            panic!("expected n to be restored to 99");
+        }
+    }
+
+    #[test]
+    fn test_for_loop_scoping_undefined_var() {
+        let mut env = make_env();
+        // n is undefined before loop
+        assert!(env.get_var("n").is_none());
+
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(1)),
+            to: Box::new(AstNode::Integer(3)),
+            by: None,
+            body: vec![Stmt {
+                node: AstNode::Variable("n".to_string()),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        eval_expr(&node, &mut env).unwrap();
+
+        // After loop, n should still be undefined (removed)
+        assert!(env.get_var("n").is_none());
+    }
+
+    #[test]
+    fn test_for_loop_by() {
+        let mut env = make_env();
+        // for n from 0 to 10 by 2 do n od -> returns 10
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(0)),
+            to: Box::new(AstNode::Integer(10)),
+            by: Some(Box::new(AstNode::Integer(2))),
+            body: vec![Stmt {
+                node: AstNode::Variable("n".to_string()),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(10i64));
+        } else {
+            panic!("expected Integer(10), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_for_loop_negative_step() {
+        let mut env = make_env();
+        // for n from 5 to 1 by -1 do n od -> returns 1
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(5)),
+            to: Box::new(AstNode::Integer(1)),
+            by: Some(Box::new(AstNode::Neg(Box::new(AstNode::Integer(1))))),
+            body: vec![Stmt {
+                node: AstNode::Variable("n".to_string()),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(1i64));
+        } else {
+            panic!("expected Integer(1), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_for_loop_empty() {
+        let mut env = make_env();
+        // for n from 5 to 1 do n od -> None (zero iterations, step=1 but 5 > 1)
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(5)),
+            to: Box::new(AstNode::Integer(1)),
+            by: None,
+            body: vec![Stmt {
+                node: AstNode::Variable("n".to_string()),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        assert!(matches!(val, Value::None));
+    }
+
+    #[test]
+    fn test_for_loop_zero_step_error() {
+        let mut env = make_env();
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(1)),
+            to: Box::new(AstNode::Integer(5)),
+            by: Some(Box::new(AstNode::Integer(0))),
+            body: vec![Stmt {
+                node: AstNode::Variable("n".to_string()),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        assert!(eval_expr(&node, &mut env).is_err());
+    }
+
+    #[test]
+    fn test_if_then_fi() {
+        let mut env = make_env();
+        // if true then 42 fi -> 42
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(1)),
+                rhs: Box::new(AstNode::Integer(2)),
+            }), // true
+            then_body: vec![Stmt {
+                node: AstNode::Integer(42),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![],
+            else_body: None,
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(42i64));
+        } else {
+            panic!("expected Integer(42), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_if_then_fi_false_no_else() {
+        let mut env = make_env();
+        // if false then 42 fi -> None
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Greater,
+                lhs: Box::new(AstNode::Integer(1)),
+                rhs: Box::new(AstNode::Integer(2)),
+            }), // false
+            then_body: vec![Stmt {
+                node: AstNode::Integer(42),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![],
+            else_body: None,
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        assert!(matches!(val, Value::None));
+    }
+
+    #[test]
+    fn test_if_else() {
+        let mut env = make_env();
+        // if false then 1 else 2 fi -> 2
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Greater,
+                lhs: Box::new(AstNode::Integer(1)),
+                rhs: Box::new(AstNode::Integer(2)),
+            }), // false
+            then_body: vec![Stmt {
+                node: AstNode::Integer(1),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![],
+            else_body: Some(vec![Stmt {
+                node: AstNode::Integer(2),
+                terminator: Terminator::Implicit,
+            }]),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(2i64));
+        } else {
+            panic!("expected Integer(2), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_if_elif_else() {
+        let mut env = make_env();
+        // if 5 < 3 then 1 elif 5 > 3 then 2 else 3 fi -> 2 (elif branch)
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(5)),
+                rhs: Box::new(AstNode::Integer(3)),
+            }), // false
+            then_body: vec![Stmt {
+                node: AstNode::Integer(1),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![
+                (
+                    AstNode::Compare {
+                        op: CompOp::Greater,
+                        lhs: Box::new(AstNode::Integer(5)),
+                        rhs: Box::new(AstNode::Integer(3)),
+                    }, // true
+                    vec![Stmt {
+                        node: AstNode::Integer(2),
+                        terminator: Terminator::Implicit,
+                    }],
+                ),
+            ],
+            else_body: Some(vec![Stmt {
+                node: AstNode::Integer(3),
+                terminator: Terminator::Implicit,
+            }]),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(2i64));
+        } else {
+            panic!("expected Integer(2), got {:?}", val);
+        }
+
+        // Test that else is reached when all conditions are false
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Integer(5)),
+                rhs: Box::new(AstNode::Integer(3)),
+            }), // false
+            then_body: vec![Stmt {
+                node: AstNode::Integer(1),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![
+                (
+                    AstNode::Compare {
+                        op: CompOp::Less,
+                        lhs: Box::new(AstNode::Integer(5)),
+                        rhs: Box::new(AstNode::Integer(3)),
+                    }, // false
+                    vec![Stmt {
+                        node: AstNode::Integer(2),
+                        terminator: Terminator::Implicit,
+                    }],
+                ),
+            ],
+            else_body: Some(vec![Stmt {
+                node: AstNode::Integer(3),
+                terminator: Terminator::Implicit,
+            }]),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(3i64));
+        } else {
+            panic!("expected Integer(3), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_if_integer_truthy() {
+        let mut env = make_env();
+        // if 1 then 42 fi -> 42 (nonzero integer is truthy)
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Integer(1)),
+            then_body: vec![Stmt {
+                node: AstNode::Integer(42),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![],
+            else_body: None,
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(42i64));
+        } else {
+            panic!("expected Integer(42), got {:?}", val);
+        }
+
+        // if 0 then 42 else 99 fi -> 99 (zero is falsy)
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Integer(0)),
+            then_body: vec![Stmt {
+                node: AstNode::Integer(42),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![],
+            else_body: Some(vec![Stmt {
+                node: AstNode::Integer(99),
+                terminator: Terminator::Implicit,
+            }]),
+        };
+        let val = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(99i64));
+        } else {
+            panic!("expected Integer(99), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_return_top_level() {
+        let mut env = make_env();
+        // RETURN(5) at top level produces EarlyReturn error
+        let node = AstNode::FuncCall {
+            name: "RETURN".to_string(),
+            args: vec![AstNode::Integer(5)],
+        };
+        let result = eval_expr(&node, &mut env);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        // Should display as "Error: RETURN used outside of a procedure"
+        let msg = format!("{}", err);
+        assert!(msg.contains("RETURN"), "error message should mention RETURN: {}", msg);
+        assert!(msg.contains("outside"), "error message should say 'outside': {}", msg);
+
+        // Also verify the value is preserved in the EarlyReturn
+        if let EvalError::EarlyReturn(val) = err {
+            if let Value::Integer(n) = val {
+                assert_eq!(n, QInt::from(5i64));
+            } else {
+                panic!("expected Integer(5) in EarlyReturn, got {:?}", val);
+            }
+        } else {
+            panic!("expected EarlyReturn error, got {:?}", err);
+        }
+    }
+
+    #[test]
+    fn test_return_wrong_arg_count() {
+        let mut env = make_env();
+        // RETURN() with no args
+        let node = AstNode::FuncCall {
+            name: "RETURN".to_string(),
+            args: vec![],
+        };
+        assert!(eval_expr(&node, &mut env).is_err());
+
+        // RETURN(1, 2) with too many args
+        let node = AstNode::FuncCall {
+            name: "RETURN".to_string(),
+            args: vec![AstNode::Integer(1), AstNode::Integer(2)],
+        };
+        assert!(eval_expr(&node, &mut env).is_err());
+    }
+
+    #[test]
+    fn test_is_truthy() {
+        // Bool true -> true
+        assert_eq!(is_truthy(&Value::Bool(true)).unwrap(), true);
+        // Bool false -> false
+        assert_eq!(is_truthy(&Value::Bool(false)).unwrap(), false);
+        // Integer 0 -> false
+        assert_eq!(is_truthy(&Value::Integer(QInt::from(0i64))).unwrap(), false);
+        // Integer 1 -> true
+        assert_eq!(is_truthy(&Value::Integer(QInt::from(1i64))).unwrap(), true);
+        // Integer -5 -> true (nonzero)
+        assert_eq!(is_truthy(&Value::Integer(QInt::from(-5i64))).unwrap(), true);
+        // Other types -> error
+        assert!(is_truthy(&Value::String("hello".to_string())).is_err());
+        assert!(is_truthy(&Value::None).is_err());
+    }
+
+    #[test]
+    fn test_stmt_sequence() {
+        let mut env = make_env();
+        // Empty sequence returns None
+        let val = eval_stmt_sequence(&[], &mut env).unwrap();
+        assert!(matches!(val, Value::None));
+
+        // Single statement
+        let stmts = vec![Stmt {
+            node: AstNode::Integer(42),
+            terminator: Terminator::Semi,
+        }];
+        let val = eval_stmt_sequence(&stmts, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(42i64));
+        } else {
+            panic!("expected Integer(42)");
+        }
+
+        // Multiple statements: returns last
+        let stmts = vec![
+            Stmt {
+                node: AstNode::Assign {
+                    name: "x".to_string(),
+                    value: Box::new(AstNode::Integer(10)),
+                },
+                terminator: Terminator::Semi,
+            },
+            Stmt {
+                node: AstNode::Variable("x".to_string()),
+                terminator: Terminator::Implicit,
+            },
+        ];
+        let val = eval_stmt_sequence(&stmts, &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(10i64));
+        } else {
+            panic!("expected Integer(10)");
+        }
+    }
+
+    #[test]
+    fn test_for_loop_accumulate() {
+        let mut env = make_env();
+        // Use a for loop that accumulates: for n from 1 to 5 do s := s + n od
+        // First set s := 0
+        env.set_var("s", Value::Integer(QInt::from(0i64)));
+
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(1)),
+            to: Box::new(AstNode::Integer(5)),
+            by: None,
+            body: vec![Stmt {
+                node: AstNode::Assign {
+                    name: "s".to_string(),
+                    value: Box::new(AstNode::BinOp {
+                        op: BinOp::Add,
+                        lhs: Box::new(AstNode::Variable("s".to_string())),
+                        rhs: Box::new(AstNode::Variable("n".to_string())),
+                    }),
+                },
+                terminator: Terminator::Implicit,
+            }],
+        };
+        eval_expr(&node, &mut env).unwrap();
+
+        // s should be 1+2+3+4+5 = 15
+        if let Some(Value::Integer(n)) = env.get_var("s") {
+            assert_eq!(*n, QInt::from(15i64));
+        } else {
+            panic!("expected s=15");
+        }
+    }
+
+    #[test]
+    fn test_compare_cross_type_error() {
+        let mut env = make_env();
+        env.set_var("b", Value::Bool(true));
+
+        // Comparing bool and integer is a type error
+        let node = AstNode::Compare {
+            op: CompOp::Eq,
+            lhs: Box::new(AstNode::Variable("b".to_string())),
+            rhs: Box::new(AstNode::Integer(1)),
+        };
+        assert!(eval_expr(&node, &mut env).is_err());
     }
 }
