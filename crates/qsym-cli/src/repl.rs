@@ -94,8 +94,8 @@ impl ReplHelper {
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
             // Group Q: Expression Operations (2)
             "series", "expand",
-            // Group R: Polynomial Operations (1)
-            "factor",
+            // Group R: Polynomial Operations (2)
+            "factor", "subs",
             // Group P: Number Theory (2)
             "floor", "legendre",
         ]
@@ -286,8 +286,8 @@ mod tests {
         let names = ReplHelper::canonical_function_names();
         assert_eq!(
             names.len(),
-            96,
-            "expected 96 canonical function names, got {}",
+            97,
+            "expected 97 canonical function names, got {}",
             names.len()
         );
     }

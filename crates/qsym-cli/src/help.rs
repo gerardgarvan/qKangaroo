@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 94 functions + session commands.
+//! - [`general_help`]: grouped listing of all 95 functions + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 
 // ---------------------------------------------------------------------------
@@ -52,6 +52,7 @@ Expression Operations:
 
 Polynomial Operations:
   factor         - factor a polynomial in q into irreducible factors
+  subs           - substitute a value for a variable: subs(q=1, f)
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -829,7 +830,7 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
 
     // -----------------------------------------------------------------------
-    // Group 14: Polynomial Operations (1)
+    // Group 14: Polynomial Operations (2)
     // -----------------------------------------------------------------------
     FuncHelp {
         name: "factor",
@@ -837,6 +838,13 @@ const FUNC_HELP: &[FuncHelp] = &[
         description: "Factor a polynomial in q into irreducible factors over the rationals.\n  The argument must be an exact polynomial (not a truncated series). Use expand() to convert products first.",
         example: "q> factor(1 - q^6)",
         example_output: "(1-q)(1+q)(1-q+q^2)(1+q+q^2)",
+    },
+    FuncHelp {
+        name: "subs",
+        signature: "subs(var=val, expr)",
+        description: "Substitute a value for a variable in an expression.\n  subs(q=1, f) evaluates the series at q=1 (sums all coefficients).\n  subs(q=q^2, f) transforms exponents (multiplies all exponents by 2).\n  subs(q=r, f) evaluates the polynomial at the rational point r.",
+        example: "q> subs(q=1, 1 + q + q^2 + q^3)",
+        example_output: "4",
     },
 
     // -----------------------------------------------------------------------
@@ -1028,10 +1036,10 @@ mod tests {
             "prove_nonterminating",
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
             "series", "expand",
-            "factor",
+            "factor", "subs",
             "floor", "legendre",
         ];
-        assert_eq!(canonical.len(), 94, "test list should have 94 entries");
+        assert_eq!(canonical.len(), 95, "test list should have 95 entries");
 
         for name in &canonical {
             assert!(
@@ -1046,8 +1054,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            94,
-            "FUNC_HELP should have exactly 94 entries, got {}",
+            95,
+            "FUNC_HELP should have exactly 95 entries, got {}",
             FUNC_HELP.len()
         );
     }
@@ -1138,5 +1146,20 @@ mod tests {
         assert!(text.contains("factor"), "help should contain function name");
         assert!(text.contains("irreducible"), "help should contain description");
         assert!(text.contains("factor(1 - q^6)"), "help should contain example");
+    }
+
+    #[test]
+    fn function_help_subs_returns_some() {
+        let help = function_help("subs");
+        assert!(help.is_some(), "subs should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("Substitute"), "help should contain description");
+        assert!(text.contains("subs(q=1"), "help should contain example");
+    }
+
+    #[test]
+    fn general_help_contains_subs() {
+        let text = general_help();
+        assert!(text.contains("subs"), "general_help should contain subs");
     }
 }
