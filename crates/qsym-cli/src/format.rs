@@ -129,7 +129,7 @@ fn format_series(fps: &FormalPowerSeries, symbols: &SymbolRegistry) -> String {
     let mut first = true;
     let mut out = String::new();
 
-    for (&k, c) in fps.iter() {
+    for (&k, c) in fps.iter().rev() {
         let is_negative = c.0.cmp0() == Ordering::Less;
         let abs_c = if is_negative { -c.clone() } else { c.clone() };
 
@@ -268,7 +268,7 @@ fn fps_to_latex(fps: &FormalPowerSeries, symbols: &SymbolRegistry) -> String {
     let var = symbols.name(fps.variable());
     let trunc = fps.truncation_order();
     let is_polynomial = trunc >= POLYNOMIAL_ORDER;
-    let terms: Vec<(&i64, &QRat)> = fps.iter().collect();
+    let terms: Vec<(&i64, &QRat)> = fps.iter().rev().collect();
     let total = terms.len();
 
     if total == 0 {

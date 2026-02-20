@@ -139,7 +139,10 @@ impl FormalPowerSeries {
     }
 
     /// Iterate over nonzero coefficients in ascending exponent order.
-    pub fn iter(&self) -> impl Iterator<Item = (&i64, &QRat)> {
+    ///
+    /// The returned iterator also implements [`DoubleEndedIterator`], so
+    /// callers can use `.rev()` for descending-power iteration.
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = (&i64, &QRat)> {
         self.coefficients.iter()
     }
 }

@@ -6027,14 +6027,15 @@ mod tests {
     }
 
     #[test]
-    fn integration_format_etaq_starts_with_1() {
+    fn integration_format_etaq_descending_order() {
         use crate::parser::parse;
         use crate::format::format_value;
         let mut env = make_env();
         let stmts = parse("etaq(1,1,20)").unwrap();
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
         let text = format_value(&result, &env.symbols);
-        assert!(text.starts_with("1"), "expected output starting with '1', got: {}", text);
+        // Descending order: highest power first, constant "1" near end
+        assert!(text.contains("+ 1 + O(q^20)"), "expected '+ 1 + O(q^20)' in descending output, got: {}", text);
         assert!(text.contains("q"), "expected 'q' in: {}", text);
     }
 
