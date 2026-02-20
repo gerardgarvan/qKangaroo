@@ -1761,7 +1761,7 @@ pub fn dispatch(
                                 format!("{}: each delta must be positive, got {}", name, d),
                             ));
                         }
-                        let factor = qseries::etaq(*d, 1, sym, order);
+                        let factor = qseries::etaq(*d, *d, sym, order);
                         result = arithmetic::mul(&result, &factor);
                     }
                     Ok(Value::Series(result))
@@ -1770,7 +1770,7 @@ pub fn dispatch(
                     expect_args(name, args, 3)?;
                     let b = extract_i64(name, args, 1)?;
                     let order = extract_i64(name, args, 2)?;
-                    let result = qseries::etaq(b, 1, sym, order);
+                    let result = qseries::etaq(b, b, sym, order);
                     Ok(Value::Series(result))
                 }
             } else {

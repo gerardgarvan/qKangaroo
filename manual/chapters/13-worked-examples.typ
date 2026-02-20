@@ -29,26 +29,26 @@ satisfies the recurrence $p(n) = p(n-1) + p(n-2) - p(n-5) - p(n-7) + dots$
 
 *Step 1.* Compute $(q; q)_oo$ to 20 terms using `aqprod`:
 
-#repl("aqprod(1, 1, 1, infinity, 20)",
-  "1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + O(q^20)")
+#repl("aqprod(q, q, infinity, 20)",
+  "-q^15 - q^12 + q^7 + q^5 - q^2 - q + 1 + O(q^20)")
 
 Observe the nonzero coefficients at $q^0, q^1, q^2, q^5, q^7, q^12, q^15$ ---
 exactly the pentagonal numbers --- and that the signs alternate in pairs
 $(+, -, -, +, +, -, -, dots)$.
 
-*Step 2.* Confirm that the product is a single-factor eta quotient using
-`prodmake`:
+*Step 2.* Confirm the product structure using `prodmake`. The convention
+is $f = product (1 - q^k)^(-a_k)$, so exponent $-1$ means $(1 - q^k)^1$:
 
-#repl("prodmake(%, 10)",
-  "{1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1}")
+#repl("prodmake(%, q, 10)",
+  "{exponents: {1: -1, 2: -1, 3: -1, 4: -1, 5: -1, 6: -1, 7: -1, 8: -1, 9: -1, 10: -1}, terms_used: 10}")
 
-Every factor $(1 - q^k)$ appears with exponent 1, confirming
-$(q;q)_oo = product_(k=1)^oo (1 - q^k)$.
+Every factor $(1 - q^k)$ appears with exponent $-1$ (i.e., power $+1$ in the
+product), confirming $(q;q)_oo = product_(k=1)^oo (1 - q^k)$.
 
 *Step 3.* Verify via the eta representation:
 
-#repl("etamake(aqprod(1, 1, 1, infinity, 50), 10)",
-  "{1: 1}")
+#repl("etamake(aqprod(q, q, infinity, 50), q, 10)",
+  "{factors: {1: 1}, q_shift: 1/24}")
 
 The result `{1: 1}` means exactly $eta(tau)$, the Dedekind eta function
 with $q = e^(2 pi i tau)$.
@@ -56,7 +56,7 @@ with $q = e^(2 pi i tau)$.
 *Step 4.* Cross-check: multiply by the partition generating function and
 confirm the result is 1:
 
-#repl-block("q> f := aqprod(1, 1, 1, infinity, 20):
+#repl-block("q> f := aqprod(q, q, infinity, 20):
 q> g := partition_gf(20):
 q> f * g
 1 + O(q^20)")
@@ -92,33 +92,38 @@ of modular forms as applied to partitions.
 *Step 1.* Generate the partition function to high order so that sifting
 produces enough terms for pattern recognition:
 
-#repl("f := partition_gf(200):",
+#repl("f := partition_gf(201):",
   "")
 
-*Step 2.* Use `findcong` to automatically discover congruences modulo 5, 7,
-and 11:
+*Step 2.* Use `findcong` to automatically discover all congruences up to
+200 terms with moduli up to 11. The Garvan form `findcong(QS, T, LM)`
+searches all moduli from 2 to LM:
 
-#repl("findcong(f, [5, 7, 11])",
-  "[[5, 4, 5], [7, 5, 7], [11, 6, 11]]")
+#repl("findcong(f, 200, 11)",
+  "[[4, 5, 5], [5, 7, 7], [4, 10, 5], [9, 10, 5], [6, 11, 11]]")
 
-Each triple $[m, j, d]$ means $p(m n + j) equiv 0 space (mod d)$. The three
-Ramanujan congruences are recovered automatically.
+Each triple $[B, A, R]$ means $p(A n + B) equiv 0 space (mod R)$. The three
+prime-modulus Ramanujan congruences $[4, 5, 5]$, $[5, 7, 7]$, $[6, 11, 11]$
+are recovered, along with composite-modulus congruences $[4, 10, 5]$ and
+$[9, 10, 5]$ that derive from the mod-5 case.
 
 *Step 3.* Verify the mod-5 congruence manually with `sift`. Extract the
 subsequence $p(5n + 4)$ and observe that every coefficient is divisible by 5:
 
-#repl("sift(f, 5, 4)",
-  "5 + 30*q + 135*q^2 + 490*q^3 + 1575*q^4 + 4565*q^5 + 12310*q^6 + 31185*q^7 + 75175*q^8 + 173525*q^9 + O(q^10)")
+#repl("sift(f, q, 5, 4, 50)",
+  "173525*q^9 + 75175*q^8 + 31185*q^7 + 12310*q^6 + 4565*q^5 + 1575*q^4 + 490*q^3 + 135*q^2 + 30*q + 5 + O(q^10)")
 
 Coefficients: $5, 30, 135, 490, 1575, dots$ --- all divisible by 5.
 
-*Step 4.* Check whether primes beyond 11 yield simple congruences:
+*Step 4.* Extending the search to moduli up to 23 confirms no new prime
+congruences beyond Ramanujan's three:
 
-#repl("findcong(partition_gf(500), [13, 17, 19, 23])",
-  "[]")
+#repl("findcong(partition_gf(501), 500, 23)",
+  "[[4, 5, 5], [5, 7, 7], [4, 10, 5], [9, 10, 5], [6, 11, 11], [5, 14, 7], [12, 14, 7], [4, 15, 5], [9, 15, 5], [14, 15, 5], [4, 20, 5], [9, 20, 5], [14, 20, 5], [19, 20, 5], [5, 21, 7], [12, 21, 7], [19, 21, 7], [6, 22, 11], [17, 22, 11]]")
 
-The empty result confirms that no congruences of the form
-$p(ell n + delta) equiv 0 space (mod ell)$ exist for $ell in {13, 17, 19, 23}$.
+All congruences found have modulus $R in {5, 7, 11}$ --- none for
+$R in {13, 17, 19, 23}$. The compound congruences (moduli 10, 14, 15, 20, 21,
+22) are all derived from Ramanujan's three prime-modulus cases.
 
 *Takeaway.* The `findcong` function is a research tool that automates the
 search for arithmetic congruences in generating function coefficients. Manual
@@ -150,35 +155,39 @@ which connects the sum-of-squares representation to an infinite product.
 #repl("a := theta3(50):",
   "")
 
-*Step 2.* Build the product side of the identity. The right-hand side at
-$z = 1$ is $(q^2; q^2)_oo dot (-q; q^2)_oo^2$:
+*Step 2.* Build the right-hand side using the eta-quotient representation
+$theta_3(q) = eta(2 tau)^5 \/ (eta(tau)^2 eta(4 tau)^2)$,
+expressed via `etaq` where `etaq(q, delta, T)` computes
+$(q^delta; q^delta)_oo$ to $O(q^T)$:
 
-#repl-block("q> b := aqprod(1, 1, 2, infinity, 50) * aqprod(-1, 1, 1, infinity, 50)^2:
+#repl-block("q> b := etaq(q, 2, 50)^5 / (etaq(q, 1, 50)^2 * etaq(q, 4, 50)^2):
 q> a - b
 O(q^50)")
 
 The difference is zero to 50 terms, confirming the identity.
 
-*Step 3.* Use `prodmake` to examine the product structure of $theta_3$:
+*Step 3.* Use `prodmake` to examine the product structure of $theta_3$.
+Exponents follow the convention $f = product (1 - q^k)^(-a_k)$:
 
-#repl("prodmake(a, 20)",
-  "{1: 0, 2: 1, 3: 0, 4: -1, 5: 0, 6: 1, 7: 0, 8: -1, 9: 0, 10: 1, 11: 0, 12: -1, 13: 0, 14: 1, 15: 0, 16: -1, 17: 0, 18: 1, 19: 0, 20: -1}")
+#repl("prodmake(a, q, 20)",
+  "{exponents: {1: 2, 2: -3, 3: 2, 4: -1, 5: 2, 6: -3, 7: 2, 8: -1, 9: 2, 10: -3, 11: 2, 12: -1, 13: 2, 14: -3, 15: 2, 16: -1, 17: 2, 18: -3, 19: 2, 20: -1}, terms_used: 20}")
 
-The even-index exponents are $+1$ and the odd-index exponents beyond
-1 alternate, consistent with the triple product factorisation.
+The pattern alternates with period 4: exponents
+$2, -3, 2, -1, dots$, consistent with the triple product
+factorisation over $(1 - q^k)$ factors.
 
 *Step 4.* Verify the eta-quotient structure:
 
-#repl("etamake(a, 10)",
-  "{1: -2, 2: 5, 4: -2}")
+#repl("etamake(a, q, 10)",
+  "{factors: {1: -2, 2: 5, 4: -2}, q_shift: 0}")
 
 This says $theta_3(q) = eta(2tau)^5 / (eta(tau)^2 eta(4tau)^2)$, a classical
 eta-quotient representation.
 
 *Takeaway.* Multiple verification strategies are available: direct series
-subtraction, product form analysis via `prodmake`, and eta-quotient
-identification via `etamake`. Using independent methods strengthens
-confidence in a conjectured identity.
+subtraction via the eta-quotient form, product form analysis via `prodmake`,
+and eta-quotient identification via `etamake`. Using independent methods
+strengthens confidence in a conjectured identity.
 
 
 == Rogers-Ramanujan Identities via Bailey Chains
@@ -234,8 +243,8 @@ target identity as two $q$-series, `bailey_discover` searches the space of
 Bailey pairs and chain operations to find a proof path:
 
 #repl-block("q> lhs := partition_gf(30):
-q> rhs := aqprod(1, 1, 4, infinity, 30) * aqprod(1, 1, 1, infinity, 30):
-q> bailey_discover(lhs, rhs, 1, 3, 30)
+q> rhs := aqprod(q^4, q, infinity, 30) * aqprod(q, q, infinity, 30):
+q> bailey_discover(lhs, rhs, 1, 1, 1, 3, 30)
 {found: true, depth: 1, pair: \"rogers-ramanujan\", ...}")
 
 *Takeaway.* Bailey chains generate infinite families of identities from a
@@ -339,20 +348,21 @@ Functions in the Last Letter of Ramanujan", _J. London Math. Soc._ 11,
 #repl-block("q> mf := mock_theta_f3(50):
 q> mpsi := mock_theta_psi3(50):")
 
-*Step 2.* Compute the right-hand side: $theta_4(q)^2 / (q;q)_oo$:
+*Step 2.* Build a target series as a linear combination of mock theta
+functions. Here we construct $"rhs" = f(q) + 4 psi(q)$ and then use
+`findlincombo` to rediscover the coefficients:
 
-#repl-block("q> t4sq := theta4(50) ^ 2:
-q> euler_inv := partition_gf(50):
-q> rhs := t4sq * euler_inv:")
+#repl-block("q> rhs := mf + 4 * mpsi:")
 
-*Step 3.* Use `findlincombo` to discover the linear relation. We ask:
-is there a linear combination of $f(q)$ and $psi(q)$ that equals `rhs`?
+*Step 3.* Use `findlincombo` to discover the linear relation. The Garvan
+form takes symbolic labels `[F, Psi]` for the basis series:
 
-#repl("findlincombo(rhs, [mf, mpsi], 0)",
-  "[1, 4]")
+#repl("findlincombo(rhs, [mf, mpsi], [F, Psi], q, 0)",
+  "F + 4*Psi")
 
-The coefficients $[1, 4]$ confirm Watson's relation:
-$"rhs" = 1 dot f(q) + 4 dot psi(q)$.
+The symbolic output `F + 4*Psi` confirms the relation:
+$"rhs" = 1 dot f(q) + 4 dot psi(q)$. The labels F and Psi match the
+basis series in order.
 
 *Step 4.* Verify independently by direct subtraction:
 
@@ -366,7 +376,7 @@ functions can be expressed in terms of the Appell-Lerch sum
 $m(a, z, q)$:
 
 #repl("appell_lerch_m(1, 1, 30)",
-  "1 + q + 2*q^2 + 2*q^3 + 4*q^4 + 4*q^5 + 7*q^6 + 8*q^7 + 12*q^8 + 14*q^9 + 20*q^10 + 24*q^11 + 34*q^12 + 40*q^13 + 54*q^14 + 66*q^15 + 86*q^16 + 104*q^17 + 136*q^18 + 164*q^19 + O(q^20)")
+  "-2*q + O(q^30)")
 
 *Takeaway.* The combination of classical mock theta function computations
 (`mock_theta_f3`, `mock_theta_psi3`) with relation discovery tools
