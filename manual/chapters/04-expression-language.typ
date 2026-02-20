@@ -127,13 +127,14 @@ triples for the upper and lower parameters of hypergeometric series:
 == Function Calls
 
 Functions are called with the standard `name(arg1, arg2, ...)` syntax.
-q-Kangaroo provides 81 built-in functions organized into 8 groups:
+q-Kangaroo provides 89 built-in functions organized into 9 groups:
 
 - *Products* (7): `aqprod`, `qbin`, `etaq`, `jacprod`, `tripleprod`, `quinprod`, `winquist`
-- *Partitions* (7): `partition_count`, `partition_gf`, `distinct_parts_gf`, `odd_parts_gf`, `bounded_parts_gf`, `rank_gf`, `crank_gf`
-- *Theta Functions* (3): `theta2`, `theta3`, `theta4`
-- *Series Analysis* (9): `sift`, `qdegree`, `lqdegree`, `qfactor`, `prodmake`, `etamake`, `jacprodmake`, `mprodmake`, `qetamake`
-- *Relations* (12): `findlincombo`, `findhomcombo`, `findnonhomcombo`, and 9 others
+- *Partitions* (7): `numbpart`, `partition_gf`, `distinct_parts_gf`, `odd_parts_gf`, `bounded_parts_gf`, `rank_gf`, `crank_gf`
+- *Theta Functions* (4): `theta`, `theta2`, `theta3`, `theta4`
+- *Jacobi Products* (4): `JAC`, `jac2prod`, `jac2series`, `qs2jaccombo`
+- *Series Analysis* (12): `sift`, `qdegree`, `lqdegree`, `lqdegree0`, `qfactor`, `prodmake`, `etamake`, `jacprodmake`, `mprodmake`, `qetamake`, `checkmult`, `checkprod`
+- *Relations* (12): `findlincombo`, `findhomcombo`, `findnonhomcombo`, `findlincombomodp`, `findhomcombomodp`, `findhom`, `findnonhom`, `findhommodp`, `findmaxind`, `findprod`, `findcong`, `findpoly`
 - *Hypergeometric* (9): `phi`, `psi`, `try_summation`, `heine1`--`heine3`, `sears_transform`, `watson_transform`, `find_transformation_chain`
 - *Mock Theta & Bailey* (27): 20 mock theta functions, 3 Appell-Lerch/universal, 4 Bailey chain
 - *Identity Proving* (7): `prove_eta_id`, `search_identities`, `q_gosper`, `q_zeilberger`, `verify_wz`, `q_petkovsek`, `prove_nonterminating`
@@ -192,7 +193,7 @@ Every expression in q-Kangaroo evaluates to one of the following types:
    `partition_gf`, `theta3`, etc.).],
 
   [Integer],
-  [An arbitrary-precision integer. Produced by `partition_count`, `qdegree`,
+  [An arbitrary-precision integer. Produced by `numbpart`, `qdegree`,
    `lqdegree`, and integer arithmetic.],
 
   [Rational],

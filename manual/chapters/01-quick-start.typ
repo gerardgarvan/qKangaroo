@@ -35,7 +35,7 @@ Start with the partition generating function. The coefficient of $q^n$ in
 The `O(q^10)` term indicates that the series is truncated at order 10. To
 compute the exact number of partitions of 100 as an integer:
 
-#repl("partition_count(100)", "190569292")
+#repl("numbpart(100)", "190569292")
 
 == Exploring q-Series
 
@@ -81,17 +81,17 @@ The result `1` confirms the identity $(q;q)_infinity dot 1/(q;q)_infinity = 1$.
 
 == Getting Help
 
-At the `q>` prompt, type `help` to see a list of all 81 built-in functions
+At the `q>` prompt, type `help` to see a list of all 89 built-in functions
 grouped by category. To see detailed help for a specific function:
 
 #repl-block("q> help aqprod
-aqprod(coeff_num, coeff_den, power, n_or_infinity, order)
+aqprod(a, q, n) or aqprod(a, q, infinity, T)
 
-  Compute the q-Pochhammer product (a;q)_n where a = (coeff_num/coeff_den)*q^power.
-  When n is 'infinity', computes the infinite product (a;q)_inf.
+  Compute the q-Pochhammer product (a;q)_n where a is a q-monomial, q is the variable, and n is a non-negative integer.
+  When n is 'infinity', use aqprod(a, q, infinity, T) with explicit truncation T.
 
   Example:
-    q> aqprod(1, 1, 1, infinity, 10)
-    1 - q - q^2 + q^5 + q^7 + O(q^10)")
+    q> aqprod(q^2, q, 5)
+    -q^14 - q^12 + q^8 + q^5 - q^3 - q^2 + 1")
 
 From the command line, `q-kangaroo --help` shows available flags and usage.

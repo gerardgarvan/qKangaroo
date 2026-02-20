@@ -18,7 +18,7 @@
   #v(2em)
 
   #text(size: 11pt)[
-    A comprehensive reference for all 81 built-in functions,\
+    A comprehensive reference for all 89 built-in functions,\
     the expression language, CLI usage, and worked examples.
   ]
 ]

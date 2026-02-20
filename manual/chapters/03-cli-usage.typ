@@ -126,7 +126,7 @@ expression parser. They are case-insensitive.
     [*Command*], [*Description*],
   ),
   [`help`],
-  [Display all 81 functions grouped by category, plus session commands.],
+  [Display all 89 functions grouped by category, plus session commands.],
 
   [`help `_function_],
   [Show detailed help for a specific function: signature, description, and example.],
