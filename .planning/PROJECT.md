@@ -97,7 +97,22 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-(No active milestone — all planned milestones shipped)
+**Current Milestone: v3.0 Scripting & Bivariate Series**
+
+**Goal:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo — adding scripting language features (for-loops, function definitions, series truncation, polynomial factoring, substitution) and bivariate series support (symbolic z in tripleprod/quinprod/winquist).
+
+**Target features:**
+- For-loops (`for n from 1 to N do ... od`)
+- Function/procedure definitions (`proc(args) ... end`)
+- If/else conditionals
+- series() truncation of computed expressions
+- factor() general polynomial factoring
+- subs() variable substitution in expressions
+- Bivariate (z,q) series for tripleprod, quinprod, winquist with symbolic z
+- jac2prod/jac2series operating on JacobiProduct expressions
+- findhomcombo etaoption parameter for eta-product display
+- quinprod prodid/seriesid identity display modes
+- Fractional q-powers (q^(1/3), q^(1/4))
 
 ### Future
 
@@ -168,4 +183,4 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Workflow-oriented migration guide | Task-based sections ("Computing eta products") vs alphabetical alias table | Good |
 
 ---
-*Last updated: 2026-02-20 after v2.0 milestone shipped*
+*Last updated: 2026-02-20 after v3.0 milestone started*
