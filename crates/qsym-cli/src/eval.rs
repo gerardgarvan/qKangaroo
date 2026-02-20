@@ -1862,6 +1862,71 @@ fn eval_pow(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let scaled: Vec<_> = factors.iter().map(|&(a, b, e)| (a, b, e * exp)).collect();
             Ok(Value::JacobiProduct(normalize_jacobi_product(scaled)))
         }
+        // Symbol ^ Rational (e.g. q^(n*n) where n*n produces Rational with denom=1)
+        (Value::Symbol(name), Value::Rational(r)) => {
+            let one = rug::Integer::from(1u32);
+            if r.0.denom() != &one {
+                return Err(EvalError::Other(format!(
+                    "exponent must be an integer, got {}", r.0
+                )));
+            }
+            let exp = r.0.numer().to_i64().ok_or_else(|| EvalError::Other(
+                "exponent too large".to_string(),
+            ))?;
+            let sym_id = env.symbols.intern(name);
+            let fps = FormalPowerSeries::monomial(sym_id, QRat::one(), exp, POLYNOMIAL_ORDER);
+            Ok(Value::Series(fps))
+        }
+        // Series ^ Rational (denom must be 1)
+        (Value::Series(fps), Value::Rational(r)) => {
+            let one = rug::Integer::from(1u32);
+            if r.0.denom() != &one {
+                return Err(EvalError::Other(format!(
+                    "exponent must be an integer, got {}", r.0
+                )));
+            }
+            let exp = r.0.numer().to_i64().ok_or_else(|| EvalError::Other(
+                "exponent too large".to_string(),
+            ))?;
+            let result = series_pow(fps, exp);
+            Ok(Value::Series(result))
+        }
+        // Integer ^ Rational (denom must be 1)
+        (Value::Integer(base), Value::Rational(r)) => {
+            let one = rug::Integer::from(1u32);
+            if r.0.denom() != &one {
+                return Err(EvalError::Other(format!(
+                    "exponent must be an integer, got {}", r.0
+                )));
+            }
+            let exp_int = QInt(r.0.numer().clone());
+            eval_pow(Value::Integer(base.clone()), Value::Integer(exp_int), env)
+        }
+        // Rational ^ Rational (denom must be 1)
+        (Value::Rational(base), Value::Rational(r)) => {
+            let one = rug::Integer::from(1u32);
+            if r.0.denom() != &one {
+                return Err(EvalError::Other(format!(
+                    "exponent must be an integer, got {}", r.0
+                )));
+            }
+            let exp_int = QInt(r.0.numer().clone());
+            eval_pow(Value::Rational(base.clone()), Value::Integer(exp_int), env)
+        }
+        // JacobiProduct ^ Rational (denom must be 1)
+        (Value::JacobiProduct(factors), Value::Rational(r)) => {
+            let one = rug::Integer::from(1u32);
+            if r.0.denom() != &one {
+                return Err(EvalError::Other(format!(
+                    "exponent must be an integer, got {}", r.0
+                )));
+            }
+            let exp = r.0.numer().to_i64().ok_or_else(|| EvalError::Other(
+                "exponent too large".to_string(),
+            ))?;
+            let scaled: Vec<_> = factors.iter().map(|&(a, b, e)| (a, b, e * exp)).collect();
+            Ok(Value::JacobiProduct(normalize_jacobi_product(scaled)))
+        }
         _ => Err(EvalError::TypeError {
             operation: "^".to_string(),
             left: left.type_name().to_string(),
@@ -6786,6 +6851,111 @@ mod tests {
             assert_eq!(factors, vec![(1, 5, -2)]);
         } else {
             panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    // --- eval_pow Rational exponent tests ---
+
+    #[test]
+    fn eval_pow_symbol_rational_integer_exponent() {
+        // q^(4/2) = q^2 (Rational with denom=1 after simplification)
+        let mut env = make_env();
+        let base = Value::Symbol("q".to_string());
+        let exp = Value::Rational(QRat::from((4i64, 2i64))); // 4/2 = 2/1
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.coeff(2), QRat::one());
+            assert_eq!(fps.coeff(0), QRat::zero());
+            assert_eq!(fps.coeff(1), QRat::zero());
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_symbol_rational_non_integer_errors() {
+        // q^(3/2) should error
+        let mut env = make_env();
+        let base = Value::Symbol("q".to_string());
+        let exp = Value::Rational(QRat::from((3i64, 2i64)));
+        let result = eval_pow(base, exp, &mut env);
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("exponent must be an integer"), "got: {}", msg);
+    }
+
+    #[test]
+    fn eval_pow_series_rational() {
+        // (series)^(6/3) = (series)^2
+        let mut env = make_env();
+        let q_fps = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, 20);
+        let base = Value::Series(q_fps);
+        let exp = Value::Rational(QRat::from((6i64, 3i64))); // 6/3 = 2/1
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            // q^2
+            assert_eq!(fps.coeff(2), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::zero());
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_integer_rational() {
+        // 2^(6/2) = 2^3 = 8
+        let mut env = make_env();
+        let base = Value::Integer(QInt::from(2i64));
+        let exp = Value::Rational(QRat::from((6i64, 2i64))); // 6/2 = 3/1
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::Integer(n) = result {
+            assert_eq!(n, QInt::from(8i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_rational_base_rational_exp() {
+        // (1/2)^(4/2) = (1/2)^2 = 1/4
+        let mut env = make_env();
+        let base = Value::Rational(QRat::from((1i64, 2i64)));
+        let exp = Value::Rational(QRat::from((4i64, 2i64))); // 4/2 = 2/1
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::Rational(r) = result {
+            assert_eq!(r, QRat::from((1i64, 4i64)));
+        } else {
+            panic!("expected Rational, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_jacobi_rational() {
+        // JacobiProduct ^ (4/2) = scale exponents by 2
+        let mut env = make_env();
+        let base = Value::JacobiProduct(vec![(1, 5, 1)]);
+        let exp = Value::Rational(QRat::from((4i64, 2i64))); // 4/2 = 2/1
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::JacobiProduct(factors) = result {
+            assert_eq!(factors, vec![(1, 5, 2)]);
+        } else {
+            panic!("expected JacobiProduct, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_loop_exponent() {
+        // Simulates for-loop scenario: n=3, q^(n*n) = q^9
+        // In a for-loop, n*n with Rational n produces Rational(9/1)
+        let mut env = make_env();
+        let base = Value::Symbol("q".to_string());
+        let exp = Value::Rational(QRat::from((9i64, 1i64)));
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.coeff(9), QRat::one());
+            assert_eq!(fps.coeff(0), QRat::zero());
+        } else {
+            panic!("expected Series, got {:?}", result);
         }
     }
 
