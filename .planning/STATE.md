@@ -5,31 +5,32 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v3.0 Phase 42 - Procedures & Evaluation (complete)
+**Current focus:** v3.0 Phase 43 - Expression Operations (plan 01 complete)
 
 ## Current Position
 
-Phase: 42 of 46 (Procedures & Evaluation)
-Plan: 2 of 2 in phase 42 (COMPLETE)
-Status: Phase 42 complete, ready for phase 43
-Last activity: 2026-02-20 -- Plan 42-02 executed (2 tasks, 27 new tests, 682 total)
+Phase: 43 of 46 (Expression Operations)
+Plan: 1 of 2 in phase 43
+Status: Plan 43-01 complete, ready for plan 43-02
+Last activity: 2026-02-20 -- Plan 43-01 executed (2 tasks, 21 new tests, 703 total)
 
-Progress: [==========================================........] 82% (120/~145 plans est.)
+Progress: [==========================================........] 83% (121/~145 plans est.)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 120
+- Total plans completed: 121
 - Total phases: 42 complete (v1.0-v2.0 + Phases 41-42), 4 remaining (v3.0)
 - Total milestones: 8 complete (v1.0-v1.6, v2.0)
 - Average duration: ~5 min/plan
-- Total execution time: ~8.9 hours
+- Total execution time: ~9.0 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 42 | 01 | 4 min | 1 | 1 |
 | 42 | 02 | 7 min | 2 | 7 |
+| 43 | 01 | 9 min | 2 | 3 |
 
 ## Accumulated Context
 
@@ -48,6 +49,10 @@ v2.0 decisions archived in .planning/milestones/v2.0-phases/.
 - 42-02: Local variables intentionally not initialized (returns Symbol, Maple behavior)
 - 42-02: parse_ident_list helper reused for params, locals, and options
 - 42-02: "end" keyword decrements proc_depth in REPL (od/fi handle for/if separately)
+- 43-01: Rational exponent arms use denom==1 check then delegate to Integer arms
+- 43-01: floor uses rug::Integer::from(floor_ref()) for zero-copy computation
+- 43-01: legendre validates p >= 3 and odd but does not check primality (matches Maple)
+- 43-01: L alias is case-insensitive via resolve_alias lowercase
 
 ### Pending Todos
 
@@ -60,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 42-02-PLAN.md (Phase 42 complete)
+Stopped at: Completed 43-01-PLAN.md
 Resume file: N/A
