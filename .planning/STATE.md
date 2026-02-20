@@ -124,5 +124,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 39-02-PLAN.md (backward compatibility tests) -- Phase 39 complete
-Resume file: .planning/phases/40-testing-validation/ (next phase)
+Stopped at: Phase 40 context gathered
+Resume file: .planning/phases/40-documentation/40-CONTEXT.md
