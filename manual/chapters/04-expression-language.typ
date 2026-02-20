@@ -42,7 +42,7 @@ of power series. It cannot be used as a variable name:
 The keyword `infinity` is used as an argument to functions that accept
 either a finite bound or an infinite product:
 
-#repl("aqprod(1, 1, 1, infinity, 10)", "1 - q - q^2 + q^5 + q^7 + O(q^10)")
+#repl("aqprod(q, q, infinity, 10)", "1 - q - q^2 + q^5 + q^7 + O(q^10)")
 
 === String Literals
 
@@ -79,7 +79,7 @@ result:
 
 #repl-block("q> partition_gf(10)
 1 + q + 2*q^2 + 3*q^3 + 5*q^4 + 7*q^5 + 11*q^6 + 15*q^7 + 22*q^8 + 30*q^9 + O(q^10)
-q> prodmake(%, 5)
+q> prodmake(%, q, 5)
 {1: -1, 2: -1, 3: -1, 4: -1, 5: -1}")
 
 == Arithmetic Operators
@@ -121,8 +121,8 @@ Lists are used as arguments to several functions. For example, `findlincombo`
 takes a list of candidate series, and `phi` / `psi` take lists of parameter
 triples for the upper and lower parameters of hypergeometric series:
 
-#repl-block("q> findlincombo(partition_gf(30), [distinct_parts_gf(30), odd_parts_gf(30)], 0)
-[0, 1]")
+#repl-block("q> findlincombo(partition_gf(30), [distinct_parts_gf(30), odd_parts_gf(30)], [D, O], q, 0)
+1*O")
 
 == Function Calls
 
@@ -169,7 +169,7 @@ In scripts, lines starting with `#` are comments:
 #block(fill: luma(248), inset: 10pt, radius: 4pt, width: 100%)[
   #set text(font: "DejaVu Sans Mono", size: 9pt)
   #raw("# This is a comment
-f := etaq(1, 1, 20)  # inline comments also work
+f := etaq(q, 1, 20)  # inline comments also work
 f", lang: none)
 ]
 

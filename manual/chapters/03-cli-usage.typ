@@ -95,7 +95,7 @@ The `-c` flag evaluates a single expression:
 
 #block(fill: luma(248), inset: 10pt, radius: 4pt, width: 100%)[
   #set text(font: "DejaVu Sans Mono", size: 9pt)
-  #raw("$ q-kangaroo -c \"etaq(1, 1, 20)\"
+  #raw("$ q-kangaroo -c \"etaq(q, 1, 20)\"
 q^(1/24) * (1 - q - q^2 + q^5 + q^7 + ... + O(q^20))", lang: none)
 ]
 

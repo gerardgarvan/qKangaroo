@@ -41,7 +41,7 @@ compute the exact number of partitions of 100 as an integer:
 
 Assign a q-Pochhammer product to a variable using `:=`:
 
-#repl-block("q> f := aqprod(1, 1, 1, infinity, 20):
+#repl-block("q> f := aqprod(q, q, infinity, 20):
 q> f
 1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + O(q^20)")
 
@@ -51,7 +51,7 @@ now holds $(q; q)_infinity$ truncated to order 20.
 Use `%` to reference the last result. Here we analyze the product form of
 the series:
 
-#repl-block("q> prodmake(%, 10)
+#repl-block("q> prodmake(%, q, 10)
 {1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1}")
 
 This confirms that $f = product_(k=1)^(infinity) (1 - q^k)$, with exponent 1 for
@@ -64,7 +64,7 @@ Create a file called `example.qk` with the following contents:
 #block(fill: luma(248), inset: 10pt, radius: 4pt, width: 100%)[
   #set text(font: "DejaVu Sans Mono", size: 9pt)
   #raw("# example.qk -- Euler's pentagonal number theorem
-f := aqprod(1, 1, 1, infinity, 20):
+f := aqprod(q, q, infinity, 20):
 g := partition_gf(20):
 f * g", lang: none)
 ]
