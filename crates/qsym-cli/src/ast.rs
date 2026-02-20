@@ -18,6 +18,32 @@ pub enum BinOp {
     Pow,
 }
 
+/// Comparison operator kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompOp {
+    /// `=` equality.
+    Eq,
+    /// `<>` inequality.
+    NotEq,
+    /// `<` less than.
+    Less,
+    /// `>` greater than.
+    Greater,
+    /// `<=` less than or equal.
+    LessEq,
+    /// `>=` greater than or equal.
+    GreaterEq,
+}
+
+/// Boolean binary operator kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoolBinOp {
+    /// `and` conjunction.
+    And,
+    /// `or` disjunction.
+    Or,
+}
+
 /// An AST node representing a parsed expression.
 ///
 /// Note: AstNode does not carry span information. Parse errors are reported
@@ -56,6 +82,35 @@ pub enum AstNode {
     Assign {
         name: String,
         value: Box<AstNode>,
+    },
+    /// Comparison expression: `lhs op rhs`.
+    Compare {
+        op: CompOp,
+        lhs: Box<AstNode>,
+        rhs: Box<AstNode>,
+    },
+    /// Boolean NOT: `not expr`.
+    Not(Box<AstNode>),
+    /// Boolean binary: `lhs and/or rhs`.
+    BoolOp {
+        op: BoolBinOp,
+        lhs: Box<AstNode>,
+        rhs: Box<AstNode>,
+    },
+    /// For loop: `for var from start to end [by step] do body od`.
+    ForLoop {
+        var: String,
+        from: Box<AstNode>,
+        to: Box<AstNode>,
+        by: Option<Box<AstNode>>,
+        body: Vec<Stmt>,
+    },
+    /// Conditional: `if cond then body [elif cond then body]* [else body] fi`.
+    IfExpr {
+        condition: Box<AstNode>,
+        then_body: Vec<Stmt>,
+        elif_branches: Vec<(AstNode, Vec<Stmt>)>,
+        else_body: Option<Vec<Stmt>>,
     },
 }
 
@@ -171,6 +226,113 @@ mod tests {
             terminator: Terminator::Implicit,
         };
         assert_eq!(stmt3.terminator, Terminator::Implicit);
+    }
+
+    #[test]
+    fn ast_compare_construction() {
+        let node = AstNode::Compare {
+            op: CompOp::Less,
+            lhs: Box::new(AstNode::Variable("x".to_string())),
+            rhs: Box::new(AstNode::Integer(5)),
+        };
+        if let AstNode::Compare { op, lhs, rhs } = &node {
+            assert_eq!(*op, CompOp::Less);
+            assert_eq!(**lhs, AstNode::Variable("x".to_string()));
+            assert_eq!(**rhs, AstNode::Integer(5));
+        } else {
+            panic!("Expected Compare variant");
+        }
+    }
+
+    #[test]
+    fn ast_boolop_construction() {
+        let node = AstNode::BoolOp {
+            op: BoolBinOp::And,
+            lhs: Box::new(AstNode::Variable("a".to_string())),
+            rhs: Box::new(AstNode::Variable("b".to_string())),
+        };
+        if let AstNode::BoolOp { op, lhs, rhs } = &node {
+            assert_eq!(*op, BoolBinOp::And);
+            assert_eq!(**lhs, AstNode::Variable("a".to_string()));
+            assert_eq!(**rhs, AstNode::Variable("b".to_string()));
+        } else {
+            panic!("Expected BoolOp variant");
+        }
+    }
+
+    #[test]
+    fn ast_not_construction() {
+        let node = AstNode::Not(Box::new(AstNode::Variable("x".to_string())));
+        if let AstNode::Not(inner) = &node {
+            assert_eq!(**inner, AstNode::Variable("x".to_string()));
+        } else {
+            panic!("Expected Not variant");
+        }
+    }
+
+    #[test]
+    fn ast_for_loop_construction() {
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(1)),
+            to: Box::new(AstNode::Integer(5)),
+            by: None,
+            body: vec![Stmt {
+                node: AstNode::Variable("n".to_string()),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        if let AstNode::ForLoop { var, from, to, by, body } = &node {
+            assert_eq!(var, "n");
+            assert_eq!(**from, AstNode::Integer(1));
+            assert_eq!(**to, AstNode::Integer(5));
+            assert!(by.is_none());
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("Expected ForLoop variant");
+        }
+    }
+
+    #[test]
+    fn ast_if_expr_construction() {
+        let node = AstNode::IfExpr {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Eq,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(0)),
+            }),
+            then_body: vec![Stmt {
+                node: AstNode::Integer(1),
+                terminator: Terminator::Implicit,
+            }],
+            elif_branches: vec![],
+            else_body: Some(vec![Stmt {
+                node: AstNode::Integer(2),
+                terminator: Terminator::Implicit,
+            }]),
+        };
+        if let AstNode::IfExpr { condition, then_body, elif_branches, else_body } = &node {
+            assert!(matches!(**condition, AstNode::Compare { .. }));
+            assert_eq!(then_body.len(), 1);
+            assert!(elif_branches.is_empty());
+            assert!(else_body.is_some());
+        } else {
+            panic!("Expected IfExpr variant");
+        }
+    }
+
+    #[test]
+    fn compop_variants() {
+        let ops = [CompOp::Eq, CompOp::NotEq, CompOp::Less, CompOp::Greater, CompOp::LessEq, CompOp::GreaterEq];
+        for i in 0..ops.len() {
+            for j in 0..ops.len() {
+                if i == j {
+                    assert_eq!(ops[i], ops[j]);
+                } else {
+                    assert_ne!(ops[i], ops[j]);
+                }
+            }
+        }
     }
 
     #[test]

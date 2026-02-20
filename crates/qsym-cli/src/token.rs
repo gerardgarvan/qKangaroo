@@ -45,6 +45,57 @@ pub enum Token {
     Semi,
     /// `:` statement terminator (suppress output).
     Colon,
+
+    // --- Control flow keywords ---
+    /// `for` loop keyword.
+    For,
+    /// `from` loop range start.
+    From,
+    /// `to` loop range end.
+    To,
+    /// `by` loop step.
+    By,
+    /// `do` loop/while body start.
+    Do,
+    /// `od` loop body end.
+    Od,
+    /// `while` loop keyword.
+    While,
+    /// `if` conditional keyword.
+    If,
+    /// `then` conditional body start.
+    Then,
+    /// `elif` alternative conditional branch.
+    Elif,
+    /// `else` default conditional branch.
+    Else,
+    /// `fi` conditional end.
+    Fi,
+    /// `end` keyword (reserved for `end do`/`end if`).
+    End,
+
+    // --- Boolean operators ---
+    /// `and` boolean conjunction.
+    And,
+    /// `or` boolean disjunction.
+    Or,
+    /// `not` boolean negation.
+    Not,
+
+    // --- Comparison operators ---
+    /// `=` equality comparison.
+    Equal,
+    /// `<>` inequality comparison.
+    NotEqual,
+    /// `<` less than.
+    Less,
+    /// `>` greater than.
+    Greater,
+    /// `<=` less than or equal.
+    LessEq,
+    /// `>=` greater than or equal.
+    GreaterEq,
+
     /// End of input.
     Eof,
 }
@@ -106,6 +157,13 @@ mod tests {
         };
         assert_eq!(st.token, Token::Integer(99));
         assert_eq!(st.span, Span::new(0, 2));
+    }
+
+    #[test]
+    fn comparison_vs_assign_distinct() {
+        assert_ne!(Token::Equal, Token::Assign);
+        assert_ne!(Token::Less, Token::Greater);
+        assert_ne!(Token::And, Token::Or);
     }
 
     #[test]

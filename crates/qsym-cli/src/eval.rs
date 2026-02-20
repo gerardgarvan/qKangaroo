@@ -1027,6 +1027,11 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
             env.set_var(name, val.clone());
             Ok(val)
         }
+
+        AstNode::Compare { .. } | AstNode::Not(_) | AstNode::BoolOp { .. }
+        | AstNode::ForLoop { .. } | AstNode::IfExpr { .. } => {
+            Err(EvalError::Other("control flow not yet implemented".to_string()))
+        }
     }
 }
 

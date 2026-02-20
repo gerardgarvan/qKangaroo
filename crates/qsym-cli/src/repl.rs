@@ -147,19 +147,79 @@ impl ReplHelper {
         (start, candidates)
     }
 
-    /// Core bracket-counting logic (separated for testability).
+    /// Core bracket/keyword-counting logic (separated for testability).
     ///
-    /// Returns `true` if the input has unclosed brackets (incomplete).
+    /// Returns `true` if the input has unclosed brackets or unclosed
+    /// control flow blocks (for/od, if/fi).
     fn is_incomplete(input: &str) -> bool {
-        let mut depth: i32 = 0;
+        let mut bracket_depth: i32 = 0;
+        let mut for_depth: i32 = 0;
+        let mut if_depth: i32 = 0;
+        let mut word = String::new();
+        let mut in_string = false;
+        let mut string_char = ' ';
+        let mut in_comment = false;
+
         for ch in input.chars() {
-            match ch {
-                '(' | '[' => depth += 1,
-                ')' | ']' => depth -= 1,
-                _ => {}
+            // Handle comment state: skip until newline
+            if in_comment {
+                if ch == '\n' {
+                    in_comment = false;
+                }
+                continue;
+            }
+
+            // Handle string literal state
+            if in_string {
+                if ch == string_char {
+                    in_string = false;
+                }
+                continue;
+            }
+
+            // Start of string literal
+            if ch == '"' || ch == '\'' {
+                Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+                word.clear();
+                in_string = true;
+                string_char = ch;
+                continue;
+            }
+
+            // Start of comment
+            if ch == '#' {
+                Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+                word.clear();
+                in_comment = true;
+                continue;
+            }
+
+            if ch.is_ascii_alphanumeric() || ch == '_' {
+                word.push(ch);
+            } else {
+                Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+                word.clear();
+                match ch {
+                    '(' | '[' => bracket_depth += 1,
+                    ')' | ']' => bracket_depth -= 1,
+                    _ => {}
+                }
             }
         }
-        depth > 0
+        // Flush final word
+        Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+
+        bracket_depth > 0 || for_depth > 0 || if_depth > 0
+    }
+
+    fn check_keyword(word: &str, for_depth: &mut i32, if_depth: &mut i32) {
+        match word {
+            "for" => *for_depth += 1,
+            "od" => *for_depth -= 1,
+            "if" => *if_depth += 1,
+            "fi" => *if_depth -= 1,
+            _ => {}
+        }
     }
 }
 
@@ -366,5 +426,59 @@ mod tests {
         let (_, pairs) = h.complete_inner("sav", 3);
         let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
         assert!(displays.contains(&"save"), "should complete 'sav' to 'save'");
+    }
+
+    // -- Keyword nesting tests ------------------------------------------------
+
+    #[test]
+    fn validator_for_incomplete() {
+        assert!(ReplHelper::is_incomplete("for n from 1 to 5 do"));
+    }
+
+    #[test]
+    fn validator_for_complete() {
+        assert!(!ReplHelper::is_incomplete("for n from 1 to 5 do n od"));
+    }
+
+    #[test]
+    fn validator_if_incomplete() {
+        assert!(ReplHelper::is_incomplete("if x > 0 then"));
+    }
+
+    #[test]
+    fn validator_if_complete() {
+        assert!(!ReplHelper::is_incomplete("if x > 0 then 1 fi"));
+    }
+
+    #[test]
+    fn validator_if_elif_incomplete() {
+        assert!(ReplHelper::is_incomplete("if x > 0 then 1 elif x = 0 then"));
+    }
+
+    #[test]
+    fn validator_nested_for_if_incomplete() {
+        // fi closes the if, but od is still missing
+        assert!(ReplHelper::is_incomplete("for n from 1 to 3 do if n > 1 then n fi"));
+    }
+
+    #[test]
+    fn validator_nested_for_if_complete() {
+        assert!(!ReplHelper::is_incomplete("for n from 1 to 3 do if n > 1 then n fi od"));
+    }
+
+    #[test]
+    fn validator_keyword_in_comment_ignored() {
+        assert!(!ReplHelper::is_incomplete("# for"));
+    }
+
+    #[test]
+    fn validator_keyword_in_string_ignored() {
+        assert!(!ReplHelper::is_incomplete("\"for\""));
+    }
+
+    #[test]
+    fn validator_multiline_for() {
+        assert!(ReplHelper::is_incomplete("for n from 1 to 5 do\n  n;\n"));
+        assert!(!ReplHelper::is_incomplete("for n from 1 to 5 do\n  n;\nod"));
     }
 }

@@ -165,12 +165,78 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             let word = &input[start..pos];
             let token = match word {
                 "infinity" => Token::Infinity,
+                "for" => Token::For,
+                "from" => Token::From,
+                "to" => Token::To,
+                "by" => Token::By,
+                "do" => Token::Do,
+                "od" => Token::Od,
+                "while" => Token::While,
+                "if" => Token::If,
+                "then" => Token::Then,
+                "elif" => Token::Elif,
+                "else" => Token::Else,
+                "fi" => Token::Fi,
+                "end" => Token::End,
+                "and" => Token::And,
+                "or" => Token::Or,
+                "not" => Token::Not,
                 _ => Token::Ident(word.to_string()),
             };
             tokens.push(SpannedToken {
                 token,
                 span: Span::new(start, pos),
             });
+            continue;
+        }
+
+        // Multi-character comparison operators: <, <=, <>, >, >=, =
+        if b == b'<' {
+            if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' {
+                tokens.push(SpannedToken {
+                    token: Token::LessEq,
+                    span: Span::new(pos, pos + 2),
+                });
+                pos += 2;
+            } else if pos + 1 < bytes.len() && bytes[pos + 1] == b'>' {
+                tokens.push(SpannedToken {
+                    token: Token::NotEqual,
+                    span: Span::new(pos, pos + 2),
+                });
+                pos += 2;
+            } else {
+                tokens.push(SpannedToken {
+                    token: Token::Less,
+                    span: Span::new(pos, pos + 1),
+                });
+                pos += 1;
+            }
+            continue;
+        }
+
+        if b == b'>' {
+            if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' {
+                tokens.push(SpannedToken {
+                    token: Token::GreaterEq,
+                    span: Span::new(pos, pos + 2),
+                });
+                pos += 2;
+            } else {
+                tokens.push(SpannedToken {
+                    token: Token::Greater,
+                    span: Span::new(pos, pos + 1),
+                });
+                pos += 1;
+            }
+            continue;
+        }
+
+        if b == b'=' {
+            tokens.push(SpannedToken {
+                token: Token::Equal,
+                span: Span::new(pos, pos + 1),
+            });
+            pos += 1;
             continue;
         }
 
@@ -441,5 +507,83 @@ mod tests {
     fn test_single_quote_unterminated() {
         let err = tokenize("'hello").unwrap_err();
         assert!(err.message.contains("unterminated"), "got: {}", err.message);
+    }
+
+    // =======================================================
+    // Comparison operator lexing
+    // =======================================================
+
+    #[test]
+    fn test_less_than() {
+        let toks = tokens("x < 5");
+        assert_eq!(toks, vec![Token::Ident("x".to_string()), Token::Less, Token::Integer(5), Token::Eof]);
+    }
+
+    #[test]
+    fn test_less_equal() {
+        let toks = tokens("x <= 5");
+        assert_eq!(toks, vec![Token::Ident("x".to_string()), Token::LessEq, Token::Integer(5), Token::Eof]);
+    }
+
+    #[test]
+    fn test_not_equal() {
+        let toks = tokens("x <> 5");
+        assert_eq!(toks, vec![Token::Ident("x".to_string()), Token::NotEqual, Token::Integer(5), Token::Eof]);
+    }
+
+    #[test]
+    fn test_greater_than() {
+        let toks = tokens("x > 5");
+        assert_eq!(toks, vec![Token::Ident("x".to_string()), Token::Greater, Token::Integer(5), Token::Eof]);
+    }
+
+    #[test]
+    fn test_greater_equal() {
+        let toks = tokens("x >= 5");
+        assert_eq!(toks, vec![Token::Ident("x".to_string()), Token::GreaterEq, Token::Integer(5), Token::Eof]);
+    }
+
+    #[test]
+    fn test_equal() {
+        let toks = tokens("x = 5");
+        assert_eq!(toks, vec![Token::Ident("x".to_string()), Token::Equal, Token::Integer(5), Token::Eof]);
+    }
+
+    #[test]
+    fn test_equal_vs_assign() {
+        let eq = tokens("x = 5");
+        let assign = tokens("x := 5");
+        assert_eq!(eq[1], Token::Equal);
+        assert_eq!(assign[1], Token::Assign);
+    }
+
+    // =======================================================
+    // Keyword lexing
+    // =======================================================
+
+    #[test]
+    fn test_for_loop_keywords() {
+        let toks = tokens("for n from 1 to 5 do n od");
+        assert_eq!(
+            toks,
+            vec![
+                Token::For, Token::Ident("n".to_string()), Token::From,
+                Token::Integer(1), Token::To, Token::Integer(5),
+                Token::Do, Token::Ident("n".to_string()), Token::Od, Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_boolean_keywords() {
+        let toks = tokens("if x and y or not z");
+        assert_eq!(
+            toks,
+            vec![
+                Token::If, Token::Ident("x".to_string()), Token::And,
+                Token::Ident("y".to_string()), Token::Or, Token::Not,
+                Token::Ident("z".to_string()), Token::Eof,
+            ]
+        );
     }
 }

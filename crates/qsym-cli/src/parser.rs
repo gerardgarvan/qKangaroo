@@ -4,7 +4,7 @@
 //! of [`AstNode`] values wrapped in [`Stmt`] statements. Implements operator
 //! precedence via a top-down operator-precedence (Pratt) parser.
 
-use crate::ast::{AstNode, BinOp, Stmt, Terminator};
+use crate::ast::{AstNode, BinOp, BoolBinOp, CompOp, Stmt, Terminator};
 use crate::error::ParseError;
 use crate::lexer::tokenize;
 use crate::token::{Span, SpannedToken, Token};
@@ -165,8 +165,13 @@ impl Parser {
             }
             Token::Minus => {
                 self.advance();
-                let rhs = self.expr_bp(7)?; // prefix minus r_bp = 7
+                let rhs = self.expr_bp(15)?; // prefix minus r_bp = 15
                 AstNode::Neg(Box::new(rhs))
+            }
+            Token::Not => {
+                self.advance();
+                let rhs = self.expr_bp(7)?; // prefix not r_bp = 7
+                AstNode::Not(Box::new(rhs))
             }
             Token::LParen => {
                 self.advance();
@@ -190,6 +195,76 @@ impl Parser {
                 self.expect(&Token::RBracket, "']' to close list")?;
                 AstNode::List(items)
             }
+            Token::For => {
+                self.advance(); // consume 'for'
+                // Variable name (required)
+                let var_name = match self.peek().clone() {
+                    Token::Ident(name) => { self.advance(); name }
+                    _ => {
+                        let span = self.peek_span();
+                        return Err(ParseError::new(
+                            "expected variable name after 'for'".to_string(),
+                            span,
+                        ));
+                    }
+                };
+                // Optional 'from' clause (default: Integer(1))
+                let from_expr = if *self.peek() == Token::From {
+                    self.advance(); // consume 'from'
+                    self.expr_bp(0)?
+                } else {
+                    AstNode::Integer(1)
+                };
+                // Required 'to' clause
+                self.expect(&Token::To, "'to' in for loop")?;
+                let to_expr = self.expr_bp(0)?;
+                // Optional 'by' clause
+                let by_expr = if *self.peek() == Token::By {
+                    self.advance(); // consume 'by'
+                    Some(Box::new(self.expr_bp(0)?))
+                } else {
+                    None
+                };
+                // Required 'do' keyword
+                self.expect(&Token::Do, "'do' in for loop")?;
+                // Parse body statements until 'od'
+                let body = self.parse_stmt_sequence(&[Token::Od])?;
+                self.expect(&Token::Od, "'od' to close for loop")?;
+                AstNode::ForLoop {
+                    var: var_name,
+                    from: Box::new(from_expr),
+                    to: Box::new(to_expr),
+                    by: by_expr,
+                    body,
+                }
+            }
+            Token::If => {
+                self.advance(); // consume 'if'
+                let condition = self.expr_bp(0)?;
+                self.expect(&Token::Then, "'then' after if condition")?;
+                let then_body = self.parse_stmt_sequence(&[Token::Elif, Token::Else, Token::Fi])?;
+                let mut elif_branches = Vec::new();
+                while *self.peek() == Token::Elif {
+                    self.advance(); // consume 'elif'
+                    let elif_cond = self.expr_bp(0)?;
+                    self.expect(&Token::Then, "'then' after elif condition")?;
+                    let elif_body = self.parse_stmt_sequence(&[Token::Elif, Token::Else, Token::Fi])?;
+                    elif_branches.push((elif_cond, elif_body));
+                }
+                let else_body = if *self.peek() == Token::Else {
+                    self.advance(); // consume 'else'
+                    Some(self.parse_stmt_sequence(&[Token::Fi])?)
+                } else {
+                    None
+                };
+                self.expect(&Token::Fi, "'fi' to close if expression")?;
+                AstNode::IfExpr {
+                    condition: Box::new(condition),
+                    then_body,
+                    elif_branches,
+                    else_body,
+                }
+            }
             _ => {
                 let span = self.peek_span();
                 let found = token_name(self.peek());
@@ -202,9 +277,9 @@ impl Parser {
 
         // --- Infix / LED loop ---
         loop {
-            // Function call (postfix): l_bp = 11
+            // Function call (postfix): l_bp = 19
             if *self.peek() == Token::LParen {
-                if 11 < min_bp {
+                if 19 < min_bp {
                     break;
                 }
                 // Only variables can be called as functions
@@ -253,29 +328,73 @@ impl Parser {
                 self.advance();
                 let rhs = self.expr_bp(r_bp)?;
 
-                let op = match op_token {
-                    Token::Plus => BinOp::Add,
-                    Token::Minus => BinOp::Sub,
-                    Token::Star => BinOp::Mul,
-                    Token::Slash => BinOp::Div,
-                    Token::Caret => BinOp::Pow,
+                // Build the appropriate AST node based on operator type
+                match &op_token {
+                    Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Caret => {
+                        let op = match op_token {
+                            Token::Plus => BinOp::Add,
+                            Token::Minus => BinOp::Sub,
+                            Token::Star => BinOp::Mul,
+                            Token::Slash => BinOp::Div,
+                            Token::Caret => BinOp::Pow,
+                            _ => unreachable!(),
+                        };
+                        lhs = AstNode::BinOp {
+                            op,
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        };
+                        // Non-associative exponentiation
+                        if op == BinOp::Pow && *self.peek() == Token::Caret {
+                            let span = self.peek_span();
+                            return Err(ParseError::new(
+                                "ambiguous exponentiation: use parentheses, e.g., (a^b)^c or a^(b^c)"
+                                    .to_string(),
+                                span,
+                            ));
+                        }
+                    }
+                    Token::Equal | Token::NotEqual | Token::Less | Token::Greater
+                    | Token::LessEq | Token::GreaterEq => {
+                        let op = match op_token {
+                            Token::Equal => CompOp::Eq,
+                            Token::NotEqual => CompOp::NotEq,
+                            Token::Less => CompOp::Less,
+                            Token::Greater => CompOp::Greater,
+                            Token::LessEq => CompOp::LessEq,
+                            Token::GreaterEq => CompOp::GreaterEq,
+                            _ => unreachable!(),
+                        };
+                        lhs = AstNode::Compare {
+                            op,
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        };
+                        // Non-associative comparisons
+                        if matches!(self.peek(),
+                            Token::Equal | Token::NotEqual | Token::Less | Token::Greater
+                            | Token::LessEq | Token::GreaterEq)
+                        {
+                            let span = self.peek_span();
+                            return Err(ParseError::new(
+                                "comparison operators are non-associative: use parentheses".to_string(),
+                                span,
+                            ));
+                        }
+                    }
+                    Token::And | Token::Or => {
+                        let op = match op_token {
+                            Token::And => BoolBinOp::And,
+                            Token::Or => BoolBinOp::Or,
+                            _ => unreachable!(),
+                        };
+                        lhs = AstNode::BoolOp {
+                            op,
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        };
+                    }
                     _ => unreachable!(),
-                };
-
-                lhs = AstNode::BinOp {
-                    op,
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                };
-
-                // Non-associative exponentiation: if next token is also ^, error
-                if op == BinOp::Pow && *self.peek() == Token::Caret {
-                    let span = self.peek_span();
-                    return Err(ParseError::new(
-                        "ambiguous exponentiation: use parentheses, e.g., (a^b)^c or a^(b^c)"
-                            .to_string(),
-                        span,
-                    ));
                 }
 
                 continue;
@@ -304,14 +423,55 @@ impl Parser {
 
         Ok(args)
     }
+
+    /// Parse a sequence of statements until a terminator token is seen.
+    /// The terminating token is NOT consumed.
+    fn parse_stmt_sequence(&mut self, terminators: &[Token]) -> Result<Vec<Stmt>, ParseError> {
+        let mut stmts = Vec::new();
+
+        loop {
+            // Skip consecutive semicolons/colons (empty statements)
+            while matches!(self.peek(), Token::Semi | Token::Colon) {
+                self.advance();
+            }
+
+            // Stop if we see a terminator or EOF
+            if terminators.iter().any(|t| t == self.peek()) || self.at_end() {
+                break;
+            }
+
+            // Parse expression
+            let node = self.expr_bp(0)?;
+
+            // Determine terminator
+            let terminator = if matches!(self.peek(), Token::Semi) {
+                self.advance();
+                Terminator::Semi
+            } else if matches!(self.peek(), Token::Colon) {
+                self.advance();
+                Terminator::Colon
+            } else {
+                // No explicit terminator -- implicit (last stmt before block end)
+                Terminator::Implicit
+            };
+
+            stmts.push(Stmt { node, terminator });
+        }
+
+        Ok(stmts)
+    }
 }
 
 /// Return the left and right binding powers for infix operators.
 fn infix_bp(token: &Token) -> Option<(u8, u8)> {
     match token {
-        Token::Plus | Token::Minus => Some((3, 4)),
-        Token::Star | Token::Slash => Some((5, 6)),
-        Token::Caret => Some((9, 10)),
+        Token::Or => Some((3, 4)),
+        Token::And => Some((5, 6)),
+        Token::Equal | Token::NotEqual | Token::Less | Token::Greater
+        | Token::LessEq | Token::GreaterEq => Some((9, 10)),
+        Token::Plus | Token::Minus => Some((11, 12)),
+        Token::Star | Token::Slash => Some((13, 14)),
+        Token::Caret => Some((17, 18)),
         _ => None,
     }
 }
@@ -338,6 +498,28 @@ fn token_name(token: &Token) -> String {
         Token::Semi => "';'".to_string(),
         Token::Colon => "':'".to_string(),
         Token::StringLit(s) => format!("string \"{}\"", s),
+        Token::For => "'for'".to_string(),
+        Token::From => "'from'".to_string(),
+        Token::To => "'to'".to_string(),
+        Token::By => "'by'".to_string(),
+        Token::Do => "'do'".to_string(),
+        Token::Od => "'od'".to_string(),
+        Token::While => "'while'".to_string(),
+        Token::If => "'if'".to_string(),
+        Token::Then => "'then'".to_string(),
+        Token::Elif => "'elif'".to_string(),
+        Token::Else => "'else'".to_string(),
+        Token::Fi => "'fi'".to_string(),
+        Token::End => "'end'".to_string(),
+        Token::And => "'and'".to_string(),
+        Token::Or => "'or'".to_string(),
+        Token::Not => "'not'".to_string(),
+        Token::Equal => "'='".to_string(),
+        Token::NotEqual => "'<>'".to_string(),
+        Token::Less => "'<'".to_string(),
+        Token::Greater => "'>'".to_string(),
+        Token::LessEq => "'<='".to_string(),
+        Token::GreaterEq => "'>='".to_string(),
         Token::Eof => "end of input".to_string(),
     }
 }
@@ -913,5 +1095,420 @@ mod tests {
                 args: vec![AstNode::StringLit("file.qk".to_string())],
             }
         );
+    }
+
+    // =======================================================
+    // PARSE-07: Comparison operators
+    // =======================================================
+
+    #[test]
+    fn test_compare_less() {
+        let node = parse_expr("x < 5");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    #[test]
+    fn test_compare_not_equal() {
+        let node = parse_expr("x <> 0");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::NotEq,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(0)),
+            }
+        );
+    }
+
+    #[test]
+    fn test_compare_equal() {
+        let node = parse_expr("x = 5");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::Eq,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    #[test]
+    fn test_compare_less_equal() {
+        let node = parse_expr("x <= 5");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::LessEq,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    #[test]
+    fn test_compare_greater() {
+        let node = parse_expr("x > 5");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::Greater,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    #[test]
+    fn test_compare_greater_equal() {
+        let node = parse_expr("x >= 5");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::GreaterEq,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    #[test]
+    fn test_compare_non_associative() {
+        let err = parse("a < b < c").unwrap_err();
+        assert!(
+            err.message.contains("non-associative"),
+            "got: {}",
+            err.message
+        );
+    }
+
+    // =======================================================
+    // PARSE-08: Boolean operators
+    // =======================================================
+
+    #[test]
+    fn test_bool_and() {
+        let node = parse_expr("a and b");
+        assert_eq!(
+            node,
+            AstNode::BoolOp {
+                op: BoolBinOp::And,
+                lhs: Box::new(AstNode::Variable("a".to_string())),
+                rhs: Box::new(AstNode::Variable("b".to_string())),
+            }
+        );
+    }
+
+    #[test]
+    fn test_bool_or() {
+        let node = parse_expr("a or b");
+        assert_eq!(
+            node,
+            AstNode::BoolOp {
+                op: BoolBinOp::Or,
+                lhs: Box::new(AstNode::Variable("a".to_string())),
+                rhs: Box::new(AstNode::Variable("b".to_string())),
+            }
+        );
+    }
+
+    #[test]
+    fn test_bool_not() {
+        let node = parse_expr("not x");
+        assert_eq!(
+            node,
+            AstNode::Not(Box::new(AstNode::Variable("x".to_string())))
+        );
+    }
+
+    // =======================================================
+    // PARSE-09: Precedence with new operators
+    // =======================================================
+
+    #[test]
+    fn test_precedence_compare_and_or() {
+        // a > 0 and b < 10 or c = 5
+        // => Or(And(Greater(a,0), Less(b,10)), Eq(c,5))
+        let node = parse_expr("a > 0 and b < 10 or c = 5");
+        assert_eq!(
+            node,
+            AstNode::BoolOp {
+                op: BoolBinOp::Or,
+                lhs: Box::new(AstNode::BoolOp {
+                    op: BoolBinOp::And,
+                    lhs: Box::new(AstNode::Compare {
+                        op: CompOp::Greater,
+                        lhs: Box::new(AstNode::Variable("a".to_string())),
+                        rhs: Box::new(AstNode::Integer(0)),
+                    }),
+                    rhs: Box::new(AstNode::Compare {
+                        op: CompOp::Less,
+                        lhs: Box::new(AstNode::Variable("b".to_string())),
+                        rhs: Box::new(AstNode::Integer(10)),
+                    }),
+                }),
+                rhs: Box::new(AstNode::Compare {
+                    op: CompOp::Eq,
+                    lhs: Box::new(AstNode::Variable("c".to_string())),
+                    rhs: Box::new(AstNode::Integer(5)),
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn test_precedence_not_binds_looser_than_compare() {
+        // not x > 5 => Not(Compare(Greater, x, 5))
+        let node = parse_expr("not x > 5");
+        assert_eq!(
+            node,
+            AstNode::Not(Box::new(AstNode::Compare {
+                op: CompOp::Greater,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(5)),
+            }))
+        );
+    }
+
+    #[test]
+    fn test_precedence_arithmetic_tighter_than_compare() {
+        // a + b < c * d => Compare(Less, Add(a,b), Mul(c,d))
+        let node = parse_expr("a + b < c * d");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::BinOp {
+                    op: BinOp::Add,
+                    lhs: Box::new(AstNode::Variable("a".to_string())),
+                    rhs: Box::new(AstNode::Variable("b".to_string())),
+                }),
+                rhs: Box::new(AstNode::BinOp {
+                    op: BinOp::Mul,
+                    lhs: Box::new(AstNode::Variable("c".to_string())),
+                    rhs: Box::new(AstNode::Variable("d".to_string())),
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn test_assignment_still_works() {
+        let node = parse_expr("x := 5");
+        assert_eq!(
+            node,
+            AstNode::Assign {
+                name: "x".to_string(),
+                value: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    // =======================================================
+    // PARSE-10: For-loop parsing
+    // =======================================================
+
+    #[test]
+    fn test_for_basic() {
+        let node = parse_expr("for n from 1 to 5 do n od");
+        assert_eq!(
+            node,
+            AstNode::ForLoop {
+                var: "n".to_string(),
+                from: Box::new(AstNode::Integer(1)),
+                to: Box::new(AstNode::Integer(5)),
+                by: None,
+                body: vec![Stmt {
+                    node: AstNode::Variable("n".to_string()),
+                    terminator: Terminator::Implicit,
+                }],
+            }
+        );
+    }
+
+    #[test]
+    fn test_for_default_from() {
+        let node = parse_expr("for n to 10 do n od");
+        if let AstNode::ForLoop { from, to, .. } = &node {
+            assert_eq!(**from, AstNode::Integer(1));
+            assert_eq!(**to, AstNode::Integer(10));
+        } else {
+            panic!("Expected ForLoop, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_for_with_by() {
+        let node = parse_expr("for k from 0 to 8 by 2 do k od");
+        if let AstNode::ForLoop { var, by, .. } = &node {
+            assert_eq!(var, "k");
+            assert_eq!(*by, Some(Box::new(AstNode::Integer(2))));
+        } else {
+            panic!("Expected ForLoop");
+        }
+    }
+
+    #[test]
+    fn test_for_multi_stmt_body() {
+        let node = parse_expr("for n from 1 to 3 do x := n; x od");
+        if let AstNode::ForLoop { body, .. } = &node {
+            assert_eq!(body.len(), 2);
+            assert_eq!(body[0].terminator, Terminator::Semi);
+            assert_eq!(body[1].terminator, Terminator::Implicit);
+        } else {
+            panic!("Expected ForLoop");
+        }
+    }
+
+    #[test]
+    fn test_for_body_colon_suppress() {
+        let node = parse_expr("for n from 1 to 3 do x := n: x od");
+        if let AstNode::ForLoop { body, .. } = &node {
+            assert_eq!(body.len(), 2);
+            assert_eq!(body[0].terminator, Terminator::Colon);
+        } else {
+            panic!("Expected ForLoop");
+        }
+    }
+
+    #[test]
+    fn test_for_body_func_call() {
+        let node = parse_expr("for n from 1 to 5 do print(n) od");
+        if let AstNode::ForLoop { body, .. } = &node {
+            assert_eq!(body.len(), 1);
+            assert!(matches!(&body[0].node, AstNode::FuncCall { .. }));
+        } else {
+            panic!("Expected ForLoop");
+        }
+    }
+
+    #[test]
+    fn test_for_error_no_var() {
+        let err = parse("for 3 from 1 to 5 do x od").unwrap_err();
+        assert!(err.message.contains("expected variable name after 'for'"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn test_for_error_no_to() {
+        let err = parse("for n from 1 do n od").unwrap_err();
+        assert!(err.message.contains("'to'"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn test_for_error_no_do() {
+        let err = parse("for n from 1 to 5 n od").unwrap_err();
+        assert!(err.message.contains("'do'"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn test_for_error_no_od() {
+        let err = parse("for n from 1 to 5 do n").unwrap_err();
+        assert!(err.message.contains("'od'"), "got: {}", err.message);
+    }
+
+    // =======================================================
+    // PARSE-11: If/elif/else/fi parsing
+    // =======================================================
+
+    #[test]
+    fn test_if_simple() {
+        let node = parse_expr("if x > 0 then 1 fi");
+        if let AstNode::IfExpr { condition, then_body, elif_branches, else_body } = &node {
+            assert!(matches!(**condition, AstNode::Compare { op: CompOp::Greater, .. }));
+            assert_eq!(then_body.len(), 1);
+            assert!(elif_branches.is_empty());
+            assert!(else_body.is_none());
+        } else {
+            panic!("Expected IfExpr");
+        }
+    }
+
+    #[test]
+    fn test_if_else() {
+        let node = parse_expr("if x > 0 then 1 else 0 fi");
+        if let AstNode::IfExpr { else_body, .. } = &node {
+            assert!(else_body.is_some());
+            assert_eq!(else_body.as_ref().unwrap().len(), 1);
+        } else {
+            panic!("Expected IfExpr");
+        }
+    }
+
+    #[test]
+    fn test_if_elif_else() {
+        let node = parse_expr("if x > 0 then 1 elif x = 0 then 0 else -1 fi");
+        if let AstNode::IfExpr { elif_branches, else_body, .. } = &node {
+            assert_eq!(elif_branches.len(), 1);
+            assert!(else_body.is_some());
+        } else {
+            panic!("Expected IfExpr");
+        }
+    }
+
+    #[test]
+    fn test_if_multiple_elif() {
+        let node = parse_expr("if a then 1 elif b then 2 elif c then 3 fi");
+        if let AstNode::IfExpr { elif_branches, else_body, .. } = &node {
+            assert_eq!(elif_branches.len(), 2);
+            assert!(else_body.is_none());
+        } else {
+            panic!("Expected IfExpr");
+        }
+    }
+
+    #[test]
+    fn test_if_multi_stmt_bodies() {
+        let node = parse_expr("if x > 0 then a := 1; a else b := 2; b fi");
+        if let AstNode::IfExpr { then_body, else_body, .. } = &node {
+            assert_eq!(then_body.len(), 2);
+            assert_eq!(else_body.as_ref().unwrap().len(), 2);
+        } else {
+            panic!("Expected IfExpr");
+        }
+    }
+
+    #[test]
+    fn test_if_error_no_then() {
+        let err = parse("if x > 0 1 fi").unwrap_err();
+        assert!(err.message.contains("'then'"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn test_if_error_no_fi() {
+        let err = parse("if x > 0 then 1").unwrap_err();
+        assert!(err.message.contains("'fi'"), "got: {}", err.message);
+    }
+
+    // =======================================================
+    // PARSE-12: Nested control flow
+    // =======================================================
+
+    #[test]
+    fn test_for_containing_if() {
+        let node = parse_expr("for n from 1 to 3 do if n > 1 then n fi od");
+        if let AstNode::ForLoop { body, .. } = &node {
+            assert_eq!(body.len(), 1);
+            assert!(matches!(&body[0].node, AstNode::IfExpr { .. }));
+        } else {
+            panic!("Expected ForLoop");
+        }
+    }
+
+    #[test]
+    fn test_if_containing_for() {
+        let node = parse_expr("if x > 0 then for n from 1 to 5 do n od fi");
+        if let AstNode::IfExpr { then_body, .. } = &node {
+            assert_eq!(then_body.len(), 1);
+            assert!(matches!(&then_body[0].node, AstNode::ForLoop { .. }));
+        } else {
+            panic!("Expected IfExpr");
+        }
     }
 }
