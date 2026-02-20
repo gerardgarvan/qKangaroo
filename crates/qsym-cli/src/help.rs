@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 86 functions + session commands.
+//! - [`general_help`]: grouped listing of all 89 functions + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 
 // ---------------------------------------------------------------------------
@@ -50,12 +50,15 @@ Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
   qdegree        - highest power of q with nonzero coefficient
   lqdegree       - lowest power of q with nonzero coefficient
+  lqdegree0      - lowest q-degree (Garvan compat alias)
   qfactor        - factor polynomial into (1-q^i) factors
   prodmake       - find infinite product form via log derivative
   etamake        - find eta quotient form
   jacprodmake    - find Jacobi product form
   mprodmake      - find (1+q^n) product form
   qetamake       - combined eta/q-Pochhammer product form
+  checkmult      - test if coefficients are multiplicative
+  checkprod      - test if series is a nice formal product
 
 Relations:
   findlincombo       - find f as linear combination of L using SL labels
@@ -67,7 +70,7 @@ Relations:
   findnonhom         - find degree-<=n polynomial relations among L
   findhommodp        - homogeneous relation mod prime p
   findmaxind         - find maximally independent subset of series
-  findprod           - find product identity among series
+  findprod           - search for product identities in series list
   findcong           - auto-discover congruences in a q-series
   findpoly           - find polynomial relation P(X,Y)=0 between two series
 
@@ -131,7 +134,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 81 function help entries.
+/// All 89 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -289,6 +292,13 @@ const FUNC_HELP: &[FuncHelp] = &[
         example_output: "0",
     },
     FuncHelp {
+        name: "lqdegree0",
+        signature: "lqdegree0(f)",
+        description: "Return the lowest power of q with a nonzero coefficient.\n  Equivalent to lqdegree for FPS inputs. Added for Garvan Maple compatibility.",
+        example: "q> f := partition_gf(20)\nq> lqdegree0(f)",
+        example_output: "0",
+    },
+    FuncHelp {
         name: "qfactor",
         signature: "qfactor(f, q) or qfactor(f, q, T)",
         description: "Factor a polynomial series into (1-q^i) factors by top-down division.\n  Returns a dictionary with scalar, factors, and is_exact flag.\n  Optional T limits the maximum factor index to search.",
@@ -329,6 +339,20 @@ const FUNC_HELP: &[FuncHelp] = &[
         description: "Find a combined eta/q-Pochhammer product representation.\n  Extends etamake with additional q-Pochhammer factors.\n  T is the maximum exponent to search.",
         example: "q> f := partition_gf(50)\nq> qetamake(f, q, 10)",
         example_output: "{factors: {...}, q_shift: 0, is_exact: true}",
+    },
+    FuncHelp {
+        name: "checkmult",
+        signature: "checkmult(QS, T) or checkmult(QS, T, 'yes')",
+        description: "Test if q-series coefficients are multiplicative: f(mn) = f(m)*f(n) for gcd(m,n)=1.\n  Checks all coprime pairs m,n with 2<=m,n<=T/2 and m*n<=T.\n  Prints MULTIPLICATIVE or NOT MULTIPLICATIVE at (m,n). Returns 1 or 0.\n  Optional 'yes' arg prints ALL failing pairs instead of stopping at first.",
+        example: "q> f := partition_gf(50)\nq> checkmult(f, 30)",
+        example_output: "NOT MULTIPLICATIVE at (2, 3)\n0",
+    },
+    FuncHelp {
+        name: "checkprod",
+        signature: "checkprod(f, M, Q)",
+        description: "Check if series f is a nice formal product.\n  M is max absolute exponent threshold, Q is truncation order.\n  Returns [a, 1] for nice product, [a, max_exp] if not nice,\n  or [[a, c0], -1] if leading coefficient is non-integer.",
+        example: "q> f := etaq(1, 1, 30)\nq> checkprod(f, 10, 30)",
+        example_output: "[0, 1]",
     },
 
     // -----------------------------------------------------------------------
@@ -399,10 +423,10 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
     FuncHelp {
         name: "findprod",
-        signature: "findprod([series], max_coeff, max_exp)",
-        description: "Find a product identity among series by brute-force search over exponent combinations.\n  Tests prod series[i]^{e_i} for integer exponents in [-max_coeff, max_coeff].",
-        example: "q> findprod([etaq(1,1,30), etaq(2,1,30)], 3, 2)",
-        example_output: "exponent vector (if product identity exists)",
+        signature: "findprod(FL, T, M, Q)",
+        description: "Search for linear combinations of series FL that yield nice products.\n  T is max |coefficient|, M is max product exponent threshold, Q is truncation order.\n  Tests all primitive coefficient vectors with entries in [-T,T].\n  Returns list of [valuation, c1, c2, ...] pairs silently.",
+        example: "q> e1 := etaq(1, 1, 30); e2 := etaq(2, 1, 30)\nq> findprod([e1, e2], 2, 10, 30)",
+        example_output: "[[0, 1, 0], [0, 0, 1], ...] (coefficient vectors yielding nice products)",
     },
     FuncHelp {
         name: "findcong",
@@ -914,8 +938,9 @@ mod tests {
             "numbpart", "partition_gf", "distinct_parts_gf", "odd_parts_gf",
             "bounded_parts_gf", "rank_gf", "crank_gf",
             "theta2", "theta3", "theta4",
-            "sift", "qdegree", "lqdegree", "qfactor",
+            "sift", "qdegree", "lqdegree", "lqdegree0", "qfactor",
             "prodmake", "etamake", "jacprodmake", "mprodmake", "qetamake",
+            "checkmult", "checkprod",
             "findlincombo", "findhomcombo", "findnonhomcombo",
             "findlincombomodp", "findhomcombomodp",
             "findhom", "findnonhom", "findhommodp",
@@ -938,7 +963,7 @@ mod tests {
             "prove_nonterminating",
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
         ];
-        assert_eq!(canonical.len(), 86, "test list should have 86 entries");
+        assert_eq!(canonical.len(), 89, "test list should have 89 entries");
 
         for name in &canonical {
             assert!(
@@ -953,8 +978,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            86,
-            "FUNC_HELP should have exactly 86 entries, got {}",
+            89,
+            "FUNC_HELP should have exactly 89 entries, got {}",
             FUNC_HELP.len()
         );
     }
