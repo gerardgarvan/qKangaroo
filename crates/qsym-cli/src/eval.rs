@@ -2263,6 +2263,105 @@ fn increment_coeffs(coeffs: &mut [i64], max_coeff: i64) -> bool {
     false
 }
 
+// ---------------------------------------------------------------------------
+// Bivariate computation helpers
+// ---------------------------------------------------------------------------
+
+/// Compute tripleprod(z, q, T) with symbolic z via Jacobi triple product sum form.
+///
+/// Uses the Garvan convention:
+///   (z;q)_inf * (q/z;q)_inf * (q;q)_inf = sum_{n=-inf}^{inf} (-1)^n * z^n * q^{n(n-1)/2}
+///
+/// Each term contributes (-1)^n at z^n with q-exponent n*(n-1)/2.
+/// Include all n where n*(n-1)/2 < truncation_order and n*(n-1)/2 >= 0.
+fn compute_tripleprod_bivariate(
+    outer_var: &str,
+    inner_var: SymbolId,
+    truncation_order: i64,
+) -> BivariateSeries {
+    let mut terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+
+    // Bound: n*(n-1)/2 < T. For positive n: n < (1 + sqrt(1 + 8T))/2.
+    // For negative n: |n|*(|n|+1)/2 < T (since n*(n-1)/2 = |n|*(|n|+1)/2 when n < 0).
+    // Use a generous bound and filter.
+    let bound = ((1.0 + (1.0 + 8.0 * truncation_order as f64).sqrt()) / 2.0).ceil() as i64 + 1;
+
+    for n in -bound..=bound {
+        let q_exp = n * (n - 1) / 2; // Garvan convention: n*(n-1)/2
+        if q_exp < 0 || q_exp >= truncation_order {
+            continue;
+        }
+        // Contribution: (-1)^n at z^n, q^{n*(n-1)/2}
+        let sign = if n % 2 == 0 { QRat::one() } else { -QRat::one() };
+
+        let entry = terms.entry(n).or_insert_with(||
+            FormalPowerSeries::zero(inner_var, truncation_order)
+        );
+        let old = entry.coeff(q_exp);
+        entry.set_coeff(q_exp, old + sign);
+    }
+
+    // Remove zero entries
+    terms.retain(|_, fps| !fps.is_zero());
+
+    BivariateSeries {
+        outer_variable: outer_var.to_string(),
+        terms,
+        inner_variable: inner_var,
+        truncation_order,
+    }
+}
+
+/// Compute quinprod(z, q, T) with symbolic z via quintuple product sum form.
+///
+/// quinprod(z, q, T) = sum_{m=-inf}^{inf} (z^{3m} - z^{-3m-1}) * q^{m(3m+1)/2}
+///
+/// Each m contributes two terms:
+///   +1 at z^{3m} with q-exponent m*(3m+1)/2
+///   -1 at z^{-3m-1} with q-exponent m*(3m+1)/2
+fn compute_quinprod_bivariate(
+    outer_var: &str,
+    inner_var: SymbolId,
+    truncation_order: i64,
+) -> BivariateSeries {
+    let mut terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+
+    // Bound: m*(3m+1)/2 < T. Roughly |m| < sqrt(2T/3).
+    let bound = ((1.0 + (1.0 + 24.0 * truncation_order as f64).sqrt()) / 6.0).ceil() as i64 + 1;
+
+    for m in -bound..=bound {
+        let q_exp = m * (3 * m + 1) / 2;
+        if q_exp < 0 || q_exp >= truncation_order {
+            continue;
+        }
+
+        // +1 at z^{3m}
+        let z_exp_pos = 3 * m;
+        let entry = terms.entry(z_exp_pos).or_insert_with(||
+            FormalPowerSeries::zero(inner_var, truncation_order)
+        );
+        let old = entry.coeff(q_exp);
+        entry.set_coeff(q_exp, old + QRat::one());
+
+        // -1 at z^{-3m-1}
+        let z_exp_neg = -3 * m - 1;
+        let entry2 = terms.entry(z_exp_neg).or_insert_with(||
+            FormalPowerSeries::zero(inner_var, truncation_order)
+        );
+        let old2 = entry2.coeff(q_exp);
+        entry2.set_coeff(q_exp, old2 - QRat::one());
+    }
+
+    terms.retain(|_, fps| !fps.is_zero());
+
+    BivariateSeries {
+        outer_variable: outer_var.to_string(),
+        terms,
+        inner_variable: inner_var,
+        truncation_order,
+    }
+}
+
 /// Dispatch a function call by name.
 ///
 /// Resolves aliases, then matches against the canonical function name.
@@ -2434,12 +2533,28 @@ pub fn dispatch(
 
         "tripleprod" => {
             if args.len() == 3 && matches!(&args[0], Value::Series(_) | Value::Symbol(_)) {
-                // Maple: tripleprod(z, q, T) -- z is monomial, q is variable
-                let monomial = extract_monomial_from_arg(name, args, 0)?;
-                let sym = extract_symbol_id(name, args, 1, env)?;
-                let order = extract_i64(name, args, 2)?;
-                let result = qseries::tripleprod(&monomial, sym, order);
-                Ok(Value::Series(result))
+                // Maple: tripleprod(z, q, T)
+                // Check if first arg is a Symbol with a DIFFERENT name from the q-variable
+                let is_symbolic_outer = match (&args[0], &args[1]) {
+                    (Value::Symbol(z_name), Value::Symbol(q_name)) => z_name != q_name,
+                    _ => false,
+                };
+
+                if is_symbolic_outer {
+                    // Bivariate path: symbolic z
+                    let outer_name = match &args[0] { Value::Symbol(s) => s.clone(), _ => unreachable!() };
+                    let sym = extract_symbol_id(name, args, 1, env)?;
+                    let order = extract_i64(name, args, 2)?;
+                    let result = compute_tripleprod_bivariate(&outer_name, sym, order);
+                    Ok(Value::BivariateSeries(result))
+                } else {
+                    // Existing monomial path (z is q-monomial or Symbol("q") treated as q^1)
+                    let monomial = extract_monomial_from_arg(name, args, 0)?;
+                    let sym = extract_symbol_id(name, args, 1, env)?;
+                    let order = extract_i64(name, args, 2)?;
+                    let result = qseries::tripleprod(&monomial, sym, order);
+                    Ok(Value::Series(result))
+                }
             } else {
                 // Legacy: tripleprod(coeff_num, coeff_den, power, order)
                 expect_args(name, args, 4)?;
@@ -2455,12 +2570,28 @@ pub fn dispatch(
 
         "quinprod" => {
             if args.len() == 3 && matches!(&args[0], Value::Series(_) | Value::Symbol(_)) {
-                // Maple: quinprod(z, q, T) -- z is monomial, q is variable
-                let monomial = extract_monomial_from_arg(name, args, 0)?;
-                let sym = extract_symbol_id(name, args, 1, env)?;
-                let order = extract_i64(name, args, 2)?;
-                let result = qseries::quinprod(&monomial, sym, order);
-                Ok(Value::Series(result))
+                // Maple: quinprod(z, q, T)
+                // Check if first arg is a Symbol with a DIFFERENT name from the q-variable
+                let is_symbolic_outer = match (&args[0], &args[1]) {
+                    (Value::Symbol(z_name), Value::Symbol(q_name)) => z_name != q_name,
+                    _ => false,
+                };
+
+                if is_symbolic_outer {
+                    // Bivariate path: symbolic z
+                    let outer_name = match &args[0] { Value::Symbol(s) => s.clone(), _ => unreachable!() };
+                    let sym = extract_symbol_id(name, args, 1, env)?;
+                    let order = extract_i64(name, args, 2)?;
+                    let result = compute_quinprod_bivariate(&outer_name, sym, order);
+                    Ok(Value::BivariateSeries(result))
+                } else {
+                    // Existing monomial path (z is q-monomial or Symbol("q") treated as q^1)
+                    let monomial = extract_monomial_from_arg(name, args, 0)?;
+                    let sym = extract_symbol_id(name, args, 1, env)?;
+                    let order = extract_i64(name, args, 2)?;
+                    let result = qseries::quinprod(&monomial, sym, order);
+                    Ok(Value::Series(result))
+                }
             } else {
                 // Legacy: quinprod(coeff_num, coeff_den, power, order)
                 expect_args(name, args, 4)?;
@@ -9349,5 +9480,192 @@ mod tests {
         } else {
             panic!("expected BivariateSeries, got {:?}", diff);
         }
+    }
+
+    // --- Bivariate tripleprod/quinprod dispatch tests ---
+
+    #[test]
+    fn dispatch_tripleprod_bivariate_basic() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("tripleprod", &args, &mut env).unwrap();
+        if let Value::BivariateSeries(bs) = val {
+            // n=0: (-1)^0 * z^0 * q^0 = 1, so z^0 coefficient at q^0 should be 1
+            let z0 = bs.terms.get(&0).unwrap();
+            assert_eq!(z0.coeff(0), QRat::one(), "constant term z^0 q^0 should be 1");
+        } else {
+            panic!("expected BivariateSeries, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_tripleprod_bivariate_preserves_univariate() {
+        let mut env = make_env();
+        // When z and q are the SAME symbol, fall through to monomial path
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("tripleprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)),
+            "tripleprod(q, q, 10) should be univariate Series, got {:?}", val.type_name());
+    }
+
+    #[test]
+    fn dispatch_quinprod_bivariate_basic() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("quinprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::BivariateSeries(_)),
+            "quinprod(z, q, 10) should be BivariateSeries, got {:?}", val.type_name());
+    }
+
+    #[test]
+    fn dispatch_quinprod_bivariate_preserves_univariate() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("quinprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)),
+            "quinprod(q, q, 10) should be univariate Series, got {:?}", val.type_name());
+    }
+
+    #[test]
+    fn tripleprod_bivariate_sign_convention_validation() {
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let trunc: i64 = 50;
+        // Safe comparison bound: only compare coefficients well below the truncation
+        // boundary, since evaluating the bivariate at z = c*q^m shifts truncation.
+        let safe_bound: i64 = 15;
+
+        // Cross-validate by evaluating bivariate at z = -q^m (coefficient -1).
+        // z = q^m (coefficient 1) causes product zeros due to (q/z;q)_inf having
+        // a zero factor at z = q^k for any integer k. Using z = -q^m avoids this.
+        for m in [1i64, 2, 3] {
+            let bv = compute_tripleprod_bivariate("z", sym_q, trunc);
+
+            // Evaluate bivariate at z = -q^m: z^n = (-q^m)^n = (-1)^n * q^{mn}
+            let mut eval_result = FormalPowerSeries::zero(sym_q, trunc);
+            for (&z_exp, fps) in &bv.terms {
+                let sign = if z_exp % 2 == 0 { QRat::one() } else { -QRat::one() };
+                let shifted = arithmetic::shift(fps, z_exp * m);
+                for (&k, c) in shifted.iter() {
+                    if k >= 0 && k < trunc {
+                        let old = eval_result.coeff(k);
+                        eval_result.set_coeff(k, old + c.clone() * sign.clone());
+                    }
+                }
+            }
+
+            // Compare against numeric tripleprod with z = -q^m
+            let monomial = QMonomial::new(-QRat::one(), m);
+            let numeric = qseries::tripleprod(&monomial, sym_q, trunc);
+            for k in 0..safe_bound {
+                assert_eq!(
+                    eval_result.coeff(k), numeric.coeff(k),
+                    "tripleprod bivariate mismatch at q^{} for z=-q^{}", k, m
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn quinprod_bivariate_validation() {
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let trunc: i64 = 20;
+
+        // Direct verification of quinprod bivariate coefficients against the sum formula:
+        // quinprod(z, q, T) = sum_m (z^{3m} - z^{-3m-1}) * q^{m(3m+1)/2}
+        let bv = compute_quinprod_bivariate("z", sym_q, trunc);
+
+        // Each m contributes: +1 at z^{3m} and -1 at z^{-3m-1}, both at q^{m(3m+1)/2}.
+        // Verify specific terms.
+
+        // m=0: q_exp=0, z^0 gets +1*q^0, z^{-1} gets -1*q^0
+        let z0 = bv.terms.get(&0).unwrap();
+        assert_eq!(z0.coeff(0), QRat::one(), "z^0 coeff at q^0 should be 1");
+        assert_eq!(z0.iter().count(), 1, "z^0 should have only one q-term");
+
+        let zm1 = bv.terms.get(&-1).unwrap();
+        assert_eq!(zm1.coeff(0), -QRat::one(), "z^(-1) coeff at q^0 should be -1");
+
+        // m=1: q_exp=2, z^3 gets +1*q^2, z^(-4) gets -1*q^2
+        let z3 = bv.terms.get(&3).unwrap();
+        assert_eq!(z3.coeff(2), QRat::one(), "z^3 coeff at q^2 should be 1");
+
+        let zm4 = bv.terms.get(&-4).unwrap();
+        assert_eq!(zm4.coeff(2), -QRat::one(), "z^(-4) coeff at q^2 should be -1");
+
+        // m=-1: q_exp=(-1)(-2)/2=1, z^(-3) gets +1*q^1, z^2 gets -1*q^1
+        let zm3 = bv.terms.get(&-3).unwrap();
+        assert_eq!(zm3.coeff(1), QRat::one(), "z^(-3) coeff at q^1 should be 1");
+
+        let z2 = bv.terms.get(&2).unwrap();
+        assert_eq!(z2.coeff(1), -QRat::one(), "z^2 coeff at q^1 should be -1");
+
+        // m=2: q_exp=2*(7)/2=7, z^6 gets +1*q^7, z^(-7) gets -1*q^7
+        let z6 = bv.terms.get(&6).unwrap();
+        assert_eq!(z6.coeff(7), QRat::one(), "z^6 coeff at q^7 should be 1");
+
+        let zm7 = bv.terms.get(&-7).unwrap();
+        assert_eq!(zm7.coeff(7), -QRat::one(), "z^(-7) coeff at q^7 should be -1");
+
+        // Verify that each z-exponent has exactly one nonzero q-coefficient
+        // (since each z-exponent appears from exactly one m value in the sum)
+        for (&z_exp, fps) in &bv.terms {
+            assert_eq!(fps.iter().count(), 1,
+                "z^{} should have exactly one q-term, got {}", z_exp, fps.iter().count());
+        }
+    }
+
+    #[test]
+    fn tripleprod_bivariate_symmetry() {
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let bv = compute_tripleprod_bivariate("z", sym_q, 20);
+
+        // Each z^n coefficient should be (-1)^n * q^{n(n-1)/2} (a single monomial).
+        for (&z_exp, fps) in &bv.terms {
+            let q_exp = z_exp * (z_exp - 1) / 2;
+            let expected_sign = if z_exp % 2 == 0 { QRat::one() } else { -QRat::one() };
+
+            // Check that only q_exp has a nonzero coefficient
+            let nonzero_count = fps.iter().count();
+            assert_eq!(nonzero_count, 1,
+                "z^{} should have exactly one q-term, got {}", z_exp, nonzero_count);
+            assert_eq!(fps.coeff(q_exp), expected_sign,
+                "z^{} coefficient at q^{} should be {:?}", z_exp, q_exp, expected_sign);
+        }
+    }
+
+    #[test]
+    fn bivariate_tripleprod_arithmetic() {
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let t1 = compute_tripleprod_bivariate("z", sym_q, 10);
+        let t2 = compute_tripleprod_bivariate("z", sym_q, 10);
+
+        // t1 + t2 should equal 2 * t1
+        let sum = bv::bivariate_add(&t1, &t2);
+        let doubled = bv::bivariate_scalar_mul(&QRat::from((2i64, 1i64)), &t1);
+        assert_eq!(sum, doubled, "t1 + t2 should equal 2*t1");
+
+        // t1 - t1 should be zero
+        let diff = bv::bivariate_sub(&t1, &t1);
+        assert!(diff.is_zero(), "t1 - t1 should be zero");
     }
 }
