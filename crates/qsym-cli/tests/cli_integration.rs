@@ -1572,3 +1572,82 @@ fn jac2series_matches_etaq() {
     );
     std::fs::remove_file(&tmp).ok();
 }
+
+// ===========================================================================
+// Phase 38: Analysis & Discovery Functions
+// ===========================================================================
+
+#[test]
+fn cli_lqdegree0_partition_gf() {
+    let (code, stdout, _) = run(&["-c", "f := partition_gf(20); lqdegree0(f)"]);
+    assert_eq!(code, 0);
+    assert!(
+        stdout.contains("0"),
+        "lqdegree0 of partition_gf should be 0, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn cli_checkmult_not_multiplicative() {
+    let (code, stdout, _) = run(&["-c", "f := partition_gf(50); checkmult(f, 30)"]);
+    assert_eq!(code, 0);
+    assert!(
+        stdout.contains("NOT MULTIPLICATIVE"),
+        "partition function should not be multiplicative, got: {}",
+        stdout
+    );
+    assert!(
+        stdout.contains("0"),
+        "should return 0, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn cli_checkmult_with_yes() {
+    let (code, stdout, _) = run(&["-c", "f := partition_gf(50); checkmult(f, 30, 'yes')"]);
+    assert_eq!(code, 0);
+    // Should print multiple NOT MULTIPLICATIVE lines
+    let not_mult_count = stdout.matches("NOT MULTIPLICATIVE").count();
+    assert!(
+        not_mult_count >= 2,
+        "with 'yes' should print multiple failures, got {} lines",
+        not_mult_count
+    );
+}
+
+#[test]
+fn cli_checkprod_eta_nice() {
+    let (code, stdout, _) = run(&["-c", "f := etaq(1, 1, 30); checkprod(f, 10, 30)"]);
+    assert_eq!(code, 0);
+    // eta is a nice product, should contain [_, 1]
+    assert!(
+        stdout.contains("1]"),
+        "eta should be a nice product, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn cli_findprod_garvan_4arg() {
+    let (code, stdout, _) = run(&["-c", "e1 := etaq(1, 1, 30); e2 := etaq(2, 1, 30); findprod([e1, e2], 1, 10, 30)"]);
+    assert_eq!(code, 0);
+    // Should return a list (possibly with results)
+    assert!(
+        stdout.contains("["),
+        "findprod should return a list, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn cli_findprod_old_3arg_errors() {
+    let (code, _, stderr) = run(&["-c", "e1 := etaq(1, 1, 20); findprod([e1], 2, 5)"]);
+    assert_ne!(code, 0, "old 3-arg findprod should error");
+    assert!(
+        stderr.contains("expects 4 arguments") || stderr.contains("expected 4"),
+        "old 3-arg findprod should error, got stderr: {}",
+        stderr
+    );
+}
