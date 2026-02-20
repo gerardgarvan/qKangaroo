@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
-**Current focus:** v2.0 Maple Compatibility -- Phase 38 complete, ready for Phase 39
+**Current focus:** v2.0 Maple Compatibility -- Phase 39 in progress (plan 01 of 02 complete)
 
 ## Current Position
 
-Phase: 38 of 40 (New Functions - Analysis & Discovery) -- COMPLETE
-Plan: 2 of 2 in current phase (all plans complete)
-Status: Phase 38 complete, ready for Phase 39
-Last activity: 2026-02-20 -- Plan 38-02 complete (help text + integration tests)
+Phase: 39 of 40 (Output Compatibility)
+Plan: 1 of 2 in current phase
+Status: Plan 39-01 complete, ready for 39-02
+Last activity: 2026-02-20 -- Plan 39-01 complete (descending power ordering)
 
-Progress: [####################################          ] 108/? plans (v2.0 phases 33-40 pending)
+Progress: [#####################################         ] 109/? plans (v2.0 phases 33-40)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 108
-- Total phases: 38 complete (v1.0-v1.6 + Phases 33-38), 2 planned (39-40)
+- Total plans completed: 109
+- Total phases: 38 complete (v1.0-v1.6 + Phases 33-38), 1 in progress (39), 1 planned (40)
 - Total milestones: 7 complete (v1.0-v1.6), 1 in progress (v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~8.5 hours
@@ -42,6 +42,7 @@ Progress: [####################################          ] 108/? plans (v2.0 pha
 | 37-02 | qs2jaccombo + help + integration tests | 9min | 2 | 4 |
 | 38-01 | Analysis/discovery dispatch (lqdegree0/checkmult/checkprod/findprod) | 6min | 2 | 1 |
 | 38-02 | Help text + integration tests | 3min | 2 | 2 |
+| 39-01 | Descending power ordering | 7min | 2 | 5 |
 
 ## Accumulated Context
 
@@ -105,6 +106,8 @@ All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 - 38-01: Value comparison in tests uses pattern matching (Value lacks PartialEq)
 - 38-02: checkmult/checkprod placed in Series Analysis section of general help (not Relations)
 - 38-02: findprod description updated to 'search for product identities in series list'
+- 39-01: FormalPowerSeries::iter() returns impl DoubleEndedIterator to enable .rev()
+- 39-01: fps_to_latex() uses iter().rev().collect() to reverse terms Vec once
 
 ### Pending Todos
 
@@ -117,5 +120,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 38-02-PLAN.md (help text + integration tests) -- Phase 38 complete
-Resume file: .planning/phases/39-*/39-01-PLAN.md
+Stopped at: Completed 39-01-PLAN.md (descending power ordering)
+Resume file: .planning/phases/39-output-compatibility/39-02-PLAN.md
