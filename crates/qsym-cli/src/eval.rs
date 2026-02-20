@@ -4,9 +4,11 @@
 //! arithmetic on [`Value`] types, catches panics from qsym-core, and
 //! dispatches function calls.
 
-use std::collections::{BTreeMap, HashSet};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::rc::Rc;
 
 use qsym_core::number::{QInt, QRat};
 use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
@@ -26,6 +28,27 @@ use crate::environment::Environment;
 /// Chosen to be large enough to never interfere with real truncation orders,
 /// but small enough to avoid overflow in min() comparisons.
 pub(crate) const POLYNOMIAL_ORDER: i64 = 1_000_000_000;
+
+// ---------------------------------------------------------------------------
+// Procedure struct
+// ---------------------------------------------------------------------------
+
+/// A user-defined procedure (stored as AST, re-evaluated on each call).
+#[derive(Clone, Debug)]
+pub struct Procedure {
+    /// Display name (set when assigned to a variable via `:=`).
+    pub name: String,
+    /// Formal parameter names.
+    pub params: Vec<String>,
+    /// Local variable names declared with `local`.
+    pub locals: Vec<String>,
+    /// Whether `option remember` was specified.
+    pub remember: bool,
+    /// Body statements (AST, re-evaluated on each call).
+    pub body: Vec<Stmt>,
+    /// Shared memoization table (keyed by Debug-string of args).
+    pub memo: Rc<RefCell<HashMap<String, Value>>>,
+}
 
 // ---------------------------------------------------------------------------
 // Value enum
@@ -61,6 +84,8 @@ pub enum Value {
     /// Jacobi product expression: product of (q^a;q^b)_inf^exp factors.
     /// Each triple is (a, b, exponent). Maintained in canonical form.
     JacobiProduct(Vec<(i64, i64, i64)>),
+    /// User-defined procedure.
+    Procedure(Procedure),
 }
 
 impl Value {
@@ -79,6 +104,7 @@ impl Value {
             Value::Infinity => "infinity",
             Value::Symbol(_) => "symbol",
             Value::JacobiProduct(_) => "jacobi_product",
+            Value::Procedure(_) => "procedure",
         }
     }
 }
@@ -1027,6 +1053,15 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 return Err(EvalError::EarlyReturn(val));
             }
 
+            // Check if name refers to a user-defined procedure
+            if let Some(Value::Procedure(proc_val)) = env.get_var(name).cloned() {
+                let mut evaluated = Vec::with_capacity(args.len());
+                for arg in args {
+                    evaluated.push(eval_expr(arg, env)?);
+                }
+                return call_procedure(&proc_val, &evaluated, env);
+            }
+
             let mut evaluated = Vec::with_capacity(args.len());
             for arg in args {
                 evaluated.push(eval_expr(arg, env)?);
@@ -1044,6 +1079,13 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 }
             }
             let val = eval_expr(value, env)?;
+            // Set procedure name when assigned to a variable
+            let val = if let Value::Procedure(mut proc_val) = val {
+                proc_val.name = name.clone();
+                Value::Procedure(proc_val)
+            } else {
+                val
+            };
             env.set_var(name, val.clone());
             Ok(val)
         }
@@ -1077,8 +1119,16 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
             eval_if_expr(condition, then_body, elif_branches, else_body.as_deref(), env)
         }
 
-        AstNode::ProcDef { .. } => {
-            Err(EvalError::Other("procedure evaluation not yet implemented".to_string()))
+        AstNode::ProcDef { params, locals, options, body } => {
+            let remember = options.iter().any(|o| o == "remember");
+            Ok(Value::Procedure(Procedure {
+                name: String::new(),
+                params: params.clone(),
+                locals: locals.clone(),
+                remember,
+                body: body.clone(),
+                memo: Rc::new(RefCell::new(HashMap::new())),
+            }))
         }
     }
 }
@@ -1266,6 +1316,70 @@ fn eval_stmt_sequence(stmts: &[Stmt], env: &mut Environment) -> Result<Value, Ev
         result = eval_expr(&stmt.node, env)?;
     }
     Ok(result)
+}
+
+/// Call a user-defined procedure with the given arguments.
+///
+/// Implements local variable scoping via save/restore, catches EarlyReturn
+/// at the procedure boundary, and handles memoization for `option remember`.
+fn call_procedure(proc: &Procedure, args: &[Value], env: &mut Environment) -> Result<Value, EvalError> {
+    // 1. Arity check
+    if args.len() != proc.params.len() {
+        let proc_name = if proc.name.is_empty() { "anonymous procedure" } else { &proc.name };
+        return Err(EvalError::Other(format!(
+            "procedure '{}' expects {} argument(s), got {}",
+            proc_name, proc.params.len(), args.len()
+        )));
+    }
+
+    // 2. Memo lookup
+    let memo_key = if proc.remember {
+        let key = format!("{:?}", args);
+        if let Some(cached) = proc.memo.borrow().get(&key).cloned() {
+            return Ok(cached);
+        }
+        Some(key)
+    } else {
+        None
+    };
+
+    // 3. Save variables (params + locals)
+    let mut saved: Vec<(String, Option<Value>)> = Vec::new();
+    for name in proc.params.iter().chain(proc.locals.iter()) {
+        let old = env.variables.remove(name);
+        saved.push((name.clone(), old));
+    }
+
+    // 4. Bind parameters
+    for (param_name, arg_value) in proc.params.iter().zip(args.iter()) {
+        env.set_var(param_name, arg_value.clone());
+    }
+    // Locals are intentionally NOT initialized (accessing returns Symbol, Maple behavior)
+
+    // 5. Execute body
+    let result = match eval_stmt_sequence(&proc.body, env) {
+        Ok(val) => Ok(val),
+        Err(EvalError::EarlyReturn(val)) => Ok(val),
+        Err(e) => Err(e),
+    };
+
+    // 6. Restore variables (always runs, regardless of success/error)
+    for (name, old) in saved {
+        match old {
+            Some(v) => env.set_var(&name, v),
+            None => { env.variables.remove(&name); }
+        }
+    }
+
+    // 7. Memo store
+    if let Some(key) = memo_key {
+        if let Ok(ref val) = result {
+            proc.memo.borrow_mut().insert(key, val.clone());
+        }
+    }
+
+    // 8. Return result
+    result
 }
 
 /// Extract an i64 from a Value (for loop bounds).
@@ -7844,5 +7958,173 @@ mod tests {
             rhs: Box::new(AstNode::Integer(1)),
         };
         assert!(eval_expr(&node, &mut env).is_err());
+    }
+
+    // =======================================================
+    // Procedure tests
+    // =======================================================
+
+    /// Helper: parse and evaluate a multi-statement string, returning the
+    /// last value and a mutable reference to the environment.
+    fn eval_input(input: &str, env: &mut Environment) -> Result<Value, EvalError> {
+        let stmts = crate::parser::parse(input).expect("parse error");
+        let mut result = Value::None;
+        for stmt in &stmts {
+            result = eval_expr(&stmt.node, env)?;
+        }
+        Ok(result)
+    }
+
+    #[test]
+    fn test_proc_simple() {
+        let mut env = make_env();
+        let val = eval_input("f := proc(n) n*n; end; f(5)", &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(25i64));
+        } else {
+            panic!("expected Integer(25), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_local_scoping() {
+        let mut env = make_env();
+        let val = eval_input("f := proc(n) local k; k := n*n; k; end; f(5)", &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(25i64));
+        } else {
+            panic!("expected Integer(25), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_local_not_leaking() {
+        let mut env = make_env();
+        eval_input("f := proc(n) local k; k := n*n; k; end; f(5)", &mut env).unwrap();
+        // k should not be in environment after procedure call
+        assert!(env.get_var("k").is_none(), "local variable k should not leak into global scope");
+    }
+
+    #[test]
+    fn test_proc_return_early() {
+        let mut env = make_env();
+        let val = eval_input("f := proc(n) RETURN(n*2); 999; end; f(5)", &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(10i64));
+        } else {
+            panic!("expected Integer(10), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_return_in_for_loop() {
+        let mut env = make_env();
+        let val = eval_input(
+            "f := proc(n) for k from 1 to 100 do if k = n then RETURN(k*k) fi od end; f(7)",
+            &mut env,
+        ).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(49i64));
+        } else {
+            panic!("expected Integer(49), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_option_remember() {
+        let mut env = make_env();
+        eval_input("f := proc(n) option remember; n*n; end; f(5)", &mut env).unwrap();
+        // Check memo table has entry after first call
+        if let Some(Value::Procedure(proc_val)) = env.get_var("f") {
+            let memo = proc_val.memo.borrow();
+            assert!(!memo.is_empty(), "memo table should have entry after call");
+        } else {
+            panic!("expected f to be a Procedure");
+        }
+    }
+
+    #[test]
+    fn test_proc_memoized_fib() {
+        let mut env = make_env();
+        let val = eval_input(
+            "fib := proc(n) option remember; if n <= 1 then RETURN(n) fi; fib(n-1) + fib(n-2); end; fib(10)",
+            &mut env,
+        ).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(55i64));
+        } else {
+            panic!("expected Integer(55), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_wrong_arg_count() {
+        let mut env = make_env();
+        eval_input("f := proc(n) n; end", &mut env).unwrap();
+        let result = eval_input("f(1, 2)", &mut env);
+        assert!(result.is_err(), "should error on wrong arg count");
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("expects 1"), "error should mention expected args: {}", msg);
+    }
+
+    #[test]
+    fn test_proc_shadows_builtin() {
+        let mut env = make_env();
+        let val = eval_input("numbpart := proc(n) n*2; end; numbpart(5)", &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(10i64));
+        } else {
+            panic!("expected Integer(10), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_empty_body() {
+        let mut env = make_env();
+        let val = eval_input("f := proc() end; f()", &mut env).unwrap();
+        assert!(matches!(val, Value::None), "empty proc body should return None");
+    }
+
+    #[test]
+    fn test_proc_multiple_stmts() {
+        let mut env = make_env();
+        let val = eval_input(
+            "f := proc(n) local a, b; a := n; b := a + 1; b; end; f(5)",
+            &mut env,
+        ).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(6i64));
+        } else {
+            panic!("expected Integer(6), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_nested_for_if() {
+        let mut env = make_env();
+        let val = eval_input(
+            "f := proc(n) local s; s := 0; for k from 1 to n do if k > 2 then s := s + k fi od; s; end; f(5)",
+            &mut env,
+        ).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(12i64)); // 3 + 4 + 5 = 12
+        } else {
+            panic!("expected Integer(12), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_proc_restore_on_error() {
+        let mut env = make_env();
+        env.set_var("x", Value::Integer(QInt::from(99i64)));
+        // Procedure that takes x as param, then errors on unknown function
+        eval_input("f := proc(x) badfunction(); end", &mut env).unwrap();
+        let _result = eval_input("f(1)", &mut env);
+        // x should be restored to 99 regardless of error
+        if let Some(Value::Integer(n)) = env.get_var("x") {
+            assert_eq!(*n, QInt::from(99i64));
+        } else {
+            panic!("x should be restored to 99 after proc error");
+        }
     }
 }

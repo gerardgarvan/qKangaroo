@@ -43,6 +43,10 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Infinity => "infinity".to_string(),
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product(factors),
+        Value::Procedure(proc) => {
+            let params = proc.params.join(", ");
+            format!("proc({}) ... end proc", params)
+        }
     }
 }
 
@@ -256,6 +260,9 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Infinity => "\\infty".to_string(),
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product_latex(factors),
+        Value::Procedure(proc) => {
+            format!("\\text{{proc}}({})", proc.params.join(", "))
+        }
     }
 }
 

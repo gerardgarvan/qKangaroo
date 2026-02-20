@@ -155,6 +155,7 @@ impl ReplHelper {
         let mut bracket_depth: i32 = 0;
         let mut for_depth: i32 = 0;
         let mut if_depth: i32 = 0;
+        let mut proc_depth: i32 = 0;
         let mut word = String::new();
         let mut in_string = false;
         let mut string_char = ' ';
@@ -179,7 +180,7 @@ impl ReplHelper {
 
             // Start of string literal
             if ch == '"' || ch == '\'' {
-                Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+                Self::check_keyword(&word, &mut for_depth, &mut if_depth, &mut proc_depth);
                 word.clear();
                 in_string = true;
                 string_char = ch;
@@ -188,7 +189,7 @@ impl ReplHelper {
 
             // Start of comment
             if ch == '#' {
-                Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+                Self::check_keyword(&word, &mut for_depth, &mut if_depth, &mut proc_depth);
                 word.clear();
                 in_comment = true;
                 continue;
@@ -197,7 +198,7 @@ impl ReplHelper {
             if ch.is_ascii_alphanumeric() || ch == '_' {
                 word.push(ch);
             } else {
-                Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+                Self::check_keyword(&word, &mut for_depth, &mut if_depth, &mut proc_depth);
                 word.clear();
                 match ch {
                     '(' | '[' => bracket_depth += 1,
@@ -207,17 +208,19 @@ impl ReplHelper {
             }
         }
         // Flush final word
-        Self::check_keyword(&word, &mut for_depth, &mut if_depth);
+        Self::check_keyword(&word, &mut for_depth, &mut if_depth, &mut proc_depth);
 
-        bracket_depth > 0 || for_depth > 0 || if_depth > 0
+        bracket_depth > 0 || for_depth > 0 || if_depth > 0 || proc_depth > 0
     }
 
-    fn check_keyword(word: &str, for_depth: &mut i32, if_depth: &mut i32) {
+    fn check_keyword(word: &str, for_depth: &mut i32, if_depth: &mut i32, proc_depth: &mut i32) {
         match word {
             "for" => *for_depth += 1,
             "od" => *for_depth -= 1,
             "if" => *if_depth += 1,
             "fi" => *if_depth -= 1,
+            "proc" => *proc_depth += 1,
+            "end" => *proc_depth -= 1,
             _ => {}
         }
     }
@@ -480,5 +483,23 @@ mod tests {
     fn validator_multiline_for() {
         assert!(ReplHelper::is_incomplete("for n from 1 to 5 do\n  n;\n"));
         assert!(!ReplHelper::is_incomplete("for n from 1 to 5 do\n  n;\nod"));
+    }
+
+    // -- Procedure multiline tests -------------------------------------------
+
+    #[test]
+    fn validator_proc_incomplete() {
+        assert!(ReplHelper::is_incomplete("f := proc(n)"));
+    }
+
+    #[test]
+    fn validator_proc_complete() {
+        assert!(!ReplHelper::is_incomplete("f := proc(n) n end"));
+    }
+
+    #[test]
+    fn validator_proc_multiline() {
+        assert!(ReplHelper::is_incomplete("f := proc(n)\n  n;\n"));
+        assert!(!ReplHelper::is_incomplete("f := proc(n)\n  n;\nend"));
     }
 }
