@@ -74,27 +74,27 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCRIPT-01 | Phase 41 | Pending |
-| SCRIPT-02 | Phase 42 | Pending |
-| SCRIPT-03 | Phase 42 | Pending |
-| SCRIPT-04 | Phase 42 | Pending |
-| SCRIPT-05 | Phase 42 | Pending |
-| SCRIPT-06 | Phase 41 | Pending |
-| SCRIPT-07 | Phase 41 | Pending |
-| SERIES-01 | Phase 43 | Pending |
-| SERIES-02 | Phase 43 | Pending |
-| SERIES-03 | Phase 43 | Pending |
-| POLY-01 | Phase 44 | Pending |
-| POLY-02 | Phase 44 | Pending |
-| BIVAR-01 | Phase 45 | Pending |
-| BIVAR-02 | Phase 45 | Pending |
-| BIVAR-03 | Phase 45 | Pending |
-| BIVAR-04 | Phase 45 | Pending |
-| UTIL-01 | Phase 43 | Pending |
-| UTIL-02 | Phase 43 | Pending |
-| DOC-01 | Phase 46 | Pending |
-| DOC-02 | Phase 46 | Pending |
-| DOC-03 | Phase 46 | Pending |
+| SCRIPT-01 | Phase 41 | Complete |
+| SCRIPT-02 | Phase 42 | Complete |
+| SCRIPT-03 | Phase 42 | Complete |
+| SCRIPT-04 | Phase 42 | Complete |
+| SCRIPT-05 | Phase 42 | Complete |
+| SCRIPT-06 | Phase 41 | Complete |
+| SCRIPT-07 | Phase 41 | Complete |
+| SERIES-01 | Phase 43 | Complete |
+| SERIES-02 | Phase 43 | Complete |
+| SERIES-03 | Phase 43 | Complete |
+| POLY-01 | Phase 44 | Complete |
+| POLY-02 | Phase 44 | Complete |
+| BIVAR-01 | Phase 45 | Complete |
+| BIVAR-02 | Phase 45 | Complete |
+| BIVAR-03 | Phase 45 | Complete |
+| BIVAR-04 | Phase 45 | Complete |
+| UTIL-01 | Phase 43 | Complete |
+| UTIL-02 | Phase 43 | Complete |
+| DOC-01 | Phase 46 | Complete |
+| DOC-02 | Phase 46 | Complete |
+| DOC-03 | Phase 46 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 21 total

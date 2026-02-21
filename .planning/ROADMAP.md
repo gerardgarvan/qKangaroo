@@ -127,7 +127,7 @@ See `.planning/milestones/v2.0-ROADMAP.md` for details.
 - [ ] **Phase 43: Expression Operations** - series() truncation, expand(), runtime q-exponent arithmetic, floor(), legendre()
 - [ ] **Phase 44: Polynomial Operations** - factor() cyclotomic/irreducible factoring, subs() variable substitution
 - [x] **Phase 45: Bivariate Series** - New Laurent-in-z-with-FPS-coefficients data type, tripleprod/quinprod/winquist with symbolic z, bivariate arithmetic
-- [ ] **Phase 46: Documentation** - Manual chapter on scripting, help entries for new syntax, worked qmaple.pdf example reproductions
+- [x] **Phase 46: Documentation** - Manual chapter on scripting, help entries for new syntax, worked qmaple.pdf example reproductions
 
 ## Phase Details
 
@@ -214,8 +214,8 @@ Plans:
   3. Worked examples section includes at least 3 reproductions of key examples from Garvan's qmaple.pdf tutorial, demonstrating for-loops with series computation, procedure definitions with memoization, and bivariate product identities
 **Plans**: 2 plans
 Plans:
-- [ ] 46-01-PLAN.md -- Help entries for for/proc/if language constructs, tab completion keywords
-- [ ] 46-02-PLAN.md -- PDF manual scripting chapter with 3 worked examples, function count updates
+- [x] 46-01-PLAN.md -- Help entries for for/proc/if language constructs, tab completion keywords
+- [x] 46-02-PLAN.md -- PDF manual scripting chapter with 3 worked examples, function count updates
 
 ## Progress
 
@@ -267,6 +267,6 @@ Phases execute in numeric order: 41 -> 42 -> 43 -> 44 -> 45 -> 46
 | 41. Control Flow Parsing | v3.0 | 2/2 | Complete | 2026-02-20 |
 | 42. Procedures & Evaluation | v3.0 | 2/2 | Complete | 2026-02-20 |
 | 43. Expression Operations | v3.0 | 2/2 | Complete | 2026-02-20 |
-| 44. Polynomial Operations | v3.0 | 0/2 | Not started | - |
+| 44. Polynomial Operations | v3.0 | 2/2 | Complete | 2026-02-20 |
 | 45. Bivariate Series | v3.0 | 4/4 | Complete | 2026-02-21 |
-| 46. Documentation | v3.0 | 0/2 | Not started | - |
+| 46. Documentation | v3.0 | 2/2 | Complete | 2026-02-21 |
