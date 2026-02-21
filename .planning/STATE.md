@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v3.0 Phase 46 - Documentation (plan 01 complete, plan 02 next)
+**Current focus:** v3.0 Phase 46 - Documentation (plan 02 complete, phase 46 complete)
 
 ## Current Position
 
 Phase: 46 of 46 (Documentation)
-Plan: 1 of 2 in phase 46
-Status: Plan 46-01 complete, proceeding to plan 46-02
-Last activity: 2026-02-21 -- Plan 46-01 executed (2 tasks, 9 new tests, 772 total CLI tests)
+Plan: 2 of 2 in phase 46 (phase 46 complete)
+Status: Phase 46 complete, v3.0 milestone documentation done
+Last activity: 2026-02-21 -- Plan 46-02 executed (2 tasks, 7 files modified)
 
-Progress: [=============================================.....] 91% (132/~145 plans est.)
+Progress: [==============================================....] 92% (133/~145 plans est.)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 132
-- Total phases: 44 complete (v1.0-v2.0 + Phases 41-44), 1 complete (Phase 45 + gap closure), 1 in progress (Phase 46)
+- Total plans completed: 133
+- Total phases: 44 complete (v1.0-v2.0 + Phases 41-44), 1 complete (Phase 45 + gap closure), 1 complete (Phase 46)
 - Total milestones: 8 complete (v1.0-v1.6, v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~9.5 hours
@@ -39,6 +39,7 @@ Progress: [=============================================.....] 91% (132/~145 pla
 | 45 | 03 | 15 min | 2 | 2 |
 | 45 | 04 | 10 min | 2 | 5 |
 | 46 | 01 | 4 min | 2 | 2 |
+| 46 | 02 | 8 min | 2 | 7 |
 
 ## Accumulated Context
 
@@ -92,6 +93,11 @@ v2.0 decisions archived in .planning/milestones/v2.0-phases/.
 - 46-01: Language construct help uses special-case match arms before FUNC_HELP lookup (avoids count assertion changes)
 - 46-01: 18 scripting keywords complete without trailing paren (unlike functions)
 - 46-01: RETURN in keyword_names (not function_names) since not in eval.rs ALL_FUNCTION_NAMES
+- 46-02: Function count is 97 (matching canonical_function_names), updated from 89 across 5 chapter files
+- 46-02: 13 function groups in Chapter 4 (was 9); Theta(3) + Jacobi Products(5) + new groups
+- 46-02: Proc syntax: local before option remember (parser requires this order)
+- 46-02: floor() needed for pentagonal recurrence (integer/integer = rational in q-Kangaroo)
+- 46-02: Chapter 4 "no control-flow" claim replaced with forward reference to scripting chapter
 
 ### Pending Todos
 
@@ -104,5 +110,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 46-01-PLAN.md
-Resume file: .planning/phases/46-documentation/46-01-SUMMARY.md
+Stopped at: Completed 46-02-PLAN.md (Phase 46 complete)
+Resume file: .planning/phases/46-documentation/46-02-SUMMARY.md
