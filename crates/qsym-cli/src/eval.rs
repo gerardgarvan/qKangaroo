@@ -3048,6 +3048,23 @@ fn compute_winquist_one_symbolic(
     }
 }
 
+/// Format the quintuple product identity in product form.
+fn format_quinprod_prodid(z: &str, q: &str) -> String {
+    format!(
+        "(-{z},{q})_inf * (-{q}/{z},{q})_inf * ({z}^2*{q},{q}^2)_inf * ({q}^2/{z}^2,{q}^2)_inf * ({q},{q})_inf",
+        z = z, q = q
+    )
+}
+
+/// Format the quintuple product identity in series form (product = series).
+fn format_quinprod_seriesid(z: &str, q: &str) -> String {
+    let prod_side = format_quinprod_prodid(z, q);
+    format!(
+        "{}\n  = sum(m=-inf..inf, ({z}^(3*m) - {z}^(-3*m-1)) * {q}^(m*(3*m+1)/2))",
+        prod_side, z = z, q = q
+    )
+}
+
 /// Compute quinprod(z, q, T) with symbolic z via quintuple product sum form.
 ///
 /// quinprod(z, q, T) = sum_{m=-inf}^{inf} (z^{3m} - z^{-3m-1}) * q^{m(3m+1)/2}
@@ -3307,6 +3324,28 @@ pub fn dispatch(
 
         "quinprod" => {
             if args.len() == 3 && matches!(&args[0], Value::Series(_) | Value::Symbol(_)) {
+                // Identity display modes: quinprod(z, q, prodid) or quinprod(z, q, seriesid)
+                if let Value::Symbol(mode) = &args[2] {
+                    let mode_str = mode.as_str();
+                    if mode_str == "prodid" || mode_str == "seriesid" {
+                        let z_str = match &args[0] {
+                            Value::Symbol(s) => s.clone(),
+                            _ => "z".to_string(),
+                        };
+                        let q_str = match &args[1] {
+                            Value::Symbol(s) => s.clone(),
+                            _ => "q".to_string(),
+                        };
+                        let identity = if mode_str == "prodid" {
+                            format_quinprod_prodid(&z_str, &q_str)
+                        } else {
+                            format_quinprod_seriesid(&z_str, &q_str)
+                        };
+                        println!("{}", identity);
+                        return Ok(Value::String(identity));
+                    }
+                }
+
                 // Maple: quinprod(z, q, T)
                 // Check if first arg is a Symbol with a DIFFERENT name from the q-variable
                 let is_symbolic_outer = match (&args[0], &args[1]) {
@@ -5636,7 +5675,7 @@ fn get_signature(name: &str) -> String {
         "etaq" => "(q, delta, T) or (q, [deltas], T) or (b, t, order)".to_string(),
         "jacprod" => "(a, b, q, T) or (a, b, order)".to_string(),
         "tripleprod" => "(z, q, T) or (coeff_num, coeff_den, power, order)".to_string(),
-        "quinprod" => "(z, q, T) or (coeff_num, coeff_den, power, order)".to_string(),
+        "quinprod" => "(z, q, T) or (z, q, prodid) or (z, q, seriesid) or (coeff_num, coeff_den, power, order)".to_string(),
         "winquist" => "(a, b, q, T) or (a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)".to_string(),
         // Group 2: Partitions
         "numbpart" => "(n) or (n, m)".to_string(),
@@ -10756,6 +10795,60 @@ mod tests {
         let val = dispatch("quinprod", &args, &mut env).unwrap();
         assert!(matches!(val, Value::Series(_)),
             "quinprod(q, q, 10) should be univariate Series, got {:?}", val.type_name());
+    }
+
+    // --- quinprod identity mode tests ---
+
+    #[test]
+    fn dispatch_quinprod_prodid() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Symbol("prodid".to_string()),
+        ];
+        let val = dispatch("quinprod", &args, &mut env).unwrap();
+        if let Value::String(s) = &val {
+            assert!(s.contains("(z"), "prodid should contain (z, got: {}", s);
+            assert!(s.contains("(q,q)_inf"), "prodid should contain (q,q)_inf, got: {}", s);
+            assert!(s.contains("(-z,q)_inf"), "prodid should contain (-z,q)_inf, got: {}", s);
+        } else {
+            panic!("expected String, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_quinprod_seriesid() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Symbol("seriesid".to_string()),
+        ];
+        let val = dispatch("quinprod", &args, &mut env).unwrap();
+        if let Value::String(s) = &val {
+            assert!(s.contains("sum"), "seriesid should contain 'sum', got: {}", s);
+            assert!(s.contains("3*m"), "seriesid should contain '3*m', got: {}", s);
+            // Also has the product side
+            assert!(s.contains("(q,q)_inf"), "seriesid should contain product side too, got: {}", s);
+        } else {
+            panic!("expected String, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_quinprod_numeric_unchanged() {
+        let mut env = make_env();
+        // quinprod(z, q, 10) with z as a symbol and third arg as integer
+        // should still produce a BivariateSeries
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("quinprod", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::BivariateSeries(_)),
+            "quinprod(z, q, 10) should still produce BivariateSeries, got {:?}", val.type_name());
     }
 
     #[test]

@@ -1882,3 +1882,43 @@ fn backward_compat_etaq_legacy_matches_garvan() {
     );
     std::fs::remove_file(&tmp).ok();
 }
+
+// --- Phase 50: jac2series 2-arg and quinprod identity modes ---
+
+#[test]
+fn jac2series_2arg_garvan() {
+    // jac2series(JAC(1,5), 20) -- Garvan 2-arg form with triple product
+    let (code, stdout, stderr) = run(&["-c", "jac2series(JAC(1,5), 20)"]);
+    assert_eq!(code, 0, "jac2series 2-arg should succeed. stderr: {}", stderr);
+    // Triple product JAC(1,5) = (q;q^5)(q^4;q^5)(q^5;q^5), starts with 1 - q - q^4 + ...
+    assert!(stdout.contains("1"), "should contain constant term 1, got: {}", stdout);
+    assert!(stdout.contains("q"), "should contain q terms, got: {}", stdout);
+    assert!(stdout.contains("O(q^20)"), "should have O(q^20), got: {}", stdout);
+}
+
+#[test]
+fn jac2series_2arg_jac0() {
+    // jac2series(JAC(0,1), 10) -- Euler function (q;q)_inf
+    let (code, stdout, stderr) = run(&["-c", "jac2series(JAC(0,1), 10)"]);
+    assert_eq!(code, 0, "jac2series JAC(0,1) should succeed. stderr: {}", stderr);
+    // (q;q)_inf = 1 - q - q^2 + q^5 + q^7 + O(q^10)
+    assert!(stdout.contains("q^7"), "Euler function should have q^7, got: {}", stdout);
+    assert!(stdout.contains("q^5"), "Euler function should have q^5, got: {}", stdout);
+    assert!(stdout.contains("O(q^10)"), "should have O(q^10), got: {}", stdout);
+}
+
+#[test]
+fn quinprod_prodid() {
+    let (code, stdout, stderr) = run(&["-c", "quinprod(z, q, prodid)"]);
+    assert_eq!(code, 0, "quinprod prodid should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("(z"), "prodid output should reference z, got: {}", stdout);
+    assert!(stdout.contains("(q,q)_inf"), "prodid should contain (q,q)_inf, got: {}", stdout);
+}
+
+#[test]
+fn quinprod_seriesid() {
+    let (code, stdout, stderr) = run(&["-c", "quinprod(z, q, seriesid)"]);
+    assert_eq!(code, 0, "quinprod seriesid should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("sum"), "seriesid should contain 'sum', got: {}", stdout);
+    assert!(stdout.contains("3*m"), "seriesid should contain '3*m', got: {}", stdout);
+}
