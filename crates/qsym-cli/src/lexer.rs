@@ -110,10 +110,27 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             continue;
         }
 
+        // Two-character greedy match for `-` -- `->` is Arrow, `-` alone is Minus
+        if b == b'-' {
+            if pos + 1 < bytes.len() && bytes[pos + 1] == b'>' {
+                tokens.push(SpannedToken {
+                    token: Token::Arrow,
+                    span: Span::new(pos, pos + 2),
+                });
+                pos += 2;
+            } else {
+                tokens.push(SpannedToken {
+                    token: Token::Minus,
+                    span: Span::new(pos, pos + 1),
+                });
+                pos += 1;
+            }
+            continue;
+        }
+
         // Single-character tokens
         let single = match b {
             b'+' => Some(Token::Plus),
-            b'-' => Some(Token::Minus),
             b'*' => Some(Token::Star),
             b'/' => Some(Token::Slash),
             b'^' => Some(Token::Caret),
@@ -699,5 +716,51 @@ mod tests {
     fn test_empty_string_still_works() {
         let toks = tokens("\"\"");
         assert_eq!(toks, vec![Token::StringLit("".to_string()), Token::Eof]);
+    }
+
+    // =======================================================
+    // Arrow operator lexing
+    // =======================================================
+
+    #[test]
+    fn test_lex_arrow() {
+        let toks = tokens("q -> expr");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("q".to_string()),
+                Token::Arrow,
+                Token::Ident("expr".to_string()),
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_lex_minus_still_works() {
+        let toks = tokens("a - b");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("a".to_string()),
+                Token::Minus,
+                Token::Ident("b".to_string()),
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_lex_arrow_no_spaces() {
+        let toks = tokens("q->expr");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("q".to_string()),
+                Token::Arrow,
+                Token::Ident("expr".to_string()),
+                Token::Eof,
+            ]
+        );
     }
 }

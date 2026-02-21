@@ -356,6 +356,28 @@ impl Parser {
                 }
             }
 
+            // Arrow operator: q -> expr (lambda)
+            if *self.peek() == Token::Arrow {
+                if 2 < min_bp {
+                    break;
+                }
+                if let AstNode::Variable(param) = lhs {
+                    self.advance(); // consume ->
+                    let body = self.expr_bp(0)?; // capture full RHS expression
+                    lhs = AstNode::Lambda {
+                        param,
+                        body: Box::new(body),
+                    };
+                    continue;
+                } else {
+                    let span = self.peek_span();
+                    return Err(ParseError::new(
+                        "left side of '->' must be a parameter name".to_string(),
+                        span,
+                    ));
+                }
+            }
+
             // Infix binary operators
             if let Some((l_bp, r_bp)) = infix_bp(self.peek()) {
                 if l_bp < min_bp {
@@ -556,6 +578,7 @@ fn token_name(token: &Token) -> String {
         Token::Slash => "'/'".to_string(),
         Token::Caret => "'^'".to_string(),
         Token::Assign => "':='".to_string(),
+        Token::Arrow => "'->'".to_string(),
         Token::Percent => "'%'".to_string(),
         Token::Ditto => "'\"' (ditto)".to_string(),
         Token::LParen => "'('".to_string(),
@@ -1776,6 +1799,108 @@ mod tests {
             assert!(options.is_empty());
         } else {
             panic!("Expected ProcDef, got {:?}", node);
+        }
+    }
+
+    // =======================================================
+    // PARSE-16: Lambda (arrow) expressions
+    // =======================================================
+
+    #[test]
+    fn test_lambda_simple() {
+        let node = parse_expr("q -> q^2");
+        assert_eq!(
+            node,
+            AstNode::Lambda {
+                param: "q".to_string(),
+                body: Box::new(AstNode::BinOp {
+                    op: BinOp::Pow,
+                    lhs: Box::new(AstNode::Variable("q".to_string())),
+                    rhs: Box::new(AstNode::Integer(2)),
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn test_lambda_assign() {
+        let node = parse_expr("F := q -> q + 1");
+        assert_eq!(
+            node,
+            AstNode::Assign {
+                name: "F".to_string(),
+                value: Box::new(AstNode::Lambda {
+                    param: "q".to_string(),
+                    body: Box::new(AstNode::BinOp {
+                        op: BinOp::Add,
+                        lhs: Box::new(AstNode::Variable("q".to_string())),
+                        rhs: Box::new(AstNode::Integer(1)),
+                    }),
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn test_lambda_complex_body() {
+        let node = parse_expr("F := q -> theta3(q,500)/theta3(q^5,100)");
+        if let AstNode::Assign { name, value } = &node {
+            assert_eq!(name, "F");
+            if let AstNode::Lambda { param, body } = value.as_ref() {
+                assert_eq!(param, "q");
+                assert!(matches!(body.as_ref(), AstNode::BinOp { op: BinOp::Div, .. }));
+            } else {
+                panic!("Expected Lambda, got {:?}", value);
+            }
+        } else {
+            panic!("Expected Assign, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_lambda_error_non_variable_lhs() {
+        let err = parse("3 -> x").unwrap_err();
+        assert!(
+            err.message.contains("left side of '->' must be a parameter name"),
+            "got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn test_lambda_no_conflict_with_minus() {
+        // Ensure `a - b` still parses as subtraction, not arrow
+        let node = parse_expr("a - b");
+        assert_eq!(
+            node,
+            AstNode::BinOp {
+                op: BinOp::Sub,
+                lhs: Box::new(AstNode::Variable("a".to_string())),
+                rhs: Box::new(AstNode::Variable("b".to_string())),
+            }
+        );
+    }
+
+    #[test]
+    fn test_lambda_negative_in_body() {
+        // `q -> -q` should parse as Lambda { param: "q", body: Neg(Variable("q")) }
+        let node = parse_expr("q -> -q");
+        if let AstNode::Lambda { param, body } = &node {
+            assert_eq!(param, "q");
+            assert!(matches!(body.as_ref(), AstNode::Neg(_)));
+        } else {
+            panic!("Expected Lambda, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_lambda_func_call_in_body() {
+        let node = parse_expr("q -> f(q)");
+        if let AstNode::Lambda { param, body } = &node {
+            assert_eq!(param, "q");
+            assert!(matches!(body.as_ref(), AstNode::FuncCall { .. }));
+        } else {
+            panic!("Expected Lambda, got {:?}", node);
         }
     }
 }

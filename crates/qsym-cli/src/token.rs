@@ -29,6 +29,8 @@ pub enum Token {
     Caret,
     /// `:=` assignment operator.
     Assign,
+    /// `->` arrow operator for lambda definitions.
+    Arrow,
     /// `%` ditto operator (reference to last result).
     Percent,
     /// `"` ditto operator (Maple-style reference to last result).

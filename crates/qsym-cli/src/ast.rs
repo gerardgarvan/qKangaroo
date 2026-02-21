@@ -119,6 +119,11 @@ pub enum AstNode {
         options: Vec<String>,
         body: Vec<Stmt>,
     },
+    /// Lambda function: `param -> body`.
+    Lambda {
+        param: String,
+        body: Box<AstNode>,
+    },
 }
 
 /// Statement terminator kind.

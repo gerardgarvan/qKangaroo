@@ -1175,6 +1175,20 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 memo: Rc::new(RefCell::new(HashMap::new())),
             }))
         }
+
+        AstNode::Lambda { param, body } => {
+            Ok(Value::Procedure(Procedure {
+                name: String::new(),
+                params: vec![param.clone()],
+                locals: vec![],
+                remember: false,
+                body: vec![Stmt {
+                    node: body.as_ref().clone(),
+                    terminator: Terminator::Implicit,
+                }],
+                memo: Rc::new(RefCell::new(HashMap::new())),
+            }))
+        }
     }
 }
 
