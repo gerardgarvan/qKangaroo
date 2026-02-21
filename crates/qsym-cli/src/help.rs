@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 95 functions + 3 language
+//! - [`general_help`]: grouped listing of all 97 functions + 3 language
 //!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 //!   Also handles `for`, `proc`, and `if` language constructs via special-case
@@ -120,6 +120,8 @@ Identity Proving:
 Number Theory:
   floor          - floor of a rational number
   legendre       - Legendre symbol (m/p) for odd prime p
+  min            - minimum of integer/rational values
+  max            - maximum of integer/rational values
 
 Scripting:
   for            - for-loop: for var from start to end [by step] do body od
@@ -155,7 +157,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 94 function help entries.
+/// All 97 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -321,8 +323,8 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
     FuncHelp {
         name: "qfactor",
-        signature: "qfactor(f, q) or qfactor(f, q, T)",
-        description: "Factor a polynomial series into (1-q^i) factors by top-down division.\n  Returns a dictionary with scalar, factors, and is_exact flag.\n  Optional T limits the maximum factor index to search.",
+        signature: "qfactor(f, q) or qfactor(f, T) or qfactor(f, q, T)",
+        description: "Factor a polynomial series into (1-q^i) factors by top-down division.\n  Returns a dictionary with scalar, factors, and is_exact flag.\n  The 2-arg form qfactor(f, T) uses implicit variable q (Garvan convention).\n  Optional T limits the maximum factor index to search.",
         example: "q> f := aqprod(q, q, 5)\nq> qfactor(f, q)",
         example_output: "{scalar: 1, factors: {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}, is_exact: true}",
     },
@@ -857,7 +859,7 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
 
     // -----------------------------------------------------------------------
-    // Group 12: Number Theory (2)
+    // Group 12: Number Theory (4)
     // -----------------------------------------------------------------------
     FuncHelp {
         name: "floor",
@@ -872,6 +874,20 @@ const FUNC_HELP: &[FuncHelp] = &[
         description: "Compute the Legendre symbol (m/p) where p is an odd prime >= 3.\n  Returns -1, 0, or 1. Uses GMP's optimized algorithm.\n  Alias: L(m, p). Note: p is not checked for primality.",
         example: "q> legendre(2, 5)",
         example_output: "-1",
+    },
+    FuncHelp {
+        name: "min",
+        signature: "min(a, b, ...)",
+        description: "Return the minimum of one or more integer or rational arguments.\n  Accepts any mix of integers and rationals. Returns the original value type (Integer stays Integer, Rational stays Rational).",
+        example: "q> min(3, 1, 4, 1, 5)",
+        example_output: "1",
+    },
+    FuncHelp {
+        name: "max",
+        signature: "max(a, b, ...)",
+        description: "Return the maximum of one or more integer or rational arguments.\n  Accepts any mix of integers and rationals. Returns the original value type (Integer stays Integer, Rational stays Rational).",
+        example: "q> max(3, 1, 4, 1, 5)",
+        example_output: "5",
     },
 ];
 
@@ -1079,9 +1095,9 @@ mod tests {
             "JAC", "theta", "jac2prod", "jac2series", "qs2jaccombo",
             "series", "expand",
             "factor", "subs",
-            "floor", "legendre",
+            "floor", "legendre", "min", "max",
         ];
-        assert_eq!(canonical.len(), 95, "test list should have 95 entries");
+        assert_eq!(canonical.len(), 97, "test list should have 97 entries");
 
         for name in &canonical {
             assert!(
@@ -1096,8 +1112,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            95,
-            "FUNC_HELP should have exactly 95 entries, got {}",
+            97,
+            "FUNC_HELP should have exactly 97 entries, got {}",
             FUNC_HELP.len()
         );
     }
@@ -1119,6 +1135,8 @@ mod tests {
         assert!(text.contains("Number Theory:"), "general_help missing Number Theory category");
         assert!(text.contains("floor"), "general_help missing floor");
         assert!(text.contains("legendre"), "general_help missing legendre");
+        assert!(text.contains("min"), "general_help missing min");
+        assert!(text.contains("max"), "general_help missing max");
     }
 
     #[test]
