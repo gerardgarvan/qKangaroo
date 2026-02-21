@@ -11,6 +11,7 @@
 - v1.6 CLI Hardening & Manual - Phases 29-32 (shipped 2026-02-18)
 - v2.0 Maple Compatibility - Phases 33-40 (shipped 2026-02-20)
 - v3.0 Scripting & Bivariate Series - Phases 41-46 (shipped 2026-02-21)
+- v4.0 Full qmaple.pdf Parity - Phases 47-51 (in progress)
 
 ## Phases
 
@@ -132,6 +133,89 @@ See `.planning/milestones/v3.0-ROADMAP.md` for details.
 
 </details>
 
+### v4.0 Full qmaple.pdf Parity (Phases 47-51)
+
+- [ ] **Phase 47: Parser & Language Extensions** - Ditto operator, arrow lambdas, fractional q-powers, option/local reorder
+- [ ] **Phase 48: Function Fixes** - aqprod truncation, theta/qfactor 2-arg signatures, min function
+- [ ] **Phase 49: Display Formatting** - qfactor product-form display, etamake eta-notation display
+- [ ] **Phase 50: New Functions** - jac2series, radsimp, quinprod identity modes, indexed subs
+- [ ] **Phase 51: Documentation** - Help entries, tab completion, PDF manual update
+
+## Phase Details
+
+### Phase 47: Parser & Language Extensions
+**Goal**: Users can reference previous results with ditto, define lambda functions with arrow syntax, use fractional q-powers in expressions, and write option/local in either order in procedures
+**Depends on**: Phase 46 (v3.0 complete)
+**Requirements**: LANG-01, LANG-02, LANG-04, LANG-05
+**Success Criteria** (what must be TRUE):
+  1. User types `aqprod(q,q,10); etamake(",q,100)` and the ditto `"` resolves to the previous result
+  2. User defines `F := q -> theta3(q,500)/theta3(q^5,100)` and calls `F(q)` to get a series
+  3. User evaluates `theta2(q,100)/q^(1/4)` and gets a series with integer exponents (fractional shift removed)
+  4. User writes a procedure with `option remember` before `local` and it parses without error
+**Plans**: 3 plans
+
+Plans:
+- [ ] 47-01: Ditto operator and option/local reorder (LANG-01, LANG-05)
+- [ ] 47-02: Arrow operator and lambda functions (LANG-02)
+- [ ] 47-03: Fractional q-powers (LANG-04)
+
+### Phase 48: Function Fixes
+**Goal**: Users can call aqprod, theta, and qfactor with Garvan's exact argument conventions, and use min() for integer/rational comparisons
+**Depends on**: Phase 47
+**Requirements**: FIX-01, FIX-02, FIX-05, LANG-03
+**Success Criteria** (what must be TRUE):
+  1. `aqprod(q,q,5)` returns the full finite polynomial `(q;q)_5 = 1 - q - q^2 + q^5 + q^7 - q^12 - q^15` without truncation
+  2. `theta3(q,100)` with 2-arg form returns the same series as `theta3(q,q,100)` with 3-arg form
+  3. `qfactor(f,100)` with 2-arg form (implying q as variable) returns the same result as `qfactor(f,q,100)`
+  4. `min(3,1,4,1,5)` returns `1` and `min(1/3, 1/2)` returns `1/3`
+**Plans**: 2 plans
+
+Plans:
+- [ ] 48-01: aqprod truncation fix and theta 2-arg signatures (FIX-01, FIX-02)
+- [ ] 48-02: qfactor 2-arg signature and min function (FIX-05, LANG-03)
+
+### Phase 49: Display Formatting
+**Goal**: Users see human-readable mathematical notation for qfactor and etamake output instead of raw internal structs
+**Depends on**: Phase 48
+**Requirements**: FIX-03, FIX-04
+**Success Criteria** (what must be TRUE):
+  1. `qfactor(aqprod(q,q,100),q,100)` displays `(1-q)(1-q^2)(1-q^3)...` product form, not `{scalar: 1, factors: {...}}`
+  2. `etamake(f,q,100)` displays eta-notation like `eta(tau)^(-2) * eta(2*tau)^5 * eta(4*tau)^(-2)`, not `{factors: {1: -2, 2: 5, 4: -2}, q_shift: 0}`
+**Plans**: 2 plans
+
+Plans:
+- [ ] 49-01: qfactor product-form display (FIX-03)
+- [ ] 49-02: etamake eta-notation display (FIX-04)
+
+### Phase 50: New Functions
+**Goal**: Users can convert Jacobi products to series, simplify rational series expressions, display quintuple product identity forms, and substitute indexed variables
+**Depends on**: Phase 47 (fractional powers needed for jac2series), Phase 48 (function dispatch patterns)
+**Requirements**: FUNC-01, FUNC-02, FUNC-03, FUNC-04
+**Success Criteria** (what must be TRUE):
+  1. `jac2series(JAC(0,1), 50)` converts a Jacobi product expression to its q-series expansion up to the given truncation order
+  2. `radsimp(theta3(q,100)/theta3(q^5,20))` simplifies a series quotient to a clean series
+  3. `quinprod(z,q,prodid)` displays the quintuple product identity in product form, and `quinprod(z,q,seriesid)` displays it in series form
+  4. `subs(X[1]=q, X[2]=q^2, expr)` correctly substitutes indexed variables X[1], X[2] in expressions output by findnonhom
+**Plans**: 2 plans
+
+Plans:
+- [ ] 50-01: jac2series overhaul and quinprod identity modes (FUNC-01, FUNC-03)
+- [ ] 50-02: radsimp and indexed subs (FUNC-02, FUNC-04)
+
+### Phase 51: Documentation
+**Goal**: All v4.0 features are documented in the help system, tab completion, and PDF manual with worked examples from qmaple.pdf
+**Depends on**: Phases 47-50
+**Requirements**: Project standard (help, completion, manual for all new features)
+**Success Criteria** (what must be TRUE):
+  1. `?ditto`, `?lambda`, `?min`, `?jac2series`, `?radsimp`, `?quinprod`, `?subs` all display help text with examples
+  2. Tab completion includes all new function names and keywords
+  3. PDF manual contains a v4.0 section documenting all 14 changes with worked examples reproducing qmaple.pdf tutorial output
+**Plans**: 2 plans
+
+Plans:
+- [ ] 51-01: Help entries and tab completion for all v4.0 features
+- [ ] 51-02: PDF manual v4.0 chapter with qmaple.pdf worked examples
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -182,3 +266,8 @@ See `.planning/milestones/v3.0-ROADMAP.md` for details.
 | 44. Polynomial Operations | v3.0 | 2/2 | Complete | 2026-02-20 |
 | 45. Bivariate Series | v3.0 | 4/4 | Complete | 2026-02-21 |
 | 46. Documentation | v3.0 | 2/2 | Complete | 2026-02-21 |
+| 47. Parser & Language Extensions | v4.0 | 0/3 | Not started | - |
+| 48. Function Fixes | v4.0 | 0/2 | Not started | - |
+| 49. Display Formatting | v4.0 | 0/2 | Not started | - |
+| 50. New Functions | v4.0 | 0/2 | Not started | - |
+| 51. Documentation | v4.0 | 0/2 | Not started | - |

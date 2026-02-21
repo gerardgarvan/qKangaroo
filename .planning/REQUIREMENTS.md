@@ -10,7 +10,7 @@
 - [ ] **FIX-01**: `aqprod(q,q,n)` in 3-arg mode computes the full finite polynomial `(q;q)_n` instead of truncating to O(q^n)
 - [ ] **FIX-02**: `theta2(q,T)`, `theta3(q,T)`, `theta4(q,T)` accept Garvan's 2-arg form (variable + truncation order)
 - [ ] **FIX-03**: `qfactor` displays results in q-product form `(1-q^a)(1-q^b)...` instead of raw struct
-- [ ] **FIX-04**: `etamake` displays results in η(kτ) notation instead of raw struct
+- [ ] **FIX-04**: `etamake` displays results in eta(k*tau) notation instead of raw struct
 - [ ] **FIX-05**: `qfactor(f,T)` accepts Garvan's 2-arg signature (f + upper bound T) in addition to `qfactor(f,q,T)`
 
 ### Language Features
@@ -50,26 +50,26 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIX-01 | — | Pending |
-| FIX-02 | — | Pending |
-| FIX-03 | — | Pending |
-| FIX-04 | — | Pending |
-| FIX-05 | — | Pending |
-| LANG-01 | — | Pending |
-| LANG-02 | — | Pending |
-| LANG-03 | — | Pending |
-| LANG-04 | — | Pending |
-| LANG-05 | — | Pending |
-| FUNC-01 | — | Pending |
-| FUNC-02 | — | Pending |
-| FUNC-03 | — | Pending |
-| FUNC-04 | — | Pending |
+| FIX-01 | Phase 48 | Pending |
+| FIX-02 | Phase 48 | Pending |
+| FIX-03 | Phase 49 | Pending |
+| FIX-04 | Phase 49 | Pending |
+| FIX-05 | Phase 48 | Pending |
+| LANG-01 | Phase 47 | Pending |
+| LANG-02 | Phase 47 | Pending |
+| LANG-03 | Phase 48 | Pending |
+| LANG-04 | Phase 47 | Pending |
+| LANG-05 | Phase 47 | Pending |
+| FUNC-01 | Phase 50 | Pending |
+| FUNC-02 | Phase 50 | Pending |
+| FUNC-03 | Phase 50 | Pending |
+| FUNC-04 | Phase 50 | Pending |
 
 **Coverage:**
 - v4.0 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14
+- Mapped to phases: 14
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-21*
-*Last updated: 2026-02-21 after initial definition*
+*Last updated: 2026-02-21 after roadmap creation*
