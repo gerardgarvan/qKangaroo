@@ -12,6 +12,7 @@ use std::fmt::Write;
 
 use qsym_core::number::QRat;
 use qsym_core::series::bivariate::BivariateSeries;
+use qsym_core::series::trivariate::TrivariateSeries;
 use qsym_core::series::FormalPowerSeries;
 use qsym_core::symbol::SymbolRegistry;
 
@@ -45,6 +46,7 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product(factors),
         Value::BivariateSeries(bs) => format_bivariate(bs, symbols),
+        Value::TrivariateSeries(ts) => format_trivariate(ts, symbols),
         Value::Procedure(proc) => {
             let params = proc.params.join(", ");
             format!("proc({}) ... end proc", params)
@@ -381,6 +383,177 @@ fn format_bivariate_latex(bs: &BivariateSeries, symbols: &SymbolRegistry) -> Str
     out
 }
 
+// ---------------------------------------------------------------------------
+// Trivariate series formatting
+// ---------------------------------------------------------------------------
+
+/// Format a variable power part, e.g. "a^2" or "a" or "a^(-1)".
+fn format_var_power(var: &str, exp: i64) -> String {
+    format_z_power(var, exp)
+}
+
+/// Build the combined outer variable part "a^r*b^s" for trivariate display.
+fn format_ab_power(var_a: &str, a_exp: i64, var_b: &str, b_exp: i64) -> String {
+    let a_part = format_var_power(var_a, a_exp);
+    let b_part = format_var_power(var_b, b_exp);
+    match (a_part.is_empty(), b_part.is_empty()) {
+        (true, true) => String::new(),
+        (false, true) => a_part,
+        (true, false) => b_part,
+        (false, false) => format!("{}*{}", a_part, b_part),
+    }
+}
+
+/// Format a `TrivariateSeries` as a human-readable string.
+///
+/// Output looks like: `(q + q^2)*a^2*b + q*a*b^(-1) + O(q^10)`
+fn format_trivariate(ts: &TrivariateSeries, symbols: &SymbolRegistry) -> String {
+    let inner_var = symbols.name(ts.inner_variable);
+    let trunc = ts.truncation_order;
+    let is_polynomial = trunc >= POLYNOMIAL_ORDER;
+    let mut out = String::new();
+    let mut first = true;
+
+    // Iterate in descending (a_exp, b_exp) order (reverse BTreeMap order)
+    for (&(a_exp, b_exp), fps) in ts.terms.iter().rev() {
+        if fps.is_zero() {
+            continue;
+        }
+        let fps_str = format_series(fps, symbols);
+        let is_multiterm = fps.num_nonzero() > 1;
+        let ab_part = format_ab_power(&ts.outer_var_a, a_exp, &ts.outer_var_b, b_exp);
+
+        if ab_part.is_empty() {
+            // (0, 0) term: just the FPS string
+            if first {
+                out.push_str(&fps_str);
+            } else if fps_str.starts_with('-') {
+                let _ = write!(out, " - {}", &fps_str[1..]);
+            } else {
+                let _ = write!(out, " + {}", fps_str);
+            }
+        } else if is_multiterm {
+            let coeff_str = strip_truncation(&fps_str);
+            if first {
+                let _ = write!(out, "({})*{}", coeff_str, ab_part);
+            } else {
+                let _ = write!(out, " + ({})*{}", coeff_str, ab_part);
+            }
+        } else {
+            // Single-term FPS: inline coefficient*ab_part
+            let coeff_str = strip_truncation(&fps_str);
+            if first {
+                if coeff_str == "1" {
+                    out.push_str(&ab_part);
+                } else if coeff_str == "-1" {
+                    let _ = write!(out, "-{}", ab_part);
+                } else {
+                    let _ = write!(out, "{}*{}", coeff_str, ab_part);
+                }
+            } else if coeff_str == "1" {
+                let _ = write!(out, " + {}", ab_part);
+            } else if coeff_str == "-1" {
+                let _ = write!(out, " - {}", ab_part);
+            } else if coeff_str.starts_with('-') {
+                let _ = write!(out, " - {}*{}", &coeff_str[1..], ab_part);
+            } else {
+                let _ = write!(out, " + {}*{}", coeff_str, ab_part);
+            }
+        }
+        first = false;
+    }
+
+    // Append truncation order
+    if !is_polynomial {
+        if first {
+            let _ = write!(out, "O({}^{})", inner_var, trunc);
+        } else {
+            let _ = write!(out, " + O({}^{})", inner_var, trunc);
+        }
+    } else if first {
+        out.push('0');
+    }
+
+    out
+}
+
+/// Build the combined outer variable part in LaTeX: "a^{r} b^{s}".
+fn format_ab_power_latex(var_a: &str, a_exp: i64, var_b: &str, b_exp: i64) -> String {
+    let a_part = format_z_power_latex(var_a, a_exp);
+    let b_part = format_z_power_latex(var_b, b_exp);
+    match (a_part.is_empty(), b_part.is_empty()) {
+        (true, true) => String::new(),
+        (false, true) => a_part,
+        (true, false) => b_part,
+        (false, false) => format!("{} {}", a_part, b_part),
+    }
+}
+
+/// Format a `TrivariateSeries` as LaTeX.
+fn format_trivariate_latex(ts: &TrivariateSeries, symbols: &SymbolRegistry) -> String {
+    let inner_var = symbols.name(ts.inner_variable);
+    let trunc = ts.truncation_order;
+    let is_polynomial = trunc >= POLYNOMIAL_ORDER;
+    let mut out = String::new();
+    let mut first = true;
+
+    for (&(a_exp, b_exp), fps) in ts.terms.iter().rev() {
+        if fps.is_zero() {
+            continue;
+        }
+        let fps_latex = fps_to_latex_inner(fps, symbols);
+        let is_multiterm = fps.num_nonzero() > 1;
+        let ab_part = format_ab_power_latex(&ts.outer_var_a, a_exp, &ts.outer_var_b, b_exp);
+
+        if ab_part.is_empty() {
+            if first {
+                out.push_str(&fps_latex);
+            } else if fps_latex.starts_with('-') {
+                let _ = write!(out, " - {}", &fps_latex[1..]);
+            } else {
+                let _ = write!(out, " + {}", fps_latex);
+            }
+        } else if is_multiterm {
+            if first {
+                let _ = write!(out, "\\left({}\\right){}", fps_latex, ab_part);
+            } else {
+                let _ = write!(out, " + \\left({}\\right){}", fps_latex, ab_part);
+            }
+        } else {
+            if first {
+                if fps_latex == "1" {
+                    out.push_str(&ab_part);
+                } else if fps_latex == "-1" {
+                    let _ = write!(out, "-{}", ab_part);
+                } else {
+                    let _ = write!(out, "{} {}", fps_latex, ab_part);
+                }
+            } else if fps_latex == "1" {
+                let _ = write!(out, " + {}", ab_part);
+            } else if fps_latex == "-1" {
+                let _ = write!(out, " - {}", ab_part);
+            } else if fps_latex.starts_with('-') {
+                let _ = write!(out, " - {} {}", &fps_latex[1..], ab_part);
+            } else {
+                let _ = write!(out, " + {} {}", fps_latex, ab_part);
+            }
+        }
+        first = false;
+    }
+
+    if !is_polynomial {
+        if first {
+            let _ = write!(out, "O({}^{{{}}})", inner_var, trunc);
+        } else {
+            let _ = write!(out, " + O({}^{{{}}})", inner_var, trunc);
+        }
+    } else if first {
+        out.push('0');
+    }
+
+    out
+}
+
 /// Format z^k in LaTeX.
 fn format_z_power_latex(var: &str, z_exp: i64) -> String {
     match z_exp {
@@ -468,6 +641,7 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product_latex(factors),
         Value::BivariateSeries(bs) => format_bivariate_latex(bs, symbols),
+        Value::TrivariateSeries(ts) => format_trivariate_latex(ts, symbols),
         Value::Procedure(proc) => {
             format!("\\text{{proc}}({})", proc.params.join(", "))
         }

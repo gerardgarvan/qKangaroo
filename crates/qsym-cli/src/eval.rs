@@ -15,6 +15,7 @@ use qsym_core::qseries::{self, QMonomial, PochhammerOrder};
 use qsym_core::qseries::{HypergeometricSeries, BilateralHypergeometricSeries};
 use qsym_core::series::arithmetic;
 use qsym_core::series::bivariate::{self as bv, BivariateSeries};
+use qsym_core::series::trivariate::{self as tv, TrivariateSeries};
 use qsym_core::series::FormalPowerSeries;
 use qsym_core::symbol::SymbolId;
 
@@ -89,6 +90,8 @@ pub enum Value {
     Procedure(Procedure),
     /// Bivariate series: Laurent polynomial in outer variable with FPS coefficients.
     BivariateSeries(BivariateSeries),
+    /// Trivariate series: Laurent polynomial in two outer variables with FPS coefficients.
+    TrivariateSeries(TrivariateSeries),
 }
 
 impl Value {
@@ -109,6 +112,7 @@ impl Value {
             Value::JacobiProduct(_) => "jacobi_product",
             Value::Procedure(_) => "procedure",
             Value::BivariateSeries(_) => "bivariate_series",
+            Value::TrivariateSeries(_) => "trivariate_series",
         }
     }
 }
@@ -1532,6 +1536,7 @@ fn eval_negate(val: Value, env: &mut Environment) -> Result<Value, EvalError> {
             Ok(Value::Series(arithmetic::negate(&fps)))
         }
         Value::BivariateSeries(bs) => Ok(Value::BivariateSeries(bv::bivariate_negate(&bs))),
+        Value::TrivariateSeries(ts) => Ok(Value::TrivariateSeries(tv::trivariate_negate(&ts))),
         other => Err(EvalError::TypeError {
             operation: "unary -".to_string(),
             left: other.type_name().to_string(),

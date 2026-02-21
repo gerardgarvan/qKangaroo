@@ -13,6 +13,7 @@ pub mod arithmetic;
 pub mod bivariate;
 pub mod display;
 pub mod generator;
+pub mod trivariate;
 
 use std::collections::BTreeMap;
 
