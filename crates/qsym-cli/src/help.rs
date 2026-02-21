@@ -1,8 +1,11 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 95 functions + session commands.
+//! - [`general_help`]: grouped listing of all 95 functions + 3 language
+//!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
+//!   Also handles `for`, `proc`, and `if` language constructs via special-case
+//!   match arms (bypassing FUNC_HELP).
 
 // ---------------------------------------------------------------------------
 // General help
@@ -117,6 +120,12 @@ Identity Proving:
 Number Theory:
   floor          - floor of a rational number
   legendre       - Legendre symbol (m/p) for odd prime p
+
+Scripting:
+  for            - for-loop: for var from start to end [by step] do body od
+  if             - conditional: if cond then body [elif ...] [else body] fi
+  proc           - procedure: name := proc(params) body; end
+  RETURN         - early return from procedure: RETURN(value)
 
 Commands:
   help [function]   - show this help or help for a specific function
@@ -871,6 +880,38 @@ const FUNC_HELP: &[FuncHelp] = &[
 /// Canonical function names are matched directly. The alias `partition_count`
 /// redirects to `numbpart`.
 pub fn function_help(name: &str) -> Option<String> {
+    // Language construct help entries (not function calls -- bypass FUNC_HELP)
+    match name {
+        "for" => return Some(String::from(
+            "for var from start to end [by step] do body od\n\n\
+             \x20 Execute body repeatedly with var taking values start, start+step, ..., end.\n\
+             \x20 Default step is 1. Body statements are separated by ; or :\n\n\
+             \x20 Example:\n\
+             \x20   q> s := 0: for k from 1 to 5 do s := s + k od: s\n\
+             \x20   15\n\n\
+             \x20 See also: if, proc"
+        )),
+        "proc" => return Some(String::from(
+            "name := proc(params) [local vars;] [option remember;] body; end\n\n\
+             \x20 Define a named procedure. Local variables are scoped to the procedure.\n\
+             \x20 Use RETURN(value) for early exit. option remember caches results.\n\n\
+             \x20 Example:\n\
+             \x20   q> f := proc(n) local k; k := n*n; k; end: f(5)\n\
+             \x20   25\n\n\
+             \x20 See also: for, if, RETURN"
+        )),
+        "if" => return Some(String::from(
+            "if cond then body [elif cond then body] [else body] fi\n\n\
+             \x20 Conditional evaluation. Only the matching branch executes.\n\
+             \x20 Boolean operators: and, or, not. Comparisons: =, <>, <, >, <=, >=\n\n\
+             \x20 Example:\n\
+             \x20   q> if 3 > 2 then 1 else 0 fi\n\
+             \x20   1\n\n\
+             \x20 See also: for, proc"
+        )),
+        _ => {}
+    }
+
     // Redirect aliases to canonical names
     let lookup = match name {
         "partition_count" => "numbpart",
@@ -909,6 +950,7 @@ mod tests {
             "Expression Operations:",
             "Polynomial Operations:",
             "Number Theory:",
+            "Scripting:",
         ] {
             assert!(
                 text.contains(category),
@@ -1190,5 +1232,39 @@ mod tests {
             "winquist help should mention symbolic variable or bivariate");
         assert!(text.contains("trivariate") || text.contains("both"),
             "winquist help should mention trivariate or both symbolic support");
+    }
+
+    #[test]
+    fn function_help_for_returns_some() {
+        let help = function_help("for");
+        assert!(help.is_some(), "for should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("for var from"), "help should contain syntax");
+        assert!(text.contains("See also:"), "help should contain cross-references");
+    }
+
+    #[test]
+    fn function_help_proc_returns_some() {
+        let help = function_help("proc");
+        assert!(help.is_some(), "proc should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("proc"), "help should contain 'proc'");
+        assert!(text.contains("RETURN"), "help should mention RETURN");
+    }
+
+    #[test]
+    fn function_help_if_returns_some() {
+        let help = function_help("if");
+        assert!(help.is_some(), "if should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("if cond then"), "help should contain syntax");
+        assert!(text.contains("See also:"), "help should contain cross-references");
+    }
+
+    #[test]
+    fn general_help_contains_scripting_category() {
+        let text = general_help();
+        assert!(text.contains("Scripting:"), "general_help missing Scripting category");
+        assert!(text.contains("RETURN"), "general_help Scripting should list RETURN");
     }
 }
