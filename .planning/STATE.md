@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v4.0 Full qmaple.pdf Parity -- Phase 50 in progress, plan 01 complete
+**Current focus:** v4.0 Full qmaple.pdf Parity -- Phase 50 complete, all plans done
 
 ## Current Position
 
 Phase: 50 of 51 (New Functions)
-Plan: 1 of 2 in current phase (1 complete)
-Status: Plan 50-01 complete, ready for 50-02
-Last activity: 2026-02-21 -- Completed 50-01 (jac2series Garvan form + quinprod identity modes)
+Plan: 2 of 2 in current phase (2 complete)
+Status: Phase 50 complete
+Last activity: 2026-02-21 -- Completed 50-02 (subscript vars, multi-arg subs, theta monomial, radsimp)
 
 Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/51 phases)
 
@@ -20,7 +20,7 @@ Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/5
 
 ### Cumulative Summary
 
-- Total plans completed: 141
+- Total plans completed: 142
 - Total phases: 46 complete (v1.0-v3.0), 5 planned (v4.0)
 - Total milestones: 9 complete (v1.0-v1.6, v2.0, v3.0)
 - Average duration: ~5 min/plan
@@ -36,6 +36,7 @@ Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/5
 | 49    | 01   | 10min    | 2     | 4     |
 | 49    | 02   | 4min     | 2     | 4     |
 | 50    | 01   | 5min     | 2     | 2     |
+| 50    | 02   | 7min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -61,6 +62,10 @@ v3.0 decisions archived in .planning/milestones/v3.0-ROADMAP.md.
 - 49-02: Format functions added in Task 1 (not Task 2) to resolve compilation dependency (same pattern as 49-01)
 - 50-01: Separate jacobi_product_to_fps_garvan function preserves backward compat for legacy 3-arg path
 - 50-01: Identity modes return Value::String (not Series) for formatted display
+- 50-02: Subscript X[i] implemented as name mangling Variable("X[i]") rather than separate AST node
+- 50-02: Theta monomial uses exponent scaling (not filtering) for correct q^k substitution semantics
+- 50-02: radsimp is identity function since series division already simplifies during evaluation
+- 50-02: theta2 monomial rejected with helpful error (half-integer exponent complexity)
 
 ### Pending Todos
 
@@ -73,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 50-01-PLAN.md (jac2series Garvan form + quinprod identity modes)
-Resume: Continue with 50-02
+Stopped at: Completed 50-02-PLAN.md (subscript vars, multi-arg subs, theta monomial, radsimp)
+Resume: Continue with Phase 51 (if any remaining phases)
