@@ -15,7 +15,9 @@ use rustyline::{Context, Helper, Highlighter, Hinter};
 
 /// Line-editing helper with tab completion and bracket validation.
 ///
-/// - **Functions:** All 91 canonical function names auto-complete with `(`.
+/// - **Functions:** All canonical function names auto-complete with `(`.
+/// - **Keywords:** Scripting keywords (`for`, `proc`, `if`, etc.) complete
+///   without trailing `(`.
 /// - **Commands:** `help`, `quit`, `exit`, `clear`, `set` complete at line start.
 /// - **Variables:** User-defined names synced after each eval via
 ///   [`update_var_names`](ReplHelper::update_var_names).
@@ -26,6 +28,8 @@ pub struct ReplHelper {
     // Highlighter and Hinter use derive (no-op defaults).
     /// Canonical function names (static, from eval.rs ALL_FUNCTION_NAMES).
     function_names: Vec<&'static str>,
+    /// Language keyword names (complete without trailing paren).
+    keyword_names: Vec<&'static str>,
     /// Session command names for completion.
     command_names: Vec<&'static str>,
     /// User-defined variable names (updated after each eval).
@@ -37,6 +41,13 @@ impl ReplHelper {
     pub fn new() -> Self {
         Self {
             function_names: Self::canonical_function_names(),
+            keyword_names: vec![
+                "for", "from", "to", "by", "do", "od",
+                "if", "then", "elif", "else", "fi",
+                "proc", "local", "end",
+                "RETURN",
+                "and", "or", "not",
+            ],
             command_names: vec!["help", "quit", "exit", "clear", "restart", "set", "latex", "save"],
             var_names: Vec::new(),
         }
@@ -131,6 +142,13 @@ impl ReplHelper {
                     format!("{}(", name)
                 };
                 candidates.push((name.to_string(), replacement));
+            }
+        }
+
+        // Complete keyword names (without auto-paren).
+        for &kw in &self.keyword_names {
+            if kw.starts_with(prefix) {
+                candidates.push((kw.to_string(), kw.to_string()));
             }
         }
 
@@ -354,9 +372,11 @@ mod tests {
         let mut h = ReplHelper::new();
         h.update_var_names(vec!["foo".to_string(), "fbar".to_string()]);
         let (_, pairs) = h.complete_inner("fo", 2);
-        assert_eq!(pairs.len(), 1);
-        assert_eq!(pairs[0].0, "foo");
-        assert_eq!(pairs[0].1, "foo"); // no paren for variables
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        // "fo" matches keywords "for" and "from", plus variable "foo"
+        assert!(displays.contains(&"foo"), "variable 'foo' should appear");
+        let foo_pair = pairs.iter().find(|p| p.0 == "foo").unwrap();
+        assert_eq!(foo_pair.1, "foo"); // no paren for variables
     }
 
     #[test]
@@ -507,5 +527,54 @@ mod tests {
     fn validator_proc_multiline() {
         assert!(ReplHelper::is_incomplete("f := proc(n)\n  n;\n"));
         assert!(!ReplHelper::is_incomplete("f := proc(n)\n  n;\nend"));
+    }
+
+    // -- Keyword completion tests ---------------------------------------------
+
+    #[test]
+    fn complete_for_keyword() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("fo", 2);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"for"), "should complete 'fo' to 'for'");
+        // Verify keyword completes without trailing paren
+        let for_pair = pairs.iter().find(|p| p.0 == "for").unwrap();
+        assert_eq!(for_pair.1, "for", "keyword 'for' should not have trailing paren");
+    }
+
+    #[test]
+    fn complete_proc_keyword() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("pr", 2);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"proc"), "'proc' should be among 'pr' completions");
+        // Also check that function names like prove_eta_id are present
+        assert!(displays.contains(&"prove_eta_id"), "prove_eta_id should also match 'pr'");
+    }
+
+    #[test]
+    fn complete_if_keyword() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("if", 2);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"if"), "should complete 'if' to 'if'");
+        let if_pair = pairs.iter().find(|p| p.0 == "if").unwrap();
+        assert_eq!(if_pair.1, "if", "keyword 'if' should not have trailing paren");
+    }
+
+    #[test]
+    fn complete_return_keyword() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("RET", 3);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"RETURN"), "should complete 'RET' to 'RETURN'");
+    }
+
+    #[test]
+    fn keyword_completion_no_paren() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("od", 2);
+        let od_pair = pairs.iter().find(|p| p.0 == "od").unwrap();
+        assert_eq!(od_pair.1, "od", "keyword 'od' should complete without paren");
     }
 }
