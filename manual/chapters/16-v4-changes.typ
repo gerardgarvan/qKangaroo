@@ -237,7 +237,7 @@ q> prodmake(x, q, 40)
 {1: -1, 4: -1, 6: -1, 9: -1, 11: -1, 14: -1, 16: -1, 19: -1, 21: -1, 24: -1, 26: -1, 29: -1, 31: -1, 34: -1, 36: -1, 39: -1}")
 
 The product exponents $-1$ at positions $1, 4, 6, 9, 11, 14, dots$
-(i.e., $equiv 1$ or $4 pmod 5$) confirm that
+(i.e., $equiv 1$ or $4 mod 5$) confirm that
 $sum_(n >= 0) q^(n^2) \/ (q;q)_n = 1 \/ ((q;q^5)_oo (q^4;q^5)_oo)$.
 
 ==== Section 3.2: qfactor (p.~6--8)
@@ -324,7 +324,7 @@ q> jac2series(y, 20)
 26*q^19 + 23*q^18 + 19*q^17 + ... + q^2 + q + 1 + O(q^20)")
 
 The Jacobi product $"JAC"(0,5) / "JAC"(1,5)$ represents
-$(q^5;q^5)_oo / ((q;q^5)_oo(q^4;q^5)_oo)$, confirming the first
+$(q^5;q^5)_oo \/ ((q;q^5)_oo dot.op (q^4;q^5)_oo)$, confirming the first
 Rogers-Ramanujan identity.
 
 === Section 4: Relations (p.~12--19)
@@ -422,7 +422,7 @@ series arithmetic already produces simplified results.
 #index[sift]
 #index[Ramanujan congruence]
 
-We verify Ramanujan's congruence $p(5n+4) equiv 0 pmod(5)$ by sifting
+We verify Ramanujan's congruence $p(5n+4) equiv 0 (mod 5)$ by sifting
 the partition generating function.
 
 _cf.~qmaple.pdf, Section~5 (p.~19--20)._
@@ -431,7 +431,7 @@ _cf.~qmaple.pdf, Section~5 (p.~19--20)._
 q> g := sift(f, q, 5, 4, 99)
 92669720*q^18 + 49995925*q^17 + ... + 135*q^2 + 30*q + 5 + O(q^19)")
 
-Every coefficient is divisible by 5, confirming $p(5n+4) equiv 0 pmod(5)$.
+Every coefficient is divisible by 5, confirming $p(5n+4) equiv 0 (mod 5)$.
 
 #repl("etamake(g, q, 18)",
   "q^(19/24) * eta(tau)^(-6) * eta(5*tau)^(5)")
