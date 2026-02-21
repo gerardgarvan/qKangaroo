@@ -137,7 +137,7 @@ See `.planning/milestones/v3.0-ROADMAP.md` for details.
 
 - [x] **Phase 47: Parser & Language Extensions** - Ditto operator, arrow lambdas, fractional q-powers, option/local reorder -- 2026-02-21
 - [x] **Phase 48: Function Fixes** - aqprod truncation, theta/qfactor 2-arg signatures, min function -- 2026-02-21
-- [ ] **Phase 49: Display Formatting** - qfactor product-form display, etamake eta-notation display
+- [x] **Phase 49: Display Formatting** - qfactor product-form display, etamake eta-notation display -- 2026-02-21
 - [ ] **Phase 50: New Functions** - jac2series, radsimp, quinprod identity modes, indexed subs
 - [ ] **Phase 51: Documentation** - Help entries, tab completion, PDF manual update
 
@@ -268,6 +268,6 @@ Plans:
 | 46. Documentation | v3.0 | 2/2 | Complete | 2026-02-21 |
 | 47. Parser & Language Extensions | v4.0 | 3/3 | Complete | 2026-02-21 |
 | 48. Function Fixes | v4.0 | 2/2 | Complete | 2026-02-21 |
-| 49. Display Formatting | v4.0 | 0/2 | Not started | - |
+| 49. Display Formatting | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 50. New Functions | v4.0 | 0/2 | Not started | - |
 | 51. Documentation | v4.0 | 0/2 | Not started | - |
