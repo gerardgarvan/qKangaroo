@@ -9720,6 +9720,53 @@ mod tests {
         }
     }
 
+    // =======================================================
+    // Lambda (arrow) tests
+    // =======================================================
+
+    #[test]
+    fn test_eval_lambda_simple() {
+        let mut env = make_env();
+        let val = eval_input("F := q -> q + 1; F(5)", &mut env).unwrap();
+        if let Value::Integer(n) = val {
+            assert_eq!(n, QInt::from(6i64));
+        } else {
+            panic!("expected Integer(6), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_eval_lambda_with_series() {
+        let mut env = make_env();
+        let val = eval_input("F := q -> q^2; F(q)", &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // q^2 should have a monomial at exponent 2
+            assert!(fps.coeff(2) != QRat::zero(), "expected nonzero coeff at q^2");
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_eval_lambda_arity_error() {
+        let mut env = make_env();
+        let result = eval_input("F := q -> q; F(1, 2)", &mut env);
+        assert!(result.is_err(), "expected arity error for F(1,2)");
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("expects 1") || msg.contains("arity"), "got: {}", msg);
+    }
+
+    #[test]
+    fn test_eval_lambda_procedure_display() {
+        let mut env = make_env();
+        let val = eval_input("q -> q^2", &mut env).unwrap();
+        if let Value::Procedure(proc) = val {
+            assert_eq!(proc.params, vec!["q"]);
+        } else {
+            panic!("expected Procedure, got {:?}", val);
+        }
+    }
+
     // --- floor() tests ---
 
     #[test]
