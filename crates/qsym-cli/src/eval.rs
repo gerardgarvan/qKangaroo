@@ -2433,6 +2433,112 @@ fn add_to_bv_terms(
     }
 }
 
+/// Add an FPS to a trivariate terms map at (a_exp, b_exp), accumulating.
+fn add_to_tv_terms(
+    terms: &mut BTreeMap<(i64, i64), FormalPowerSeries>,
+    key: (i64, i64),
+    fps: &FormalPowerSeries,
+) {
+    if let Some(existing) = terms.remove(&key) {
+        let sum = arithmetic::add(&existing, fps);
+        if !sum.is_zero() { terms.insert(key, sum); }
+    } else {
+        terms.insert(key, fps.clone());
+    }
+}
+
+/// Compute winquist(a, b, q, T) where BOTH `a` and `b` are symbolic outer variables.
+///
+/// Uses the 10-factor product decomposition (Garvan convention):
+///   W(a,b,q) = (q;q)^2 * (a)(q/a)(b)(q/b)(ab)(q^2/(ab))(a/b)(qb/a)
+/// where (x) denotes (x;q)_inf.
+///
+/// The 8 factors involving a and/or b are expanded as a trivariate product
+/// (Laurent polynomial in a, b with FPS coefficients). The two (q;q)_inf
+/// factors are multiplied into each FPS coefficient at the end.
+///
+/// Returns a TrivariateSeries: BTreeMap<(a_exp, b_exp), FPS in q>.
+fn compute_winquist_two_symbolic(
+    outer_var_a: &str,
+    outer_var_b: &str,
+    inner_var: SymbolId,
+    truncation_order: i64,
+) -> TrivariateSeries {
+    use qsym_core::series::generator::euler_function_generator;
+
+    // The 8 factor specs: (a_power, b_power, q_offset)
+    // Factor 1: (a; q)          -> (1, 0, 0)
+    // Factor 2: (q/a; q)        -> (-1, 0, 1)
+    // Factor 3: (b; q)          -> (0, 1, 0)
+    // Factor 4: (q/b; q)        -> (0, -1, 1)
+    // Factor 5: (ab; q)         -> (1, 1, 0)
+    // Factor 6: (q^2/(ab); q)   -> (-1, -1, 2)
+    // Factor 7: (a/b; q)        -> (1, -1, 0)
+    // Factor 8: (qb/a; q)       -> (-1, 1, 1)
+    let tv_specs: [(i64, i64, i64); 8] = [
+        ( 1,  0, 0),   // (a;q)
+        (-1,  0, 1),   // (q/a;q)
+        ( 0,  1, 0),   // (b;q)
+        ( 0, -1, 1),   // (q/b;q)
+        ( 1,  1, 0),   // (ab;q)
+        (-1, -1, 2),   // (q^2/(ab);q)
+        ( 1, -1, 0),   // (a/b;q)
+        (-1,  1, 1),   // (qb/a;q)
+    ];
+
+    // All q_offsets are non-negative (min = 0), so no internal q-shift needed.
+    let mut terms: BTreeMap<(i64, i64), FormalPowerSeries> = BTreeMap::new();
+    {
+        let one_fps = FormalPowerSeries::one(inner_var, truncation_order);
+        terms.insert((0, 0), one_fps);
+    }
+
+    let neg_one = -QRat::one();
+
+    // Process factor by factor: each is prod_{k>=0}(1 - a^{ap} * b^{bp} * q^{off+k})
+    for &(ap, bp, q_offset) in &tv_specs {
+        for k in 0.. {
+            let true_exp = q_offset + k;
+            if true_exp >= truncation_order { break; }
+
+            let mut new_terms: BTreeMap<(i64, i64), FormalPowerSeries> = BTreeMap::new();
+            for (&(ra, rb), f_j) in &terms {
+                // Identity part
+                add_to_tv_terms(&mut new_terms, (ra, rb), f_j);
+                // Product part: -(1) * a^{ap} * b^{bp} * q^{true_exp} * f_j
+                let shifted_key = (ra + ap, rb + bp);
+                let contrib = fps_shift_internal(f_j, true_exp, &neg_one, inner_var, truncation_order);
+                if !contrib.is_zero() {
+                    add_to_tv_terms(&mut new_terms, shifted_key, &contrib);
+                }
+            }
+            terms = new_terms;
+        }
+    }
+
+    // Multiply every FPS coefficient by (q;q)^2
+    let mut euler_gen = euler_function_generator(inner_var, truncation_order);
+    euler_gen.ensure_order(truncation_order);
+    let euler = euler_gen.into_series();
+    let euler_sq = arithmetic::mul(&euler, &euler);
+
+    let mut final_terms: BTreeMap<(i64, i64), FormalPowerSeries> = BTreeMap::new();
+    for ((ra, rb), fps) in terms {
+        let product = arithmetic::mul(&euler_sq, &fps);
+        if !product.is_zero() {
+            final_terms.insert((ra, rb), product);
+        }
+    }
+
+    TrivariateSeries {
+        outer_var_a: outer_var_a.to_string(),
+        outer_var_b: outer_var_b.to_string(),
+        terms: final_terms,
+        inner_variable: inner_var,
+        truncation_order,
+    }
+}
+
 /// Internal FPS shift: shift FPS by `shift` positions (can be negative in internal coords)
 /// and scale by `scale`. Only keeps terms in [0, trunc).
 fn fps_shift_internal(
@@ -2909,10 +3015,12 @@ pub fn dispatch(
                 };
 
                 if a_is_symbolic && b_is_symbolic {
-                    return Err(EvalError::Other(
-                        "winquist with two symbolic variables is not yet supported; \
-                         use a q-monomial for one argument, e.g. winquist(a, q^2, q, 10)".into()
-                    ));
+                    let a_name = match &args[0] { Value::Symbol(s) => s.clone(), _ => unreachable!() };
+                    let b_name = match &args[1] { Value::Symbol(s) => s.clone(), _ => unreachable!() };
+                    let sym = extract_symbol_id(name, args, 2, env)?;
+                    let order = extract_i64(name, args, 3)?;
+                    let result = compute_winquist_two_symbolic(&a_name, &b_name, sym, order);
+                    Ok(Value::TrivariateSeries(result))
                 } else if a_is_symbolic {
                     // a is symbolic, b is concrete
                     let outer_name = match &args[0] { Value::Symbol(s) => s.clone(), _ => unreachable!() };
@@ -10159,26 +10267,129 @@ mod tests {
     }
 
     #[test]
-    fn winquist_two_symbolic_error() {
+    fn dispatch_winquist_two_symbolic() {
         let mut env = make_env();
-        // winquist(a, b, q, 10) with both Symbol("a") and Symbol("b")
+        // winquist(a, b, q, 5) with both a and b symbolic
         let args = vec![
             Value::Symbol("a".to_string()),
             Value::Symbol("b".to_string()),
             Value::Symbol("q".to_string()),
-            Value::Integer(QInt::from(10i64)),
+            Value::Integer(QInt::from(5i64)),
         ];
-        let result = dispatch("winquist", &args, &mut env);
-        assert!(result.is_err(), "two symbolic variables should return error");
-        let err_msg = format!("{}", result.unwrap_err());
-        assert!(
-            err_msg.contains("two symbolic variables"),
-            "error message should mention 'two symbolic variables', got: {}", err_msg
-        );
+        let result = dispatch("winquist", &args, &mut env).unwrap();
+        if let Value::TrivariateSeries(ts) = &result {
+            assert!(!ts.is_zero(), "trivariate winquist should have nonzero terms");
+            assert!(ts.terms.len() > 1, "trivariate winquist should have multiple (a, b) terms");
+            // The (0, 0) term should exist (constant in a, b)
+            assert!(ts.terms.contains_key(&(0, 0)),
+                "trivariate winquist should have a (0, 0) term");
+        } else {
+            panic!("expected TrivariateSeries, got {:?}", result.type_name());
+        }
     }
 
     #[test]
-    fn winquist_preserves_univariate() {
+    fn winquist_two_symbolic_cross_validation() {
+        // CRITICAL correctness test: trivariate winquist evaluated at a=-1, b=-1
+        // must match numeric winquist(-1, -1, q, T).
+        //
+        // Using a=-1, b=-1 (constant q-monomials with power 0) avoids:
+        //   1. Product zeros (no factor becomes (1-1))
+        //   2. Truncation boundary effects (no q-shift from substitution)
+        // At a=-1, b=-1: contribution from ((ra, rb), fps) is (-1)^ra * (-1)^rb * fps,
+        // which simply sums all fps with sign (-1)^{ra+rb}. No q-shifting involved.
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let trunc: i64 = 10;
+
+        // Compute trivariate
+        let ts = compute_winquist_two_symbolic("a", "b", sym_q, trunc);
+
+        // Evaluate at a = -1, b = -1
+        let mut evaluated = FormalPowerSeries::zero(sym_q, trunc);
+        for (&(ra, rb), fps) in &ts.terms {
+            let sign = if (ra + rb) % 2 == 0 { QRat::one() } else { -QRat::one() };
+            for (&p, v) in fps.iter() {
+                if p < trunc {
+                    let old = evaluated.coeff(p);
+                    evaluated.set_coeff(p, old + sign.clone() * v.clone());
+                }
+            }
+        }
+
+        // Compute numeric reference: winquist(-1, -1, q, T)
+        let a_mono = QMonomial::new(-QRat::one(), 0);
+        let b_mono = QMonomial::new(-QRat::one(), 0);
+        let reference = qseries::winquist(&a_mono, &b_mono, sym_q, trunc);
+
+        // Compare coefficients
+        for k in 0..trunc {
+            assert_eq!(
+                evaluated.coeff(k), reference.coeff(k),
+                "Mismatch at q^{}: trivariate eval = {}, numeric = {}",
+                k, evaluated.coeff(k), reference.coeff(k)
+            );
+        }
+
+        // SECOND cross-validation: a=2, b=3 (positive constants, no q-shift)
+        let mut evaluated2 = FormalPowerSeries::zero(sym_q, trunc);
+        let two = QRat::from((2i64, 1i64));
+        let three = QRat::from((3i64, 1i64));
+        for (&(ra, rb), fps) in &ts.terms {
+            let scalar = qrat_pow(&two, ra) * qrat_pow(&three, rb);
+            for (&p, v) in fps.iter() {
+                if p < trunc {
+                    let old = evaluated2.coeff(p);
+                    evaluated2.set_coeff(p, old + scalar.clone() * v.clone());
+                }
+            }
+        }
+        let a2_mono = QMonomial::new(two.clone(), 0);
+        let b2_mono = QMonomial::new(three.clone(), 0);
+        let reference2 = qseries::winquist(&a2_mono, &b2_mono, sym_q, trunc);
+        for k in 0..trunc {
+            assert_eq!(
+                evaluated2.coeff(k), reference2.coeff(k),
+                "2nd validation mismatch at q^{}: trivariate eval = {}, numeric = {}",
+                k, evaluated2.coeff(k), reference2.coeff(k)
+            );
+        }
+    }
+
+    #[test]
+    fn winquist_two_symbolic_display_not_empty() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("a".to_string()),
+            Value::Symbol("b".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("winquist", &args, &mut env).unwrap();
+        let formatted = crate::format::format_value(&val, &env.symbols);
+        assert!(formatted.contains("a"), "display should contain 'a': {}", formatted);
+        assert!(formatted.contains("b"), "display should contain 'b': {}", formatted);
+        assert!(formatted.contains("q"), "display should contain 'q': {}", formatted);
+        assert!(formatted.len() > 10, "display should not be trivially short: {}", formatted);
+    }
+
+    #[test]
+    fn winquist_preserves_one_symbolic() {
+        let mut env = make_env();
+        // winquist(z, q^2, q, 5) should still return BivariateSeries
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            make_monomial_series(&env, 2),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("winquist", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::BivariateSeries(_)),
+            "winquist with one symbolic should return BivariateSeries, got {:?}", val.type_name());
+    }
+
+    #[test]
+    fn winquist_preserves_numeric() {
         let mut env = make_env();
         // winquist(q, q^2, q, 10) where both args are q-monomials
         let args = vec![

@@ -196,9 +196,9 @@ const FUNC_HELP: &[FuncHelp] = &[
     FuncHelp {
         name: "winquist",
         signature: "winquist(a, b, q, T)",
-        description: "Compute the Winquist product with q-monomial parameters a, b truncated to O(q^T).\n  A product of 10 theta-type factors used in partition congruence proofs.\n  When one argument is a symbolic variable (different from q), returns a bivariate\n  Laurent polynomial in that variable with q-series coefficients.\n  Two symbolic variables are not yet supported.",
-        example: "q> winquist(z, q^2, q, 10)",
-        example_output: "(bivariate Laurent polynomial in z with q-series coefficients)",
+        description: "Compute the Winquist product with q-monomial parameters a, b truncated to O(q^T).\n  A product of 10 theta-type factors used in partition congruence proofs.\n  When one argument is a symbolic variable (different from q), returns a bivariate\n  Laurent polynomial in that variable with q-series coefficients.\n  When both a and b are symbolic variables (different from q), returns a trivariate\n  series: Laurent polynomial in a, b with q-series coefficients.",
+        example: "q> winquist(a, b, q, 10)",
+        example_output: "(trivariate Laurent polynomial in a, b with q-series coefficients)",
     },
 
     // -----------------------------------------------------------------------
@@ -1182,11 +1182,13 @@ mod tests {
     }
 
     #[test]
-    fn function_help_winquist_mentions_bivariate() {
+    fn function_help_winquist_mentions_bivariate_and_trivariate() {
         let help = function_help("winquist");
         assert!(help.is_some(), "winquist should have a help entry");
         let text = help.unwrap();
         assert!(text.contains("symbolic") || text.contains("bivariate"),
             "winquist help should mention symbolic variable or bivariate");
+        assert!(text.contains("trivariate") || text.contains("both"),
+            "winquist help should mention trivariate or both symbolic support");
     }
 }
