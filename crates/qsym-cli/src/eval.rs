@@ -3555,6 +3555,12 @@ pub fn dispatch(
                 Ok(Value::Series(result))
             } else if args.len() == 2 {
                 // theta2(q, T) -- Garvan 2-arg form
+                // Monomial args not supported for theta2 (half-integer exponents)
+                if let Value::Series(_) = &args[0] {
+                    return Err(EvalError::Other(
+                        "theta2: monomial argument q^k not supported, use subs(q=q^k, theta2(q,T)) instead".into()
+                    ));
+                }
                 let sym = extract_symbol_id(name, args, 0, env)?;
                 let order = extract_i64(name, args, 1)?;
                 let result = qseries::theta2(sym, order);
@@ -3583,11 +3589,37 @@ pub fn dispatch(
                 let result = qseries::theta3(env.sym_q, order);
                 Ok(Value::Series(result))
             } else if args.len() == 2 {
-                // theta3(q, T) -- Garvan 2-arg form
-                let sym = extract_symbol_id(name, args, 0, env)?;
-                let order = extract_i64(name, args, 1)?;
-                let result = qseries::theta3(sym, order);
-                Ok(Value::Series(result))
+                // theta3(q, T) or theta3(q^k, T) -- Garvan 2-arg form with monomial support
+                match &args[0] {
+                    Value::Series(mono) => {
+                        // theta3(q^k, T) -- compute theta3 then scale exponents by k
+                        let terms: Vec<_> = mono.iter().collect();
+                        if terms.len() == 1 {
+                            let (&exp, coeff) = terms[0];
+                            if *coeff == QRat::one() && exp > 0 {
+                                let order = extract_i64(name, args, 1)?;
+                                let sym = mono.variable();
+                                // Compute theta3(q, order) then scale all exponents by exp
+                                let base = qseries::theta3(sym, order);
+                                let mut new_coeffs = std::collections::BTreeMap::new();
+                                for (&e, c) in base.iter() {
+                                    new_coeffs.insert(e * exp, c.clone());
+                                }
+                                let result = FormalPowerSeries::from_coeffs(sym, new_coeffs, order * exp);
+                                return Ok(Value::Series(result));
+                            }
+                        }
+                        Err(EvalError::Other(format!(
+                            "{}: first argument must be a variable or q^k monomial", name
+                        )))
+                    }
+                    _ => {
+                        let sym = extract_symbol_id(name, args, 0, env)?;
+                        let order = extract_i64(name, args, 1)?;
+                        let result = qseries::theta3(sym, order);
+                        Ok(Value::Series(result))
+                    }
+                }
             } else if args.len() == 3 {
                 // theta3(a, q, T) -- Garvan 3-arg form
                 // When a == q (same variable), reduces to standard theta3
@@ -3612,11 +3644,37 @@ pub fn dispatch(
                 let result = qseries::theta4(env.sym_q, order);
                 Ok(Value::Series(result))
             } else if args.len() == 2 {
-                // theta4(q, T) -- Garvan 2-arg form
-                let sym = extract_symbol_id(name, args, 0, env)?;
-                let order = extract_i64(name, args, 1)?;
-                let result = qseries::theta4(sym, order);
-                Ok(Value::Series(result))
+                // theta4(q, T) or theta4(q^k, T) -- Garvan 2-arg form with monomial support
+                match &args[0] {
+                    Value::Series(mono) => {
+                        // theta4(q^k, T) -- compute theta4 then scale exponents by k
+                        let terms: Vec<_> = mono.iter().collect();
+                        if terms.len() == 1 {
+                            let (&exp, coeff) = terms[0];
+                            if *coeff == QRat::one() && exp > 0 {
+                                let order = extract_i64(name, args, 1)?;
+                                let sym = mono.variable();
+                                // Compute theta4(q, order) then scale all exponents by exp
+                                let base = qseries::theta4(sym, order);
+                                let mut new_coeffs = std::collections::BTreeMap::new();
+                                for (&e, c) in base.iter() {
+                                    new_coeffs.insert(e * exp, c.clone());
+                                }
+                                let result = FormalPowerSeries::from_coeffs(sym, new_coeffs, order * exp);
+                                return Ok(Value::Series(result));
+                            }
+                        }
+                        Err(EvalError::Other(format!(
+                            "{}: first argument must be a variable or q^k monomial", name
+                        )))
+                    }
+                    _ => {
+                        let sym = extract_symbol_id(name, args, 0, env)?;
+                        let order = extract_i64(name, args, 1)?;
+                        let result = qseries::theta4(sym, order);
+                        Ok(Value::Series(result))
+                    }
+                }
             } else if args.len() == 3 {
                 // theta4(a, q, T) -- Garvan 3-arg form
                 // When a == q (same variable), reduces to standard theta4
@@ -5040,6 +5098,19 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Simplification Functions
+        // =================================================================
+
+        "radsimp" => {
+            expect_args(name, args, 1)?;
+            // radsimp simplifies rational series expressions.
+            // Since series division is already computed during evaluation,
+            // radsimp acts as an identity function -- the simplification
+            // already happened when the argument was evaluated.
+            Ok(args[0].clone())
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -5774,6 +5845,8 @@ fn get_signature(name: &str) -> String {
         "factor" => "(poly)".to_string(),
         // Group S: Substitution
         "subs" => "(var=val, ..., expr)".to_string(),
+        // Group T: Simplification
+        "radsimp" => "(expr) -- simplify rational series expression".to_string(),
         _ => String::new(),
     }
 }
@@ -5868,6 +5941,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "factor",
     // Pattern S: Substitution
     "subs",
+    // Pattern T: Simplification
+    "radsimp",
 ];
 
 /// All alias names for fuzzy matching.
@@ -11612,6 +11687,63 @@ mod tests {
         assert!(result.is_some(), "X[1] should be defined");
         if let Some(Value::Integer(n)) = result {
             assert_eq!(n, QInt::from(42i64));
+        }
+    }
+
+    #[test]
+    fn dispatch_theta3_monomial() {
+        // theta3(q^2, 10) should produce theta3 with exponents scaled by 2
+        // theta3(q) = 1 + 2q + 2q^4 + 2q^9 + ...
+        // theta3(q^2, 10) = 1 + 2q^2 + 2q^8 + 2q^18 + ... up to O(q^20)
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        // Build q^2 as a monomial series (POLYNOMIAL_ORDER sentinel)
+        let mono = FormalPowerSeries::monomial(sym, QRat::one(), 2, 1000000000);
+        let args = vec![Value::Series(mono), Value::Integer(QInt::from(10i64))];
+        let result = dispatch("theta3", &args, &mut env).unwrap();
+        if let Value::Series(fps) = &result {
+            // Should have constant term 1
+            assert_eq!(fps.coeff(0), QRat::one(), "theta3(q^2,10) constant term should be 1");
+            // Should have coeff 2 at q^2 (n=1: 1^2*2 = 2)
+            assert_eq!(fps.coeff(2), QRat::from((2i64, 1i64)), "theta3(q^2,10) should have 2*q^2");
+            // Should have zero at q^1 (no odd exponents)
+            assert_eq!(fps.coeff(1), QRat::zero(), "theta3(q^2,10) should have no q^1 term");
+            // Should have coeff 2 at q^8 (n=2: 4*2 = 8)
+            assert_eq!(fps.coeff(8), QRat::from((2i64, 1i64)), "theta3(q^2,10) should have 2*q^8");
+            // Should have coeff 2 at q^18 (n=3: 9*2 = 18)
+            assert_eq!(fps.coeff(18), QRat::from((2i64, 1i64)), "theta3(q^2,10) should have 2*q^18");
+            // Truncation should be 20 (10 * 2)
+            assert_eq!(fps.truncation_order(), 20, "truncation_order should be 20");
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_radsimp_identity() {
+        // radsimp(series) should return the series unchanged
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        let fps = qseries::theta3(sym, 10);
+        let args = vec![Value::Series(fps.clone())];
+        let result = dispatch("radsimp", &args, &mut env).unwrap();
+        if let Value::Series(result_fps) = &result {
+            assert_eq!(*result_fps, fps, "radsimp should return series unchanged");
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_radsimp_integer() {
+        // radsimp(5) should return 5
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(5i64))];
+        let result = dispatch("radsimp", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(5i64), "radsimp(5) should return 5");
+        } else {
+            panic!("expected Integer, got {:?}", result);
         }
     }
 }

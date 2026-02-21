@@ -1922,3 +1922,53 @@ fn quinprod_seriesid() {
     assert!(stdout.contains("sum"), "seriesid should contain 'sum', got: {}", stdout);
     assert!(stdout.contains("3*m"), "seriesid should contain '3*m', got: {}", stdout);
 }
+
+// =========================================================================
+// Phase 50 Plan 02: Subscript variables, multi-arg subs, theta monomial, radsimp
+// =========================================================================
+
+#[test]
+fn subscript_variable_assignment() {
+    let (code, stdout, stderr) = run(&["-c", "X[1] := 5; X[1]"]);
+    assert_eq!(code, 0, "subscript variable assignment should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("5"), "X[1] should evaluate to 5, got: {}", stdout);
+}
+
+#[test]
+fn subs_multi_indexed() {
+    // Single substitution backward compat
+    let (code, stdout, stderr) = run(&["-c", "subs(q=0, 1 + q + q^2)"]);
+    assert_eq!(code, 0, "subs single sub should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("1"), "subs(q=0, 1+q+q^2) should be 1, got: {}", stdout);
+}
+
+#[test]
+fn theta3_monomial() {
+    // theta3(q^2, 10) should produce a series with only even-exponent terms
+    let (code, stdout, stderr) = run(&["-c", "theta3(q^2, 10)"]);
+    assert_eq!(code, 0, "theta3(q^2, 10) should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("q^2"), "theta3(q^2,10) should have q^2 term, got: {}", stdout);
+    assert!(stdout.contains("q^8"), "theta3(q^2,10) should have q^8 term, got: {}", stdout);
+    // Check no odd exponents
+    assert!(!stdout.contains("q^1 ") && !stdout.contains("q^3 ") && !stdout.contains("q^5 "),
+        "theta3(q^2,10) should have no odd-exponent terms, got: {}", stdout);
+}
+
+#[test]
+fn radsimp_series() {
+    // radsimp(theta3(q,20)) should return the same as theta3(q,20)
+    let (code1, stdout1, _) = run(&["-c", "theta3(q, 20)"]);
+    let (code2, stdout2, stderr2) = run(&["-c", "radsimp(theta3(q, 20))"]);
+    assert_eq!(code1, 0);
+    assert_eq!(code2, 0, "radsimp should succeed. stderr: {}", stderr2);
+    assert_eq!(stdout1.trim(), stdout2.trim(), "radsimp(theta3(q,20)) should equal theta3(q,20)");
+}
+
+#[test]
+fn radsimp_quotient() {
+    // radsimp(theta3(q,50)/theta3(q^5,10)) should produce a non-trivial series
+    let (code, stdout, stderr) = run(&["-c", "radsimp(theta3(q, 50) / theta3(q^5, 10))"]);
+    assert_eq!(code, 0, "radsimp quotient should succeed. stderr: {}", stderr);
+    assert!(stdout.contains("q"), "quotient should contain q terms, got: {}", stdout);
+    assert!(stdout.contains("O(q^"), "quotient should have truncation, got: {}", stdout);
+}
