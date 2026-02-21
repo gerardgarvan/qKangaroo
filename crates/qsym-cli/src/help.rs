@@ -162,10 +162,10 @@ const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     FuncHelp {
         name: "aqprod",
-        signature: "aqprod(a, q, n) or aqprod(a, q, infinity, T)",
-        description: "Compute the q-Pochhammer product (a;q)_n where a is a q-monomial, q is the variable, and n is a non-negative integer.\n  When n is 'infinity', use aqprod(a, q, infinity, T) with explicit truncation T.",
-        example: "q> aqprod(q^2, q, 5)",
-        example_output: "-q^14 - q^12 + q^8 + q^5 - q^3 - q^2 + 1",
+        signature: "aqprod(a, q, n) or aqprod(a, q, n, T) or aqprod(a, q, infinity, T)",
+        description: "Compute the q-Pochhammer product (a;q)_n where a is a q-monomial, q is the variable, and n is a non-negative integer.\n  The 3-arg form aqprod(a, q, n) computes the full exact polynomial without truncation.\n  Use aqprod(a, q, n, T) for explicit truncation to O(q^T).\n  When n is 'infinity', use aqprod(a, q, infinity, T) with explicit truncation T.",
+        example: "q> aqprod(q, q, 5)",
+        example_output: "-q^15 + q^14 + q^13 - q^10 - q^9 - q^8 + q^7 + q^6 + q^5 - q^2 - q + 1",
     },
     FuncHelp {
         name: "qbin",
@@ -268,22 +268,22 @@ const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     FuncHelp {
         name: "theta2",
-        signature: "theta2(order)",
-        description: "Compute Jacobi theta function theta_2(q) = 2*q^(1/4) * sum_{n>=0} q^(n(n+1)).\n  Uses the q^(1/4) convention.",
+        signature: "theta2(T) or theta2(q, T) or theta2(a, q, T)",
+        description: "Compute Jacobi theta function theta_2(q) = 2*q^(1/4) * sum_{n>=0} q^(n(n+1)).\n  Uses the q^(1/4) convention.\n  The 2-arg Garvan form theta2(q, T) specifies the variable explicitly.\n  The 3-arg form theta2(a, q, T) is the generalized Garvan convention.",
         example: "q> theta2(10)",
         example_output: "2*q^(1/4) + 2*q^(9/4) + O(q^10)",
     },
     FuncHelp {
         name: "theta3",
-        signature: "theta3(order)",
-        description: "Compute Jacobi theta function theta_3(q) = 1 + 2*sum_{n>=1} q^(n^2).\n  The generating function for sums of squares.",
+        signature: "theta3(T) or theta3(q, T) or theta3(a, q, T)",
+        description: "Compute Jacobi theta function theta_3(q) = 1 + 2*sum_{n>=1} q^(n^2).\n  The generating function for sums of squares.\n  The 2-arg Garvan form theta3(q, T) specifies the variable explicitly.\n  The 3-arg form theta3(a, q, T) is the generalized Garvan convention.",
         example: "q> theta3(10)",
         example_output: "2*q^9 + 2*q^4 + 2*q + 1 + O(q^10)",
     },
     FuncHelp {
         name: "theta4",
-        signature: "theta4(order)",
-        description: "Compute Jacobi theta function theta_4(q) = 1 + 2*sum_{n>=1} (-1)^n * q^(n^2).\n  Related to theta_3 by q -> -q.",
+        signature: "theta4(T) or theta4(q, T) or theta4(a, q, T)",
+        description: "Compute Jacobi theta function theta_4(q) = 1 + 2*sum_{n>=1} (-1)^n * q^(n^2).\n  Related to theta_3 by q -> -q.\n  The 2-arg Garvan form theta4(q, T) specifies the variable explicitly.\n  The 3-arg form theta4(a, q, T) is the generalized Garvan convention.",
         example: "q> theta4(10)",
         example_output: "-2*q^9 + 2*q^4 - 2*q + 1 + O(q^10)",
     },
