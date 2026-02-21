@@ -279,3 +279,40 @@ See STATE.md Accumulated Context for full decision log.
 - 14 plans in ~95 min (avg 7 min/plan)
 - Timeline: 2026-02-20 to 2026-02-21 (2 days)
 - Total project: 133 plans across 46 phases (v1.0-v3.0)
+
+## v4.0: Full qmaple.pdf Parity (Complete)
+
+**Shipped:** 2026-02-21
+**Phases:** 47-51 (11 plans, 5 phases)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 47 | Parser & language extensions -- ditto operator ("), arrow lambdas (->), fractional q-powers (q^(1/4)), procedure option/local reorder |
+| 48 | Function fixes -- aqprod 3-arg exact polynomials, theta 2-arg Garvan form, qfactor 2-arg form, min/max functions |
+| 49 | Display formatting -- qfactor product-form (1-q)(1-q^2)... display, etamake eta(d*tau) notation |
+| 50 | New functions -- jac2series 2-arg Garvan form, radsimp, quinprod prodid/seriesid identity modes, indexed subs X[i] |
+| 51 | Documentation -- 99 function help entries + 5 language construct help entries, 101 tab-completion names, 531-line PDF manual v4.0 chapter with full qmaple.pdf walkthrough |
+
+### Key Accomplishments
+
+- Every executable example in Garvan's "q-Product Tutorial" (qmaple.pdf, 25 pages) runs correctly in q-Kangaroo
+- 3 new Value types: FractionalPowerSeries, QProduct, EtaQuotient for mathematical display
+- Arrow operator and ditto for concise Maple-style interactive usage
+- 101 canonical functions (up from 97 in v3.0), 19 Value variants
+- Full PDF manual chapter with walkthrough of all qmaple.pdf Sections 3-6 examples
+- All 14 gaps between v3.0 and Garvan's tutorial closed
+
+### Known Gaps
+
+- BIVAR-07 (zqfactor): Bivariate (z,q)-series factoring deferred
+- MAPLE-02 (while-loops): Deferred to future milestone
+- MAPLE-03 (nops/op): List manipulation functions deferred
+
+### Key Metrics
+
+- 14 v4.0 requirements: 14/14 complete
+- 43 commits, 22 tasks across 11 plans
+- Timeline: 2026-02-20 to 2026-02-21 (2 days)
+- Total project: 146 plans across 51 phases (v1.0-v4.0)
