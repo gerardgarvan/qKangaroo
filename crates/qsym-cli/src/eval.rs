@@ -2431,6 +2431,42 @@ fn jacobi_product_to_fps(
     result
 }
 
+/// Expand a JacobiProduct to FPS using Garvan's JAC convention (for 2-arg jac2series).
+///
+/// In Garvan's convention:
+/// - JAC(0, b) = (q^b; q^b)_inf  (NOT etaq(0,b) which gives zero)
+/// - JAC(a, b) for 0 < a < b = (q^a;q^b)(q^{b-a};q^b)(q^b;q^b) = triple product
+/// - JAC(a, b) for a < 0 or a >= b: reduce via ((a % b) + b) % b
+fn jacobi_product_to_fps_garvan(
+    factors: &[(i64, i64, i64)],
+    sym: SymbolId,
+    order: i64,
+) -> FormalPowerSeries {
+    let mut result = FormalPowerSeries::one(sym, order);
+    for &(a, b, exp) in factors {
+        // Reduce a into [0, b) range
+        let a_reduced = ((a % b) + b) % b;
+        let factor_fps = if a_reduced == 0 {
+            // JAC(0, b) = (q^b; q^b)_inf
+            qseries::etaq(b, b, sym, order)
+        } else {
+            // JAC(a, b) for 0 < a < b = triple product (q^a;q^b)(q^{b-a};q^b)(q^b;q^b)
+            qseries::jacprod(a_reduced, b, sym, order)
+        };
+        if exp > 0 {
+            for _ in 0..exp {
+                result = arithmetic::mul(&result, &factor_fps);
+            }
+        } else if exp < 0 {
+            let inv = arithmetic::invert(&factor_fps);
+            for _ in 0..(-exp) {
+                result = arithmetic::mul(&result, &inv);
+            }
+        }
+    }
+    result
+}
+
 /// Format a JacobiProduct as explicit finite product notation.
 /// E.g., "(1-q)(1-q^6)(1-q^11)..." for JAC(1,5) up to order.
 fn format_product_notation(factors: &[(i64, i64, i64)], sym_name: &str, order: i64) -> String {
@@ -4648,20 +4684,41 @@ pub fn dispatch(
         }
 
         "jac2series" => {
-            expect_args(name, args, 3)?;
-            let factors = match &args[0] {
-                Value::JacobiProduct(f) => f.clone(),
-                _ => return Err(EvalError::Other(
-                    "expected Jacobi product expression (use JAC(a,b))".to_string()
-                )),
-            };
-            let sym = extract_symbol_id(name, args, 1, env)?;
-            let order = extract_i64(name, args, 2)?;
-            let fps = jacobi_product_to_fps(&factors, sym, order);
-            // Print using standard series format
-            let formatted = crate::format::format_value(&Value::Series(fps.clone()), &env.symbols);
-            println!("{}", formatted);
-            Ok(Value::Series(fps))
+            if args.len() == 2 {
+                // Garvan 2-arg: jac2series(jacexpr, T)
+                let factors = match &args[0] {
+                    Value::JacobiProduct(f) => f.clone(),
+                    _ => return Err(EvalError::Other(
+                        "expected Jacobi product expression (use JAC(a,b))".to_string()
+                    )),
+                };
+                let order = extract_i64(name, args, 1)?;
+                let fps = jacobi_product_to_fps_garvan(&factors, env.sym_q, order);
+                let formatted = crate::format::format_value(&Value::Series(fps.clone()), &env.symbols);
+                println!("{}", formatted);
+                Ok(Value::Series(fps))
+            } else if args.len() == 3 {
+                // Legacy 3-arg: jac2series(JP, q, T)
+                let factors = match &args[0] {
+                    Value::JacobiProduct(f) => f.clone(),
+                    _ => return Err(EvalError::Other(
+                        "expected Jacobi product expression (use JAC(a,b))".to_string()
+                    )),
+                };
+                let sym = extract_symbol_id(name, args, 1, env)?;
+                let order = extract_i64(name, args, 2)?;
+                let fps = jacobi_product_to_fps(&factors, sym, order);
+                let formatted = crate::format::format_value(&Value::Series(fps.clone()), &env.symbols);
+                println!("{}", formatted);
+                Ok(Value::Series(fps))
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "2 or 3".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
         }
 
         "qs2jaccombo" => {
@@ -5659,7 +5716,7 @@ fn get_signature(name: &str) -> String {
         "jac" | "JAC" => "(a, b) -- Jacobi product factor (q^a;q^b)_inf".to_string(),
         "theta" => "(z, q, T) -- general theta series sum(z^i * q^(i^2), i=-T..T)".to_string(),
         "jac2prod" => "(JP, q, T) -- convert Jacobi product to explicit product form".to_string(),
-        "jac2series" => "(JP, q, T) -- convert Jacobi product to q-series".to_string(),
+        "jac2series" => "(jacexpr, T) or (JP, q, T) -- convert Jacobi product to q-series".to_string(),
         "qs2jaccombo" => "(f, q, T) -- decompose q-series into sum of Jacobi products".to_string(),
         // Group Q: Expression operations
         "series" => "(expr, q, T)".to_string(),
@@ -8780,6 +8837,111 @@ mod tests {
             }
         } else {
             panic!("expected Series");
+        }
+    }
+
+    // --- jac2series 2-arg Garvan form tests ---
+
+    #[test]
+    fn dispatch_jac2series_2arg_basic() {
+        let mut env = make_env();
+        // 2-arg Garvan: jac2series(JAC(1,5), 20)
+        // JAC(1,5) in Garvan convention = jacprod(1,5) = (q;q^5)(q^4;q^5)(q^5;q^5)
+        let args = vec![
+            Value::JacobiProduct(vec![(1, 5, 1)]),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("jac2series", &args, &mut env).unwrap();
+        // Should match jacprod(1, 5, sym_q, 20) = triple product
+        let expected = qseries::jacprod(1, 5, env.sym_q, 20);
+        if let Value::Series(fps) = &val {
+            for k in 0..20 {
+                assert_eq!(
+                    fps.coeff(k), expected.coeff(k),
+                    "2-arg jac2series JAC(1,5) mismatch at q^{}: got={}, expected={}",
+                    k, fps.coeff(k), expected.coeff(k)
+                );
+            }
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jac2series_2arg_jac0b() {
+        let mut env = make_env();
+        // 2-arg Garvan: jac2series(JAC(0,1), 20)
+        // JAC(0,1) in Garvan convention = (q;q)_inf = etaq(1, 1, q, 20)
+        let args = vec![
+            Value::JacobiProduct(vec![(0, 1, 1)]),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("jac2series", &args, &mut env).unwrap();
+        let expected = qseries::etaq(1, 1, env.sym_q, 20);
+        if let Value::Series(fps) = &val {
+            // (q;q)_inf Euler function: 1 - q - q^2 + q^5 + q^7 - q^12 - q^15 + ...
+            assert_eq!(fps.coeff(0), QRat::one(), "constant term should be 1");
+            assert_eq!(fps.coeff(1), -QRat::one(), "q^1 should be -1");
+            for k in 0..20 {
+                assert_eq!(
+                    fps.coeff(k), expected.coeff(k),
+                    "JAC(0,1) mismatch at q^{}: got={}, expected={}",
+                    k, fps.coeff(k), expected.coeff(k)
+                );
+            }
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jac2series_3arg_unchanged() {
+        let mut env = make_env();
+        // 3-arg legacy: jac2series(JAC(1,5), q, 20) should still work as etaq
+        let args = vec![
+            Value::JacobiProduct(vec![(1, 5, 1)]),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("jac2series", &args, &mut env).unwrap();
+        // Legacy path uses etaq(1,5), NOT jacprod
+        let expected = qseries::etaq(1, 5, env.sym_q, 20);
+        if let Value::Series(fps) = &val {
+            for k in 0..20 {
+                assert_eq!(
+                    fps.coeff(k), expected.coeff(k),
+                    "3-arg legacy jac2series mismatch at q^{}",
+                    k
+                );
+            }
+        } else {
+            panic!("expected Series, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_jac2series_2arg_product() {
+        let mut env = make_env();
+        // 2-arg Garvan: jac2series(JAC(1,5)*JAC(4,5), 20)
+        // = jacprod(1,5) * jacprod(4,5)
+        let args = vec![
+            Value::JacobiProduct(vec![(1, 5, 1), (4, 5, 1)]),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val = dispatch("jac2series", &args, &mut env).unwrap();
+        let jp1 = qseries::jacprod(1, 5, env.sym_q, 20);
+        let jp4 = qseries::jacprod(4, 5, env.sym_q, 20);
+        let expected = arithmetic::mul(&jp1, &jp4);
+        if let Value::Series(fps) = &val {
+            for k in 0..20 {
+                assert_eq!(
+                    fps.coeff(k), expected.coeff(k),
+                    "2-arg product mismatch at q^{}: got={}, expected={}",
+                    k, fps.coeff(k), expected.coeff(k)
+                );
+            }
+        } else {
+            panic!("expected Series, got {:?}", val);
         }
     }
 
