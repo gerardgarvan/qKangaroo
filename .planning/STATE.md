@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v4.0 Full qmaple.pdf Parity -- Phase 49 in progress
+**Current focus:** v4.0 Full qmaple.pdf Parity -- Phase 49 complete, ready for Phase 50
 
 ## Current Position
 
-Phase: 49 of 51 (Display Formatting)
-Plan: 1 of 2 in current phase (1 complete)
-Status: Plan 49-01 complete, ready for 49-02
-Last activity: 2026-02-21 -- Completed 49-01 (QProduct display)
+Phase: 49 of 51 (Display Formatting) -- COMPLETE
+Plan: 2 of 2 in current phase (2 complete)
+Status: Phase 49 complete, ready for Phase 50
+Last activity: 2026-02-21 -- Completed 49-02 (EtaQuotient display)
 
 Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/51 phases)
 
@@ -20,7 +20,7 @@ Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/5
 
 ### Cumulative Summary
 
-- Total plans completed: 139
+- Total plans completed: 140
 - Total phases: 46 complete (v1.0-v3.0), 5 planned (v4.0)
 - Total milestones: 9 complete (v1.0-v1.6, v2.0, v3.0)
 - Average duration: ~5 min/plan
@@ -34,6 +34,7 @@ Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/5
 | 48    | 01   | 4min     | 2     | 2     |
 | 48    | 02   | 5min     | 2     | 2     |
 | 49    | 01   | 10min    | 2     | 4     |
+| 49    | 02   | 4min     | 2     | 4     |
 
 ## Accumulated Context
 
@@ -55,6 +56,8 @@ v3.0 decisions archived in .planning/milestones/v3.0-ROADMAP.md.
 - 48-02: min/max return original Value (preserving Integer vs Rational type) via index tracking
 - 49-01: QProduct test assertions use matches!() not is_empty() since qbin factorization can produce empty factors
 - 49-01: Format functions added in Task 1 (not Task 2) to resolve compilation dependency
+- 49-02: EtaQuotient variant placed after QProduct in Value enum
+- 49-02: Format functions added in Task 1 (not Task 2) to resolve compilation dependency (same pattern as 49-01)
 
 ### Pending Todos
 
@@ -67,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 49-01-PLAN.md (QProduct display)
-Resume: Continue with Phase 49 Plan 02 (EtaQuotient display)
+Stopped at: Completed 49-02-PLAN.md (EtaQuotient display) -- Phase 49 complete
+Resume: Continue with Phase 50
