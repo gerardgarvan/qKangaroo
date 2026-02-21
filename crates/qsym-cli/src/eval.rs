@@ -2312,6 +2312,291 @@ fn compute_tripleprod_bivariate(
     }
 }
 
+
+/// Compute a bivariate q-Pochhammer infinite product `(c*z^{zp}*q^s; q)_inf`
+/// where z is the symbolic outer variable, c is a concrete coefficient,
+/// zp is the z-exponent per factor (+1 or -1), and s is the q-offset.
+///
+/// The product `prod_{k>=0}(1 - c * z^{zp} * q^{s+k})` is computed iteratively.
+///
+/// For negative offsets (s < 0), we use an internal q-shift: all FPS coefficients
+/// are offset by `q_shift = |s| * z_bound`, so "q^{-1}" is stored at index
+/// `q_shift - 1`. At the end, we shift each z^j coefficient back by `-q_shift`
+/// and truncate to [0, T).
+fn compute_pochhammer_bivariate(
+    outer_var: &str,
+    coeff: &QRat,
+    z_power: i64,      // +1 or -1
+    q_offset: i64,
+    inner_var: SymbolId,
+    truncation_order: i64,
+) -> BivariateSeries {
+    // Estimate max z-exponent range: each factor adds one z-exponent.
+    // Number of factors is ~ truncation_order - q_offset.
+    // But at each step the FPS gets more complex, so we bound z-range.
+    // The product of N factors (1 - c*z*q^k) produces z^0..z^N.
+    // We only need z-exponents whose q-contributions fit within [0, T).
+
+    // For negative offsets, the minimum q-exponent that appears at z^j is roughly
+    // j * q_offset (from the first |q_offset| factors contributing q^s with s < 0).
+    // We need internal FPS to accommodate this.
+    let neg_ext = if q_offset < 0 {
+        // Each z^j gets shifted by j*q_offset at most. Max |j| is bounded by T.
+        // But we don't need all -- be practical. Use |q_offset| * sqrt(T) headroom.
+        let z_bound = ((2.0 * truncation_order as f64).sqrt().ceil() as i64).max(10);
+        (-q_offset) * z_bound
+    } else {
+        0
+    };
+    let q_shift = neg_ext; // Amount we shift internal FPS upward
+    let internal_trunc = truncation_order + q_shift;
+
+    // Start with 1 at internal position q_shift (represents q^0 in true coordinates)
+    let mut one_fps = FormalPowerSeries::zero(inner_var, internal_trunc);
+    one_fps.set_coeff(q_shift, QRat::one()); // "1" in true coords = q^{q_shift} in internal
+    let mut terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+    terms.insert(0, one_fps);
+
+    // Multiply by (1 - coeff * z^{zp} * q^{q_offset + k}) for k = 0, 1, 2, ...
+    for k in 0.. {
+        let exp = q_offset + k;
+        if exp >= truncation_order {
+            break;
+        }
+        // In internal coordinates, q^{exp} is stored at index q_shift + exp
+        let internal_exp = q_shift + exp;
+        if internal_exp < 0 {
+            continue; // Below internal representable range
+        }
+
+        let mut new_terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+        for (&z_j, f_j) in &terms {
+            // Part 1: z^j contribution (identity)
+            add_to_bv_terms(&mut new_terms, z_j, f_j);
+
+            // Part 2: z^{j+zp} contribution = -coeff * q^{exp} * f_j
+            // In internal coords: shift by internal_exp - q_shift = exp (in true coords)
+            // But since f_j is in internal coords with shift q_shift,
+            // we need to multiply f_j by q^{exp} = shift by exp in true coords
+            // = shift by exp in internal coords (since internal = true + q_shift).
+            // So the new internal FPS = shift(f_j, exp) * (-coeff)
+            // where shift by exp in internal means: coefficient at internal p -> p + exp
+            let shifted_z = z_j + z_power;
+            let neg_coeff = -coeff.clone();
+            let contrib = fps_shift_internal(f_j, exp, &neg_coeff, inner_var, internal_trunc);
+            if !contrib.is_zero() {
+                add_to_bv_terms(&mut new_terms, shifted_z, &contrib);
+            }
+        }
+        terms = new_terms;
+    }
+
+    // Convert back: shift each z^j coefficient by -q_shift and truncate to [0, T)
+    let mut final_terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+    for (z_exp, fps) in terms {
+        let mut truncated = FormalPowerSeries::zero(inner_var, truncation_order);
+        for (&p, v) in fps.iter() {
+            let true_p = p - q_shift; // Convert internal -> true
+            if true_p >= 0 && true_p < truncation_order {
+                truncated.set_coeff(true_p, v.clone());
+            }
+        }
+        if !truncated.is_zero() {
+            final_terms.insert(z_exp, truncated);
+        }
+    }
+
+    BivariateSeries {
+        outer_variable: outer_var.to_string(),
+        terms: final_terms,
+        inner_variable: inner_var,
+        truncation_order,
+    }
+}
+
+/// Add an FPS to a bivariate terms map at z^{z_exp}, accumulating.
+fn add_to_bv_terms(
+    terms: &mut BTreeMap<i64, FormalPowerSeries>,
+    z_exp: i64,
+    fps: &FormalPowerSeries,
+) {
+    if let Some(existing) = terms.remove(&z_exp) {
+        let sum = arithmetic::add(&existing, fps);
+        if !sum.is_zero() { terms.insert(z_exp, sum); }
+    } else {
+        terms.insert(z_exp, fps.clone());
+    }
+}
+
+/// Internal FPS shift: shift FPS by `shift` positions (can be negative in internal coords)
+/// and scale by `scale`. Only keeps terms in [0, trunc).
+fn fps_shift_internal(
+    fps: &FormalPowerSeries,
+    shift: i64,
+    scale: &QRat,
+    inner_var: SymbolId,
+    trunc: i64,
+) -> FormalPowerSeries {
+    if scale.is_zero() {
+        return FormalPowerSeries::zero(inner_var, trunc);
+    }
+    let mut result = FormalPowerSeries::zero(inner_var, trunc);
+    for (&p, v) in fps.iter() {
+        let new_p = p + shift;
+        if new_p >= 0 && new_p < trunc {
+            result.set_coeff(new_p, scale.clone() * v.clone());
+        }
+    }
+    result
+}
+
+/// Compute winquist(a, b, q, T) where `a` is the symbolic outer variable and
+/// `b` is a concrete q-monomial.
+///
+/// Uses the 10-factor product decomposition (Garvan convention):
+///   W(a,b,q) = (q;q)^2 * (a)(q/a)(b)(q/b)(ab)(q^2/(ab))(a/b)(qb/a)
+/// where (x) denotes (x;q)_inf.
+///
+/// All 6 bivariate factors (involving a) are combined in a single loop with
+/// a global internal q-shift to handle negative q-offsets. Concrete factors
+/// ((b)(q/b)(q;q)^2) are multiplied in at the end.
+fn compute_winquist_one_symbolic(
+    outer_var: &str,
+    b_mono: &QMonomial,
+    inner_var: SymbolId,
+    truncation_order: i64,
+) -> BivariateSeries {
+    use qsym_core::series::generator::{euler_function_generator, qpochhammer_inf_generator};
+
+    let bc = &b_mono.coeff;
+    let bp = b_mono.power;
+    let inv_bc = QRat::one() / bc.clone();
+
+    // Check for product-zero conditions
+    let check_zero = |c: &QRat, offset: i64| -> bool {
+        *c == QRat::one() && offset == 0
+    };
+    if check_zero(bc, bp) || check_zero(&inv_bc, 1 - bp) {
+        return BivariateSeries::zero(outer_var.to_string(), inner_var, truncation_order);
+    }
+
+    // The 6 bivariate factors (c, z_power, q_offset):
+    // Factor 1: (a; q)          = (1 * z^1 * q^0; q)
+    // Factor 2: (q/a; q)        = (1 * z^{-1} * q^1; q)
+    // Factor 5: (ab; q)         = (bc * z^1 * q^{bp}; q)
+    // Factor 6: (q^2/(ab); q)   = (1/bc * z^{-1} * q^{2-bp}; q)
+    // Factor 7: (a/b; q)        = (1/bc * z^1 * q^{-bp}; q)
+    // Factor 8: (qb/a; q)       = (bc * z^{-1} * q^{1+bp}; q)
+    let one = QRat::one();
+    let bv_specs: Vec<(&QRat, i64, i64)> = vec![
+        (&one,     1,  0),
+        (&one,    -1,  1),
+        (bc,       1,  bp),
+        (&inv_bc, -1,  2 - bp),
+        (&inv_bc,  1, -bp),
+        (bc,      -1,  1 + bp),
+    ];
+
+    // Global q_shift: accommodate negative offsets across all factors.
+    // At z^j, the minimum true q-exponent from the most negative offset factor
+    // is j * min_offset (for z_power=+1 factors only). We need headroom for
+    // the largest |z-exponent| that has significant contributions.
+    let min_offset = bv_specs.iter().map(|&(_, _, off)| off).min().unwrap_or(0);
+    let q_shift = if min_offset < 0 {
+        // z-range grows as sqrt(2*T) per factor; with 6 factors, max|j| ~ 6*sqrt(2T).
+        // But only z_power=+1 factors with negative offset contribute to negative q.
+        // Use a generous but bounded estimate.
+        let z_bound = ((2.0 * truncation_order as f64).sqrt().ceil() as i64 + 5).max(10);
+        (-min_offset) * z_bound
+    } else {
+        0
+    };
+    let internal_trunc = truncation_order + q_shift;
+
+    // Start with 1: z^0 with FPS "1" at internal index q_shift (= true q^0)
+    let mut terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+    {
+        let mut one_fps = FormalPowerSeries::zero(inner_var, internal_trunc);
+        one_fps.set_coeff(q_shift, QRat::one());
+        terms.insert(0, one_fps);
+    }
+
+    // Process factor by factor: each is prod_{k>=0}(1 - c*z^{zp}*q^{off+k})
+    for &(coeff, z_power, q_offset) in &bv_specs {
+        for k in 0.. {
+            let true_exp = q_offset + k;
+            if true_exp >= truncation_order {
+                break;
+            }
+            // Multiply current bivariate by (1 - coeff * z^{zp} * q^{true_exp})
+            // In internal coords, shifting by true_exp means: index p -> p + true_exp
+            let mut new_terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+            for (&z_j, f_j) in &terms {
+                // Identity part: z^j * f_j
+                add_to_bv_terms(&mut new_terms, z_j, f_j);
+                // Product part: -coeff * z^{j+zp} * q^{true_exp} * f_j
+                let shifted_z = z_j + z_power;
+                let neg_coeff = -coeff.clone();
+                let contrib = fps_shift_internal(f_j, true_exp, &neg_coeff, inner_var, internal_trunc);
+                if !contrib.is_zero() {
+                    add_to_bv_terms(&mut new_terms, shifted_z, &contrib);
+                }
+            }
+            terms = new_terms;
+        }
+    }
+
+    // Concrete factors: (b;q)(q/b;q)(q;q)^2 -- computed at internal_trunc for headroom
+    let mut gen3 = qpochhammer_inf_generator(bc.clone(), bp, inner_var, internal_trunc);
+    gen3.ensure_order(internal_trunc);
+    let f3 = gen3.into_series();
+
+    let mut gen4 = qpochhammer_inf_generator(inv_bc.clone(), 1 - bp, inner_var, internal_trunc);
+    gen4.ensure_order(internal_trunc);
+    let f4 = gen4.into_series();
+
+    let mut euler_gen = euler_function_generator(inner_var, internal_trunc);
+    euler_gen.ensure_order(internal_trunc);
+    let euler = euler_gen.into_series();
+    let euler_sq = arithmetic::mul(&euler, &euler);
+    let concrete = arithmetic::mul(&arithmetic::mul(&euler_sq, &f3), &f4);
+
+    // Multiply bivariate (internal coords) by concrete (normal coords).
+    // Internal bivariate index p represents true q^{p - q_shift}.
+    // Concrete index j represents true q^j.
+    // Convolution: product index p' = p + j represents true q^{(p-q_shift) + j} = q^{p'-q_shift}.
+    // So the product is also in internal coords with the same q_shift.
+    let mut multiplied_terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+    for (&z_exp, coeff_fps) in &terms {
+        let product = arithmetic::mul(&concrete, coeff_fps);
+        if !product.is_zero() {
+            multiplied_terms.insert(z_exp, product);
+        }
+    }
+
+    // Convert internal -> true coordinates, keeping only [0, T)
+    let mut final_terms: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+    for (z_exp, fps) in multiplied_terms {
+        let mut truncated = FormalPowerSeries::zero(inner_var, truncation_order);
+        for (&p, v) in fps.iter() {
+            let true_p = p - q_shift;
+            if true_p >= 0 && true_p < truncation_order {
+                truncated.set_coeff(true_p, v.clone());
+            }
+        }
+        if !truncated.is_zero() {
+            final_terms.insert(z_exp, truncated);
+        }
+    }
+
+    BivariateSeries {
+        outer_variable: outer_var.to_string(),
+        terms: final_terms,
+        inner_variable: inner_var,
+        truncation_order,
+    }
+}
+
 /// Compute quinprod(z, q, T) with symbolic z via quintuple product sum form.
 ///
 /// quinprod(z, q, T) = sum_{m=-inf}^{inf} (z^{3m} - z^{-3m-1}) * q^{m(3m+1)/2}
@@ -2607,13 +2892,50 @@ pub fn dispatch(
 
         "winquist" => {
             if args.len() == 4 && matches!(&args[2], Value::Symbol(_)) {
-                // Maple: winquist(a, b, q, T) -- a,b are monomials, q is variable
-                let a = extract_monomial_from_arg(name, args, 0)?;
-                let b = extract_monomial_from_arg(name, args, 1)?;
-                let sym = extract_symbol_id(name, args, 2, env)?;
-                let order = extract_i64(name, args, 3)?;
-                let result = qseries::winquist(&a, &b, sym, order);
-                Ok(Value::Series(result))
+                // Maple: winquist(a, b, q, T)
+                // Check which args are symbolic (different from q variable)
+                let a_is_symbolic = match (&args[0], &args[2]) {
+                    (Value::Symbol(a_name), Value::Symbol(q_name)) => a_name != q_name,
+                    _ => false,
+                };
+                let b_is_symbolic = match (&args[1], &args[2]) {
+                    (Value::Symbol(b_name), Value::Symbol(q_name)) => b_name != q_name,
+                    _ => false,
+                };
+
+                if a_is_symbolic && b_is_symbolic {
+                    return Err(EvalError::Other(
+                        "winquist with two symbolic variables is not yet supported; \
+                         use a q-monomial for one argument, e.g. winquist(a, q^2, q, 10)".into()
+                    ));
+                } else if a_is_symbolic {
+                    // a is symbolic, b is concrete
+                    let outer_name = match &args[0] { Value::Symbol(s) => s.clone(), _ => unreachable!() };
+                    let b_mono = extract_monomial_from_arg(name, args, 1)?;
+                    let sym = extract_symbol_id(name, args, 2, env)?;
+                    let order = extract_i64(name, args, 3)?;
+                    let result = compute_winquist_one_symbolic(&outer_name, &b_mono, sym, order);
+                    Ok(Value::BivariateSeries(result))
+                } else if b_is_symbolic {
+                    // b is symbolic, a is concrete -- swap roles
+                    // winquist(a, b) factors symmetrically: TP(a)*TP(b)*TP(ab)*TP(a/b)
+                    // Swapping a<->b: TP(b)*TP(a)*TP(ba)*TP(b/a) -- same up to TP(a/b) vs TP(b/a)
+                    // TP(x) = TP(1/x) * x (Jacobi identity), and in product they cancel
+                    let outer_name = match &args[1] { Value::Symbol(s) => s.clone(), _ => unreachable!() };
+                    let a_mono = extract_monomial_from_arg(name, args, 0)?;
+                    let sym = extract_symbol_id(name, args, 2, env)?;
+                    let order = extract_i64(name, args, 3)?;
+                    let result = compute_winquist_one_symbolic(&outer_name, &a_mono, sym, order);
+                    Ok(Value::BivariateSeries(result))
+                } else {
+                    // Both are concrete monomials -- existing path
+                    let a = extract_monomial_from_arg(name, args, 0)?;
+                    let b = extract_monomial_from_arg(name, args, 1)?;
+                    let sym = extract_symbol_id(name, args, 2, env)?;
+                    let order = extract_i64(name, args, 3)?;
+                    let result = qseries::winquist(&a, &b, sym, order);
+                    Ok(Value::Series(result))
+                }
             } else {
                 // Legacy: winquist(a_cn, a_cd, a_p, b_cn, b_cd, b_p, order)
                 expect_args(name, args, 7)?;
@@ -9667,5 +9989,201 @@ mod tests {
         // t1 - t1 should be zero
         let diff = bv::bivariate_sub(&t1, &t1);
         assert!(diff.is_zero(), "t1 - t1 should be zero");
+    }
+
+    // --- Winquist bivariate tests ---
+
+    #[test]
+    fn dispatch_winquist_one_symbolic_a() {
+        let mut env = make_env();
+        // winquist(z, 2*q, q, 10) where z is symbolic and b=2*q avoids product zeros
+        // (b=q^m with coeff=1 causes zero factors in the Winquist product)
+        let sym_q = env.sym_q;
+        let b_fps = FormalPowerSeries::monomial(sym_q, QRat::from((2i64, 1i64)), 1, POLYNOMIAL_ORDER);
+        let args = vec![
+            Value::Symbol("z".to_string()),
+            Value::Series(b_fps),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("winquist", &args, &mut env).unwrap();
+        if let Value::BivariateSeries(bs) = &val {
+            assert!(!bs.is_zero(), "bivariate winquist should have nonzero terms");
+            assert_eq!(bs.outer_variable(), "z");
+        } else {
+            panic!("expected BivariateSeries, got {:?}", val.type_name());
+        }
+    }
+
+    #[test]
+    fn dispatch_winquist_one_symbolic_b() {
+        let mut env = make_env();
+        // winquist(2*q, z, q, 10) where z is symbolic in position 1
+        let sym_q = env.sym_q;
+        let a_fps = FormalPowerSeries::monomial(sym_q, QRat::from((2i64, 1i64)), 1, POLYNOMIAL_ORDER);
+        let args = vec![
+            Value::Series(a_fps),
+            Value::Symbol("z".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("winquist", &args, &mut env).unwrap();
+        if let Value::BivariateSeries(bs) = &val {
+            assert!(!bs.is_zero(), "bivariate winquist (b symbolic) should have nonzero terms");
+            assert_eq!(bs.outer_variable(), "z");
+        } else {
+            panic!("expected BivariateSeries, got {:?}", val.type_name());
+        }
+    }
+
+    #[test]
+    fn pochhammer_bivariate_basic() {
+        // Verify compute_pochhammer_bivariate for a simple case:
+        // (z; q)_inf truncated to O(q^5) should match the product form.
+        // (z; q)_inf = prod_{k>=0}(1 - z*q^k) = 1 - z - z*q + z^2*q + ...
+        let env = make_env();
+        let sym_q = env.sym_q;
+
+        let bv = compute_pochhammer_bivariate("z", &QRat::one(), 1, 0, sym_q, 5);
+        // At z^0: should be 1
+        assert_eq!(bv.terms.get(&0).unwrap().coeff(0), QRat::one(),
+            "z^0 q^0 should be 1");
+        // At z^1: should be -1 - q - q^2 - q^3 - q^4
+        // Actually (z;q)_inf = prod(1-z*q^k): the z^1 coefficient comes from picking
+        // the z-term from exactly one factor. The coefficient of z^1 is:
+        // sum_{k=0}^{4} (-1)*q^k = -1 - q - q^2 - q^3 - q^4
+        let z1 = bv.terms.get(&1).unwrap();
+        assert_eq!(z1.coeff(0), -QRat::one(), "z^1 q^0 should be -1");
+        assert_eq!(z1.coeff(1), -QRat::one(), "z^1 q^1 should be -1");
+    }
+
+    #[test]
+    fn pochhammer_bivariate_negative_offset() {
+        // Verify (z*q^{-1}; q)_inf = prod_{k>=0}(1 - z*q^{k-1})
+        // = (1 - z/q)(1 - z)(1 - z*q)(1 - z*q^2)...
+        // After conversion to true coords, the q^{-1} term from the first factor
+        // is dropped (FPS only stores non-negative exponents). But all non-negative
+        // terms should be present.
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let trunc = 5i64;
+
+        let bv = compute_pochhammer_bivariate("z", &QRat::one(), 1, -1, sym_q, trunc);
+
+        // z^0 should be 1
+        assert_eq!(bv.terms.get(&0).unwrap().coeff(0), QRat::one(),
+            "z^0 q^0 should be 1");
+        // z^1: picking the z-term from factor k gives -q^{k-1}. For k=0: -q^{-1} (dropped).
+        // For k >= 1: -q^{k-1}. So stored coefficients are -1 at q^0, -1 at q^1, etc.
+        let z1 = bv.terms.get(&1).unwrap();
+        assert_eq!(z1.coeff(0), -QRat::one(), "z^1 q^0 should be -1");
+        assert_eq!(z1.coeff(1), -QRat::one(), "z^1 q^1 should be -1");
+    }
+
+    #[test]
+    fn winquist_bivariate_zero_offset() {
+        // winquist(z, 2, q, 10) -- b has bp=0, no negative offsets.
+        // Cross-validate at z=-1 against numeric winquist(-1, 2, q, 10).
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let trunc: i64 = 10;
+
+        let b_mono = QMonomial::new(QRat::from((2i64, 1i64)), 0); // b = 2 (constant)
+        let bv = compute_winquist_one_symbolic("z", &b_mono, sym_q, trunc);
+
+        // Evaluate at z = -1
+        let mut evaluated = FormalPowerSeries::zero(sym_q, trunc);
+        for (&z_exp, fps) in &bv.terms {
+            let sign = if z_exp % 2 == 0 { QRat::one() } else { -QRat::one() };
+            for (&q_pow, coeff) in fps.iter() {
+                if q_pow >= 0 && q_pow < trunc {
+                    let old = evaluated.coeff(q_pow);
+                    evaluated.set_coeff(q_pow, old + sign.clone() * coeff.clone());
+                }
+            }
+        }
+
+        // Numeric: winquist(-1, 2, q, 10)
+        let a_mono = QMonomial::new(-QRat::one(), 0);
+        let numeric = qseries::winquist(&a_mono, &b_mono, sym_q, trunc);
+
+        for k in 0..8 {
+            assert_eq!(evaluated.coeff(k), numeric.coeff(k),
+                "q^{} mismatch", k);
+        }
+    }
+
+    #[test]
+    fn winquist_bivariate_validation() {
+        // Verify bivariate winquist(z, 2*q, q, T) evaluated at z = -1 matches
+        // numeric winquist(-1, 2*q, q, T). Using z=-1 avoids q-shift complexity
+        // in the evaluation step (z^n = (-1)^n, no q-exponent contribution from z).
+        let env = make_env();
+        let sym_q = env.sym_q;
+        let trunc: i64 = 30;
+
+        let b_mono = QMonomial::new(QRat::from((2i64, 1i64)), 1); // b = 2*q
+        let bv = compute_winquist_one_symbolic("z", &b_mono, sym_q, trunc);
+        assert!(!bv.is_zero(), "bivariate winquist(z, 2*q, q, 30) should be nonzero");
+
+        // Evaluate at z = -1: z^n -> (-1)^n (no q-exponent shift)
+        let mut evaluated = FormalPowerSeries::zero(sym_q, trunc);
+        for (&z_exp, fps) in &bv.terms {
+            let sign = if z_exp % 2 == 0 { QRat::one() } else { -QRat::one() };
+            for (&q_pow, coeff) in fps.iter() {
+                if q_pow >= 0 && q_pow < trunc {
+                    let old = evaluated.coeff(q_pow);
+                    evaluated.set_coeff(q_pow, old + sign.clone() * coeff.clone());
+                }
+            }
+        }
+
+        // Compute numeric winquist(-1, 2*q, q, 30) via product form
+        let a_mono = QMonomial::new(-QRat::one(), 0); // a = -1 (constant)
+        let numeric = qseries::winquist(&a_mono, &b_mono, sym_q, trunc);
+        assert!(!numeric.is_zero(), "numeric winquist(-1, 2*q, q, 30) should be nonzero");
+
+        let safe_bound = trunc / 3;
+        for k in 0..safe_bound {
+            assert_eq!(
+                evaluated.coeff(k), numeric.coeff(k),
+                "winquist bivariate at z=-1, q^{} mismatch: got {:?} expected {:?}",
+                k, evaluated.coeff(k), numeric.coeff(k)
+            );
+        }
+    }
+
+    #[test]
+    fn winquist_two_symbolic_error() {
+        let mut env = make_env();
+        // winquist(a, b, q, 10) with both Symbol("a") and Symbol("b")
+        let args = vec![
+            Value::Symbol("a".to_string()),
+            Value::Symbol("b".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let result = dispatch("winquist", &args, &mut env);
+        assert!(result.is_err(), "two symbolic variables should return error");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(
+            err_msg.contains("two symbolic variables"),
+            "error message should mention 'two symbolic variables', got: {}", err_msg
+        );
+    }
+
+    #[test]
+    fn winquist_preserves_univariate() {
+        let mut env = make_env();
+        // winquist(q, q^2, q, 10) where both args are q-monomials
+        let args = vec![
+            make_monomial_series(&env, 1),
+            make_monomial_series(&env, 2),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("winquist", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)),
+            "winquist with concrete monomials should return Series, got {:?}", val.type_name());
     }
 }
