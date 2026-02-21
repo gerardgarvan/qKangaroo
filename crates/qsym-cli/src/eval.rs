@@ -92,6 +92,12 @@ pub enum Value {
     BivariateSeries(BivariateSeries),
     /// Trivariate series: Laurent polynomial in two outer variables with FPS coefficients.
     TrivariateSeries(TrivariateSeries),
+    /// Fractional power series: inner FPS with exponent keys representing q^(k/denom).
+    /// For example, q^(1/4) is stored as monomial at k=1 with denom=4.
+    FractionalPowerSeries {
+        inner: FormalPowerSeries,
+        denom: i64,
+    },
 }
 
 impl Value {
@@ -113,6 +119,7 @@ impl Value {
             Value::Procedure(_) => "procedure",
             Value::BivariateSeries(_) => "bivariate_series",
             Value::TrivariateSeries(_) => "trivariate_series",
+            Value::FractionalPowerSeries { .. } => "fractional_power_series",
         }
     }
 }
@@ -1537,6 +1544,12 @@ fn eval_negate(val: Value, env: &mut Environment) -> Result<Value, EvalError> {
         }
         Value::BivariateSeries(bs) => Ok(Value::BivariateSeries(bv::bivariate_negate(&bs))),
         Value::TrivariateSeries(ts) => Ok(Value::TrivariateSeries(tv::trivariate_negate(&ts))),
+        Value::FractionalPowerSeries { inner, denom } => {
+            Ok(Value::FractionalPowerSeries {
+                inner: arithmetic::negate(&inner),
+                denom,
+            })
+        }
         other => Err(EvalError::TypeError {
             operation: "unary -".to_string(),
             left: other.type_name().to_string(),
@@ -1684,6 +1697,39 @@ fn eval_add(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let lhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, fps.clone());
             Ok(Value::BivariateSeries(bv::bivariate_add(&lhs, bs)))
         }
+        // FractionalPowerSeries + FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner: a, denom: da },
+         Value::FractionalPowerSeries { inner: b, denom: db }) => {
+            let (lcd, fa, fb) = unify_denoms(*da, *db);
+            let ra = if fa == 1 { a.clone() } else { rescale_fps(a, fa) };
+            let rb = if fb == 1 { b.clone() } else { rescale_fps(b, fb) };
+            let result = arithmetic::add(&ra, &rb);
+            Ok(simplify_fractional(result, lcd))
+        }
+        // FractionalPowerSeries + scalar
+        (Value::FractionalPowerSeries { inner, denom }, _) if value_to_qrat(&right).is_some() => {
+            let s = value_to_qrat(&right).unwrap();
+            let const_fps = FormalPowerSeries::monomial(inner.variable(), s, 0, inner.truncation_order());
+            let result = arithmetic::add(inner, &const_fps);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        (_, Value::FractionalPowerSeries { inner, denom }) if value_to_qrat(&left).is_some() => {
+            let s = value_to_qrat(&left).unwrap();
+            let const_fps = FormalPowerSeries::monomial(inner.variable(), s, 0, inner.truncation_order());
+            let result = arithmetic::add(&const_fps, inner);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        // FractionalPowerSeries + Series / Series + FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner, denom }, Value::Series(fps)) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let result = arithmetic::add(inner, &rescaled);
+            Ok(simplify_fractional(result, *denom))
+        }
+        (Value::Series(fps), Value::FractionalPowerSeries { inner, denom }) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let result = arithmetic::add(&rescaled, inner);
+            Ok(simplify_fractional(result, *denom))
+        }
         // JacobiProduct in add -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
             Err(EvalError::Other(format!(
@@ -1768,6 +1814,39 @@ fn eval_sub(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let lhs = BivariateSeries::from_single_term(bs.outer_variable.clone(), 0, fps.clone());
             Ok(Value::BivariateSeries(bv::bivariate_sub(&lhs, bs)))
         }
+        // FractionalPowerSeries - FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner: a, denom: da },
+         Value::FractionalPowerSeries { inner: b, denom: db }) => {
+            let (lcd, fa, fb) = unify_denoms(*da, *db);
+            let ra = if fa == 1 { a.clone() } else { rescale_fps(a, fa) };
+            let rb = if fb == 1 { b.clone() } else { rescale_fps(b, fb) };
+            let result = arithmetic::sub(&ra, &rb);
+            Ok(simplify_fractional(result, lcd))
+        }
+        // FractionalPowerSeries - scalar
+        (Value::FractionalPowerSeries { inner, denom }, _) if value_to_qrat(&right).is_some() => {
+            let s = value_to_qrat(&right).unwrap();
+            let const_fps = FormalPowerSeries::monomial(inner.variable(), s, 0, inner.truncation_order());
+            let result = arithmetic::sub(inner, &const_fps);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        (_, Value::FractionalPowerSeries { inner, denom }) if value_to_qrat(&left).is_some() => {
+            let s = value_to_qrat(&left).unwrap();
+            let const_fps = FormalPowerSeries::monomial(inner.variable(), s, 0, inner.truncation_order());
+            let result = arithmetic::sub(&const_fps, inner);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        // FractionalPowerSeries - Series / Series - FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner, denom }, Value::Series(fps)) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let result = arithmetic::sub(inner, &rescaled);
+            Ok(simplify_fractional(result, *denom))
+        }
+        (Value::Series(fps), Value::FractionalPowerSeries { inner, denom }) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let result = arithmetic::sub(&rescaled, inner);
+            Ok(simplify_fractional(result, *denom))
+        }
         // JacobiProduct in sub -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
             Err(EvalError::Other(format!(
@@ -1847,6 +1926,37 @@ fn eval_mul(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
         (Value::Series(fps), Value::BivariateSeries(bs)) => {
             Ok(Value::BivariateSeries(bv::bivariate_fps_mul(fps, bs)))
         }
+        // FractionalPowerSeries * FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner: a, denom: da },
+         Value::FractionalPowerSeries { inner: b, denom: db }) => {
+            let (lcd, fa, fb) = unify_denoms(*da, *db);
+            let ra = if fa == 1 { a.clone() } else { rescale_fps(a, fa) };
+            let rb = if fb == 1 { b.clone() } else { rescale_fps(b, fb) };
+            let result = arithmetic::mul(&ra, &rb);
+            Ok(simplify_fractional(result, lcd))
+        }
+        // FractionalPowerSeries * scalar / scalar * FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner, denom }, _) if value_to_qrat(&right).is_some() => {
+            let s = value_to_qrat(&right).unwrap();
+            let result = arithmetic::scalar_mul(&s, inner);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        (_, Value::FractionalPowerSeries { inner, denom }) if value_to_qrat(&left).is_some() => {
+            let s = value_to_qrat(&left).unwrap();
+            let result = arithmetic::scalar_mul(&s, inner);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        // FractionalPowerSeries * Series / Series * FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner, denom }, Value::Series(fps)) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let result = arithmetic::mul(inner, &rescaled);
+            Ok(simplify_fractional(result, *denom))
+        }
+        (Value::Series(fps), Value::FractionalPowerSeries { inner, denom }) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let result = arithmetic::mul(&rescaled, inner);
+            Ok(simplify_fractional(result, *denom))
+        }
         // JacobiProduct * JacobiProduct
         (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
             let mut combined = a.clone();
@@ -1899,6 +2009,44 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let inv_s = QRat::one() / s;
             Ok(Value::Series(arithmetic::scalar_mul(&inv_s, &sym_fps)))
         }
+        // Series / FractionalPowerSeries: primary use case (e.g. theta2(q,N)/q^(1/4))
+        (Value::Series(fps), Value::FractionalPowerSeries { inner: div_fps, denom }) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let inv = arithmetic::invert(div_fps);
+            let result = arithmetic::mul(&rescaled, &inv);
+            Ok(simplify_fractional(result, *denom))
+        }
+        // FractionalPowerSeries / Series
+        (Value::FractionalPowerSeries { inner, denom }, Value::Series(fps)) => {
+            let rescaled = rescale_fps(fps, *denom);
+            let inv = arithmetic::invert(&rescaled);
+            let result = arithmetic::mul(inner, &inv);
+            Ok(simplify_fractional(result, *denom))
+        }
+        // FractionalPowerSeries / FractionalPowerSeries
+        (Value::FractionalPowerSeries { inner: a, denom: da },
+         Value::FractionalPowerSeries { inner: b, denom: db }) => {
+            let (lcd, fa, fb) = unify_denoms(*da, *db);
+            let ra = if fa == 1 { a.clone() } else { rescale_fps(a, fa) };
+            let rb = if fb == 1 { b.clone() } else { rescale_fps(b, fb) };
+            let inv = arithmetic::invert(&rb);
+            let result = arithmetic::mul(&ra, &inv);
+            Ok(simplify_fractional(result, lcd))
+        }
+        // FractionalPowerSeries / scalar
+        (Value::FractionalPowerSeries { inner, denom }, _) if value_to_qrat(&right).is_some() => {
+            let s = value_to_qrat(&right).unwrap();
+            let inv_s = QRat::one() / s;
+            let result = arithmetic::scalar_mul(&inv_s, inner);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        // scalar / FractionalPowerSeries
+        (_, Value::FractionalPowerSeries { inner, denom }) if value_to_qrat(&left).is_some() => {
+            let const_fps = FormalPowerSeries::monomial(inner.variable(), value_to_qrat(&left).unwrap(), 0, inner.truncation_order());
+            let inv = arithmetic::invert(inner);
+            let result = arithmetic::mul(&const_fps, &inv);
+            Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
         // JacobiProduct / JacobiProduct
         (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
             let mut combined = a.clone();
@@ -1913,6 +2061,50 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             right: right.type_name().to_string(),
         }),
     }
+}
+
+/// Check if a FractionalPowerSeries can simplify back to a regular Series.
+/// If all inner keys are multiples of `denom`, rescale keys down by `denom` and
+/// return `Value::Series`; otherwise return `Value::FractionalPowerSeries`.
+fn simplify_fractional(inner: FormalPowerSeries, denom: i64) -> Value {
+    if denom == 1 || inner.iter().all(|(&k, _)| k % denom == 0) {
+        let d = if denom == 1 { 1 } else { denom };
+        let mut simplified = BTreeMap::new();
+        for (&k, coeff) in inner.iter() {
+            simplified.insert(k / d, coeff.clone());
+        }
+        let trunc = if inner.truncation_order() >= POLYNOMIAL_ORDER {
+            POLYNOMIAL_ORDER
+        } else {
+            // Round up: ceil(trunc / denom)
+            (inner.truncation_order() + d - 1) / d
+        };
+        Value::Series(FormalPowerSeries::from_coeffs(inner.variable(), simplified, trunc))
+    } else {
+        Value::FractionalPowerSeries { inner, denom }
+    }
+}
+
+/// Rescale a FPS by multiplying all exponent keys by `factor`.
+/// Used when lifting a regular series into fractional-exponent space.
+fn rescale_fps(fps: &FormalPowerSeries, factor: i64) -> FormalPowerSeries {
+    let mut rescaled = BTreeMap::new();
+    for (&k, coeff) in fps.iter() {
+        rescaled.insert(k * factor, coeff.clone());
+    }
+    let trunc = if fps.truncation_order() >= POLYNOMIAL_ORDER {
+        POLYNOMIAL_ORDER
+    } else {
+        fps.truncation_order() * factor
+    };
+    FormalPowerSeries::from_coeffs(fps.variable(), rescaled, trunc)
+}
+
+/// Compute LCD of two denominators and return (lcd, factor_a, factor_b).
+fn unify_denoms(d1: i64, d2: i64) -> (i64, i64, i64) {
+    let g = gcd_i64(d1, d2);
+    let lcd = d1 / g * d2;
+    (lcd, lcd / d1, lcd / d2)
 }
 
 fn eval_pow(left: Value, right: Value, env: &mut Environment) -> Result<Value, EvalError> {
@@ -1974,20 +2166,26 @@ fn eval_pow(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let scaled: Vec<_> = factors.iter().map(|&(a, b, e)| (a, b, e * exp)).collect();
             Ok(Value::JacobiProduct(normalize_jacobi_product(scaled)))
         }
-        // Symbol ^ Rational (e.g. q^(n*n) where n*n produces Rational with denom=1)
+        // Symbol ^ Rational (e.g. q^(n*n) where n*n produces Rational with denom=1,
+        // or q^(1/4) for fractional powers)
         (Value::Symbol(name), Value::Rational(r)) => {
-            let one = rug::Integer::from(1u32);
-            if r.0.denom() != &one {
-                return Err(EvalError::Other(format!(
-                    "exponent must be an integer, got {}", r.0
-                )));
-            }
-            let exp = r.0.numer().to_i64().ok_or_else(|| EvalError::Other(
-                "exponent too large".to_string(),
+            let numer = r.0.numer().to_i64().ok_or_else(|| EvalError::Other(
+                "exponent numerator too large".to_string(),
             ))?;
-            let sym_id = env.symbols.intern(name);
-            let fps = FormalPowerSeries::monomial(sym_id, QRat::one(), exp, POLYNOMIAL_ORDER);
-            Ok(Value::Series(fps))
+            let denom = r.0.denom().to_i64().ok_or_else(|| EvalError::Other(
+                "exponent denominator too large".to_string(),
+            ))?;
+            if denom == 1 {
+                // Integer exponent (existing behavior)
+                let sym_id = env.symbols.intern(name);
+                let fps = FormalPowerSeries::monomial(sym_id, QRat::one(), numer, POLYNOMIAL_ORDER);
+                Ok(Value::Series(fps))
+            } else {
+                // Fractional exponent: q^(p/d)
+                let sym_id = env.symbols.intern(name);
+                let fps = FormalPowerSeries::monomial(sym_id, QRat::one(), numer, POLYNOMIAL_ORDER);
+                Ok(Value::FractionalPowerSeries { inner: fps, denom })
+            }
         }
         // Series ^ Rational (denom must be 1)
         (Value::Series(fps), Value::Rational(r)) => {
@@ -7913,15 +8111,18 @@ mod tests {
     }
 
     #[test]
-    fn eval_pow_symbol_rational_non_integer_errors() {
-        // q^(3/2) should error
+    fn eval_pow_symbol_rational_non_integer_fractional() {
+        // q^(3/2) should produce FractionalPowerSeries
         let mut env = make_env();
         let base = Value::Symbol("q".to_string());
         let exp = Value::Rational(QRat::from((3i64, 2i64)));
-        let result = eval_pow(base, exp, &mut env);
-        assert!(result.is_err());
-        let msg = format!("{}", result.unwrap_err());
-        assert!(msg.contains("exponent must be an integer"), "got: {}", msg);
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::FractionalPowerSeries { inner, denom } = result {
+            assert_eq!(denom, 2);
+            assert_eq!(inner.coeff(3), QRat::one());
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
+        }
     }
 
     #[test]
@@ -7996,6 +8197,152 @@ mod tests {
             assert_eq!(fps.coeff(0), QRat::zero());
         } else {
             panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    // -- FractionalPowerSeries tests ------------------------------------------
+
+    #[test]
+    fn eval_pow_symbol_fractional_quarter() {
+        // q^(1/4) -> FractionalPowerSeries { denom: 4, inner monomial at key 1 }
+        let mut env = make_env();
+        let base = Value::Symbol("q".to_string());
+        let exp = Value::Rational(QRat::from((1i64, 4i64)));
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::FractionalPowerSeries { inner, denom } = result {
+            assert_eq!(denom, 4);
+            assert_eq!(inner.coeff(1), QRat::one());
+            assert_eq!(inner.coeff(0), QRat::zero());
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_symbol_fractional_third() {
+        // q^(1/3) -> FractionalPowerSeries { denom: 3, inner monomial at key 1 }
+        let mut env = make_env();
+        let base = Value::Symbol("q".to_string());
+        let exp = Value::Rational(QRat::from((1i64, 3i64)));
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::FractionalPowerSeries { inner, denom } = result {
+            assert_eq!(denom, 3);
+            assert_eq!(inner.coeff(1), QRat::one());
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_pow_symbol_fractional_two_thirds() {
+        // q^(2/3) -> FractionalPowerSeries { denom: 3, inner monomial at key 2 }
+        let mut env = make_env();
+        let base = Value::Symbol("q".to_string());
+        let exp = Value::Rational(QRat::from((2i64, 3i64)));
+        let result = eval_pow(base, exp, &mut env).unwrap();
+        if let Value::FractionalPowerSeries { inner, denom } = result {
+            assert_eq!(denom, 3);
+            assert_eq!(inner.coeff(2), QRat::one());
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_div_series_by_fractional() {
+        // (q + q^2) / q^(1/2) should give FractionalPowerSeries with denom=2
+        // q -> key 2 in rescaled space; q^2 -> key 4.
+        // Divide by monomial at key 1 (q^(1/2)): keys become 1 and 3.
+        let mut env = make_env();
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(1, QRat::one());
+        coeffs.insert(2, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(env.sym_q, coeffs, 20);
+        let div_fps = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let result = eval_div(
+            Value::Series(fps),
+            Value::FractionalPowerSeries { inner: div_fps, denom: 2 },
+            &mut env,
+        ).unwrap();
+        if let Value::FractionalPowerSeries { inner, denom } = result {
+            assert_eq!(denom, 2);
+            // q / q^(1/2) = q^(1/2) -> key 1 in denom=2 space
+            assert_eq!(inner.coeff(1), QRat::one());
+            // q^2 / q^(1/2) = q^(3/2) -> key 3 in denom=2 space
+            assert_eq!(inner.coeff(3), QRat::one());
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_fractional_mul_simplifies_to_series() {
+        // q^(1/2) * q^(1/2) should simplify to q (regular Series)
+        let mut env = make_env();
+        let a_inner = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let b_inner = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let result = eval_mul(
+            Value::FractionalPowerSeries { inner: a_inner, denom: 2 },
+            Value::FractionalPowerSeries { inner: b_inner, denom: 2 },
+            &mut env,
+        ).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.coeff(1), QRat::one());
+            assert_eq!(fps.coeff(0), QRat::zero());
+        } else {
+            panic!("expected Series (simplified), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_fractional_add() {
+        // q^(1/2) + 2*q^(1/2) = 3*q^(1/2)
+        let mut env = make_env();
+        let a = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let b = FormalPowerSeries::monomial(env.sym_q, QRat::from((2i64, 1i64)), 1, POLYNOMIAL_ORDER);
+        let result = eval_add(
+            Value::FractionalPowerSeries { inner: a, denom: 2 },
+            Value::FractionalPowerSeries { inner: b, denom: 2 },
+            &mut env,
+        ).unwrap();
+        if let Value::FractionalPowerSeries { inner, denom } = result {
+            assert_eq!(denom, 2);
+            assert_eq!(inner.coeff(1), QRat::from((3i64, 1i64)));
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_fractional_negate() {
+        let mut env = make_env();
+        let inner = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let result = eval_negate(
+            Value::FractionalPowerSeries { inner, denom: 4 },
+            &mut env,
+        ).unwrap();
+        if let Value::FractionalPowerSeries { inner: neg_inner, denom } = result {
+            assert_eq!(denom, 4);
+            assert_eq!(neg_inner.coeff(1), -QRat::one());
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_fractional_scalar_mul() {
+        let mut env = make_env();
+        let inner = FormalPowerSeries::monomial(env.sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let result = eval_mul(
+            Value::Integer(QInt::from(3i64)),
+            Value::FractionalPowerSeries { inner, denom: 4 },
+            &mut env,
+        ).unwrap();
+        if let Value::FractionalPowerSeries { inner: res_inner, denom } = result {
+            assert_eq!(denom, 4);
+            assert_eq!(res_inner.coeff(1), QRat::from((3i64, 1i64)));
+        } else {
+            panic!("expected FractionalPowerSeries, got {:?}", result);
         }
     }
 

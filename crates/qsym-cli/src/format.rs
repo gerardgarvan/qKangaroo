@@ -47,6 +47,9 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::JacobiProduct(factors) => format_jacobi_product(factors),
         Value::BivariateSeries(bs) => format_bivariate(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate(ts, symbols),
+        Value::FractionalPowerSeries { inner, denom } => {
+            format!("FPS(1/{}) {}", denom, format_series(inner, symbols))
+        }
         Value::Procedure(proc) => {
             let params = proc.params.join(", ");
             format!("proc({}) ... end proc", params)
@@ -642,6 +645,9 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::JacobiProduct(factors) => format_jacobi_product_latex(factors),
         Value::BivariateSeries(bs) => format_bivariate_latex(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate_latex(ts, symbols),
+        Value::FractionalPowerSeries { inner, denom } => {
+            format!("\\text{{FPS}}(1/{}) {}", denom, fps_to_latex(inner, symbols))
+        }
         Value::Procedure(proc) => {
             format!("\\text{{proc}}({})", proc.params.join(", "))
         }

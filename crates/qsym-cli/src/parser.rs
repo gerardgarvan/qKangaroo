@@ -153,6 +153,10 @@ impl Parser {
                 self.advance();
                 AstNode::LastResult
             }
+            Token::Ditto => {
+                self.advance();
+                AstNode::LastResult
+            }
             Token::StringLit(ref s) => {
                 let s = s.clone();
                 self.advance();
@@ -244,25 +248,22 @@ impl Parser {
                 let params = self.parse_ident_list()?;
                 self.expect(&Token::RParen, "')' to close proc parameters")?;
 
-                // Optional: local declarations
-                let locals = if *self.peek() == Token::Local {
-                    self.advance(); // consume 'local'
-                    let names = self.parse_ident_list()?;
-                    self.expect(&Token::Semi, "';' after local declarations")?;
-                    names
-                } else {
-                    vec![]
-                };
-
-                // Optional: option declarations
-                let options = if *self.peek() == Token::OptionKw {
-                    self.advance(); // consume 'option'
-                    let names = self.parse_ident_list()?;
-                    self.expect(&Token::Semi, "';' after option declarations")?;
-                    names
-                } else {
-                    vec![]
-                };
+                // Optional: local and option declarations (either order, any combination)
+                let mut locals = vec![];
+                let mut options = vec![];
+                loop {
+                    if *self.peek() == Token::Local {
+                        self.advance();
+                        locals.extend(self.parse_ident_list()?);
+                        self.expect(&Token::Semi, "';' after local declarations")?;
+                    } else if *self.peek() == Token::OptionKw {
+                        self.advance();
+                        options.extend(self.parse_ident_list()?);
+                        self.expect(&Token::Semi, "';' after option declarations")?;
+                    } else {
+                        break;
+                    }
+                }
 
                 // Body statements until 'end'
                 let body = self.parse_stmt_sequence(&[Token::End])?;
@@ -556,6 +557,7 @@ fn token_name(token: &Token) -> String {
         Token::Caret => "'^'".to_string(),
         Token::Assign => "':='".to_string(),
         Token::Percent => "'%'".to_string(),
+        Token::Ditto => "'\"' (ditto)".to_string(),
         Token::LParen => "'('".to_string(),
         Token::RParen => "')'".to_string(),
         Token::LBracket => "'['".to_string(),
@@ -1672,6 +1674,108 @@ mod tests {
             assert!(matches!(value.as_ref(), AstNode::ProcDef { .. }));
         } else {
             panic!("Expected Assign with ProcDef, got {:?}", node);
+        }
+    }
+
+    // =======================================================
+    // PARSE-14: Ditto operator
+    // =======================================================
+
+    #[test]
+    fn test_ditto_as_expression() {
+        let node = parse_expr("\x22");
+        assert_eq!(node, AstNode::LastResult);
+    }
+
+    #[test]
+    fn test_ditto_in_function_arg() {
+        let node = parse_expr("etamake(\x22,q,100)");
+        assert_eq!(
+            node,
+            AstNode::FuncCall {
+                name: "etamake".to_string(),
+                args: vec![
+                    AstNode::LastResult,
+                    AstNode::Variable("q".to_string()),
+                    AstNode::Integer(100),
+                ],
+            }
+        );
+    }
+
+    #[test]
+    fn test_ditto_in_arithmetic() {
+        let node = parse_expr("\x22 + 1");
+        assert_eq!(
+            node,
+            AstNode::BinOp {
+                op: BinOp::Add,
+                lhs: Box::new(AstNode::LastResult),
+                rhs: Box::new(AstNode::Integer(1)),
+            }
+        );
+    }
+
+    // =======================================================
+    // PARSE-15: Proc option/local reorder
+    // =======================================================
+
+    #[test]
+    fn test_proc_option_before_local() {
+        let node = parse_expr("proc(n) option remember; local k; k; end");
+        if let AstNode::ProcDef { params, locals, options, body } = &node {
+            assert_eq!(params, &["n"]);
+            assert_eq!(locals, &["k"]);
+            assert_eq!(options, &["remember"]);
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("Expected ProcDef, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_proc_local_before_option() {
+        let node = parse_expr("proc(n) local k; option remember; k; end");
+        if let AstNode::ProcDef { params, locals, options, body } = &node {
+            assert_eq!(params, &["n"]);
+            assert_eq!(locals, &["k"]);
+            assert_eq!(options, &["remember"]);
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("Expected ProcDef, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_proc_option_only() {
+        let node = parse_expr("proc(n) option remember; n; end");
+        if let AstNode::ProcDef { locals, options, .. } = &node {
+            assert!(locals.is_empty());
+            assert_eq!(options, &["remember"]);
+        } else {
+            panic!("Expected ProcDef, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_proc_local_only() {
+        let node = parse_expr("proc(n) local k; k; end");
+        if let AstNode::ProcDef { locals, options, .. } = &node {
+            assert_eq!(locals, &["k"]);
+            assert!(options.is_empty());
+        } else {
+            panic!("Expected ProcDef, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn test_proc_neither_local_nor_option() {
+        let node = parse_expr("proc(n) n; end");
+        if let AstNode::ProcDef { locals, options, .. } = &node {
+            assert!(locals.is_empty());
+            assert!(options.is_empty());
+        } else {
+            panic!("Expected ProcDef, got {:?}", node);
         }
     }
 }
