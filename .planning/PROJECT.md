@@ -2,15 +2,15 @@
 
 ## What This Is
 
-An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (20,200+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) and an interactive REPL (`q-kangaroo` zero-dependency standalone executable, 12,100+ lines, 89 functions with Garvan-exact Maple syntax) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, and machine-assisted identity proving that Garvan's packages don't cover.
+An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (21,000+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) and an interactive REPL (`q-kangaroo` zero-dependency standalone executable, 14,000+ lines, 97 functions with Garvan-exact Maple syntax plus a scripting language) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, machine-assisted identity proving, bivariate series, and scripting that Garvan's packages don't cover.
 
 ## Core Value
 
-Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- so researchers can switch without losing any capability.
+Every function in Garvan's Maple packages works correctly in q-Kangaroo, producing matching output -- and every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly -- so researchers can switch without losing any capability.
 
 ## Current State
 
-**v2.0 shipped.** The project provides two access paths for researchers:
+**v3.0 shipped.** The project provides two access paths for researchers:
 
 **Python API** (`pip install q-kangaroo`):
 - 79 DSL functions across 13 groups with research-quality docstrings
@@ -21,18 +21,20 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 **Interactive REPL** (`q-kangaroo` standalone executable):
 - Zero-dependency standalone binary — static GMP/MPFR/MPC linking, no DLLs needed
 - Maple-exact syntax — researchers copy-paste from Garvan's Maple worksheets
-- 89 canonical function names with Garvan-compatible calling conventions
+- 97 canonical function names with Garvan-compatible calling conventions
+- Scripting language: for-loops, if/elif/else conditionals, procedures with local variables, memoization, early return
+- Bivariate series: tripleprod/quinprod/winquist with symbolic z variables, Laurent polynomial display
+- Expression operations: series() truncation, expand(), factor() cyclotomic factoring, subs() substitution
 - Bare symbol variables, q-monomials as parameters, symbolic labels in output
-- 8 new functions: theta, jac2prod, jac2series, qs2jaccombo, checkmult, checkprod, lqdegree0, findprod
 - Script execution (`q-kangaroo script.qk`), pipe input, `-c` expression mode
 - 7 distinct exit codes (sysexits-compatible) with filename:line:col error diagnostics
-- Tab completion (auto-paren), 9-category help system, persistent history
+- Tab completion (97 functions + 18 keywords), 10-category help system, persistent history
 - LaTeX output and save-to-file commands
 
 **Documentation:**
-- 89-function PDF reference manual (Typst, 4,625 lines) with formal mathematics
+- 97-function PDF reference manual (Typst) with formal mathematics and scripting chapter
 - Workflow-oriented Maple migration guide with two-column comparison tables
-- 6 worked examples with Garvan-canonical signatures, scholarly citations
+- 9 worked examples with Garvan-canonical signatures, scholarly citations
 - CI-compiled PDF included in GitHub release artifacts
 
 **Infrastructure:**
@@ -41,13 +43,13 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - q-Petkovsek recurrence solver, nonterminating proofs, transformation chain discovery
 
 **Codebase:**
-- 20,288 lines Rust core (`crates/qsym-core/src/`)
-- 12,198 lines CLI (`crates/qsym-cli/src/`)
+- ~21,000 lines Rust core (`crates/qsym-core/src/`)
+- ~14,000 lines CLI (`crates/qsym-cli/src/`)
 - 6,320 lines Python API (`crates/qsym-python/src/`)
-- 4,625 lines Typst manual (`manual/`)
+- ~5,000 lines Typst manual (`manual/`)
 - ~47,000 lines documentation (`docs/` including notebooks)
-- 863 Rust core tests + 570 CLI tests + 9 Python integration tests
-- 115 plans across 40 phases (v1.0-v2.0)
+- 879 Rust core tests + 772 CLI tests + 9 Python integration tests
+- 133 plans across 46 phases (v1.0-v3.0)
 
 ## Requirements
 
@@ -94,25 +96,15 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - Symbolic labels in relation discovery output, findcong auto-discover algorithm -- v2.0
 - Descending power display, full backward compatibility with v1.x signatures -- v2.0
 - 89-function PDF manual with Garvan-canonical signatures, workflow-oriented migration guide -- v2.0
+- Scripting language: for-loops, procedures (local vars, memoization, RETURN), if/elif/else conditionals -- v3.0
+- Expression operations: series() truncation, expand(), floor(), legendre() -- v3.0
+- Polynomial operations: factor() cyclotomic/irreducible, subs() substitution -- v3.0
+- Bivariate series: tripleprod/quinprod with symbolic z, winquist with symbolic a,b -- v3.0
+- 97-function PDF manual with scripting chapter and 3 qmaple.pdf worked examples -- v3.0
 
 ### Active
 
-**Current Milestone: v3.0 Scripting & Bivariate Series**
-
-**Goal:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo — adding scripting language features (for-loops, function definitions, series truncation, polynomial factoring, substitution) and bivariate series support (symbolic z in tripleprod/quinprod/winquist).
-
-**Target features:**
-- For-loops (`for n from 1 to N do ... od`)
-- Function/procedure definitions (`proc(args) ... end`)
-- If/else conditionals
-- series() truncation of computed expressions
-- factor() general polynomial factoring
-- subs() variable substitution in expressions
-- Bivariate (z,q) series for tripleprod, quinprod, winquist with symbolic z
-- jac2prod/jac2series operating on JacobiProduct expressions
-- findhomcombo etaoption parameter for eta-product display
-- quinprod prodid/seriesid identity display modes
-- Fractional q-powers (q^(1/3), q^(1/4))
+No active milestone. All planned milestones through v3.0 are complete.
 
 ### Future
 
@@ -181,6 +173,12 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | zqfactor deferred | Requires bivariate (z,q)-series infrastructure not yet in engine | Deferred |
 | Garvan-exact argument positions | Verified against Garvan's Maple source, not just docs | Good |
 | Workflow-oriented migration guide | Task-based sections ("Computing eta products") vs alphabetical alias table | Good |
+| BivariateSeries as BTreeMap<i64, FPS> | Laurent polynomial in z with FPS coefficients; natural for q-products | Good |
+| TrivariateSeries for winquist(a,b) | BTreeMap<(i64,i64), FPS> for two symbolic variables | Good |
+| AST interception for subs() | Catches Compare(Eq) before eval so q=1 isn't Bool | Good |
+| Cyclotomic trial division high-to-low | Scan from highest n down for correct factor discovery | Good |
+| Special-case help for language constructs | Match arms before FUNC_HELP lookup avoids count assertion changes | Good |
+| Direct Pochhammer for winquist bivariate | Instead of tripleprod decomposition; simpler, fewer truncation issues | Good |
 
 ---
-*Last updated: 2026-02-20 after v3.0 milestone started*
+*Last updated: 2026-02-21 after v3.0 milestone shipped*

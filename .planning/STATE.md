@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-20)
+See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v3.0 complete — all 46 phases shipped
+**Current focus:** v3.0 archived — all 46 phases shipped, ready for next milestone
 
 ## Current Position
 
-Phase: 46 of 46 (Documentation)
-Plan: 2 of 2 in phase 46 (phase 46 complete)
-Status: Phase 46 verified complete, v3.0 milestone complete (all 6 phases done)
-Last activity: 2026-02-21 -- Plan 46-02 executed (2 tasks, 7 files modified)
+Phase: 46 of 46 (all complete)
+Plan: All plans complete
+Status: v3.0 milestone archived
+Last activity: 2026-02-21 -- v3.0 milestone archived
 
 Progress: [==================================================] 100% (133 plans)
 
@@ -21,25 +21,10 @@ Progress: [==================================================] 100% (133 plans)
 ### Cumulative Summary
 
 - Total plans completed: 133
-- Total phases: 44 complete (v1.0-v2.0 + Phases 41-44), 1 complete (Phase 45 + gap closure), 1 complete (Phase 46)
+- Total phases: 46 complete (v1.0-v3.0)
 - Total milestones: 9 complete (v1.0-v1.6, v2.0, v3.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~9.5 hours
-
-| Phase | Plan | Duration | Tasks | Files |
-|-------|------|----------|-------|-------|
-| 42 | 01 | 4 min | 1 | 1 |
-| 42 | 02 | 7 min | 2 | 7 |
-| 43 | 01 | 9 min | 2 | 3 |
-| 43 | 02 | 7 min | 2 | 3 |
-| 44 | 01 | 8 min | 2 | 7 |
-| 44 | 02 | 5 min | 2 | 3 |
-| 45 | 01 | 7 min | 2 | 4 |
-| 45 | 02 | 11 min | 2 | 2 |
-| 45 | 03 | 15 min | 2 | 2 |
-| 45 | 04 | 10 min | 2 | 5 |
-| 46 | 01 | 4 min | 2 | 2 |
-| 46 | 02 | 8 min | 2 | 7 |
 
 ## Accumulated Context
 
@@ -47,57 +32,7 @@ Progress: [==================================================] 100% (133 plans)
 
 All decisions logged in PROJECT.md Key Decisions table and milestone archives.
 v2.0 decisions archived in .planning/milestones/v2.0-phases/.
-
-- 42-01: Integer-to-Rational promotion for mixed comparisons via From<QInt> for QRat
-- 42-01: is_truthy accepts Bool and Integer (nonzero=true), rejects other types
-- 42-01: Boolean operators require Bool operands for type safety
-- 42-01: For-loop uses closure pattern for guaranteed variable restore
-- 42-01: RETURN intercepted before normal arg evaluation in FuncCall
-- 42-02: Procedure struct uses Rc<RefCell<HashMap>> for shared memo table across clones
-- 42-02: OptionKw token name avoids collision with Rust Option type
-- 42-02: Local variables intentionally not initialized (returns Symbol, Maple behavior)
-- 42-02: parse_ident_list helper reused for params, locals, and options
-- 42-02: "end" keyword decrements proc_depth in REPL (od/fi handle for/if separately)
-- 43-01: Rational exponent arms use denom==1 check then delegate to Integer arms
-- 43-01: floor uses rug::Integer::from(floor_ref()) for zero-copy computation
-- 43-01: legendre validates p >= 3 and odd but does not check primality (matches Maple)
-- 43-01: L alias is case-insensitive via resolve_alias lowercase
-- 43-02: series() uses min(T, original_order) semantics -- never extends beyond computed data
-- 43-02: expand() 1-arg form uses env.default_order for JacobiProduct conversion
-- 43-02: expand() accepts 1 or 3 args, rejects 2 with clear error
-- 43-02: series() accepts JacobiProduct, Integer, Rational in addition to Series
-- 44-01: Cyclotomic trial division scans from highest n down to 1 for correct factor discovery
-- 44-01: fps_to_qratpoly requires POLYNOMIAL_ORDER sentinel to reject truncated series
-- 44-01: Negative leading coefficient handled by negating both scalar and primitive part
-- 44-01: Factor display uses descending degree order within each parenthesized factor
-- 44-02: AST interception catches Compare(Eq) before evaluation so q=1 is not converted to Bool
-- 44-02: evaluate_fps_at_rational handles negative exponents via inversion with zero-check
-- 44-02: Exponent scaling preserves POLYNOMIAL_ORDER sentinel for exact polynomials
-- 44-02: Mismatched variable name in subs returns target unchanged (no-op, not error)
-- 45-01: BivariateSeries uses BTreeMap<i64, FPS> for Laurent polynomial representation
-- 45-01: Arithmetic follows free-function pattern matching series::arithmetic module
-- 45-01: format_series made pub(crate) for reuse in bivariate coefficient display
-- 45-01: Multi-term FPS coefficients parenthesized in display, single-term inline
-- 45-01: Truncation propagation uses min(a, b) consistently across all operations
-- 45-02: Symbolic z detection via Symbol name comparison (z != q triggers bivariate path)
-- 45-02: Cross-validation uses z=-q^m to avoid product zeros at integer q-powers
-- 45-02: Quinprod validation uses direct coefficient verification against sum formula
-- 45-02: Bivariate sum forms have truncation boundary effects when evaluated at z=c*q^m
-- 45-03: Direct Pochhammer factor approach instead of tripleprod decomposition for winquist bivariate
-- 45-03: Global q-shift in combined factor loop handles negative q-offsets from (a/b;q)_inf
-- 45-03: Cross-validation at z=-1 avoids truncation boundary effects of z=c*q^m evaluation
-- 45-03: Garvan convention factor 6 is (q^2/(ab);q)_inf with offset 2-ap-bp
-- 45-04: Cross-validation uses constant q-monomials (a=-1,b=-1 and a=2,b=3) to avoid truncation boundary effects
-- 45-04: All 8 symbolic factors in trivariate loop, (q;q)^2 multiplied at end for efficiency
-- 45-04: No add/sub/mul on TrivariateSeries -- only negate and display supported initially
-- 46-01: Language construct help uses special-case match arms before FUNC_HELP lookup (avoids count assertion changes)
-- 46-01: 18 scripting keywords complete without trailing paren (unlike functions)
-- 46-01: RETURN in keyword_names (not function_names) since not in eval.rs ALL_FUNCTION_NAMES
-- 46-02: Function count is 97 (matching canonical_function_names), updated from 89 across 5 chapter files
-- 46-02: 13 function groups in Chapter 4 (was 9); Theta(3) + Jacobi Products(5) + new groups
-- 46-02: Proc syntax: local before option remember (parser requires this order)
-- 46-02: floor() needed for pentagonal recurrence (integer/integer = rational in q-Kangaroo)
-- 46-02: Chapter 4 "no control-flow" claim replaced with forward reference to scripting chapter
+v3.0 decisions archived in .planning/milestones/v3.0-ROADMAP.md.
 
 ### Pending Todos
 
@@ -110,5 +45,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 46-02-PLAN.md (Phase 46 complete)
-Resume file: .planning/phases/46-documentation/46-02-SUMMARY.md
+Stopped at: v3.0 milestone archived
+Resume: /gsd:new-milestone to start next milestone

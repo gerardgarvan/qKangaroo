@@ -246,3 +246,36 @@ See STATE.md Accumulated Context for full decision log.
 - 21 plans in ~120 min (avg 6 min/plan)
 - Timeline: 2026-02-19 to 2026-02-20 (2 days)
 - Total project: 115 plans across 40 phases (v1.0-v2.0)
+
+## v3.0: Scripting & Bivariate Series (Complete)
+
+**Shipped:** 2026-02-21
+**Phases:** 41-46 (14 plans, 6 phases)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 41 | Control flow parsing — for-loops, if/elif/else/fi conditionals, boolean/comparison operators, multiline REPL detection |
+| 42 | Procedures & evaluation — proc/end definitions, local variables, RETURN, option remember memoization, control flow evaluation |
+| 43 | Expression operations — series() truncation, expand() product expansion, runtime q-exponent arithmetic, floor(), legendre()/L() |
+| 44 | Polynomial operations — factor() cyclotomic/irreducible factoring over rationals, subs() variable substitution with AST interception |
+| 45 | Bivariate series — BivariateSeries (Laurent-in-z with FPS coefficients), TrivariateSeries, tripleprod/quinprod/winquist with symbolic z/a/b |
+| 46 | Documentation — scripting chapter in PDF manual, help entries for for/proc/if, 18 tab-completion keywords, 3 worked qmaple.pdf examples |
+
+### Key Accomplishments
+
+- Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo
+- Full scripting language: for-loops, procedures with memoization, if/elif/else conditionals, boolean/comparison operators
+- Bivariate Laurent polynomial series with symbolic z in tripleprod/quinprod, trivariate for winquist(a,b,q,T)
+- Cyclotomic polynomial factoring and variable substitution (including q=1 evaluation)
+- 97 canonical functions (up from 89 in v2.0), 18 scripting keywords with tab completion
+- PDF manual expanded with scripting chapter and 3 worked examples from Garvan's tutorial
+
+### Key Metrics
+
+- 21 v3.0 requirements: 21/21 complete
+- 22 feature commits, 772 CLI tests (up from 570)
+- 14 plans in ~95 min (avg 7 min/plan)
+- Timeline: 2026-02-20 to 2026-02-21 (2 days)
+- Total project: 133 plans across 46 phases (v1.0-v3.0)
