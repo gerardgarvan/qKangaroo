@@ -36,8 +36,26 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             continue;
         }
 
-        // String literals (double-quoted)
+        // Ditto operator vs string literal disambiguation.
+        // Bare `"` followed by a delimiter/operator/whitespace/EOF is the Maple ditto
+        // operator (reference to last result). Otherwise it starts a string literal.
         if b == b'"' {
+            let next = if pos + 1 < bytes.len() { bytes[pos + 1] } else { 0 };
+            let is_ditto = pos + 1 >= bytes.len()
+                || matches!(
+                    next,
+                    b',' | b')' | b';' | b':' | b'+' | b'-' | b'*' | b'/'
+                        | b'^' | b']' | b'<' | b'>' | b'=' | b' ' | b'\t'
+                        | b'\n' | b'\r'
+                );
+            if is_ditto {
+                tokens.push(SpannedToken {
+                    token: Token::Ditto,
+                    span: Span::new(pos, pos + 1),
+                });
+                pos += 1;
+                continue;
+            }
             let start = pos;
             pos += 1; // skip opening quote
             let mut value = String::new();
@@ -610,5 +628,76 @@ mod tests {
     fn test_lex_option_keyword() {
         let toks = tokens("option");
         assert_eq!(toks, vec![Token::OptionKw, Token::Eof]);
+    }
+
+    // =======================================================
+    // Ditto operator lexing
+    // =======================================================
+
+    #[test]
+    fn test_ditto_before_comma() {
+        let toks = tokens("f(\",q,100)");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("f".to_string()),
+                Token::LParen,
+                Token::Ditto,
+                Token::Comma,
+                Token::Ident("q".to_string()),
+                Token::Comma,
+                Token::Integer(100),
+                Token::RParen,
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ditto_before_rparen() {
+        let toks = tokens("f(\")");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("f".to_string()),
+                Token::LParen,
+                Token::Ditto,
+                Token::RParen,
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ditto_before_semicolon() {
+        let toks = tokens("\";");
+        assert_eq!(toks, vec![Token::Ditto, Token::Semi, Token::Eof]);
+    }
+
+    #[test]
+    fn test_ditto_before_space_plus() {
+        let toks = tokens("\" + 1");
+        assert_eq!(
+            toks,
+            vec![Token::Ditto, Token::Plus, Token::Integer(1), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_ditto_at_eof() {
+        let toks = tokens("\"");
+        assert_eq!(toks, vec![Token::Ditto, Token::Eof]);
+    }
+
+    #[test]
+    fn test_string_literal_still_works() {
+        let toks = tokens(r#""hello""#);
+        assert_eq!(toks, vec![Token::StringLit("hello".to_string()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_empty_string_still_works() {
+        let toks = tokens("\"\"");
+        assert_eq!(toks, vec![Token::StringLit("".to_string()), Token::Eof]);
     }
 }

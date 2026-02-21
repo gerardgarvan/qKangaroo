@@ -31,6 +31,8 @@ pub enum Token {
     Assign,
     /// `%` ditto operator (reference to last result).
     Percent,
+    /// `"` ditto operator (Maple-style reference to last result).
+    Ditto,
     /// `(`
     LParen,
     /// `)`
