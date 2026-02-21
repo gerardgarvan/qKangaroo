@@ -2012,15 +2012,13 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
         // Series / FractionalPowerSeries: primary use case (e.g. theta2(q,N)/q^(1/4))
         (Value::Series(fps), Value::FractionalPowerSeries { inner: div_fps, denom }) => {
             let rescaled = rescale_fps(fps, *denom);
-            let inv = arithmetic::invert(div_fps);
-            let result = arithmetic::mul(&rescaled, &inv);
+            let result = series_div_general(&rescaled, div_fps);
             Ok(simplify_fractional(result, *denom))
         }
         // FractionalPowerSeries / Series
         (Value::FractionalPowerSeries { inner, denom }, Value::Series(fps)) => {
             let rescaled = rescale_fps(fps, *denom);
-            let inv = arithmetic::invert(&rescaled);
-            let result = arithmetic::mul(inner, &inv);
+            let result = series_div_general(inner, &rescaled);
             Ok(simplify_fractional(result, *denom))
         }
         // FractionalPowerSeries / FractionalPowerSeries
@@ -2029,8 +2027,7 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let (lcd, fa, fb) = unify_denoms(*da, *db);
             let ra = if fa == 1 { a.clone() } else { rescale_fps(a, fa) };
             let rb = if fb == 1 { b.clone() } else { rescale_fps(b, fb) };
-            let inv = arithmetic::invert(&rb);
-            let result = arithmetic::mul(&ra, &inv);
+            let result = series_div_general(&ra, &rb);
             Ok(simplify_fractional(result, lcd))
         }
         // FractionalPowerSeries / scalar
@@ -2043,8 +2040,7 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
         // scalar / FractionalPowerSeries
         (_, Value::FractionalPowerSeries { inner, denom }) if value_to_qrat(&left).is_some() => {
             let const_fps = FormalPowerSeries::monomial(inner.variable(), value_to_qrat(&left).unwrap(), 0, inner.truncation_order());
-            let inv = arithmetic::invert(inner);
-            let result = arithmetic::mul(&const_fps, &inv);
+            let result = series_div_general(&const_fps, inner);
             Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
         }
         // JacobiProduct / JacobiProduct
@@ -2061,6 +2057,31 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             right: right.type_name().to_string(),
         }),
     }
+}
+
+/// Divide two FPS, handling the case where the divisor has a non-zero min_order.
+/// For monomial divisors (single-term), uses efficient shift + scalar division.
+/// For general divisors, shifts to normalize constant term, inverts, and multiplies.
+fn series_div_general(numer: &FormalPowerSeries, denom_fps: &FormalPowerSeries) -> FormalPowerSeries {
+    if let Some(min_ord) = denom_fps.min_order() {
+        if denom_fps.num_nonzero() == 1 {
+            // Pure monomial: c * q^k -- just shift and scale, no inversion needed
+            let c = denom_fps.coeff(min_ord);
+            let inv_c = QRat::one() / c;
+            let shifted = arithmetic::shift(numer, -min_ord);
+            return arithmetic::scalar_mul(&inv_c, &shifted);
+        }
+        if min_ord != 0 {
+            // Shift divisor down so it has a constant term
+            let shifted_denom = arithmetic::shift(denom_fps, -min_ord);
+            let inv = arithmetic::invert(&shifted_denom);
+            let shifted_numer = arithmetic::shift(numer, -min_ord);
+            return arithmetic::mul(&shifted_numer, &inv);
+        }
+    }
+    // Divisor already has a constant term
+    let inv = arithmetic::invert(denom_fps);
+    arithmetic::mul(numer, &inv)
 }
 
 /// Check if a FractionalPowerSeries can simplify back to a regular Series.
