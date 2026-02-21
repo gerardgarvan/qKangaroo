@@ -324,9 +324,9 @@ const FUNC_HELP: &[FuncHelp] = &[
     FuncHelp {
         name: "qfactor",
         signature: "qfactor(f, q) or qfactor(f, T) or qfactor(f, q, T)",
-        description: "Factor a polynomial series into (1-q^i) factors by top-down division.\n  Returns a dictionary with scalar, factors, and is_exact flag.\n  The 2-arg form qfactor(f, T) uses implicit variable q (Garvan convention).\n  Optional T limits the maximum factor index to search.",
+        description: "Factor a polynomial series into (1-q^i) factors by top-down division.\n  Returns a q-product factorization displayed as (1-q^i) factors.\n  The 2-arg form qfactor(f, T) uses implicit variable q (Garvan convention).\n  Optional T limits the maximum factor index to search.",
         example: "q> f := aqprod(q, q, 5)\nq> qfactor(f, q)",
-        example_output: "{scalar: 1, factors: {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}, is_exact: true}",
+        example_output: "(1-q)(1-q^2)(1-q^3)(1-q^4)(1-q^5)",
     },
     FuncHelp {
         name: "prodmake",

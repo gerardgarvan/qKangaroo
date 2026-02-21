@@ -1565,4 +1565,79 @@ mod tests {
         let result = format_latex(&val, &reg);
         assert_eq!(result, "q^{1/4} + O(q^{10})");
     }
+
+    // --- QProduct format tests ---
+
+    #[test]
+    fn format_qproduct_basic() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, 1);
+        factors.insert(2, 1);
+        factors.insert(3, 1);
+        let val = Value::QProduct { factors, scalar: QRat::one(), is_exact: true };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "(1-q)(1-q^2)(1-q^3)");
+    }
+
+    #[test]
+    fn format_qproduct_with_exponents() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, 2);
+        factors.insert(3, -1);
+        let val = Value::QProduct { factors, scalar: QRat::one(), is_exact: true };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "(1-q)^2(1-q^3)^(-1)");
+    }
+
+    #[test]
+    fn format_qproduct_with_scalar() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, 1);
+        let val = Value::QProduct { factors, scalar: QRat::from((3i64, 1i64)), is_exact: true };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "3*(1-q)");
+    }
+
+    #[test]
+    fn format_qproduct_neg_one_scalar() {
+        let mut factors = BTreeMap::new();
+        factors.insert(2, 1);
+        let val = Value::QProduct { factors, scalar: -QRat::one(), is_exact: true };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "-(1-q^2)");
+    }
+
+    #[test]
+    fn format_qproduct_empty_factors() {
+        let factors = BTreeMap::new();
+        let val = Value::QProduct { factors, scalar: QRat::from((5i64, 1i64)), is_exact: true };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "5");
+    }
+
+    #[test]
+    fn format_qproduct_approx() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, 1);
+        let val = Value::QProduct { factors, scalar: QRat::one(), is_exact: false };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "(1-q) (approx)");
+    }
+
+    #[test]
+    fn format_qproduct_latex_basic() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, 1);
+        factors.insert(2, 3);
+        let val = Value::QProduct { factors, scalar: QRat::one(), is_exact: true };
+        let symbols = SymbolRegistry::new();
+        let text = format_latex(&val, &symbols);
+        assert_eq!(text, "(1-q)(1-q^{2})^{3}");
+    }
 }
