@@ -81,7 +81,7 @@ The result `1` confirms the identity $(q;q)_infinity dot 1/(q;q)_infinity = 1$.
 
 == Getting Help
 
-At the `q>` prompt, type `help` to see a list of all 97 built-in functions
+At the `q>` prompt, type `help` to see a list of all 101 built-in functions
 grouped by category. To see detailed help for a specific function:
 
 #repl-block("q> help aqprod

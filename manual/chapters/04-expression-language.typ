@@ -128,7 +128,7 @@ triples for the upper and lower parameters of hypergeometric series:
 == Function Calls
 
 Functions are called with the standard `name(arg1, arg2, ...)` syntax.
-q-Kangaroo provides 97 built-in functions organized into 13 groups:
+q-Kangaroo provides 101 built-in functions organized into 15 groups:
 
 - *Products* (7): `aqprod`, `qbin`, `etaq`, `jacprod`, `tripleprod`, `quinprod`, `winquist`
 - *Partitions* (7): `numbpart`, `partition_gf`, `distinct_parts_gf`, `odd_parts_gf`, `bounded_parts_gf`, `rank_gf`, `crank_gf`
@@ -141,7 +141,9 @@ q-Kangaroo provides 97 built-in functions organized into 13 groups:
 - *Hypergeometric* (9): `phi`, `psi`, `try_summation`, `heine1`--`heine3`, `sears_transform`, `watson_transform`, `find_transformation_chain`
 - *Mock Theta & Bailey* (27): 20 mock theta functions, 3 Appell-Lerch/universal, 4 Bailey chain
 - *Identity Proving* (7): `prove_eta_id`, `search_identities`, `q_gosper`, `q_zeilberger`, `verify_wz`, `q_petkovsek`, `prove_nonterminating`
-- *Number Theory* (2): `floor`, `legendre`
+- *Number Theory* (4): `floor`, `legendre`, `min`, `max`
+- *Simplification* (1): `radsimp`
+- *Script Loading* (1): `read`
 - *Variable Management* (2): `anames`, `restart`
 
 The language also provides `for`-loops, `if`/`elif`/`else` conditionals,
@@ -213,7 +215,7 @@ Every expression in q-Kangaroo evaluates to one of the following types:
    functions like `findcong`.],
 
   [Dict],
-  [A key-value mapping. Produced by `prodmake`, `etamake`, `qfactor`,
+  [A key-value mapping. Produced by `prodmake`,
    `jacprodmake`, `mprodmake`, and `qetamake`.],
 
   [Pair],
@@ -253,6 +255,24 @@ Every expression in q-Kangaroo evaluates to one of the following types:
   [A Laurent polynomial in a symbolic variable (e.g., $z$) whose
    coefficients are $q$-series. Produced by `tripleprod(z, q, T)` and
    similar calls when the first argument is a Symbol.],
+
+  [TrivariateSeries],
+  [A Laurent polynomial in two symbolic variables (e.g., $a$, $b$) whose
+   coefficients are $q$-series. Produced by `winquist(a, b, q, T)` when
+   both base arguments are Symbols.],
+
+  [FractionalPowerSeries],
+  [A series with rational (fractional) exponents of $q$. Produced when
+   dividing a series by a fractional power of $q$, e.g.,
+   `theta2(q, 100)/q^(1/4)`.],
+
+  [QProduct],
+  [A $q$-product in factored form, displayed as
+   `(1-q)(1-q^2)...`. Produced by `qfactor`.],
+
+  [EtaQuotient],
+  [An eta quotient in standard notation, displayed as
+   `eta(k*tau)^n * ...`. Produced by `etamake`.],
 )
 
 Arithmetic operations automatically promote types where sensible: adding an

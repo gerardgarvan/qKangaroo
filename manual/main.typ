@@ -59,6 +59,7 @@
 #include "chapters/12-identity-proving.typ"
 #include "chapters/13-worked-examples.typ"
 #include "chapters/14-maple-migration.typ"
+#include "chapters/16-v4-changes.typ"
 #include "chapters/15-appendix.typ"
 
 // Back-of-book index is generated inside chapters/15-appendix.typ
