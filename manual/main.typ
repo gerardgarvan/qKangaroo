@@ -48,6 +48,7 @@
 #include "chapters/02-installation.typ"
 #include "chapters/03-cli-usage.typ"
 #include "chapters/04-expression-language.typ"
+#include "chapters/04b-scripting.typ"
 #include "chapters/05-products.typ"
 #include "chapters/06-partitions.typ"
 #include "chapters/07-theta.typ"

@@ -66,7 +66,7 @@ The Python bindings are available as a separate package:
   #raw("pip install q-kangaroo", lang: none)
 ]
 
-The Python API provides the same 89 functions through a `QSession` object.
+The Python API provides the same 97 functions through a `QSession` object.
 See the Python documentation for details.
 
 == Verifying Installation

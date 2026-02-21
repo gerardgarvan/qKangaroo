@@ -12,9 +12,10 @@ typed at the interactive prompt, written in a script file, or passed via the
 
 The expression language supports integer and rational arithmetic, formal
 power series in the indeterminate $q$, variable assignment, function calls,
-lists, and two statement terminators that control output. There are no
-control-flow statements (loops, conditionals) -- the language is designed
-for evaluating mathematical expressions, not general-purpose programming.
+lists, and two statement terminators that control output. The language also
+supports control-flow statements (`for`-loops, `if`/`elif`/`else`
+conditionals) and procedure definitions with `proc`/`end`, described in
+the next chapter.
 
 == Literals
 
@@ -127,19 +128,26 @@ triples for the upper and lower parameters of hypergeometric series:
 == Function Calls
 
 Functions are called with the standard `name(arg1, arg2, ...)` syntax.
-q-Kangaroo provides 89 built-in functions organized into 9 groups:
+q-Kangaroo provides 97 built-in functions organized into 13 groups:
 
 - *Products* (7): `aqprod`, `qbin`, `etaq`, `jacprod`, `tripleprod`, `quinprod`, `winquist`
 - *Partitions* (7): `numbpart`, `partition_gf`, `distinct_parts_gf`, `odd_parts_gf`, `bounded_parts_gf`, `rank_gf`, `crank_gf`
-- *Theta Functions* (4): `theta`, `theta2`, `theta3`, `theta4`
-- *Jacobi Products* (4): `JAC`, `jac2prod`, `jac2series`, `qs2jaccombo`
+- *Theta Functions* (3): `theta2`, `theta3`, `theta4`
+- *Jacobi Products* (5): `JAC`, `theta`, `jac2prod`, `jac2series`, `qs2jaccombo`
+- *Expression Operations* (2): `series`, `expand`
+- *Polynomial Operations* (2): `factor`, `subs`
 - *Series Analysis* (12): `sift`, `qdegree`, `lqdegree`, `lqdegree0`, `qfactor`, `prodmake`, `etamake`, `jacprodmake`, `mprodmake`, `qetamake`, `checkmult`, `checkprod`
 - *Relations* (12): `findlincombo`, `findhomcombo`, `findnonhomcombo`, `findlincombomodp`, `findhomcombomodp`, `findhom`, `findnonhom`, `findhommodp`, `findmaxind`, `findprod`, `findcong`, `findpoly`
 - *Hypergeometric* (9): `phi`, `psi`, `try_summation`, `heine1`--`heine3`, `sears_transform`, `watson_transform`, `find_transformation_chain`
 - *Mock Theta & Bailey* (27): 20 mock theta functions, 3 Appell-Lerch/universal, 4 Bailey chain
 - *Identity Proving* (7): `prove_eta_id`, `search_identities`, `q_gosper`, `q_zeilberger`, `verify_wz`, `q_petkovsek`, `prove_nonterminating`
+- *Number Theory* (2): `floor`, `legendre`
+- *Variable Management* (2): `anames`, `restart`
 
-See Chapters 5--12 for complete documentation of every function.
+The language also provides `for`-loops, `if`/`elif`/`else` conditionals,
+and `proc`/`end` procedure definitions; see the next chapter for details.
+
+See Chapters 5--12 for function documentation.
 
 == Statement Separators
 #index[statement separators]
@@ -227,6 +235,24 @@ Every expression in q-Kangaroo evaluates to one of the following types:
   [Infinity],
   [The `infinity` keyword. Used as a parameter to `aqprod` to request an
    infinite product.],
+
+  [Symbol],
+  [A bare name that is not bound to a value. Referencing an undefined
+   variable produces a Symbol. Used as a symbolic parameter in product
+   functions (e.g., `tripleprod(z, q, T)` where `z` is a Symbol).],
+
+  [Procedure],
+  [A user-defined function created with `proc ... end`. Can be called
+   like a built-in function. See the next chapter for details.],
+
+  [JacobiProduct],
+  [A symbolic Jacobi product `JAC(a,b)`. Supports `*`, `/`, and `^`
+   operations. Convert to a series with `jac2series` or `expand`.],
+
+  [BivariateSeries],
+  [A Laurent polynomial in a symbolic variable (e.g., $z$) whose
+   coefficients are $q$-series. Produced by `tripleprod(z, q, T)` and
+   similar calls when the first argument is a Symbol.],
 )
 
 Arithmetic operations automatically promote types where sensible: adding an
