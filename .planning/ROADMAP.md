@@ -135,7 +135,7 @@ See `.planning/milestones/v3.0-ROADMAP.md` for details.
 
 ### v4.0 Full qmaple.pdf Parity (Phases 47-51)
 
-- [ ] **Phase 47: Parser & Language Extensions** - Ditto operator, arrow lambdas, fractional q-powers, option/local reorder
+- [x] **Phase 47: Parser & Language Extensions** - Ditto operator, arrow lambdas, fractional q-powers, option/local reorder -- 2026-02-21
 - [ ] **Phase 48: Function Fixes** - aqprod truncation, theta/qfactor 2-arg signatures, min function
 - [ ] **Phase 49: Display Formatting** - qfactor product-form display, etamake eta-notation display
 - [ ] **Phase 50: New Functions** - jac2series, radsimp, quinprod identity modes, indexed subs
@@ -266,7 +266,7 @@ Plans:
 | 44. Polynomial Operations | v3.0 | 2/2 | Complete | 2026-02-20 |
 | 45. Bivariate Series | v3.0 | 4/4 | Complete | 2026-02-21 |
 | 46. Documentation | v3.0 | 2/2 | Complete | 2026-02-21 |
-| 47. Parser & Language Extensions | v4.0 | 0/3 | Not started | - |
+| 47. Parser & Language Extensions | v4.0 | 3/3 | Complete | 2026-02-21 |
 | 48. Function Fixes | v4.0 | 0/2 | Not started | - |
 | 49. Display Formatting | v4.0 | 0/2 | Not started | - |
 | 50. New Functions | v4.0 | 0/2 | Not started | - |

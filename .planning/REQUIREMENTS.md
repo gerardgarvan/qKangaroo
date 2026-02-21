@@ -55,11 +55,11 @@
 | FIX-03 | Phase 49 | Pending |
 | FIX-04 | Phase 49 | Pending |
 | FIX-05 | Phase 48 | Pending |
-| LANG-01 | Phase 47 | Pending |
-| LANG-02 | Phase 47 | Pending |
+| LANG-01 | Phase 47 | Complete |
+| LANG-02 | Phase 47 | Complete |
 | LANG-03 | Phase 48 | Pending |
-| LANG-04 | Phase 47 | Pending |
-| LANG-05 | Phase 47 | Pending |
+| LANG-04 | Phase 47 | Complete |
+| LANG-05 | Phase 47 | Complete |
 | FUNC-01 | Phase 50 | Pending |
 | FUNC-02 | Phase 50 | Pending |
 | FUNC-03 | Phase 50 | Pending |
