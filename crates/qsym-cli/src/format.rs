@@ -48,7 +48,7 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::BivariateSeries(bs) => format_bivariate(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate(ts, symbols),
         Value::FractionalPowerSeries { inner, denom } => {
-            format!("FPS(1/{}) {}", denom, format_series(inner, symbols))
+            format_fractional_series(inner, *denom, symbols)
         }
         Value::Procedure(proc) => {
             let params = proc.params.join(", ");
@@ -204,6 +204,207 @@ pub(crate) fn format_series(fps: &FormalPowerSeries, symbols: &SymbolRegistry) -
     }
 
     out
+}
+
+// ---------------------------------------------------------------------------
+// Fractional power series formatting
+// ---------------------------------------------------------------------------
+
+/// Compute GCD of two i64 values.
+fn gcd_i64(a: i64, b: i64) -> i64 {
+    let (mut x, mut y) = (a.abs(), b.abs());
+    while y != 0 {
+        let tmp = y;
+        y = x % y;
+        x = tmp;
+    }
+    x
+}
+
+/// Format the exponent for a fractional power series term.
+/// Returns the string representation of the exponent k/denom in reduced form.
+/// For integer exponents (k divisible by denom), returns the integer.
+fn format_frac_exponent(k: i64, denom: i64) -> (i64, i64) {
+    let g = gcd_i64(k, denom);
+    (k / g, denom / g)
+}
+
+/// Format a `FractionalPowerSeries` as a human-readable string.
+///
+/// Terms are displayed with fractional exponents: `q^(1/4)`, `q^(3/2)`.
+/// When the reduced exponent is an integer, it displays as `q^N` or just `q`.
+/// Fractions are reduced to lowest terms (e.g. key=2, denom=4 -> `q^(1/2)`).
+fn format_fractional_series(fps: &FormalPowerSeries, denom: i64, symbols: &SymbolRegistry) -> String {
+    let var = symbols.name(fps.variable());
+    let trunc = fps.truncation_order();
+    let is_polynomial = trunc >= POLYNOMIAL_ORDER;
+    let mut first = true;
+    let mut out = String::new();
+
+    for (&k, c) in fps.iter().rev() {
+        let is_negative = c.0.cmp0() == Ordering::Less;
+        let abs_c = if is_negative { -c.clone() } else { c.clone() };
+
+        let abs_is_one = abs_c.0.numer().cmp0() != Ordering::Equal
+            && *abs_c.0.numer() == *abs_c.0.denom();
+
+        // Reduce k/denom to lowest terms
+        let (rn, rd) = format_frac_exponent(k, denom);
+
+        if first {
+            if is_negative {
+                out.push('-');
+            }
+            if rn == 0 {
+                // Constant term
+                let _ = write!(out, "{}", abs_c);
+            } else if abs_is_one {
+                write_frac_var(&mut out, var, rn, rd);
+            } else {
+                let _ = write!(out, "{}*", abs_c);
+                write_frac_var(&mut out, var, rn, rd);
+            }
+            first = false;
+        } else {
+            if is_negative {
+                let _ = write!(out, " - ");
+            } else {
+                let _ = write!(out, " + ");
+            }
+            if rn == 0 {
+                let _ = write!(out, "{}", abs_c);
+            } else if abs_is_one {
+                write_frac_var(&mut out, var, rn, rd);
+            } else {
+                let _ = write!(out, "{}*", abs_c);
+                write_frac_var(&mut out, var, rn, rd);
+            }
+        }
+    }
+
+    // Append truncation order
+    if !is_polynomial {
+        let (tn, td) = format_frac_exponent(trunc, denom);
+        if first {
+            out.push_str("O(");
+            write_frac_var(&mut out, var, tn, td);
+            out.push(')');
+        } else {
+            let _ = write!(out, " + O(");
+            write_frac_var(&mut out, var, tn, td);
+            out.push(')');
+        }
+    } else if first {
+        out.push('0');
+    }
+
+    out
+}
+
+/// Write a variable with fractional or integer exponent.
+/// For rd==1: uses standard notation (var, var^N).
+/// For rd>1: uses var^(rn/rd) notation.
+fn write_frac_var(out: &mut String, var: &str, rn: i64, rd: i64) {
+    if rd == 1 {
+        // Integer exponent
+        if rn == 1 {
+            let _ = write!(out, "{}", var);
+        } else {
+            let _ = write!(out, "{}^{}", var, rn);
+        }
+    } else {
+        // Fractional exponent
+        let _ = write!(out, "{}^({}/{})", var, rn, rd);
+    }
+}
+
+/// Format a `FractionalPowerSeries` as LaTeX.
+///
+/// Uses `q^{k/d}` or `q^{\frac{k}{d}}` notation for fractional exponents.
+fn format_fractional_series_latex(fps: &FormalPowerSeries, denom: i64, symbols: &SymbolRegistry) -> String {
+    let var = symbols.name(fps.variable());
+    let trunc = fps.truncation_order();
+    let is_polynomial = trunc >= POLYNOMIAL_ORDER;
+    let mut first = true;
+    let mut out = String::new();
+
+    for (&k, c) in fps.iter().rev() {
+        let (rn, rd) = format_frac_exponent(k, denom);
+        latex_frac_term(&mut out, first, rn, rd, c, var);
+        first = false;
+    }
+
+    // Truncation order
+    if !is_polynomial {
+        let (tn, td) = format_frac_exponent(trunc, denom);
+        if first {
+            let _ = write!(out, "O(");
+            write_frac_var_latex(&mut out, var, tn, td);
+            out.push(')');
+        } else {
+            let _ = write!(out, " + O(");
+            write_frac_var_latex(&mut out, var, tn, td);
+            out.push(')');
+        }
+    } else if first {
+        out.push('0');
+    }
+
+    out
+}
+
+/// Format a single term of a LaTeX fractional series.
+fn latex_frac_term(out: &mut String, first: bool, rn: i64, rd: i64, c: &QRat, var: &str) {
+    let is_negative = c.0.cmp0() == Ordering::Less;
+    let abs_c = if is_negative { -c.clone() } else { c.clone() };
+    let abs_numer = abs_c.numer().clone();
+    let abs_denom = abs_c.denom().clone();
+    let abs_is_one = abs_numer.cmp0() != Ordering::Equal && abs_numer == abs_denom;
+    let denom_is_one = abs_denom == *rug::Integer::ONE;
+
+    // Sign
+    if first {
+        if is_negative {
+            out.push('-');
+        }
+    } else if is_negative {
+        let _ = write!(out, " - ");
+    } else {
+        let _ = write!(out, " + ");
+    }
+
+    // Format coefficient + variable
+    if rn == 0 {
+        // Constant term
+        if denom_is_one {
+            let _ = write!(out, "{}", abs_numer);
+        } else {
+            let _ = write!(out, "\\frac{{{}}}{{{}}}", abs_numer, abs_denom);
+        }
+    } else if abs_is_one {
+        write_frac_var_latex(out, var, rn, rd);
+    } else {
+        let coeff_str = if denom_is_one {
+            format!("{}", abs_numer)
+        } else {
+            format!("\\frac{{{}}}{{{}}}", abs_numer, abs_denom)
+        };
+        let _ = write!(out, "{} ", coeff_str);
+        write_frac_var_latex(out, var, rn, rd);
+    }
+}
+
+/// Write a variable with fractional or integer exponent in LaTeX.
+fn write_frac_var_latex(out: &mut String, var: &str, rn: i64, rd: i64) {
+    if rd == 1 {
+        if rn == 1 {
+            let _ = write!(out, "{}", var);
+        } else {
+            let _ = write!(out, "{}^{{{}}}", var, rn);
+        }
+    } else {
+        let _ = write!(out, "{}^{{{}/{}}}", var, rn, rd);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -646,7 +847,7 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::BivariateSeries(bs) => format_bivariate_latex(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate_latex(ts, symbols),
         Value::FractionalPowerSeries { inner, denom } => {
-            format!("\\text{{FPS}}(1/{}) {}", denom, fps_to_latex(inner, symbols))
+            format_fractional_series_latex(inner, *denom, symbols)
         }
         Value::Procedure(proc) => {
             format!("\\text{{proc}}({})", proc.params.join(", "))
@@ -1155,5 +1356,119 @@ mod tests {
         // Multi-term coefficient should be parenthesized: (q^2 + q)*z
         assert!(result.contains("("), "expected parenthesized coefficient in: {}", result);
         assert!(result.contains(")*z"), "expected ')*z' in: {}", result);
+    }
+
+    // -- FractionalPowerSeries format tests ------------------------------------
+
+    #[test]
+    fn format_fractional_simple() {
+        // q^(1/4): denom=4, inner monomial at key 1 coeff 1
+        let (reg, sym_q) = q_reg();
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 4 };
+        let result = format_value(&val, &reg);
+        assert_eq!(result, "q^(1/4)");
+    }
+
+    #[test]
+    fn format_fractional_multiple_terms() {
+        // Inner has keys 1 (coeff 2) and 3 (coeff -1) with denom=2
+        // -> 2*q^(1/2) - q^(3/2)  (displayed descending)
+        // Wait -- descending means key 3 first, then key 1
+        let (reg, sym_q) = q_reg();
+        let mut coeffs = std::collections::BTreeMap::new();
+        coeffs.insert(1, QRat::from((2i64, 1i64)));
+        coeffs.insert(3, -QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 2 };
+        let result = format_value(&val, &reg);
+        // Descending: -q^(3/2) + 2*q^(1/2)
+        assert_eq!(result, "-q^(3/2) + 2*q^(1/2)");
+    }
+
+    #[test]
+    fn format_fractional_integer_exponent() {
+        // Inner has key 4 (coeff 1) with denom=4 -> 4/4 = 1 -> just "q"
+        let (reg, sym_q) = q_reg();
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 4, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 4 };
+        let result = format_value(&val, &reg);
+        assert_eq!(result, "q");
+    }
+
+    #[test]
+    fn format_fractional_mixed_exponents() {
+        // Inner has keys 2 (coeff 1) and 4 (coeff 1) with denom=4
+        // key 2 -> 2/4 = 1/2, key 4 -> 4/4 = 1
+        // Descending: q + q^(1/2)
+        let (reg, sym_q) = q_reg();
+        let mut coeffs = std::collections::BTreeMap::new();
+        coeffs.insert(2, QRat::one());
+        coeffs.insert(4, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 4 };
+        let result = format_value(&val, &reg);
+        assert_eq!(result, "q + q^(1/2)");
+    }
+
+    #[test]
+    fn format_fractional_with_truncation() {
+        // Inner monomial at key 1, denom=4, truncation_order=40
+        // (40/4 = 10, so O(q^10))
+        let (reg, sym_q) = q_reg();
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 1, 40);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 4 };
+        let result = format_value(&val, &reg);
+        assert_eq!(result, "q^(1/4) + O(q^10)");
+    }
+
+    #[test]
+    fn format_fractional_reduces_fraction() {
+        // Inner key 2, denom=4, coeff 1 -> 2/4 reduces to 1/2 -> q^(1/2)
+        let (reg, sym_q) = q_reg();
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 2, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 4 };
+        let result = format_value(&val, &reg);
+        assert_eq!(result, "q^(1/2)");
+    }
+
+    #[test]
+    fn format_fractional_constant_term() {
+        // Inner key 0, denom=2, coeff 3 -> constant term "3"
+        let (reg, sym_q) = q_reg();
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::from((3i64, 1i64)), 0, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 2 };
+        let result = format_value(&val, &reg);
+        assert_eq!(result, "3");
+    }
+
+    #[test]
+    fn format_fractional_latex_simple() {
+        let (reg, sym_q) = q_reg();
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 1, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 4 };
+        let result = format_latex(&val, &reg);
+        assert_eq!(result, "q^{1/4}");
+    }
+
+    #[test]
+    fn format_fractional_latex_multiple_terms() {
+        let (reg, sym_q) = q_reg();
+        let mut coeffs = std::collections::BTreeMap::new();
+        coeffs.insert(1, QRat::from((2i64, 1i64)));
+        coeffs.insert(3, -QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym_q, coeffs, POLYNOMIAL_ORDER);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 2 };
+        let result = format_latex(&val, &reg);
+        assert_eq!(result, "-q^{3/2} + 2 q^{1/2}");
+    }
+
+    #[test]
+    fn format_fractional_latex_with_truncation() {
+        let (reg, sym_q) = q_reg();
+        let fps = FormalPowerSeries::monomial(sym_q, QRat::one(), 1, 40);
+        let val = Value::FractionalPowerSeries { inner: fps, denom: 4 };
+        let result = format_latex(&val, &reg);
+        assert_eq!(result, "q^{1/4} + O(q^{10})");
     }
 }
