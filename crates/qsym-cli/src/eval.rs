@@ -3623,10 +3623,27 @@ pub fn dispatch(
         }
 
         "qfactor" => {
-            // Maple: qfactor(f, q) or qfactor(f, q, T)
+            // Maple: qfactor(f, q) or qfactor(f, T) or qfactor(f, q, T)
             if args.len() == 2 {
                 let fps = extract_series(name, args, 0)?;
-                let _sym = extract_symbol_id(name, args, 1, env)?;
+                match &args[1] {
+                    Value::Symbol(_) => {
+                        // qfactor(f, q) -- existing form, explicit variable
+                        let _sym = extract_symbol_id(name, args, 1, env)?;
+                    }
+                    Value::Integer(_) => {
+                        // qfactor(f, T) -- Garvan 2-arg form, implicit variable q
+                        let _t = extract_i64(name, args, 1)?;
+                    }
+                    other => {
+                        return Err(EvalError::ArgType {
+                            function: name.to_string(),
+                            arg_index: 1,
+                            expected: "Symbol or Integer",
+                            got: other.type_name().to_string(),
+                        });
+                    }
+                }
                 let result = qseries::qfactor(&fps);
                 Ok(q_factorization_to_value(&result))
             } else if args.len() == 3 {
@@ -4777,6 +4794,48 @@ pub fn dispatch(
             Ok(Value::Integer(QInt::from(result as i64)))
         }
 
+        "min" => {
+            if args.is_empty() {
+                return Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1 or more".to_string(),
+                    got: 0,
+                    signature: get_signature(name),
+                });
+            }
+            let mut min_idx = 0;
+            let mut min_val = extract_qrat(name, args, 0)?;
+            for i in 1..args.len() {
+                let val = extract_qrat(name, args, i)?;
+                if val < min_val {
+                    min_val = val;
+                    min_idx = i;
+                }
+            }
+            Ok(args[min_idx].clone())
+        }
+
+        "max" => {
+            if args.is_empty() {
+                return Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1 or more".to_string(),
+                    got: 0,
+                    signature: get_signature(name),
+                });
+            }
+            let mut max_idx = 0;
+            let mut max_val = extract_qrat(name, args, 0)?;
+            for i in 1..args.len() {
+                let val = extract_qrat(name, args, i)?;
+                if val > max_val {
+                    max_val = val;
+                    max_idx = i;
+                }
+            }
+            Ok(args[max_idx].clone())
+        }
+
         // =================================================================
         // Polynomial Operations (POLY-01)
         // =================================================================
@@ -5483,7 +5542,7 @@ fn get_signature(name: &str) -> String {
         "jacprodmake" => "(f, q, T) or (f, q, T, P)".to_string(),
         "mprodmake" => "(f, q, T)".to_string(),
         "qetamake" => "(f, q, T)".to_string(),
-        "qfactor" => "(f, q) or (f, q, T)".to_string(),
+        "qfactor" => "(f, q) or (f, T) or (f, q, T)".to_string(),
         // Group 5: Relation Discovery
         "findlincombo" => "(f, L, SL, q, topshift)".to_string(),
         "findhomcombo" => "(f, L, q, n, topshift)".to_string(),
@@ -5545,6 +5604,8 @@ fn get_signature(name: &str) -> String {
         // Group P: Number theory
         "floor" => "(x)".to_string(),
         "legendre" => "(m, p)".to_string(),
+        "min" => "(a, b, ...) -- minimum of integer/rational values".to_string(),
+        "max" => "(a, b, ...) -- maximum of integer/rational values".to_string(),
         // Group R: Polynomial operations
         "factor" => "(poly)".to_string(),
         // Group S: Substitution
@@ -5588,7 +5649,7 @@ fn resolve_alias(name: &str) -> String {
 // Fuzzy matching for "Did you mean?" suggestions
 // ---------------------------------------------------------------------------
 
-/// All canonical function names (84 functions) for fuzzy matching.
+/// All canonical function names (86 functions) for fuzzy matching.
 const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern A: Series generators
     "aqprod", "qbin", "etaq", "jacprod", "tripleprod", "quinprod", "winquist",
@@ -5638,7 +5699,7 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern Q: Expression operations
     "series", "expand",
     // Pattern P: Number theory
-    "floor", "legendre",
+    "floor", "legendre", "min", "max",
     // Pattern R: Polynomial operations
     "factor",
     // Pattern S: Substitution
@@ -11036,5 +11097,167 @@ mod tests {
         } else {
             panic!("expected Series");
         }
+    }
+
+    // --- qfactor 2-arg Integer detection (FIX-05) ---
+
+    #[test]
+    fn dispatch_qfactor_2arg_integer() {
+        let mut env = make_env();
+        // Create a series via qbin(5,2,20)
+        let qb = dispatch("qbin", &[
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        // qfactor(f, 100) with Integer second arg
+        let val = dispatch("qfactor", &[
+            qb,
+            Value::Integer(QInt::from(100i64)),
+        ], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"scalar"), "qfactor result should have scalar key");
+            assert!(keys.contains(&"factors"), "qfactor result should have factors key");
+            assert!(keys.contains(&"is_exact"), "qfactor result should have is_exact key");
+        } else {
+            panic!("expected Dict from qfactor(f, Integer), got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_qfactor_2arg_symbol_still_works() {
+        let mut env = make_env();
+        let qb = dispatch("qbin", &[
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(20i64)),
+        ], &mut env).unwrap();
+        // qfactor(f, q) with Symbol second arg (regression test)
+        let val = dispatch("qfactor", &[
+            qb,
+            Value::Symbol("q".to_string()),
+        ], &mut env).unwrap();
+        if let Value::Dict(entries) = &val {
+            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
+            assert!(keys.contains(&"scalar"));
+            assert!(keys.contains(&"factors"));
+            assert!(keys.contains(&"is_exact"));
+        } else {
+            panic!("expected Dict from qfactor(f, Symbol), got {:?}", val);
+        }
+    }
+
+    // --- min/max variadic functions (LANG-03) ---
+
+    #[test]
+    fn dispatch_min_integers() {
+        let mut env = make_env();
+        let val = dispatch("min", &[
+            Value::Integer(QInt::from(3i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(4i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        if let Value::Integer(n) = &val {
+            assert_eq!(*n, QInt::from(1i64), "min(3,1,4,1,5) should be 1");
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_min_rationals() {
+        let mut env = make_env();
+        let val = dispatch("min", &[
+            Value::Rational(QRat::from((1i64, 3i64))),
+            Value::Rational(QRat::from((1i64, 2i64))),
+        ], &mut env).unwrap();
+        if let Value::Rational(r) = &val {
+            assert_eq!(*r, QRat::from((1i64, 3i64)), "min(1/3, 1/2) should be 1/3");
+        } else {
+            panic!("expected Rational, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_min_mixed() {
+        let mut env = make_env();
+        let val = dispatch("min", &[
+            Value::Integer(QInt::from(2i64)),
+            Value::Rational(QRat::from((3i64, 2i64))),
+        ], &mut env).unwrap();
+        if let Value::Rational(r) = &val {
+            assert_eq!(*r, QRat::from((3i64, 2i64)), "min(2, 3/2) should be 3/2");
+        } else {
+            panic!("expected Rational, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_min_single() {
+        let mut env = make_env();
+        let val = dispatch("min", &[
+            Value::Integer(QInt::from(7i64)),
+        ], &mut env).unwrap();
+        if let Value::Integer(n) = &val {
+            assert_eq!(*n, QInt::from(7i64), "min(7) should be 7");
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_min_empty_error() {
+        let mut env = make_env();
+        let result = dispatch("min", &[], &mut env);
+        assert!(result.is_err(), "min() with no args should error");
+        if let Err(EvalError::WrongArgCount { function, .. }) = result {
+            assert_eq!(function, "min");
+        } else {
+            panic!("expected WrongArgCount error");
+        }
+    }
+
+    #[test]
+    fn dispatch_max_integers() {
+        let mut env = make_env();
+        let val = dispatch("max", &[
+            Value::Integer(QInt::from(3i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(5i64)),
+        ], &mut env).unwrap();
+        if let Value::Integer(n) = &val {
+            assert_eq!(*n, QInt::from(5i64), "max(3,1,5) should be 5");
+        } else {
+            panic!("expected Integer, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_max_rationals() {
+        let mut env = make_env();
+        let val = dispatch("max", &[
+            Value::Rational(QRat::from((1i64, 3i64))),
+            Value::Rational(QRat::from((1i64, 2i64))),
+        ], &mut env).unwrap();
+        if let Value::Rational(r) = &val {
+            assert_eq!(*r, QRat::from((1i64, 2i64)), "max(1/3, 1/2) should be 1/2");
+        } else {
+            panic!("expected Rational, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn dispatch_min_preserves_integer_type() {
+        let mut env = make_env();
+        let val = dispatch("min", &[
+            Value::Integer(QInt::from(3i64)),
+            Value::Integer(QInt::from(1i64)),
+        ], &mut env).unwrap();
+        // Must return Integer, not Rational (avoids "1/1" display)
+        assert!(matches!(val, Value::Integer(_)),
+            "min of integers should return Integer, got {:?}", val);
     }
 }
