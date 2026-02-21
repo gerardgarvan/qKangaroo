@@ -333,6 +333,27 @@ impl Parser {
                 }
             }
 
+            // Subscript: X[i] -- index into a variable
+            if *self.peek() == Token::LBracket {
+                if 19 < min_bp { break; } // same precedence as function call
+                if let AstNode::Variable(ref name) = lhs {
+                    let saved_name = name.clone();
+                    self.advance(); // consume [
+                    let index = self.expr_bp(0)?;
+                    self.expect(&Token::RBracket, "']' to close subscript")?;
+                    if let AstNode::Integer(i) = &index {
+                        lhs = AstNode::Variable(format!("{}[{}]", saved_name, i));
+                        continue;
+                    }
+                    // Non-integer subscript
+                    return Err(ParseError::new(
+                        "subscript index must be an integer".to_string(),
+                        self.peek_span(),
+                    ));
+                }
+                break; // Not a variable on the left, don't subscript
+            }
+
             // Assignment: l_bp = 2, r_bp = 1
             if *self.peek() == Token::Assign {
                 if 2 < min_bp {
@@ -1901,6 +1922,35 @@ mod tests {
             assert!(matches!(body.as_ref(), AstNode::FuncCall { .. }));
         } else {
             panic!("Expected Lambda, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn parse_subscript_variable() {
+        let node = parse_expr("X[1]");
+        assert_eq!(node, AstNode::Variable("X[1]".to_string()));
+    }
+
+    #[test]
+    fn parse_subscript_in_assignment() {
+        let node = parse_expr("X[1] := 5");
+        if let AstNode::Assign { name, value } = &node {
+            assert_eq!(name, "X[1]");
+            assert_eq!(**value, AstNode::Integer(5));
+        } else {
+            panic!("Expected Assign, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn parse_subscript_in_expression() {
+        let node = parse_expr("X[1] + X[2]");
+        if let AstNode::BinOp { op, lhs, rhs } = &node {
+            assert_eq!(*op, BinOp::Add);
+            assert_eq!(**lhs, AstNode::Variable("X[1]".to_string()));
+            assert_eq!(**rhs, AstNode::Variable("X[2]".to_string()));
+        } else {
+            panic!("Expected BinOp(Add), got {:?}", node);
         }
     }
 }

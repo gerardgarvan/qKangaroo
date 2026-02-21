@@ -1083,34 +1083,39 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 return Err(EvalError::EarlyReturn(val));
             }
 
-            // Special-case: subs(var=val, expr) with AST-level interception
-            // The first arg is parsed as AstNode::Compare(Eq), which we intercept
+            // Special-case: subs(var=val, ..., expr) with AST-level interception
+            // Each substitution arg is parsed as AstNode::Compare(Eq), which we intercept
             // before evaluation to avoid q=1 becoming Bool.
             if name == "subs" {
-                if args.len() != 2 {
+                if args.len() < 2 {
                     return Err(EvalError::WrongArgCount {
                         function: "subs".to_string(),
-                        expected: "2".to_string(),
+                        expected: "at least 2".to_string(),
                         got: args.len(),
-                        signature: "subs(var=val, expr)".to_string(),
+                        signature: "subs(var=val, ..., expr)".to_string(),
                     });
                 }
-                match &args[0] {
-                    AstNode::Compare { op: CompOp::Eq, lhs, rhs } => {
-                        let var_name = match lhs.as_ref() {
-                            AstNode::Variable(vname) => vname.clone(),
-                            _ => return Err(EvalError::Other(
-                                "subs: left side of = must be a variable name".into()
-                            )),
-                        };
-                        let sub_value = eval_expr(rhs, env)?;
-                        let target = eval_expr(&args[1], env)?;
-                        return perform_substitution(&var_name, sub_value, target, env);
+                // Evaluate target (last argument)
+                let mut target = eval_expr(&args[args.len() - 1], env)?;
+                // Process each substitution pair (all args except the last)
+                for i in 0..(args.len() - 1) {
+                    match &args[i] {
+                        AstNode::Compare { op: CompOp::Eq, lhs, rhs } => {
+                            let var_name = match lhs.as_ref() {
+                                AstNode::Variable(vname) => vname.clone(),
+                                _ => return Err(EvalError::Other(
+                                    "subs: left side of = must be a variable name".into()
+                                )),
+                            };
+                            let sub_value = eval_expr(rhs, env)?;
+                            target = perform_substitution(&var_name, sub_value, target, env)?;
+                        }
+                        _ => return Err(EvalError::Other(
+                            "subs: each substitution must be var=value".into()
+                        )),
                     }
-                    _ => return Err(EvalError::Other(
-                        "subs: first argument must be var=value (e.g., subs(q=1, expr))".into()
-                    )),
                 }
+                return Ok(target);
             }
 
             // Check if name refers to a user-defined procedure
@@ -5768,7 +5773,7 @@ fn get_signature(name: &str) -> String {
         // Group R: Polynomial operations
         "factor" => "(poly)".to_string(),
         // Group S: Substitution
-        "subs" => "(var=val, expr)".to_string(),
+        "subs" => "(var=val, ..., expr)".to_string(),
         _ => String::new(),
     }
 }
@@ -11574,5 +11579,39 @@ mod tests {
         let text = format_value(&result, &env.symbols);
         assert!(text.contains("eta(tau)"), "expected eta(tau) in: {}", text);
         assert!(!text.contains("factors"), "should not show raw dict: {}", text);
+    }
+
+    #[test]
+    fn subs_multi_substitution() {
+        // subs(q=1, 1 + q + q^2) should still work with single pair (backward compat)
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("subs(q=0, 1 + q + q^2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        // subs(q=0, 1+q+q^2) should give constant term 1
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(1i64), "subs(q=0, 1+q+q^2) should be 1");
+        } else if let Value::Rational(r) = &result {
+            assert_eq!(*r, QRat::from((1i64, 1i64)), "subs(q=0, 1+q+q^2) should be 1");
+        } else {
+            panic!("expected Integer or Rational, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn subs_indexed_variable() {
+        // Test that indexed variable names work -- X[1] is just a string name
+        use crate::parser::parse;
+        let mut env = make_env();
+        // Assign X[1] then substitute
+        let stmts = parse("X[1] := 42; X[1]").unwrap();
+        for stmt in &stmts {
+            let _ = eval_stmt(stmt, &mut env);
+        }
+        let result = env.get_var("X[1]").cloned();
+        assert!(result.is_some(), "X[1] should be defined");
+        if let Some(Value::Integer(n)) = result {
+            assert_eq!(n, QInt::from(42i64));
+        }
     }
 }
