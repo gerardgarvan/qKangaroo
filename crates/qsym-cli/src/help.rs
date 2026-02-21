@@ -338,9 +338,9 @@ const FUNC_HELP: &[FuncHelp] = &[
     FuncHelp {
         name: "etamake",
         signature: "etamake(f, q, T)",
-        description: "Find an eta-quotient representation of the series via Mobius inversion.\n  Returns divisor-grouped exponents for eta(d*tau) factors.\n  T is the maximum delta to search.",
+        description: "Find an eta-quotient representation of the series via Mobius inversion.\n  Returns an eta-quotient displayed as eta(d*tau) factors.\n  T is the maximum delta to search.",
         example: "q> f := partition_gf(50)\nq> etamake(f, q, 10)",
-        example_output: "{factors: {1: -1}, q_shift: 0, is_exact: true}",
+        example_output: "eta(tau)^(-1)",
     },
     FuncHelp {
         name: "jacprodmake",

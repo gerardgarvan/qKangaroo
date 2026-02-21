@@ -1722,4 +1722,68 @@ mod tests {
         let text = format_latex(&val, &symbols);
         assert_eq!(text, "(1-q)(1-q^{2})^{3}");
     }
+
+    #[test]
+    fn format_eta_quotient_single() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, -1);
+        let val = Value::EtaQuotient { factors, q_shift: QRat::zero() };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "eta(tau)^(-1)");
+    }
+
+    #[test]
+    fn format_eta_quotient_multiple() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, -2);
+        factors.insert(2, 5);
+        factors.insert(4, -2);
+        let val = Value::EtaQuotient { factors, q_shift: QRat::zero() };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "eta(tau)^(-2) * eta(2*tau)^(5) * eta(4*tau)^(-2)");
+    }
+
+    #[test]
+    fn format_eta_quotient_with_q_shift() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, 1);
+        // q_shift = 1/24
+        let q_shift = QRat(rug::Rational::from((1, 24)));
+        let val = Value::EtaQuotient { factors, q_shift };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "q^(1/24) * eta(tau)");
+    }
+
+    #[test]
+    fn format_eta_quotient_exponent_one() {
+        let mut factors = BTreeMap::new();
+        factors.insert(2, 1);
+        let val = Value::EtaQuotient { factors, q_shift: QRat::zero() };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "eta(2*tau)");
+    }
+
+    #[test]
+    fn format_eta_quotient_empty() {
+        let factors = BTreeMap::new();
+        let val = Value::EtaQuotient { factors, q_shift: QRat::zero() };
+        let symbols = SymbolRegistry::new();
+        let text = format_value(&val, &symbols);
+        assert_eq!(text, "1");
+    }
+
+    #[test]
+    fn format_eta_quotient_latex_basic() {
+        let mut factors = BTreeMap::new();
+        factors.insert(1, -2);
+        factors.insert(2, 5);
+        let val = Value::EtaQuotient { factors, q_shift: QRat::zero() };
+        let symbols = SymbolRegistry::new();
+        let text = format_latex(&val, &symbols);
+        assert_eq!(text, "\\eta(\\tau)^{-2} \\cdot \\eta(2\\tau)^{5}");
+    }
 }
