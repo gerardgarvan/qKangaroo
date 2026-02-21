@@ -3016,8 +3016,9 @@ pub fn dispatch(
 
                 if args.len() == 3 {
                     // aqprod(q^2, q, 5) -> finite product, n=args[2]
+                    // Use POLYNOMIAL_ORDER as truncation so the result is an exact polynomial
                     let n = extract_i64(name, args, 2)?;
-                    let result = qseries::aqprod(&monomial, sym, PochhammerOrder::Finite(n), n);
+                    let result = qseries::aqprod(&monomial, sym, PochhammerOrder::Finite(n), POLYNOMIAL_ORDER);
                     Ok(Value::Series(result))
                 } else if args.len() == 4 {
                     // aqprod(q^2, q, infinity, order) or aqprod(q^2, q, n, order)
@@ -3396,24 +3397,90 @@ pub fn dispatch(
         // =================================================================
 
         "theta2" => {
-            expect_args(name, args, 1)?;
-            let order = extract_i64(name, args, 0)?;
-            let result = qseries::theta2(env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 1 {
+                // theta2(T) -- legacy 1-arg form
+                let order = extract_i64(name, args, 0)?;
+                let result = qseries::theta2(env.sym_q, order);
+                Ok(Value::Series(result))
+            } else if args.len() == 2 {
+                // theta2(q, T) -- Garvan 2-arg form
+                let sym = extract_symbol_id(name, args, 0, env)?;
+                let order = extract_i64(name, args, 1)?;
+                let result = qseries::theta2(sym, order);
+                Ok(Value::Series(result))
+            } else if args.len() == 3 {
+                // theta2(a, q, T) -- Garvan 3-arg form
+                // When a == q (same variable), reduces to standard theta2
+                let sym = extract_symbol_id(name, args, 1, env)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::theta2(sym, order);
+                Ok(Value::Series(result))
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1, 2, or 3".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
         }
 
         "theta3" => {
-            expect_args(name, args, 1)?;
-            let order = extract_i64(name, args, 0)?;
-            let result = qseries::theta3(env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 1 {
+                // theta3(T) -- legacy 1-arg form
+                let order = extract_i64(name, args, 0)?;
+                let result = qseries::theta3(env.sym_q, order);
+                Ok(Value::Series(result))
+            } else if args.len() == 2 {
+                // theta3(q, T) -- Garvan 2-arg form
+                let sym = extract_symbol_id(name, args, 0, env)?;
+                let order = extract_i64(name, args, 1)?;
+                let result = qseries::theta3(sym, order);
+                Ok(Value::Series(result))
+            } else if args.len() == 3 {
+                // theta3(a, q, T) -- Garvan 3-arg form
+                // When a == q (same variable), reduces to standard theta3
+                let sym = extract_symbol_id(name, args, 1, env)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::theta3(sym, order);
+                Ok(Value::Series(result))
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1, 2, or 3".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
         }
 
         "theta4" => {
-            expect_args(name, args, 1)?;
-            let order = extract_i64(name, args, 0)?;
-            let result = qseries::theta4(env.sym_q, order);
-            Ok(Value::Series(result))
+            if args.len() == 1 {
+                // theta4(T) -- legacy 1-arg form
+                let order = extract_i64(name, args, 0)?;
+                let result = qseries::theta4(env.sym_q, order);
+                Ok(Value::Series(result))
+            } else if args.len() == 2 {
+                // theta4(q, T) -- Garvan 2-arg form
+                let sym = extract_symbol_id(name, args, 0, env)?;
+                let order = extract_i64(name, args, 1)?;
+                let result = qseries::theta4(sym, order);
+                Ok(Value::Series(result))
+            } else if args.len() == 3 {
+                // theta4(a, q, T) -- Garvan 3-arg form
+                // When a == q (same variable), reduces to standard theta4
+                let sym = extract_symbol_id(name, args, 1, env)?;
+                let order = extract_i64(name, args, 2)?;
+                let result = qseries::theta4(sym, order);
+                Ok(Value::Series(result))
+            } else {
+                Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1, 2, or 3".to_string(),
+                    got: args.len(),
+                    signature: get_signature(name),
+                })
+            }
         }
 
         // =================================================================
@@ -5401,9 +5468,9 @@ fn get_signature(name: &str) -> String {
         "rank_gf" => "(z_num, z_den, order)".to_string(),
         "crank_gf" => "(z_num, z_den, order)".to_string(),
         // Group 3: Theta Functions
-        "theta2" => "(order)".to_string(),
-        "theta3" => "(order)".to_string(),
-        "theta4" => "(order)".to_string(),
+        "theta2" => "(T) or (q, T) or (a, q, T)".to_string(),
+        "theta3" => "(T) or (q, T) or (a, q, T)".to_string(),
+        "theta4" => "(T) or (q, T) or (a, q, T)".to_string(),
         // Group 4: Series Analysis
         "sift" => "(s, q, n, k, T)".to_string(),
         "qdegree" => "(series)".to_string(),
@@ -10830,5 +10897,144 @@ mod tests {
         let val = dispatch("winquist", &args, &mut env).unwrap();
         assert!(matches!(val, Value::Series(_)),
             "winquist with concrete monomials should return Series, got {:?}", val.type_name());
+    }
+
+    // --- Phase 48 FIX-01/FIX-02 Tests ---
+
+    #[test]
+    fn dispatch_aqprod_maple_3arg_polynomial_order() {
+        let mut env = make_env();
+        // aqprod(q, q, 5) -- should produce exact polynomial with POLYNOMIAL_ORDER
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),
+        ];
+        let val = dispatch("aqprod", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.truncation_order(), POLYNOMIAL_ORDER,
+                "3-arg aqprod should use POLYNOMIAL_ORDER sentinel");
+            // (q;q)_5 = (1-q)(1-q^2)(1-q^3)(1-q^4)(1-q^5)
+            //         = 1 - q - q^2 + q^5 + q^6 + q^7 - q^8 - q^9 - q^10 + q^13 + q^14 - q^15
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::from((-1i64, 1i64)));
+            assert_eq!(fps.coeff(2), QRat::from((-1i64, 1i64)));
+            assert_eq!(fps.coeff(3), QRat::zero());
+            assert_eq!(fps.coeff(5), QRat::one());
+            assert_eq!(fps.coeff(6), QRat::one());
+            assert_eq!(fps.coeff(7), QRat::one());
+            assert_eq!(fps.coeff(8), QRat::from((-1i64, 1i64)));
+            assert_eq!(fps.coeff(9), QRat::from((-1i64, 1i64)));
+            assert_eq!(fps.coeff(15), QRat::from((-1i64, 1i64)));
+        } else {
+            panic!("expected Series, got {:?}", val.type_name());
+        }
+    }
+
+    #[test]
+    fn dispatch_aqprod_4arg_unchanged() {
+        let mut env = make_env();
+        // aqprod(q, q, 5, 10) -- 4-arg form should use explicit truncation order
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("aqprod", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            assert_eq!(fps.truncation_order(), 10,
+                "4-arg aqprod should use explicit truncation order");
+        } else {
+            panic!("expected Series, got {:?}", val.type_name());
+        }
+    }
+
+    #[test]
+    fn dispatch_theta3_2arg() {
+        let mut env = make_env();
+        // theta3(q, 20) should match theta3(20)
+        let args_1arg = vec![Value::Integer(QInt::from(20i64))];
+        let val_1arg = dispatch("theta3", &args_1arg, &mut env).unwrap();
+
+        let args_2arg = vec![
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(20i64)),
+        ];
+        let val_2arg = dispatch("theta3", &args_2arg, &mut env).unwrap();
+
+        if let (Value::Series(fps1), Value::Series(fps2)) = (&val_1arg, &val_2arg) {
+            assert_eq!(fps1.coeff(0), fps2.coeff(0));
+            assert_eq!(fps1.coeff(1), fps2.coeff(1));
+            assert_eq!(fps1.coeff(4), fps2.coeff(4));
+            assert_eq!(fps1.coeff(9), fps2.coeff(9));
+        } else {
+            panic!("expected both to be Series");
+        }
+    }
+
+    #[test]
+    fn dispatch_theta3_3arg() {
+        let mut env = make_env();
+        // theta3(q, q, 100) should match theta3(100) -- roadmap success criterion
+        let args_1arg = vec![Value::Integer(QInt::from(100i64))];
+        let val_1arg = dispatch("theta3", &args_1arg, &mut env).unwrap();
+
+        let args_3arg = vec![
+            Value::Symbol("q".to_string()),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(100i64)),
+        ];
+        let val_3arg = dispatch("theta3", &args_3arg, &mut env).unwrap();
+
+        if let (Value::Series(fps1), Value::Series(fps3)) = (&val_1arg, &val_3arg) {
+            assert_eq!(fps1.coeff(0), fps3.coeff(0));
+            assert_eq!(fps1.coeff(1), fps3.coeff(1));
+            assert_eq!(fps1.coeff(4), fps3.coeff(4));
+            assert_eq!(fps1.coeff(9), fps3.coeff(9));
+            assert_eq!(fps1.coeff(16), fps3.coeff(16));
+        } else {
+            panic!("expected both to be Series");
+        }
+    }
+
+    #[test]
+    fn dispatch_theta2_2arg() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("theta2", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)),
+            "theta2(q, 10) should return Series");
+    }
+
+    #[test]
+    fn dispatch_theta4_2arg() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(10i64)),
+        ];
+        let val = dispatch("theta4", &args, &mut env).unwrap();
+        assert!(matches!(val, Value::Series(_)),
+            "theta4(q, 10) should return Series");
+    }
+
+    #[test]
+    fn dispatch_theta3_1arg_unchanged() {
+        let mut env = make_env();
+        // Regression test: theta3(20) still works
+        let args = vec![Value::Integer(QInt::from(20i64))];
+        let val = dispatch("theta3", &args, &mut env).unwrap();
+        if let Value::Series(fps) = val {
+            // theta3 = 1 + 2q + 2q^4 + 2q^9 + 2q^16 + ...
+            assert_eq!(fps.coeff(0), QRat::one());
+            assert_eq!(fps.coeff(1), QRat::from((2i64, 1i64)));
+            assert_eq!(fps.coeff(4), QRat::from((2i64, 1i64)));
+        } else {
+            panic!("expected Series");
+        }
     }
 }
