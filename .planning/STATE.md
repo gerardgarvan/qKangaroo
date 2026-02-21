@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v4.0 Full qmaple.pdf Parity -- Phase 49 complete, ready for Phase 50
+**Current focus:** v4.0 Full qmaple.pdf Parity -- Phase 50 in progress, plan 01 complete
 
 ## Current Position
 
-Phase: 49 of 51 (Display Formatting) -- COMPLETE
-Plan: 2 of 2 in current phase (2 complete)
-Status: Phase 49 complete, ready for Phase 50
-Last activity: 2026-02-21 -- Completed 49-02 (EtaQuotient display)
+Phase: 50 of 51 (New Functions)
+Plan: 1 of 2 in current phase (1 complete)
+Status: Plan 50-01 complete, ready for 50-02
+Last activity: 2026-02-21 -- Completed 50-01 (jac2series Garvan form + quinprod identity modes)
 
 Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/51 phases)
 
@@ -20,7 +20,7 @@ Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/5
 
 ### Cumulative Summary
 
-- Total plans completed: 140
+- Total plans completed: 141
 - Total phases: 46 complete (v1.0-v3.0), 5 planned (v4.0)
 - Total milestones: 9 complete (v1.0-v1.6, v2.0, v3.0)
 - Average duration: ~5 min/plan
@@ -35,6 +35,7 @@ Progress: [|||||||||||||||||||||||||||||||||||||||||||||||||░░░] 96% (49/5
 | 48    | 02   | 5min     | 2     | 2     |
 | 49    | 01   | 10min    | 2     | 4     |
 | 49    | 02   | 4min     | 2     | 4     |
+| 50    | 01   | 5min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -58,6 +59,8 @@ v3.0 decisions archived in .planning/milestones/v3.0-ROADMAP.md.
 - 49-01: Format functions added in Task 1 (not Task 2) to resolve compilation dependency
 - 49-02: EtaQuotient variant placed after QProduct in Value enum
 - 49-02: Format functions added in Task 1 (not Task 2) to resolve compilation dependency (same pattern as 49-01)
+- 50-01: Separate jacobi_product_to_fps_garvan function preserves backward compat for legacy 3-arg path
+- 50-01: Identity modes return Value::String (not Series) for formatted display
 
 ### Pending Todos
 
@@ -70,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 49-02-PLAN.md (EtaQuotient display) -- Phase 49 complete
-Resume: Continue with Phase 50
+Stopped at: Completed 50-01-PLAN.md (jac2series Garvan form + quinprod identity modes)
+Resume: Continue with 50-02
