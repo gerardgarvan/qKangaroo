@@ -104,7 +104,24 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-No active milestone. All planned milestones through v3.0 are complete.
+**Current Milestone: v4.0 Full qmaple.pdf Parity**
+
+**Goal:** Every executable example in Garvan's qmaple.pdf runs correctly in the q-Kangaroo CLI without modification — closing all 14 identified gaps between the tutorial and current implementation.
+
+**Target features:**
+- Fix aqprod 3-arg truncation (finite products return full polynomial)
+- Add theta2/3/4 Garvan 2-arg signatures: `theta3(q,T)`
+- Fix qfactor and etamake display formats (product form, η notation)
+- Add qfactor Garvan signature: `qfactor(f,T)`
+- Add ditto operator `"` (last result reference)
+- Add arrow operator `->` for lambda functions
+- Add `min()` function
+- Support fractional q-powers: `q^(1/4)`, `q^(1/3)`
+- Allow `option remember` before `local` in procedures
+- Add `jac2series` function
+- Add `radsimp` rational simplification
+- Add `quinprod(z,q,prodid)` and `quinprod(z,q,seriesid)` display modes
+- Support multi-substitution with indexed variables `X[i]`
 
 ### Future
 
@@ -181,4 +198,4 @@ No active milestone. All planned milestones through v3.0 are complete.
 | Direct Pochhammer for winquist bivariate | Instead of tripleprod decomposition; simpler, fewer truncation issues | Good |
 
 ---
-*Last updated: 2026-02-21 after v3.0 milestone shipped*
+*Last updated: 2026-02-21 after v4.0 milestone started*

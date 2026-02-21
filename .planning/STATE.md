@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v3.0 archived — all 46 phases shipped, ready for next milestone
+**Current focus:** v4.0 Full qmaple.pdf Parity — defining requirements
 
 ## Current Position
 
-Phase: 46 of 46 (all complete)
-Plan: All plans complete
-Status: v3.0 milestone archived
-Last activity: 2026-02-21 -- v3.0 milestone archived
-
-Progress: [==================================================] 100% (133 plans)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-21 — Milestone v4.0 started
 
 ## Performance Metrics
 
@@ -45,5 +43,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: v3.0 milestone archived
-Resume: /gsd:new-milestone to start next milestone
+Stopped at: v4.0 milestone started, defining requirements
+Resume: Complete requirements definition and roadmap
