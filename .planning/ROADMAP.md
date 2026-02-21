@@ -212,7 +212,10 @@ Plans:
   1. PDF manual contains a "Scripting Language" chapter documenting for-loop syntax, if/elif/else/fi syntax, proc/end definitions, local variables, option remember, RETURN, and boolean/comparison operators with runnable examples
   2. User can type `help for`, `help proc`, `help if`, `help series`, `help factor`, `help subs` in the REPL and get syntax documentation with examples
   3. Worked examples section includes at least 3 reproductions of key examples from Garvan's qmaple.pdf tutorial, demonstrating for-loops with series computation, procedure definitions with memoization, and bivariate product identities
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 46-01-PLAN.md -- Help entries for for/proc/if language constructs, tab completion keywords
+- [ ] 46-02-PLAN.md -- PDF manual scripting chapter with 3 worked examples, function count updates
 
 ## Progress
 
@@ -266,4 +269,4 @@ Phases execute in numeric order: 41 -> 42 -> 43 -> 44 -> 45 -> 46
 | 43. Expression Operations | v3.0 | 2/2 | Complete | 2026-02-20 |
 | 44. Polynomial Operations | v3.0 | 0/2 | Not started | - |
 | 45. Bivariate Series | v3.0 | 4/4 | Complete | 2026-02-21 |
-| 46. Documentation | v3.0 | 0/TBD | Not started | - |
+| 46. Documentation | v3.0 | 0/2 | Not started | - |
