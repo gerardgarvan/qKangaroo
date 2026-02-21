@@ -8,6 +8,7 @@
 //! Also provides [`format_latex`] for LaTeX rendering of any `Value`.
 
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use qsym_core::number::QRat;
@@ -45,6 +46,7 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Infinity => "infinity".to_string(),
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product(factors),
+        Value::QProduct { factors, scalar, is_exact } => format_qproduct(factors, scalar, *is_exact),
         Value::BivariateSeries(bs) => format_bivariate(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate(ts, symbols),
         Value::FractionalPowerSeries { inner, denom } => {
@@ -88,6 +90,97 @@ fn format_jacobi_product_latex(factors: &[(i64, i64, i64)]) -> String {
         }
     }).collect();
     parts.join(" \\cdot ")
+}
+
+/// Format a q-product factorization as human-readable string.
+/// Examples: "(1-q)(1-q^2)(1-q^3)^2", "3*(1-q)(1-q^2)", "1", "(1-q) (approx)"
+fn format_qproduct(factors: &BTreeMap<i64, i64>, scalar: &QRat, is_exact: bool) -> String {
+    let mut out = String::new();
+
+    if factors.is_empty() {
+        return format!("{}", scalar);
+    }
+
+    // Handle scalar prefix
+    let one = QRat::one();
+    let neg_one = -QRat::one();
+    if *scalar == neg_one {
+        out.push('-');
+    } else if *scalar != one {
+        let _ = write!(out, "{}*", scalar);
+    }
+
+    // Factors in ascending order (BTreeMap guarantees this)
+    for (&i, &mult) in factors {
+        if i == 1 {
+            out.push_str("(1-q)");
+        } else {
+            let _ = write!(out, "(1-q^{})", i);
+        }
+        if mult != 1 {
+            if mult < 0 {
+                let _ = write!(out, "^({})", mult);
+            } else {
+                let _ = write!(out, "^{}", mult);
+            }
+        }
+    }
+
+    if !is_exact {
+        out.push_str(" (approx)");
+    }
+
+    out
+}
+
+/// Format a q-product factorization as LaTeX.
+/// Examples: "(1-q)(1-q^{2})(1-q^{3})^{2}", "3 \cdot (1-q)(1-q^{2})"
+fn format_qproduct_latex(factors: &BTreeMap<i64, i64>, scalar: &QRat, is_exact: bool) -> String {
+    let mut out = String::new();
+
+    if factors.is_empty() {
+        return format_latex_qrat(scalar);
+    }
+
+    let one = QRat::one();
+    let neg_one = -QRat::one();
+    if *scalar == neg_one {
+        out.push('-');
+    } else if *scalar != one {
+        let _ = write!(out, "{} \\cdot ", format_latex_qrat(scalar));
+    }
+
+    for (&i, &mult) in factors {
+        if i == 1 {
+            out.push_str("(1-q)");
+        } else {
+            let _ = write!(out, "(1-q^{{{}}})", i);
+        }
+        if mult != 1 {
+            let _ = write!(out, "^{{{}}}", mult);
+        }
+    }
+
+    if !is_exact {
+        out.push_str("\\text{ (approx)}");
+    }
+
+    out
+}
+
+/// Format a QRat as LaTeX (helper for format_qproduct_latex).
+fn format_latex_qrat(r: &QRat) -> String {
+    let is_negative = r.0.cmp0() == Ordering::Less;
+    let numer = r.numer();
+    let denom = r.denom();
+    if *denom == *rug::Integer::ONE {
+        format!("{}", numer)
+    } else if is_negative {
+        let abs_numer = numer.clone().abs();
+        format!("-\\frac{{{}}}{{{}}}", abs_numer, denom)
+    } else {
+        format!("\\frac{{{}}}{{{}}}", numer, denom)
+    }
 }
 
 /// Format a list of values. For list-of-lists (matrix), put each inner
@@ -844,6 +937,7 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Infinity => "\\infty".to_string(),
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product_latex(factors),
+        Value::QProduct { factors, scalar, is_exact } => format_qproduct_latex(factors, scalar, *is_exact),
         Value::BivariateSeries(bs) => format_bivariate_latex(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate_latex(ts, symbols),
         Value::FractionalPowerSeries { inner, denom } => {

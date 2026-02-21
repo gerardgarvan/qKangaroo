@@ -86,6 +86,13 @@ pub enum Value {
     /// Jacobi product expression: product of (q^a;q^b)_inf^exp factors.
     /// Each triple is (a, b, exponent). Maintained in canonical form.
     JacobiProduct(Vec<(i64, i64, i64)>),
+    /// Q-product factorization: scalar * prod (1-q^i)^{mult_i}.
+    /// Stores factors as BTreeMap<i64, i64> (i -> multiplicity).
+    QProduct {
+        factors: BTreeMap<i64, i64>,
+        scalar: QRat,
+        is_exact: bool,
+    },
     /// User-defined procedure.
     Procedure(Procedure),
     /// Bivariate series: Laurent polynomial in outer variable with FPS coefficients.
@@ -116,6 +123,7 @@ impl Value {
             Value::Infinity => "infinity",
             Value::Symbol(_) => "symbol",
             Value::JacobiProduct(_) => "jacobi_product",
+            Value::QProduct { .. } => "qproduct",
             Value::Procedure(_) => "procedure",
             Value::BivariateSeries(_) => "bivariate_series",
             Value::TrivariateSeries(_) => "trivariate_series",
@@ -1744,6 +1752,13 @@ fn eval_add(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let result = arithmetic::add(&rescaled, inner);
             Ok(simplify_fractional(result, *denom))
         }
+        // QProduct in add -> helpful error
+        (Value::QProduct { .. }, _) | (_, Value::QProduct { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot add {} and {} -- qfactor result is a factorization, not a series",
+                left.type_name(), right.type_name()
+            )))
+        }
         // JacobiProduct in add -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
             Err(EvalError::Other(format!(
@@ -1861,6 +1876,13 @@ fn eval_sub(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let result = arithmetic::sub(&rescaled, inner);
             Ok(simplify_fractional(result, *denom))
         }
+        // QProduct in sub -> helpful error
+        (Value::QProduct { .. }, _) | (_, Value::QProduct { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot subtract {} and {} -- qfactor result is a factorization, not a series",
+                left.type_name(), right.type_name()
+            )))
+        }
         // JacobiProduct in sub -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
             Err(EvalError::Other(format!(
@@ -1971,6 +1993,13 @@ fn eval_mul(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let result = arithmetic::mul(&rescaled, inner);
             Ok(simplify_fractional(result, *denom))
         }
+        // QProduct in mul -> helpful error
+        (Value::QProduct { .. }, _) | (_, Value::QProduct { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot multiply {} and {} -- qfactor result is a factorization, not a series",
+                left.type_name(), right.type_name()
+            )))
+        }
         // JacobiProduct * JacobiProduct
         (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
             let mut combined = a.clone();
@@ -2056,6 +2085,13 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
             let const_fps = FormalPowerSeries::monomial(inner.variable(), value_to_qrat(&left).unwrap(), 0, inner.truncation_order());
             let result = series_div_general(&const_fps, inner);
             Ok(Value::FractionalPowerSeries { inner: result, denom: *denom })
+        }
+        // QProduct in div -> helpful error
+        (Value::QProduct { .. }, _) | (_, Value::QProduct { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot divide {} and {} -- qfactor result is a factorization, not a series",
+                left.type_name(), right.type_name()
+            )))
         }
         // JacobiProduct / JacobiProduct
         (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
@@ -5126,17 +5162,13 @@ fn q_eta_form_to_value(qef: &qseries::QEtaForm) -> Value {
     ])
 }
 
-/// Convert a `QFactorization` to `Value::Dict`.
+/// Convert a `QFactorization` to `Value::QProduct`.
 fn q_factorization_to_value(qf: &qseries::QFactorization) -> Value {
-    let mut factor_entries: Vec<(String, Value)> = Vec::new();
-    for (&i, &mult) in &qf.factors {
-        factor_entries.push((i.to_string(), Value::Integer(QInt::from(mult))));
+    Value::QProduct {
+        factors: qf.factors.clone(),
+        scalar: qf.scalar.clone(),
+        is_exact: qf.is_exact,
     }
-    Value::Dict(vec![
-        ("scalar".to_string(), Value::Rational(qf.scalar.clone())),
-        ("factors".to_string(), Value::Dict(factor_entries)),
-        ("is_exact".to_string(), Value::Bool(qf.is_exact)),
-    ])
 }
 
 /// Convert a `Congruence` to `Value::Dict`.
@@ -7156,7 +7188,7 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_qfactor_returns_dict_with_is_exact() {
+    fn dispatch_qfactor_returns_qproduct() {
         let mut env = make_env();
         // Maple: qfactor(f, q) -- qbin(5,2,20) is a polynomial
         let qb = dispatch("qbin", &[
@@ -7168,14 +7200,7 @@ mod tests {
             qb,
             Value::Symbol("q".to_string()),
         ], &mut env).unwrap();
-        if let Value::Dict(entries) = &val {
-            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
-            assert!(keys.contains(&"scalar"));
-            assert!(keys.contains(&"factors"));
-            assert!(keys.contains(&"is_exact"));
-        } else {
-            panic!("expected Dict, got {:?}", val);
-        }
+        assert!(matches!(val, Value::QProduct { .. }), "expected QProduct, got {:?}", val);
     }
 
     // --- Integration tests (parse -> eval -> format) ---
@@ -7285,17 +7310,23 @@ mod tests {
 
         let mut env = make_env();
 
-        // Maple: qfactor(f, q) returns a Dict with scalar, factors, is_exact
+        // Maple: qfactor(f, q) returns a QProduct
         let stmts = parse("qfactor(qbin(5, 2, 20), q)").unwrap();
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
-        if let Value::Dict(entries) = &result {
-            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
-            assert!(keys.contains(&"scalar"), "expected 'scalar' key");
-            assert!(keys.contains(&"factors"), "expected 'factors' key");
-            assert!(keys.contains(&"is_exact"), "expected 'is_exact' key");
-        } else {
-            panic!("expected Dict");
-        }
+        assert!(matches!(result, Value::QProduct { .. }), "expected QProduct, got {:?}", result);
+    }
+
+    #[test]
+    fn integration_qfactor_displays_product_form() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("qfactor(aqprod(q, q, 5), q)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert!(text.contains("(1-q)"), "expected (1-q) in: {}", text);
+        assert!(text.contains("(1-q^5)"), "expected (1-q^5) in: {}", text);
+        assert!(!text.contains("scalar"), "should not show raw dict: {}", text);
     }
 
     #[test]
@@ -11115,14 +11146,7 @@ mod tests {
             qb,
             Value::Integer(QInt::from(100i64)),
         ], &mut env).unwrap();
-        if let Value::Dict(entries) = &val {
-            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
-            assert!(keys.contains(&"scalar"), "qfactor result should have scalar key");
-            assert!(keys.contains(&"factors"), "qfactor result should have factors key");
-            assert!(keys.contains(&"is_exact"), "qfactor result should have is_exact key");
-        } else {
-            panic!("expected Dict from qfactor(f, Integer), got {:?}", val);
-        }
+        assert!(matches!(val, Value::QProduct { .. }), "expected QProduct from qfactor(f, Integer), got {:?}", val);
     }
 
     #[test]
@@ -11138,14 +11162,7 @@ mod tests {
             qb,
             Value::Symbol("q".to_string()),
         ], &mut env).unwrap();
-        if let Value::Dict(entries) = &val {
-            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
-            assert!(keys.contains(&"scalar"));
-            assert!(keys.contains(&"factors"));
-            assert!(keys.contains(&"is_exact"));
-        } else {
-            panic!("expected Dict from qfactor(f, Symbol), got {:?}", val);
-        }
+        assert!(matches!(val, Value::QProduct { .. }), "expected QProduct from qfactor(f, Symbol), got {:?}", val);
     }
 
     // --- min/max variadic functions (LANG-03) ---

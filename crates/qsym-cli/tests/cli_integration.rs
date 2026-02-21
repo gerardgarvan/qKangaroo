@@ -1176,15 +1176,14 @@ fn qetamake_maple_3arg() {
 fn qfactor_maple_2arg() {
     let (code, stdout, _) = run(&["-c", "f := aqprod(q, q, 5, 20); qfactor(f, q)"]);
     assert_eq!(code, 0);
-    assert!(stdout.contains("factors"), "qfactor should return factors dict");
-    assert!(stdout.contains("is_exact"), "qfactor should return is_exact flag");
+    assert!(stdout.contains("(1-q)"), "qfactor should display product form, got: {}", stdout);
 }
 
 #[test]
 fn qfactor_maple_3arg() {
     let (code, stdout, _) = run(&["-c", "f := aqprod(q, q, 5, 20); qfactor(f, q, 20)"]);
     assert_eq!(code, 0);
-    assert!(stdout.contains("factors"), "qfactor 3-arg should return factors dict");
+    assert!(stdout.contains("(1-q)"), "qfactor 3-arg should display product form, got: {}", stdout);
 }
 
 #[test]
@@ -1786,7 +1785,7 @@ fn backward_compat_etamake_maple_3arg() {
 fn backward_compat_qfactor_maple_2arg() {
     let (code, stdout, stderr) = run(&["-c", "f := aqprod(q, q, 5, 20); qfactor(f, q)"]);
     assert_eq!(code, 0, "qfactor maple 2-arg should succeed. stderr: {}", stderr);
-    assert!(stdout.contains("factors"), "qfactor should return factors dict, got: {}", stdout);
+    assert!(stdout.contains("(1-q)"), "qfactor should display product form, got: {}", stdout);
 }
 
 // ---------------------------------------------------------------------------
