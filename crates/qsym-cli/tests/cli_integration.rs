@@ -1139,7 +1139,7 @@ fn prodmake_maple_3arg() {
 fn etamake_maple_3arg() {
     let (code, stdout, _) = run(&["-c", "f := partition_gf(30); etamake(f, q, 10)"]);
     assert_eq!(code, 0);
-    assert!(stdout.contains("factors"), "etamake should return factors dict");
+    assert!(stdout.contains("eta(tau)"), "etamake should display eta notation, got: {}", stdout);
 }
 
 #[test]
@@ -1778,7 +1778,7 @@ fn backward_compat_prodmake_maple_3arg() {
 fn backward_compat_etamake_maple_3arg() {
     let (code, stdout, stderr) = run(&["-c", "f := partition_gf(30); etamake(f, q, 10)"]);
     assert_eq!(code, 0, "etamake maple 3-arg should succeed. stderr: {}", stderr);
-    assert!(stdout.contains("factors"), "etamake should return factors dict, got: {}", stdout);
+    assert!(stdout.contains("eta(tau)"), "etamake should display eta notation, got: {}", stdout);
 }
 
 #[test]

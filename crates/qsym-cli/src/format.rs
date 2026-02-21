@@ -47,6 +47,7 @@ pub fn format_value(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product(factors),
         Value::QProduct { factors, scalar, is_exact } => format_qproduct(factors, scalar, *is_exact),
+        Value::EtaQuotient { factors, q_shift } => format_eta_quotient(factors, q_shift),
         Value::BivariateSeries(bs) => format_bivariate(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate(ts, symbols),
         Value::FractionalPowerSeries { inner, denom } => {
@@ -180,6 +181,86 @@ fn format_latex_qrat(r: &QRat) -> String {
         format!("-\\frac{{{}}}{{{}}}", abs_numer, denom)
     } else {
         format!("\\frac{{{}}}{{{}}}", numer, denom)
+    }
+}
+
+/// Format an eta-quotient as human-readable string.
+/// Examples: "eta(tau)^(-1)", "q^(1/24) * eta(tau)^(-2) * eta(2*tau)^5"
+fn format_eta_quotient(factors: &BTreeMap<i64, i64>, q_shift: &QRat) -> String {
+    let mut parts = Vec::new();
+
+    // q-shift prefix (if non-zero)
+    if !q_shift.is_zero() {
+        let numer = q_shift.numer();
+        let denom = q_shift.denom();
+        if *denom == *rug::Integer::ONE {
+            if *numer == *rug::Integer::ONE {
+                parts.push("q".to_string());
+            } else {
+                parts.push(format!("q^{}", numer));
+            }
+        } else {
+            parts.push(format!("q^({}/{})", numer, denom));
+        }
+    }
+
+    // Eta factors in ascending d order (BTreeMap guarantees this)
+    for (&d, &r_d) in factors {
+        let eta_arg = if d == 1 {
+            "tau".to_string()
+        } else {
+            format!("{}*tau", d)
+        };
+        if r_d == 1 {
+            parts.push(format!("eta({})", eta_arg));
+        } else {
+            parts.push(format!("eta({})^({})", eta_arg, r_d));
+        }
+    }
+
+    if parts.is_empty() {
+        "1".to_string()
+    } else {
+        parts.join(" * ")
+    }
+}
+
+/// Format an eta-quotient as LaTeX.
+/// Examples: "\\eta(\\tau)^{-1}", "q^{1/24} \\cdot \\eta(\\tau)^{-2} \\cdot \\eta(2\\tau)^{5}"
+fn format_eta_quotient_latex(factors: &BTreeMap<i64, i64>, q_shift: &QRat) -> String {
+    let mut parts = Vec::new();
+
+    if !q_shift.is_zero() {
+        let numer = q_shift.numer();
+        let denom = q_shift.denom();
+        if *denom == *rug::Integer::ONE {
+            if *numer == *rug::Integer::ONE {
+                parts.push("q".to_string());
+            } else {
+                parts.push(format!("q^{{{}}}", numer));
+            }
+        } else {
+            parts.push(format!("q^{{{}/{}}}", numer, denom));
+        }
+    }
+
+    for (&d, &r_d) in factors {
+        let eta_arg = if d == 1 {
+            "\\tau".to_string()
+        } else {
+            format!("{}\\tau", d)
+        };
+        if r_d == 1 {
+            parts.push(format!("\\eta({})", eta_arg));
+        } else {
+            parts.push(format!("\\eta({})^{{{}}}", eta_arg, r_d));
+        }
+    }
+
+    if parts.is_empty() {
+        "1".to_string()
+    } else {
+        parts.join(" \\cdot ")
     }
 }
 
@@ -938,6 +1019,7 @@ pub fn format_latex(val: &Value, symbols: &SymbolRegistry) -> String {
         Value::Symbol(name) => name.clone(),
         Value::JacobiProduct(factors) => format_jacobi_product_latex(factors),
         Value::QProduct { factors, scalar, is_exact } => format_qproduct_latex(factors, scalar, *is_exact),
+        Value::EtaQuotient { factors, q_shift } => format_eta_quotient_latex(factors, q_shift),
         Value::BivariateSeries(bs) => format_bivariate_latex(bs, symbols),
         Value::TrivariateSeries(ts) => format_trivariate_latex(ts, symbols),
         Value::FractionalPowerSeries { inner, denom } => {

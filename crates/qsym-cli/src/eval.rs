@@ -93,6 +93,12 @@ pub enum Value {
         scalar: QRat,
         is_exact: bool,
     },
+    /// Eta-quotient: prod eta(d*tau)^{r_d} * q^{q_shift}.
+    /// Stores factors as BTreeMap<i64, i64> (d -> r_d).
+    EtaQuotient {
+        factors: BTreeMap<i64, i64>,
+        q_shift: QRat,
+    },
     /// User-defined procedure.
     Procedure(Procedure),
     /// Bivariate series: Laurent polynomial in outer variable with FPS coefficients.
@@ -124,6 +130,7 @@ impl Value {
             Value::Symbol(_) => "symbol",
             Value::JacobiProduct(_) => "jacobi_product",
             Value::QProduct { .. } => "qproduct",
+            Value::EtaQuotient { .. } => "eta_quotient",
             Value::Procedure(_) => "procedure",
             Value::BivariateSeries(_) => "bivariate_series",
             Value::TrivariateSeries(_) => "trivariate_series",
@@ -1759,6 +1766,13 @@ fn eval_add(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                 left.type_name(), right.type_name()
             )))
         }
+        // EtaQuotient in add -> helpful error
+        (Value::EtaQuotient { .. }, _) | (_, Value::EtaQuotient { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot add {} and {} -- etamake result is an eta-quotient, not a series",
+                left.type_name(), right.type_name()
+            )))
+        }
         // JacobiProduct in add -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
             Err(EvalError::Other(format!(
@@ -1883,6 +1897,13 @@ fn eval_sub(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                 left.type_name(), right.type_name()
             )))
         }
+        // EtaQuotient in sub -> helpful error
+        (Value::EtaQuotient { .. }, _) | (_, Value::EtaQuotient { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot subtract {} and {} -- etamake result is an eta-quotient, not a series",
+                left.type_name(), right.type_name()
+            )))
+        }
         // JacobiProduct in sub -> helpful error
         (Value::JacobiProduct(_), _) | (_, Value::JacobiProduct(_)) => {
             Err(EvalError::Other(format!(
@@ -2000,6 +2021,13 @@ fn eval_mul(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
                 left.type_name(), right.type_name()
             )))
         }
+        // EtaQuotient in mul -> helpful error
+        (Value::EtaQuotient { .. }, _) | (_, Value::EtaQuotient { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot multiply {} and {} -- etamake result is an eta-quotient, not a series",
+                left.type_name(), right.type_name()
+            )))
+        }
         // JacobiProduct * JacobiProduct
         (Value::JacobiProduct(a), Value::JacobiProduct(b)) => {
             let mut combined = a.clone();
@@ -2090,6 +2118,13 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
         (Value::QProduct { .. }, _) | (_, Value::QProduct { .. }) => {
             Err(EvalError::Other(format!(
                 "cannot divide {} and {} -- qfactor result is a factorization, not a series",
+                left.type_name(), right.type_name()
+            )))
+        }
+        // EtaQuotient in div -> helpful error
+        (Value::EtaQuotient { .. }, _) | (_, Value::EtaQuotient { .. }) => {
+            Err(EvalError::Other(format!(
+                "cannot divide {} and {} -- etamake result is an eta-quotient, not a series",
                 left.type_name(), right.type_name()
             )))
         }
@@ -5115,14 +5150,10 @@ fn infinite_product_form_to_value(ipf: &qseries::InfiniteProductForm) -> Value {
 
 /// Convert an `EtaQuotient` to `Value::Dict`.
 fn eta_quotient_to_value(eq: &qseries::EtaQuotient) -> Value {
-    let mut factor_entries: Vec<(String, Value)> = Vec::new();
-    for (&d, &r_d) in &eq.factors {
-        factor_entries.push((d.to_string(), Value::Integer(QInt::from(r_d))));
+    Value::EtaQuotient {
+        factors: eq.factors.clone(),
+        q_shift: eq.q_shift.clone(),
     }
-    Value::Dict(vec![
-        ("factors".to_string(), Value::Dict(factor_entries)),
-        ("q_shift".to_string(), Value::Rational(eq.q_shift.clone())),
-    ])
 }
 
 /// Convert a `JacobiProductForm` to `Value::Dict`.
@@ -7090,7 +7121,7 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_etamake_returns_dict() {
+    fn dispatch_etamake_returns_eta_quotient() {
         let mut env = make_env();
         // Maple: etamake(f, q, T)
         let pgf = dispatch("partition_gf", &[Value::Integer(QInt::from(20i64))], &mut env).unwrap();
@@ -7099,12 +7130,12 @@ mod tests {
             Value::Symbol("q".to_string()),
             Value::Integer(QInt::from(10i64)),
         ], &mut env).unwrap();
-        if let Value::Dict(entries) = &val {
-            let keys: Vec<&str> = entries.iter().map(|(k, _)| k.as_str()).collect();
-            assert!(keys.contains(&"factors"), "expected 'factors' in {:?}", keys);
-            assert!(keys.contains(&"q_shift"), "expected 'q_shift' in {:?}", keys);
+        if let Value::EtaQuotient { factors, q_shift } = &val {
+            assert!(!factors.is_empty(), "expected non-empty factors");
+            // partition_gf is 1/(q;q)_inf so etamake should give eta(tau)^{-1}
+            assert_eq!(factors.get(&1), Some(&-1), "expected factor 1 -> -1");
         } else {
-            panic!("expected Dict, got {:?}", val);
+            panic!("expected EtaQuotient, got {:?}", val);
         }
     }
 
@@ -11276,5 +11307,17 @@ mod tests {
         // Must return Integer, not Rational (avoids "1/1" display)
         assert!(matches!(val, Value::Integer(_)),
             "min of integers should return Integer, got {:?}", val);
+    }
+
+    #[test]
+    fn integration_etamake_displays_eta_notation() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("etamake(partition_gf(50), q, 10)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert!(text.contains("eta(tau)"), "expected eta(tau) in: {}", text);
+        assert!(!text.contains("factors"), "should not show raw dict: {}", text);
     }
 }
