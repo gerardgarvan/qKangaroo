@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly in q-Kangaroo.
-**Current focus:** v3.0 Phase 46 - Documentation (next)
+**Current focus:** v3.0 Phase 46 - Documentation (plan 01 complete, plan 02 next)
 
 ## Current Position
 
-Phase: 45 of 46 (Bivariate Series)
-Plan: 4 of 4 in phase 45 (phase 45 complete with gap closure)
-Status: Phase 45 verified complete, ready for phase 46
-Last activity: 2026-02-21 -- Plan 45-04 executed (2 tasks, 8 new tests, 763 total CLI tests)
+Phase: 46 of 46 (Documentation)
+Plan: 1 of 2 in phase 46
+Status: Plan 46-01 complete, proceeding to plan 46-02
+Last activity: 2026-02-21 -- Plan 46-01 executed (2 tasks, 9 new tests, 772 total CLI tests)
 
-Progress: [============================================......] 90% (131/~145 plans est.)
+Progress: [=============================================.....] 91% (132/~145 plans est.)
 
 ## Performance Metrics
 
 ### Cumulative Summary
 
-- Total plans completed: 131
-- Total phases: 44 complete (v1.0-v2.0 + Phases 41-44), 1 complete (Phase 45 + gap closure), 1 remaining
+- Total plans completed: 132
+- Total phases: 44 complete (v1.0-v2.0 + Phases 41-44), 1 complete (Phase 45 + gap closure), 1 in progress (Phase 46)
 - Total milestones: 8 complete (v1.0-v1.6, v2.0)
 - Average duration: ~5 min/plan
 - Total execution time: ~9.5 hours
@@ -38,6 +38,7 @@ Progress: [============================================......] 90% (131/~145 pla
 | 45 | 02 | 11 min | 2 | 2 |
 | 45 | 03 | 15 min | 2 | 2 |
 | 45 | 04 | 10 min | 2 | 5 |
+| 46 | 01 | 4 min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ v2.0 decisions archived in .planning/milestones/v2.0-phases/.
 - 45-04: Cross-validation uses constant q-monomials (a=-1,b=-1 and a=2,b=3) to avoid truncation boundary effects
 - 45-04: All 8 symbolic factors in trivariate loop, (q;q)^2 multiplied at end for efficiency
 - 45-04: No add/sub/mul on TrivariateSeries -- only negate and display supported initially
+- 46-01: Language construct help uses special-case match arms before FUNC_HELP lookup (avoids count assertion changes)
+- 46-01: 18 scripting keywords complete without trailing paren (unlike functions)
+- 46-01: RETURN in keyword_names (not function_names) since not in eval.rs ALL_FUNCTION_NAMES
 
 ### Pending Todos
 
@@ -100,5 +104,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Phase 46 context gathered
-Resume file: .planning/phases/46-documentation/46-CONTEXT.md
+Stopped at: Completed 46-01-PLAN.md
+Resume file: .planning/phases/46-documentation/46-01-SUMMARY.md
