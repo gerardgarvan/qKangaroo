@@ -1,11 +1,11 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 97 functions + 3 language
+//! - [`general_help`]: grouped listing of all 99 functions + 5 language
 //!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
-//!   Also handles `for`, `proc`, and `if` language constructs via special-case
-//!   match arms (bypassing FUNC_HELP).
+//!   Also handles `for`, `proc`, `if`, `ditto`, and `lambda` language
+//!   constructs via special-case match arms (bypassing FUNC_HELP).
 
 // ---------------------------------------------------------------------------
 // General help
@@ -56,6 +56,9 @@ Expression Operations:
 Polynomial Operations:
   factor         - factor a polynomial in q into irreducible factors
   subs           - substitute a value for a variable: subs(q=1, f)
+
+Simplification:
+  radsimp        - simplify rational series expression
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -128,6 +131,7 @@ Scripting:
   if             - conditional: if cond then body [elif ...] [else body] fi
   proc           - procedure: name := proc(params) body; end
   RETURN         - early return from procedure: RETURN(value)
+  ->             - arrow / lambda: F := x -> expr
 
 Commands:
   help [function]   - show this help or help for a specific function
@@ -135,7 +139,9 @@ Commands:
   clear             - reset all variables, %, and precision
   quit / exit       - exit the REPL (also Ctrl-D)
   latex [var]       - show LaTeX for last result or a variable
-  save filename     - save last result to a file",
+  save filename     - save last result to a file
+  read filename     - load and execute a script file
+  \"                - refer to the last printed result (ditto)",
     )
 }
 
@@ -157,7 +163,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 97 function help entries.
+/// All 99 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -199,8 +205,8 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
     FuncHelp {
         name: "quinprod",
-        signature: "quinprod(z, q, T)",
-        description: "Compute the quintuple product expansion truncated to O(q^T).\n  The first argument z is a q-monomial.\n  When z is a symbolic variable (different from q), returns a bivariate Laurent polynomial\n  in z with q-series coefficients, computed via: sum(z^(3m) - z^(-3m-1)) q^(m(3m+1)/2).",
+        signature: "quinprod(z, q, T) or quinprod(z, q, \"prodid\") or quinprod(z, q, \"seriesid\")",
+        description: "Compute the quintuple product expansion truncated to O(q^T).\n  The first argument z is a q-monomial.\n  When z is a symbolic variable (different from q), returns a bivariate Laurent polynomial\n  in z with q-series coefficients, computed via: sum(z^(3m) - z^(-3m-1)) q^(m(3m+1)/2).\n  When the third argument is the string \"prodid\", displays the quintuple product identity\n  in product form. When \"seriesid\", displays the identity in series form.",
         example: "q> quinprod(z, q, 10)",
         example_output: "... + z^3*q^2 - z^2*q + z^0 - z^(-1) - z^(-3)*q + z^(-4)*q^2 + ... + O(q^10)",
     },
@@ -809,8 +815,8 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
     FuncHelp {
         name: "jac2series",
-        signature: "jac2series(JP, q, T)",
-        description: "Convert a Jacobi product expression to a truncated q-series.\n  JP must be a JacobiProduct value (created with JAC(a,b)).\n  Prints and returns the series expansion.",
+        signature: "jac2series(JP, T) or jac2series(JP, q, T)",
+        description: "Convert a Jacobi product expression to a truncated q-series.\n  JP must be a JacobiProduct value (created with JAC(a,b)).\n  The 2-arg form jac2series(JP, T) uses the default variable q,\n  which is equivalent to jac2series(JP, q, T).\n  Prints and returns the series expansion.",
         example: "q> jac2series(JAC(1,5) * JAC(4,5), q, 20)",
         example_output: "... + q^7 - q^4 - q + 1 + O(q^20)",
     },
@@ -853,7 +859,7 @@ const FUNC_HELP: &[FuncHelp] = &[
     FuncHelp {
         name: "subs",
         signature: "subs(var=val, expr)",
-        description: "Substitute a value for a variable in an expression.\n  subs(q=1, f) evaluates the series at q=1 (sums all coefficients).\n  subs(q=q^2, f) transforms exponents (multiplies all exponents by 2).\n  subs(q=r, f) evaluates the polynomial at the rational point r.",
+        description: "Substitute a value for a variable in an expression.\n  subs(q=1, f) evaluates the series at q=1 (sums all coefficients).\n  subs(q=q^2, f) transforms exponents (multiplies all exponents by 2).\n  subs(q=r, f) evaluates the polynomial at the rational point r.\n  Also supports indexed variable substitution: subs(X[1]=q, X[2]=q^2, expr)\n  substitutes indexed variables in expressions (useful with findnonhom output).",
         example: "q> subs(q=1, 1 + q + q^2 + q^3)",
         example_output: "4",
     },
@@ -888,6 +894,28 @@ const FUNC_HELP: &[FuncHelp] = &[
         description: "Return the maximum of one or more integer or rational arguments.\n  Accepts any mix of integers and rationals. Returns the original value type (Integer stays Integer, Rational stays Rational).",
         example: "q> max(3, 1, 4, 1, 5)",
         example_output: "5",
+    },
+
+    // -----------------------------------------------------------------------
+    // Group 13: Simplification (1)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "radsimp",
+        signature: "radsimp(expr)",
+        description: "Simplify a rational expression involving series quotients.\n  Currently acts as the identity function, returning its input unchanged.\n  Provided for compatibility where radsimp() is used after series division.",
+        example: "q> f := theta3(q, 20)^2: radsimp(f)",
+        example_output: "4*q^16 + 4*q^9 + 4*q^4 + 4*q + 1 + O(q^20)",
+    },
+
+    // -----------------------------------------------------------------------
+    // Group 14: Script Loading (1)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "read",
+        signature: "read(\"filename.qk\")",
+        description: "Load and execute a q-Kangaroo script file.\n  The file is executed as if its contents were typed at the prompt.\n  Variables and procedures defined in the script persist in the session.",
+        example: "q> read(\"examples/rr.qk\")",
+        example_output: "(loads and executes the script)",
     },
 ];
 
@@ -924,6 +952,33 @@ pub fn function_help(name: &str) -> Option<String> {
              \x20   q> if 3 > 2 then 1 else 0 fi\n\
              \x20   1\n\n\
              \x20 See also: for, proc"
+        )),
+        "ditto" | "\"" => return Some(String::from(
+            "\" (ditto operator)\n\n\
+             \x20 The double-quote character \" refers to the last printed result.\n\
+             \x20 It is equivalent to % but follows the q-series convention.\n\n\
+             \x20 Examples:\n\
+             \x20   q> aqprod(q, q, 5)\n\
+             \x20   -q^15 + q^14 + q^13 - q^10 - q^9 - q^8 + q^7 + q^6 + q^5 - q^2 - q + 1\n\
+             \x20   q> etamake(\", q, 20)\n\
+             \x20   eta(tau)\n\n\
+             \x20 Edge case: \" always refers to the most recently printed value,\n\
+             \x20 even when multiple expressions are separated by semicolons.\n\n\
+             \x20 See also: %"
+        )),
+        "lambda" | "arrow" | "->" => return Some(String::from(
+            "-> (arrow / lambda operator)\n\n\
+             \x20 Define an anonymous function: var -> expression\n\
+             \x20 Typically used with := for named functions.\n\n\
+             \x20 Examples:\n\
+             \x20   q> F := q -> theta3(q, 500) / theta3(q^5, 100)\n\
+             \x20   q> series(F(q), q, 20)\n\
+             \x20   2*q^15 + 2*q^10 + q^5 + 2*q^4 + 2*q^3 + 2*q + 1 + O(q^20)\n\n\
+             \x20   q> G := n -> n*(3*n - 1)/2\n\
+             \x20   q> G(5)\n\
+             \x20   35\n\n\
+             \x20 The arrow desugars into a procedure with one parameter.\n\n\
+             \x20 See also: proc"
         )),
         _ => {}
     }
@@ -965,6 +1020,7 @@ mod tests {
             "Identity Proving:",
             "Expression Operations:",
             "Polynomial Operations:",
+            "Simplification:",
             "Number Theory:",
             "Scripting:",
         ] {
@@ -1096,8 +1152,9 @@ mod tests {
             "series", "expand",
             "factor", "subs",
             "floor", "legendre", "min", "max",
+            "radsimp", "read",
         ];
-        assert_eq!(canonical.len(), 97, "test list should have 97 entries");
+        assert_eq!(canonical.len(), 99, "test list should have 99 entries");
 
         for name in &canonical {
             assert!(
@@ -1112,8 +1169,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            97,
-            "FUNC_HELP should have exactly 97 entries, got {}",
+            99,
+            "FUNC_HELP should have exactly 99 entries, got {}",
             FUNC_HELP.len()
         );
     }
@@ -1284,5 +1341,49 @@ mod tests {
         let text = general_help();
         assert!(text.contains("Scripting:"), "general_help missing Scripting category");
         assert!(text.contains("RETURN"), "general_help Scripting should list RETURN");
+    }
+
+    #[test]
+    fn function_help_ditto_returns_some() {
+        let help = function_help("ditto");
+        assert!(help.is_some(), "ditto should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("ditto"), "help should contain 'ditto'");
+    }
+
+    #[test]
+    fn function_help_lambda_returns_some() {
+        let help = function_help("lambda");
+        assert!(help.is_some(), "lambda should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("arrow"), "help should contain 'arrow'");
+    }
+
+    #[test]
+    fn function_help_radsimp_returns_some() {
+        let help = function_help("radsimp");
+        assert!(help.is_some(), "radsimp should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("radsimp"), "help should contain 'radsimp'");
+    }
+
+    #[test]
+    fn function_help_read_returns_some() {
+        let help = function_help("read");
+        assert!(help.is_some(), "read should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("read"), "help should contain 'read'");
+    }
+
+    #[test]
+    fn general_help_contains_radsimp() {
+        let text = general_help();
+        assert!(text.contains("radsimp"), "general_help should contain radsimp");
+    }
+
+    #[test]
+    fn general_help_contains_ditto_reference() {
+        let text = general_help();
+        assert!(text.contains("ditto"), "general_help should reference ditto");
     }
 }
