@@ -2077,3 +2077,90 @@ fn cat_mixed() {
     assert_eq!(code, 0, "cat mixed should succeed. stderr: {}", stderr);
     assert_eq!(stdout.trim(), "x42", "cat(x, 42) should be x42, got: {}", stdout.trim());
 }
+
+// ===================================================================
+// Iteration: add/mul/seq
+// ===================================================================
+
+#[test]
+fn add_sum_of_squares() {
+    let (code, stdout, stderr) = run(&["-c", "add(i^2, i=1..5)"]);
+    assert_eq!(code, 0, "add should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "55", "add(i^2, i=1..5) should be 55, got: {}", stdout.trim());
+}
+
+#[test]
+fn mul_product_polynomial() {
+    // mul(1-q^i, i=1..5) should match aqprod(q,q,5)
+    let (code1, stdout1, stderr1) = run(&["-c", "mul(1-q^i, i=1..5)"]);
+    assert_eq!(code1, 0, "mul should succeed. stderr: {}", stderr1);
+    let (code2, stdout2, stderr2) = run(&["-c", "aqprod(q,q,5)"]);
+    assert_eq!(code2, 0, "aqprod should succeed. stderr: {}", stderr2);
+    assert_eq!(
+        stdout1.trim(), stdout2.trim(),
+        "mul(1-q^i, i=1..5) should match aqprod(q,q,5)\nmul: {}\naqprod: {}",
+        stdout1.trim(), stdout2.trim()
+    );
+}
+
+#[test]
+fn seq_list_of_squares() {
+    let (code, stdout, stderr) = run(&["-c", "seq(i^2, i=1..5)"]);
+    assert_eq!(code, 0, "seq should succeed. stderr: {}", stderr);
+    assert_eq!(
+        stdout.trim(), "[1, 4, 9, 16, 25]",
+        "seq(i^2, i=1..5) should be [1, 4, 9, 16, 25], got: {}",
+        stdout.trim()
+    );
+}
+
+#[test]
+fn add_series_accumulation() {
+    // add(q^i/aqprod(q,q,i), i=0..5) should compute a series sum
+    let (code, stdout, stderr) = run(&["-c", "add(q^i/aqprod(q,q,i), i=0..5)"]);
+    assert_eq!(code, 0, "add series should succeed. stderr: {}", stderr);
+    // Result should be a series (polynomial/truncated) -- just verify it doesn't error
+    assert!(!stdout.trim().is_empty(), "add series should produce output");
+}
+
+#[test]
+fn add_empty_range_returns_zero() {
+    let (code, stdout, stderr) = run(&["-c", "add(i, i=5..1)"]);
+    assert_eq!(code, 0, "add empty range should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "0", "add(i, i=5..1) should be 0, got: {}", stdout.trim());
+}
+
+#[test]
+fn mul_empty_range_returns_one() {
+    let (code, stdout, stderr) = run(&["-c", "mul(i, i=5..1)"]);
+    assert_eq!(code, 0, "mul empty range should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "1", "mul(i, i=5..1) should be 1, got: {}", stdout.trim());
+}
+
+#[test]
+fn seq_empty_range_returns_empty_list() {
+    let (code, stdout, stderr) = run(&["-c", "seq(i, i=5..1)"]);
+    assert_eq!(code, 0, "seq empty range should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "[]", "seq(i, i=5..1) should be [], got: {}", stdout.trim());
+}
+
+#[test]
+fn iteration_variable_scoping() {
+    let (code, stdout, stderr) = run(&["-c", "i:=42: add(i, i=1..3): i"]);
+    assert_eq!(code, 0, "scoping test should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "42", "i should be restored to 42, got: {}", stdout.trim());
+}
+
+#[test]
+fn range_outside_iteration_error() {
+    let (code, _stdout, stderr) = run(&["-c", "1..5"]);
+    assert_ne!(code, 0, "bare range should fail");
+    assert!(
+        stderr.contains("range expressions"),
+        "error should mention range expressions, got: {}",
+        stderr
+    );
+}
+
+// Note: help entries for add/mul/seq are verified by help.rs unit tests.
+// The ?command syntax is REPL-only and cannot be tested via -c or piped mode.

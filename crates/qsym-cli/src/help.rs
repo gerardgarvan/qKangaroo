@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 112 functions + 5 language
+//! - [`general_help`]: grouped listing of all 115 functions + 5 language
 //!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 //!   Also handles `for`, `proc`, `if`, `ditto`, and `lambda` language
@@ -76,6 +76,11 @@ Series Coefficients & Utility:
   type     - check expression type: type(expr, integer)
   evalb    - evaluate expression as boolean
   cat      - concatenate arguments into a name: cat(a, b, c)
+
+Iteration:
+  add    - sum expression over range: add(i^2, i=1..5)
+  mul    - product over range: mul(1-q^i, i=1..5)
+  seq    - generate list over range: seq(i^2, i=1..5)
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -181,7 +186,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 112 function help entries.
+/// All 115 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -1025,6 +1030,31 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
 
     // -----------------------------------------------------------------------
+    // Group W: Iteration (3)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "add",
+        signature: "add(expr, var=a..b)",
+        description: "Sum expr as var ranges from a to b (inclusive).  The iteration variable\n  is locally scoped -- its previous value is restored after the call.\n  Empty range (a > b) returns 0 (additive identity).",
+        example: "q> add(i^2, i=1..5)",
+        example_output: "55",
+    },
+    FuncHelp {
+        name: "mul",
+        signature: "mul(expr, var=a..b)",
+        description: "Multiply expr as var ranges from a to b (inclusive).  The iteration\n  variable is locally scoped.  Empty range (a > b) returns 1\n  (multiplicative identity).",
+        example: "q> mul(1-q^i, i=1..5)",
+        example_output: "-q^15 + q^14 + q^13 - q^10 - q^9 - q^8 + q^7 + q^6 + q^5 - q^2 - q + 1",
+    },
+    FuncHelp {
+        name: "seq",
+        signature: "seq(expr, var=a..b)",
+        description: "Collect expr into a list as var ranges from a to b (inclusive).\n  The iteration variable is locally scoped.\n  Empty range (a > b) returns an empty list [].",
+        example: "q> seq(i^2, i=1..5)",
+        example_output: "[1, 4, 9, 16, 25]",
+    },
+
+    // -----------------------------------------------------------------------
     // Group 14: Script Loading (1)
     // -----------------------------------------------------------------------
     FuncHelp {
@@ -1153,6 +1183,7 @@ mod tests {
             "Simplification:",
             "List Operations:",
             "Series Coefficients & Utility:",
+            "Iteration:",
             "Number Theory:",
             "Scripting:",
         ] {
@@ -1287,9 +1318,10 @@ mod tests {
             "radsimp",
             "nops", "op", "map", "sort",
             "coeff", "degree", "numer", "denom", "modp", "mods", "type", "evalb", "cat",
+            "add", "mul", "seq",
             "read",
         ];
-        assert_eq!(canonical.len(), 112, "test list should have 112 entries");
+        assert_eq!(canonical.len(), 115, "test list should have 115 entries");
 
         for name in &canonical {
             assert!(
@@ -1304,8 +1336,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            112,
-            "FUNC_HELP should have exactly 112 entries, got {}",
+            115,
+            "FUNC_HELP should have exactly 115 entries, got {}",
             FUNC_HELP.len()
         );
     }

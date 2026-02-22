@@ -1209,6 +1209,12 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 return Ok(last_val);
             }
 
+            // Special-case: add/mul/seq(expr, var=a..b) with AST-level interception
+            // Body expression must NOT be eagerly evaluated -- iterate with variable substitution.
+            if name == "add" || name == "mul" || name == "seq" {
+                return eval_iteration_func(name, args, env);
+            }
+
             // Check if name refers to a user-defined procedure
             if let Some(Value::Procedure(proc_val)) = env.get_var(name).cloned() {
                 let mut evaluated = Vec::with_capacity(args.len());
@@ -1637,6 +1643,96 @@ fn eval_for_loop(
     }
 
     loop_result
+}
+
+/// Evaluate add/mul/seq(expr, var=a..b) iteration functions.
+///
+/// These are special-cased to intercept the AST before evaluation:
+/// - The first argument (body) is evaluated repeatedly per iteration.
+/// - The second argument is `Compare(Eq, Variable(var), Range(lo, hi))`.
+/// - The iteration variable is locally scoped (saved and restored).
+fn eval_iteration_func(
+    name: &str,
+    args: &[AstNode],
+    env: &mut Environment,
+) -> Result<Value, EvalError> {
+    if args.len() != 2 {
+        return Err(EvalError::WrongArgCount {
+            function: name.to_string(),
+            expected: "2".to_string(),
+            got: args.len(),
+            signature: format!("{}(expr, var=a..b)", name),
+        });
+    }
+    // Extract iteration variable and range from args[1]
+    let (var_name, lo, hi) = match &args[1] {
+        AstNode::Compare { op: CompOp::Eq, lhs, rhs } => {
+            let var = match lhs.as_ref() {
+                AstNode::Variable(v) => v.clone(),
+                _ => return Err(EvalError::Other(
+                    format!("{}: expected variable on left of =", name)
+                )),
+            };
+            let (lo_node, hi_node) = match rhs.as_ref() {
+                AstNode::Range { lo, hi } => (lo.as_ref(), hi.as_ref()),
+                _ => return Err(EvalError::Other(
+                    format!("{}: expected range (a..b) on right of =", name)
+                )),
+            };
+            let lo_val = eval_expr(lo_node, env)?;
+            let hi_val = eval_expr(hi_node, env)?;
+            let lo_i = value_to_i64(&lo_val, &format!("{} range start", name))?;
+            let hi_i = value_to_i64(&hi_val, &format!("{} range end", name))?;
+            (var, lo_i, hi_i)
+        }
+        _ => return Err(EvalError::Other(
+            format!("{}: second argument must be var=a..b", name)
+        )),
+    };
+
+    // Save and restore iteration variable (same pattern as eval_for_loop)
+    let saved = env.variables.remove(&var_name);
+
+    let result = (|| -> Result<Value, EvalError> {
+        match name {
+            "add" => {
+                let mut acc = Value::Integer(QInt::from(0i64));
+                for i in lo..=hi {
+                    env.set_var(&var_name, Value::Integer(QInt::from(i)));
+                    let val = eval_expr(&args[0], env)?;
+                    acc = eval_add(acc, val, env)?;
+                }
+                Ok(acc)
+            }
+            "mul" => {
+                let mut acc = Value::Integer(QInt::from(1i64));
+                for i in lo..=hi {
+                    env.set_var(&var_name, Value::Integer(QInt::from(i)));
+                    let val = eval_expr(&args[0], env)?;
+                    acc = eval_mul(acc, val, env)?;
+                }
+                Ok(acc)
+            }
+            "seq" => {
+                let mut items = Vec::new();
+                for i in lo..=hi {
+                    env.set_var(&var_name, Value::Integer(QInt::from(i)));
+                    let val = eval_expr(&args[0], env)?;
+                    items.push(val);
+                }
+                Ok(Value::List(items))
+            }
+            _ => unreachable!(),
+        }
+    })();
+
+    // Restore variable (even on error)
+    match saved {
+        Some(old_val) => env.set_var(&var_name, old_val),
+        None => { env.variables.remove(&var_name); }
+    }
+
+    result
 }
 
 /// Evaluate a while-loop.
@@ -6384,6 +6480,10 @@ fn get_signature(name: &str) -> String {
         "op" => "(i, expr) -- extract i-th operand (1-indexed)".to_string(),
         "map" => "(f, list) -- apply function to each element".to_string(),
         "sort" => "(list) -- sort list elements".to_string(),
+        // Group W: Iteration
+        "add" => "(expr, i=a..b)".to_string(),
+        "mul" => "(expr, i=a..b)".to_string(),
+        "seq" => "(expr, i=a..b)".to_string(),
         // Group V: Series Coefficient & Utility
         "coeff" => "(f, q, n) -- coefficient of q^n in series f".to_string(),
         "degree" => "(f, q) -- highest degree of q in polynomial/series f".to_string(),
@@ -6494,6 +6594,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "nops", "op", "map", "sort",
     // Pattern V: Series Coefficient & Utility
     "coeff", "degree", "numer", "denom", "modp", "mods", "type", "evalb", "cat",
+    // Pattern W: Iteration
+    "add", "mul", "seq",
 ];
 
 /// All alias names for fuzzy matching.
@@ -8774,8 +8876,8 @@ mod tests {
         // + 2 (prove_eta_id, search_identities)
         // = should be near 79
         assert!(
-            count >= 82,
-            "expected at least 82 function names in ALL_FUNCTION_NAMES, got {}",
+            count >= 85,
+            "expected at least 85 function names in ALL_FUNCTION_NAMES, got {}",
             count
         );
     }
@@ -13583,5 +13685,118 @@ mod tests {
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
         let text = format_value(&result, &env.symbols);
         assert_eq!(text, "4");
+    }
+
+    // --- Iteration: add/mul/seq tests ---
+
+    #[test]
+    fn eval_add_sum_of_squares() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("add(i^2, i=1..5)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "55");
+    }
+
+    #[test]
+    fn eval_add_empty_range() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("add(i, i=1..0)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "0");
+    }
+
+    #[test]
+    fn eval_mul_factorial() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("mul(i, i=1..5)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "120");
+    }
+
+    #[test]
+    fn eval_mul_empty_range() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("mul(i, i=1..0)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "1");
+    }
+
+    #[test]
+    fn eval_seq_list_of_squares() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("seq(i^2, i=1..5)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "[1, 4, 9, 16, 25]");
+    }
+
+    #[test]
+    fn eval_seq_empty_range() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("seq(i, i=1..0)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "[]");
+    }
+
+    #[test]
+    fn eval_add_variable_scoping() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        // Set i:=99, then add(i, i=1..3), then check i is still 99
+        let stmts = parse("i:=99: add(i, i=1..3): i").unwrap();
+        // Execute all statements, collect last result
+        for stmt in &stmts {
+            eval_stmt(stmt, &mut env).unwrap();
+        }
+        // The last result should be i = 99
+        let stmts2 = parse("i").unwrap();
+        let result = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "99");
+    }
+
+    #[test]
+    fn eval_add_negative_bounds() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        // add(i, i=-2..2) = -2 + -1 + 0 + 1 + 2 = 0
+        let stmts = parse("add(i, i=-2..2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "0");
+    }
+
+    #[test]
+    fn eval_range_outside_iteration_error() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("1..5").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env);
+        assert!(result.is_err(), "1..5 at top level should error");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(
+            err_msg.contains("range expressions"),
+            "error should mention range expressions, got: {}",
+            err_msg
+        );
     }
 }
