@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 99 functions + 5 language
+//! - [`general_help`]: grouped listing of all 103 functions + 5 language
 //!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 //!   Also handles `for`, `proc`, `if`, `ditto`, and `lambda` language
@@ -59,6 +59,12 @@ Polynomial Operations:
 
 Simplification:
   radsimp        - simplify rational series expression
+
+List Operations:
+  nops    - number of operands/elements: nops([a,b,c]) = 3
+  op      - extract i-th operand: op(2, [a,b,c]) = b
+  map     - apply function to each element: map(f, [1,2,3])
+  sort    - sort list elements: sort([3,1,2]) = [1,2,3]
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -164,7 +170,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 99 function help entries.
+/// All 103 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -909,6 +915,38 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
 
     // -----------------------------------------------------------------------
+    // Group U: List operations (4)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "nops",
+        signature: "nops(expr)",
+        description: "Return the number of operands of expr.  For a list, returns the\n  number of elements.  For a series, returns the number of nonzero terms.\n  For an integer, rational, or symbol, returns 1.",
+        example: "q> nops([a, b, c])",
+        example_output: "3",
+    },
+    FuncHelp {
+        name: "op",
+        signature: "op(i, expr)",
+        description: "Extract the i-th operand of expr (1-indexed).  For a list, returns\n  the i-th element.  For a series, returns the i-th nonzero term as\n  [exponent, coefficient].",
+        example: "q> op(2, [10, 20, 30])",
+        example_output: "20",
+    },
+    FuncHelp {
+        name: "map",
+        signature: "map(f, list)",
+        description: "Apply function f to each element of list, returning a new list.\n  f can be a built-in function name (symbol) or a user-defined procedure/lambda.",
+        example: "q> map(x -> x^2, [1, 2, 3, 4])",
+        example_output: "[1, 4, 9, 16]",
+    },
+    FuncHelp {
+        name: "sort",
+        signature: "sort(list)",
+        description: "Sort the elements of list in ascending order.  Numeric values\n  (integers and rationals) are sorted by value.  Symbols and strings\n  are sorted lexicographically.",
+        example: "q> sort([3, 1, 2])",
+        example_output: "[1, 2, 3]",
+    },
+
+    // -----------------------------------------------------------------------
     // Group 14: Script Loading (1)
     // -----------------------------------------------------------------------
     FuncHelp {
@@ -1035,6 +1073,7 @@ mod tests {
             "Expression Operations:",
             "Polynomial Operations:",
             "Simplification:",
+            "List Operations:",
             "Number Theory:",
             "Scripting:",
         ] {
@@ -1166,9 +1205,11 @@ mod tests {
             "series", "expand",
             "factor", "subs",
             "floor", "legendre", "min", "max",
-            "radsimp", "read",
+            "radsimp",
+            "nops", "op", "map", "sort",
+            "read",
         ];
-        assert_eq!(canonical.len(), 99, "test list should have 99 entries");
+        assert_eq!(canonical.len(), 103, "test list should have 103 entries");
 
         for name in &canonical {
             assert!(
@@ -1183,8 +1224,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            99,
-            "FUNC_HELP should have exactly 99 entries, got {}",
+            103,
+            "FUNC_HELP should have exactly 103 entries, got {}",
             FUNC_HELP.len()
         );
     }
@@ -1416,5 +1457,49 @@ mod tests {
         let text = general_help();
         assert!(text.contains("while"), "general_help should contain while");
         assert!(text.contains("while-loop"), "general_help should describe while-loop");
+    }
+
+    // -----------------------------------------------------------------------
+    // List operation help tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn function_help_nops_returns_some() {
+        let help = function_help("nops");
+        assert!(help.is_some(), "nops should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("nops"), "help should contain 'nops'");
+        assert!(text.contains("operands"), "help should contain 'operands'");
+    }
+
+    #[test]
+    fn function_help_op_returns_some() {
+        let help = function_help("op");
+        assert!(help.is_some(), "op should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("op"), "help should contain 'op'");
+    }
+
+    #[test]
+    fn function_help_map_returns_some() {
+        let help = function_help("map");
+        assert!(help.is_some(), "map should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("Apply"), "help should contain 'Apply'");
+    }
+
+    #[test]
+    fn function_help_sort_returns_some() {
+        let help = function_help("sort");
+        assert!(help.is_some(), "sort should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("Sort"), "help should contain 'Sort'");
+    }
+
+    #[test]
+    fn general_help_lists_section() {
+        let text = general_help();
+        assert!(text.contains("List Operations:"), "general_help should contain 'List Operations:' category");
+        assert!(text.contains("nops"), "general_help should mention nops");
     }
 }
