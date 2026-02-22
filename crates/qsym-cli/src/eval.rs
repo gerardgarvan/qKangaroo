@@ -1057,6 +1057,78 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
             Ok(Value::List(result))
         }
 
+        AstNode::Index { expr, index } => {
+            let base = eval_expr(expr, env)?;
+            let idx_val = eval_expr(index, env)?;
+            let i = match &idx_val {
+                Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::Other(
+                    "index too large".to_string()
+                ))?,
+                _ => return Err(EvalError::Other(
+                    format!("index must be an integer, got {}", idx_val.type_name())
+                )),
+            };
+            match base {
+                Value::List(items) => {
+                    // Maple uses 1-indexing
+                    if i < 1 || i as usize > items.len() {
+                        return Err(EvalError::Other(format!(
+                            "list index {} out of range (list has {} elements)",
+                            i, items.len()
+                        )));
+                    }
+                    Ok(items[(i - 1) as usize].clone())
+                }
+                Value::Symbol(ref name) => {
+                    // Backward compat: if X is unbound (became Symbol), fall back to
+                    // looking up "X[i]" as a variable name (table-style indexed variables)
+                    let key = format!("{}[{}]", name, i);
+                    match env.get_var(&key) {
+                        Some(val) => Ok(val.clone()),
+                        None => Err(EvalError::Other(format!(
+                            "cannot index into symbol '{}' (not a list, and '{}' is not defined)",
+                            name, key
+                        ))),
+                    }
+                }
+                _ => Err(EvalError::Other(format!(
+                    "cannot index into {}", base.type_name()
+                ))),
+            }
+        }
+
+        AstNode::IndexAssign { name, index, value } => {
+            let idx_val = eval_expr(index, env)?;
+            let i = match &idx_val {
+                Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::Other(
+                    "index too large".to_string()
+                ))?,
+                _ => return Err(EvalError::Other(
+                    format!("index must be an integer, got {}", idx_val.type_name())
+                )),
+            };
+            let val = eval_expr(value, env)?;
+
+            // Check if name is currently a list
+            if let Some(Value::List(ref items)) = env.get_var(name) {
+                // Mutate list element in place
+                if i < 1 || i as usize > items.len() {
+                    return Err(EvalError::Other(format!(
+                        "list index {} out of range (list has {} elements)",
+                        i, items.len()
+                    )));
+                }
+                let mut new_items = items.clone();
+                new_items[(i - 1) as usize] = val.clone();
+                env.set_var(name, Value::List(new_items));
+            } else {
+                // Fall back to table-style: set "name[i]" as a variable
+                let key = format!("{}[{}]", name, i);
+                env.set_var(&key, val.clone());
+            }
+            Ok(val)
+        }
+
         AstNode::Neg(inner) => {
             let val = eval_expr(inner, env)?;
             eval_negate(val, env)

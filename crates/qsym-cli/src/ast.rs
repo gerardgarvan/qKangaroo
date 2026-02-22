@@ -78,6 +78,17 @@ pub enum AstNode {
     },
     /// List literal: `[expr1, expr2, ...]`.
     List(Vec<AstNode>),
+    /// Subscript/index access: `expr[index]`.
+    Index {
+        expr: Box<AstNode>,
+        index: Box<AstNode>,
+    },
+    /// Indexed assignment: `expr[index] := value`.
+    IndexAssign {
+        name: String,
+        index: Box<AstNode>,
+        value: Box<AstNode>,
+    },
     /// Variable assignment: `name := value`.
     Assign {
         name: String,
@@ -364,6 +375,36 @@ mod tests {
                     assert_ne!(ops[i], ops[j]);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn ast_index_construction() {
+        let node = AstNode::Index {
+            expr: Box::new(AstNode::Variable("L".to_string())),
+            index: Box::new(AstNode::Integer(2)),
+        };
+        if let AstNode::Index { expr, index } = &node {
+            assert_eq!(**expr, AstNode::Variable("L".to_string()));
+            assert_eq!(**index, AstNode::Integer(2));
+        } else {
+            panic!("Expected Index variant");
+        }
+    }
+
+    #[test]
+    fn ast_index_assign_construction() {
+        let node = AstNode::IndexAssign {
+            name: "L".to_string(),
+            index: Box::new(AstNode::Integer(1)),
+            value: Box::new(AstNode::Integer(42)),
+        };
+        if let AstNode::IndexAssign { name, index, value } = &node {
+            assert_eq!(name, "L");
+            assert_eq!(**index, AstNode::Integer(1));
+            assert_eq!(**value, AstNode::Integer(42));
+        } else {
+            panic!("Expected IndexAssign variant");
         }
     }
 

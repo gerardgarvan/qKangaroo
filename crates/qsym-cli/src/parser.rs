@@ -344,25 +344,17 @@ impl Parser {
                 }
             }
 
-            // Subscript: X[i] -- index into a variable
+            // Subscript: expr[index] -- index into any expression
             if *self.peek() == Token::LBracket {
                 if 19 < min_bp { break; } // same precedence as function call
-                if let AstNode::Variable(ref name) = lhs {
-                    let saved_name = name.clone();
-                    self.advance(); // consume [
-                    let index = self.expr_bp(0)?;
-                    self.expect(&Token::RBracket, "']' to close subscript")?;
-                    if let AstNode::Integer(i) = &index {
-                        lhs = AstNode::Variable(format!("{}[{}]", saved_name, i));
-                        continue;
-                    }
-                    // Non-integer subscript
-                    return Err(ParseError::new(
-                        "subscript index must be an integer".to_string(),
-                        self.peek_span(),
-                    ));
-                }
-                break; // Not a variable on the left, don't subscript
+                self.advance(); // consume [
+                let index = self.expr_bp(0)?;
+                self.expect(&Token::RBracket, "']' to close subscript")?;
+                lhs = AstNode::Index {
+                    expr: Box::new(lhs),
+                    index: Box::new(index),
+                };
+                continue;
             }
 
             // Assignment: l_bp = 2, r_bp = 1
@@ -370,21 +362,42 @@ impl Parser {
                 if 2 < min_bp {
                     break;
                 }
-                // Left side must be a variable
-                if let AstNode::Variable(name) = lhs {
-                    self.advance(); // consume :=
-                    let value = self.expr_bp(1)?;
-                    lhs = AstNode::Assign {
-                        name,
-                        value: Box::new(value),
-                    };
-                    continue;
-                } else {
-                    let span = self.peek_span();
-                    return Err(ParseError::new(
-                        "left side of := must be a variable name".to_string(),
-                        span,
-                    ));
+                match lhs {
+                    AstNode::Variable(name) => {
+                        self.advance(); // consume :=
+                        let value = self.expr_bp(1)?;
+                        lhs = AstNode::Assign {
+                            name,
+                            value: Box::new(value),
+                        };
+                        continue;
+                    }
+                    AstNode::Index { expr, index } => {
+                        // IndexAssign: L[i] := value
+                        if let AstNode::Variable(name) = *expr {
+                            self.advance(); // consume :=
+                            let value = self.expr_bp(1)?;
+                            lhs = AstNode::IndexAssign {
+                                name,
+                                index,
+                                value: Box::new(value),
+                            };
+                            continue;
+                        } else {
+                            let span = self.peek_span();
+                            return Err(ParseError::new(
+                                "left side of ':=' must be a variable or indexed variable".to_string(),
+                                span,
+                            ));
+                        }
+                    }
+                    _ => {
+                        let span = self.peek_span();
+                        return Err(ParseError::new(
+                            "left side of ':=' must be a variable or indexed variable".to_string(),
+                            span,
+                        ));
+                    }
                 }
             }
 
@@ -768,7 +781,7 @@ mod tests {
     fn test_assign_non_variable_error() {
         let err = parse("3 := 5").unwrap_err();
         assert!(
-            err.message.contains("left side of := must be a variable name"),
+            err.message.contains("left side of ':=' must be a variable or indexed variable"),
             "got: {}",
             err.message
         );
@@ -1937,20 +1950,51 @@ mod tests {
     }
 
     #[test]
-    fn parse_subscript_variable() {
-        let node = parse_expr("X[1]");
-        assert_eq!(node, AstNode::Variable("X[1]".to_string()));
+    fn parse_list_indexing() {
+        let node = parse_expr("L[2]");
+        assert_eq!(
+            node,
+            AstNode::Index {
+                expr: Box::new(AstNode::Variable("L".to_string())),
+                index: Box::new(AstNode::Integer(2)),
+            }
+        );
     }
 
     #[test]
-    fn parse_subscript_in_assignment() {
-        let node = parse_expr("X[1] := 5");
-        if let AstNode::Assign { name, value } = &node {
-            assert_eq!(name, "X[1]");
-            assert_eq!(**value, AstNode::Integer(5));
-        } else {
-            panic!("Expected Assign, got {:?}", node);
-        }
+    fn parse_index_assign() {
+        let node = parse_expr("L[1] := 5");
+        assert_eq!(
+            node,
+            AstNode::IndexAssign {
+                name: "L".to_string(),
+                index: Box::new(AstNode::Integer(1)),
+                value: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    #[test]
+    fn parse_expression_index() {
+        let node = parse_expr("[1,2,3][2]");
+        assert_eq!(
+            node,
+            AstNode::Index {
+                expr: Box::new(AstNode::List(vec![
+                    AstNode::Integer(1),
+                    AstNode::Integer(2),
+                    AstNode::Integer(3),
+                ])),
+                index: Box::new(AstNode::Integer(2)),
+            }
+        );
+    }
+
+    #[test]
+    fn parse_nested_index() {
+        // X[1] now parses as Index, not Variable("X[1]")
+        let node = parse_expr("X[1]");
+        assert!(matches!(node, AstNode::Index { .. }), "expected Index, got {:?}", node);
     }
 
     #[test]
@@ -1958,8 +2002,8 @@ mod tests {
         let node = parse_expr("X[1] + X[2]");
         if let AstNode::BinOp { op, lhs, rhs } = &node {
             assert_eq!(*op, BinOp::Add);
-            assert_eq!(**lhs, AstNode::Variable("X[1]".to_string()));
-            assert_eq!(**rhs, AstNode::Variable("X[2]".to_string()));
+            assert!(matches!(lhs.as_ref(), AstNode::Index { .. }));
+            assert!(matches!(rhs.as_ref(), AstNode::Index { .. }));
         } else {
             panic!("Expected BinOp(Add), got {:?}", node);
         }
