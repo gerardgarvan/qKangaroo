@@ -151,7 +151,7 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 
 **Milestone Goal:** Close remaining Maple language and function gaps -- fix the polynomial division hang, add while-loops, lists as first-class values, Maple built-in functions (coeff, add, seq, nops, op, map, sort, etc.), and Unicode paste resilience so researchers can run more Maple code without modification.
 
-- [ ] **Phase 52: Bug Fix & Language Extensions** - Polynomial division fix, while-loops, Unicode resilience, print()
+- [x] **Phase 52: Bug Fix & Language Extensions** - Polynomial division fix, while-loops, Unicode resilience, print() -- 2026-02-22
 - [ ] **Phase 53: Lists & List Operations** - Value::List, list literals, indexing, nops, op, map, sort
 - [ ] **Phase 54: Series & Utility Functions** - coeff, degree, numer/denom, modp/mods, type, evalb, cat
 - [ ] **Phase 55: Iteration with Range Syntax** - add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b)
@@ -170,8 +170,8 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
   4. `print(expr)` inside a for-loop or procedure displays each intermediate value as it executes
 **Plans**: 2 plans
 Plans:
-- [ ] 52-01-PLAN.md -- Fix POLYNOMIAL_ORDER division hang, Unicode normalization, print() function
-- [ ] 52-02-PLAN.md -- While-loop parsing, evaluation, REPL support, and help
+- [x] 52-01-PLAN.md -- Fix POLYNOMIAL_ORDER division hang, Unicode normalization, print() function
+- [x] 52-02-PLAN.md -- While-loop parsing, evaluation, REPL support, and help
 
 ### Phase 53: Lists & List Operations
 **Goal**: Researchers can create, display, index, and manipulate lists as first-class values using Maple syntax
@@ -273,7 +273,7 @@ Plans:
 | 49. Display Formatting | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 50. New Functions | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
-| 52. Bug Fix & Language Extensions | v5.0 | 0/2 | Not started | - |
+| 52. Bug Fix & Language Extensions | v5.0 | 2/2 | Complete | 2026-02-22 |
 | 53. Lists & List Operations | v5.0 | 0/? | Not started | - |
 | 54. Series & Utility Functions | v5.0 | 0/? | Not started | - |
 | 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
