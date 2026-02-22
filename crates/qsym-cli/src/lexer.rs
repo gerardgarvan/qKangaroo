@@ -6,16 +6,34 @@
 use crate::error::ParseError;
 use crate::token::{Span, SpannedToken, Token};
 
+/// Replace common Unicode math operator lookalikes with ASCII equivalents.
+/// This allows text pasted from PDFs and papers to parse correctly.
+fn normalize_unicode(input: &str) -> String {
+    input
+        .replace('\u{2227}', "^")   // LOGICAL AND -> caret
+        .replace('\u{00B7}', "*")   // MIDDLE DOT -> star
+        .replace('\u{2212}', "-")   // MINUS SIGN -> hyphen-minus
+        .replace('\u{00D7}', "*")   // MULTIPLICATION SIGN -> star
+        .replace('\u{2013}', "-")   // EN DASH -> hyphen-minus
+        .replace('\u{2014}', "-")   // EM DASH -> hyphen-minus
+        .replace('\u{2018}', "'")   // LEFT SINGLE QUOTATION -> apostrophe
+        .replace('\u{2019}', "'")   // RIGHT SINGLE QUOTATION -> apostrophe
+        .replace('\u{201C}', "\"")  // LEFT DOUBLE QUOTATION -> double quote
+        .replace('\u{201D}', "\"")  // RIGHT DOUBLE QUOTATION -> double quote
+}
+
 /// Tokenize a source string into a sequence of spanned tokens.
 ///
 /// The returned vector always ends with a [`Token::Eof`] token whose span
-/// points to the end of the input string.
+/// points to the end of the input string.  Unicode math operators are
+/// normalized to ASCII equivalents before byte-level lexing.
 ///
 /// # Errors
 ///
 /// Returns [`ParseError`] if an unrecognized character is encountered.
 pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
-    let bytes = input.as_bytes();
+    let normalized = normalize_unicode(input);
+    let bytes = normalized.as_bytes();
     let mut pos = 0usize;
     let mut tokens = Vec::new();
 
@@ -177,7 +195,7 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             while pos < bytes.len() && bytes[pos].is_ascii_digit() {
                 pos += 1;
             }
-            let word = &input[start..pos];
+            let word = &normalized[start..pos];
             let token = match word.parse::<i64>() {
                 Ok(n) => Token::Integer(n),
                 Err(_) => Token::BigInteger(word.to_string()),
@@ -197,7 +215,7 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             {
                 pos += 1;
             }
-            let word = &input[start..pos];
+            let word = &normalized[start..pos];
             let token = match word {
                 "infinity" => Token::Infinity,
                 "for" => Token::For,
@@ -279,7 +297,7 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
         }
 
         // Unknown character
-        let c = input[pos..].chars().next().unwrap();
+        let c = normalized[pos..].chars().next().unwrap();
         return Err(ParseError::new(
             format!("unexpected character '{}'", c),
             Span::new(pos, pos + c.len_utf8()),
@@ -761,6 +779,102 @@ mod tests {
                 Token::Ident("expr".to_string()),
                 Token::Eof,
             ]
+        );
+    }
+
+    // =======================================================
+    // Unicode normalization tests (LANG-03)
+    // =======================================================
+
+    #[test]
+    fn test_normalize_unicode_all_replacements() {
+        let input = "\u{2227}\u{00B7}\u{2212}\u{00D7}\u{2013}\u{2014}\u{2018}\u{2019}\u{201C}\u{201D}";
+        let result = normalize_unicode(input);
+        assert_eq!(result, "^*-*--''\"\"");
+    }
+
+    #[test]
+    fn test_normalize_unicode_passthrough() {
+        // ASCII input should pass through unchanged
+        let input = "q^5 + 3*x - 1";
+        let result = normalize_unicode(input);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn test_unicode_logical_and_as_caret() {
+        // U+2227 LOGICAL AND should become caret for exponentiation
+        let toks = tokens("q\u{2227}5");
+        assert_eq!(
+            toks,
+            vec![Token::Ident("q".to_string()), Token::Caret, Token::Integer(5), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_unicode_multiplication_sign() {
+        // U+00D7 MULTIPLICATION SIGN should become star
+        let toks = tokens("3 \u{00D7} 5");
+        assert_eq!(
+            toks,
+            vec![Token::Integer(3), Token::Star, Token::Integer(5), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_unicode_minus_sign() {
+        // U+2212 MINUS SIGN should become hyphen-minus
+        let toks = tokens("x \u{2212} 1");
+        assert_eq!(
+            toks,
+            vec![Token::Ident("x".to_string()), Token::Minus, Token::Integer(1), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_unicode_middle_dot() {
+        // U+00B7 MIDDLE DOT should become star
+        let toks = tokens("3 \u{00B7} 5");
+        assert_eq!(
+            toks,
+            vec![Token::Integer(3), Token::Star, Token::Integer(5), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_unicode_en_dash_as_minus() {
+        // U+2013 EN DASH should become minus
+        let toks = tokens("x \u{2013} 1");
+        assert_eq!(
+            toks,
+            vec![Token::Ident("x".to_string()), Token::Minus, Token::Integer(1), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_unicode_mixed_with_ascii() {
+        // Mix of Unicode and ASCII operators in same expression
+        let toks = tokens("q\u{2227}5 + 3 \u{00D7} x \u{2212} 1");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("q".to_string()), Token::Caret, Token::Integer(5),
+                Token::Plus, Token::Integer(3), Token::Star,
+                Token::Ident("x".to_string()), Token::Minus, Token::Integer(1),
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_unicode_smart_quotes_normalized() {
+        // Smart quotes are normalized to ASCII -- this means strings containing
+        // smart quotes will also be normalized. This is acceptable behavior since
+        // normalization happens before tokenization.
+        let toks = tokens("\u{201C}hello\u{201D}");
+        assert_eq!(
+            toks,
+            vec![Token::StringLit("hello".to_string()), Token::Eof]
         );
     }
 }
