@@ -5281,6 +5281,157 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // List Operations
+        // =================================================================
+
+        "nops" => {
+            expect_args(name, args, 1)?;
+            match &args[0] {
+                Value::List(items) => Ok(Value::Integer(QInt::from(items.len() as i64))),
+                Value::Series(fps) => {
+                    // Count nonzero terms (FPS stores only nonzero coefficients)
+                    let count = fps.iter().count();
+                    Ok(Value::Integer(QInt::from(count as i64)))
+                }
+                Value::Integer(_) | Value::Rational(_) => Ok(Value::Integer(QInt::from(1i64))),
+                Value::Symbol(_) => Ok(Value::Integer(QInt::from(1i64))),
+                Value::BivariateSeries(bvs) => {
+                    // Count nonzero z-coefficients
+                    let count = bvs.terms.iter().filter(|(_, fps)| !fps.is_zero()).count();
+                    Ok(Value::Integer(QInt::from(count as i64)))
+                }
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "list, series, integer, rational, or symbol",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "op" => {
+            expect_args(name, args, 2)?;
+            let i = match &args[0] {
+                Value::Integer(n) => n.0.to_i64().ok_or_else(|| EvalError::Other(
+                    "op: index too large".to_string()
+                ))?,
+                _ => return Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "integer",
+                    got: args[0].type_name().to_string(),
+                }),
+            };
+            match &args[1] {
+                Value::List(items) => {
+                    if i < 1 || i as usize > items.len() {
+                        return Err(EvalError::Other(format!(
+                            "op: index {} out of range (expression has {} operands)",
+                            i, items.len()
+                        )));
+                    }
+                    Ok(items[(i - 1) as usize].clone())
+                }
+                Value::Series(fps) => {
+                    // Return i-th nonzero term as [exponent, coefficient]
+                    let nonzero: Vec<_> = fps.iter().collect();
+                    if i < 1 || i as usize > nonzero.len() {
+                        return Err(EvalError::Other(format!(
+                            "op: index {} out of range (series has {} nonzero terms)",
+                            i, nonzero.len()
+                        )));
+                    }
+                    let (exp, coeff) = nonzero[(i - 1) as usize];
+                    Ok(Value::List(vec![
+                        Value::Integer(QInt::from(*exp)),
+                        if *coeff.denom() == 1 {
+                            Value::Integer(QInt(coeff.numer().clone()))
+                        } else {
+                            Value::Rational(coeff.clone())
+                        },
+                    ]))
+                }
+                Value::Integer(_) | Value::Rational(_) | Value::Symbol(_) => {
+                    if i == 1 {
+                        Ok(args[1].clone())
+                    } else {
+                        Err(EvalError::Other(format!(
+                            "op: index {} out of range (expression has 1 operand)", i
+                        )))
+                    }
+                }
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 1,
+                    expected: "list, series, integer, rational, or symbol",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "map" => {
+            expect_args(name, args, 2)?;
+            let func = args[0].clone();
+            let list = match &args[1] {
+                Value::List(items) => items.clone(),
+                other => return Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 1,
+                    expected: "list",
+                    got: other.type_name().to_string(),
+                }),
+            };
+            let mut result = Vec::with_capacity(list.len());
+            for elem in &list {
+                let val = match &func {
+                    Value::Procedure(proc) => call_procedure(proc, &[elem.clone()], env)?,
+                    Value::Symbol(fname) => dispatch(fname, &[elem.clone()], env)?,
+                    other => return Err(EvalError::ArgType {
+                        function: name.to_string(),
+                        arg_index: 0,
+                        expected: "procedure or function name",
+                        got: other.type_name().to_string(),
+                    }),
+                };
+                result.push(val);
+            }
+            Ok(Value::List(result))
+        }
+
+        "sort" => {
+            expect_args(name, args, 1)?;
+            let list = match &args[0] {
+                Value::List(items) => items.clone(),
+                other => return Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "list",
+                    got: other.type_name().to_string(),
+                }),
+            };
+            let mut sorted = list;
+            let mut sort_error: Option<String> = None;
+            sorted.sort_by(|a, b| {
+                match compare_values_for_sort(a, b) {
+                    Some(ord) => ord,
+                    None => {
+                        if sort_error.is_none() {
+                            sort_error = Some(format!(
+                                "sort: cannot compare {} with {}",
+                                a.type_name(), b.type_name()
+                            ));
+                        }
+                        std::cmp::Ordering::Equal
+                    }
+                }
+            });
+            if let Some(err) = sort_error {
+                return Err(EvalError::Other(err));
+            }
+            Ok(Value::List(sorted))
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -5290,6 +5441,32 @@ pub fn dispatch(
                 suggestions,
             })
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sorting helper
+// ---------------------------------------------------------------------------
+
+/// Compare two Values for sorting purposes.
+/// Numeric types are compared by value (Integer and Rational unified via QRat).
+/// Symbols and strings are compared lexicographically.
+/// Returns None if types are incomparable.
+fn compare_values_for_sort(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
+    match (a, b) {
+        (Value::Integer(x), Value::Integer(y)) => Some(x.0.cmp(&y.0)),
+        (Value::Rational(x), Value::Rational(y)) => Some(x.cmp(y)),
+        (Value::Integer(x), Value::Rational(y)) => {
+            let xr = QRat::from(x.clone());
+            Some(xr.cmp(y))
+        }
+        (Value::Rational(x), Value::Integer(y)) => {
+            let yr = QRat::from(y.clone());
+            Some(x.cmp(&yr))
+        }
+        (Value::Symbol(x), Value::Symbol(y)) => Some(x.cmp(y)),
+        (Value::String(x), Value::String(y)) => Some(x.cmp(y)),
+        _ => None,
     }
 }
 
@@ -6017,6 +6194,11 @@ fn get_signature(name: &str) -> String {
         "subs" => "(var=val, ..., expr)".to_string(),
         // Group T: Simplification
         "radsimp" => "(expr) -- simplify rational series expression".to_string(),
+        // Group U: List Operations
+        "nops" => "(expr) -- number of operands/elements".to_string(),
+        "op" => "(i, expr) -- extract i-th operand (1-indexed)".to_string(),
+        "map" => "(f, list) -- apply function to each element".to_string(),
+        "sort" => "(list) -- sort list elements".to_string(),
         _ => String::new(),
     }
 }
@@ -6056,7 +6238,7 @@ fn resolve_alias(name: &str) -> String {
 // Fuzzy matching for "Did you mean?" suggestions
 // ---------------------------------------------------------------------------
 
-/// All canonical function names (86 functions) for fuzzy matching.
+/// All canonical function names (90 functions) for fuzzy matching.
 const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern A: Series generators
     "aqprod", "qbin", "etaq", "jacprod", "tripleprod", "quinprod", "winquist",
@@ -6113,6 +6295,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "subs",
     // Pattern T: Simplification
     "radsimp",
+    // Pattern U: List operations
+    "nops", "op", "map", "sort",
 ];
 
 /// All alias names for fuzzy matching.
@@ -8393,8 +8577,8 @@ mod tests {
         // + 2 (prove_eta_id, search_identities)
         // = should be near 79
         assert!(
-            count >= 78,
-            "expected at least 78 function names in ALL_FUNCTION_NAMES, got {}",
+            count >= 82,
+            "expected at least 82 function names in ALL_FUNCTION_NAMES, got {}",
             count
         );
     }
@@ -12503,5 +12687,342 @@ mod tests {
         } else {
             panic!("expected Integer, got {:?}", result);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // nops dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_nops_list() {
+        let mut env = make_env();
+        let args = vec![Value::List(vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(2i64)),
+            Value::Integer(QInt::from(3i64)),
+        ])];
+        let result = dispatch("nops", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(3i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_nops_integer() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(42i64))];
+        let result = dispatch("nops", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(1i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_nops_series() {
+        let mut env = make_env();
+        // Create a simple series with 3 nonzero terms: 1 + q + q^2 + O(q^5)
+        let sym = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0, QRat::one());
+        coeffs.insert(1, QRat::one());
+        coeffs.insert(2, QRat::one());
+        let fps = FormalPowerSeries::from_coeffs(sym, coeffs, 5);
+        let args = vec![Value::Series(fps)];
+        let result = dispatch("nops", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(3i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // op dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_op_list() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(2i64)),
+            Value::List(vec![
+                Value::Integer(QInt::from(10i64)),
+                Value::Integer(QInt::from(20i64)),
+                Value::Integer(QInt::from(30i64)),
+            ]),
+        ];
+        let result = dispatch("op", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(20i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_op_out_of_range() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(4i64)),
+            Value::List(vec![
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(2i64)),
+                Value::Integer(QInt::from(3i64)),
+            ]),
+        ];
+        let result = dispatch("op", &args, &mut env);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn dispatch_op_series() {
+        let mut env = make_env();
+        // Create series: 2*q + 3*q^2 + O(q^5)
+        let sym = env.sym_q;
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(1, QRat::from((2, 1)));
+        coeffs.insert(2, QRat::from((3, 1)));
+        let fps = FormalPowerSeries::from_coeffs(sym, coeffs, 5);
+        let args = vec![
+            Value::Integer(QInt::from(1i64)),
+            Value::Series(fps),
+        ];
+        let result = dispatch("op", &args, &mut env).unwrap();
+        if let Value::List(items) = &result {
+            assert_eq!(items.len(), 2);
+            if let Value::Integer(exp) = &items[0] {
+                assert_eq!(*exp, QInt::from(1i64), "first nonzero term exponent should be 1");
+            } else {
+                panic!("expected Integer exponent, got {:?}", items[0]);
+            }
+            if let Value::Integer(coeff) = &items[1] {
+                assert_eq!(*coeff, QInt::from(2i64), "first nonzero term coefficient should be 2");
+            } else {
+                panic!("expected Integer coefficient, got {:?}", items[1]);
+            }
+        } else {
+            panic!("expected List, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // map dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_map_builtin() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("numbpart".to_string()),
+            Value::List(vec![
+                Value::Integer(QInt::from(1i64)),
+                Value::Integer(QInt::from(2i64)),
+                Value::Integer(QInt::from(3i64)),
+                Value::Integer(QInt::from(4i64)),
+                Value::Integer(QInt::from(5i64)),
+            ]),
+        ];
+        let result = dispatch("map", &args, &mut env).unwrap();
+        if let Value::List(items) = &result {
+            assert_eq!(items.len(), 5);
+            let expected = [1i64, 2, 3, 5, 7];
+            for (i, exp) in expected.iter().enumerate() {
+                if let Value::Integer(n) = &items[i] {
+                    assert_eq!(*n, QInt::from(*exp), "numbpart({}) should be {}", i + 1, exp);
+                } else {
+                    panic!("expected Integer at index {}, got {:?}", i, items[i]);
+                }
+            }
+        } else {
+            panic!("expected List, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_map_symbol() {
+        let mut env = make_env();
+        // map(floor, [3/2, 5/2, 7/2]) should return [1, 2, 3]
+        let args = vec![
+            Value::Symbol("floor".to_string()),
+            Value::List(vec![
+                Value::Rational(QRat::from((3, 2))),
+                Value::Rational(QRat::from((5, 2))),
+                Value::Rational(QRat::from((7, 2))),
+            ]),
+        ];
+        let result = dispatch("map", &args, &mut env).unwrap();
+        if let Value::List(items) = &result {
+            assert_eq!(items.len(), 3);
+            let expected = [1i64, 2, 3];
+            for (i, exp) in expected.iter().enumerate() {
+                if let Value::Integer(n) = &items[i] {
+                    assert_eq!(*n, QInt::from(*exp));
+                } else {
+                    panic!("expected Integer at index {}, got {:?}", i, items[i]);
+                }
+            }
+        } else {
+            panic!("expected List, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // sort dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_sort_integers() {
+        let mut env = make_env();
+        let args = vec![Value::List(vec![
+            Value::Integer(QInt::from(3i64)),
+            Value::Integer(QInt::from(1i64)),
+            Value::Integer(QInt::from(2i64)),
+        ])];
+        let result = dispatch("sort", &args, &mut env).unwrap();
+        if let Value::List(items) = &result {
+            assert_eq!(items.len(), 3);
+            let expected = [1i64, 2, 3];
+            for (i, exp) in expected.iter().enumerate() {
+                if let Value::Integer(n) = &items[i] {
+                    assert_eq!(*n, QInt::from(*exp));
+                } else {
+                    panic!("expected Integer at index {}, got {:?}", i, items[i]);
+                }
+            }
+        } else {
+            panic!("expected List, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_sort_rationals() {
+        let mut env = make_env();
+        let args = vec![Value::List(vec![
+            Value::Rational(QRat::from((3, 2))),
+            Value::Rational(QRat::from((1, 2))),
+            Value::Rational(QRat::from((5, 2))),
+        ])];
+        let result = dispatch("sort", &args, &mut env).unwrap();
+        if let Value::List(items) = &result {
+            assert_eq!(items.len(), 3);
+            let expected = [(1, 2), (3, 2), (5, 2)];
+            for (i, (n, d)) in expected.iter().enumerate() {
+                if let Value::Rational(r) = &items[i] {
+                    assert_eq!(*r, QRat::from((*n, *d)));
+                } else {
+                    panic!("expected Rational at index {}, got {:?}", i, items[i]);
+                }
+            }
+        } else {
+            panic!("expected List, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_sort_mixed_numeric() {
+        let mut env = make_env();
+        let args = vec![Value::List(vec![
+            Value::Integer(QInt::from(3i64)),
+            Value::Rational(QRat::from((1, 2))),
+            Value::Integer(QInt::from(2i64)),
+        ])];
+        let result = dispatch("sort", &args, &mut env).unwrap();
+        if let Value::List(items) = &result {
+            assert_eq!(items.len(), 3);
+            // Expected order: 1/2, 2, 3
+            if let Value::Rational(r) = &items[0] {
+                assert_eq!(*r, QRat::from((1, 2)));
+            } else {
+                panic!("expected Rational(1/2) at index 0, got {:?}", items[0]);
+            }
+            if let Value::Integer(n) = &items[1] {
+                assert_eq!(*n, QInt::from(2i64));
+            } else {
+                panic!("expected Integer(2) at index 1, got {:?}", items[1]);
+            }
+            if let Value::Integer(n) = &items[2] {
+                assert_eq!(*n, QInt::from(3i64));
+            } else {
+                panic!("expected Integer(3) at index 2, got {:?}", items[2]);
+            }
+        } else {
+            panic!("expected List, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_sort_symbols() {
+        let mut env = make_env();
+        let args = vec![Value::List(vec![
+            Value::Symbol("c".to_string()),
+            Value::Symbol("a".to_string()),
+            Value::Symbol("b".to_string()),
+        ])];
+        let result = dispatch("sort", &args, &mut env).unwrap();
+        if let Value::List(items) = &result {
+            assert_eq!(items.len(), 3);
+            let expected = ["a", "b", "c"];
+            for (i, exp) in expected.iter().enumerate() {
+                if let Value::Symbol(s) = &items[i] {
+                    assert_eq!(s, exp);
+                } else {
+                    panic!("expected Symbol at index {}, got {:?}", i, items[i]);
+                }
+            }
+        } else {
+            panic!("expected List, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Integration tests (parse + eval)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn eval_nops_list_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("nops([1,2,3])").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "3");
+    }
+
+    #[test]
+    fn eval_op_list_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("op(2, [10, 20, 30])").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "20");
+    }
+
+    #[test]
+    fn eval_map_with_lambda() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("map(x -> x*x, [1, 2, 3, 4])").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "[1, 4, 9, 16]");
+    }
+
+    #[test]
+    fn eval_sort_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("sort([3, 1, 2])").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "[1, 2, 3]");
     }
 }
