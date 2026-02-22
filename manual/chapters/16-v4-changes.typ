@@ -526,6 +526,5 @@ available in q-Kangaroo:
   loading packages. Not needed in q-Kangaroo where all functions are
   available by default (no-op).
 
-- *`while` loops:* No examples in _qmaple.pdf_ use `while` loops, but
-  this is a general language limitation. Use `for` loops with explicit
-  bounds instead.
+- *`while` loops:* Now supported in v5.0. See the _What's New in v5.0_
+  chapter.
