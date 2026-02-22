@@ -224,7 +224,10 @@ Plans:
   1. `?coeff`, `?add`, `?seq`, `?nops`, `?map`, `?while` and all other new functions/keywords show help text in the REPL
   2. Tab completion includes all new function names (coeff, degree, numer, denom, add, mul, seq, nops, op, map, sort, modp, mods, type, evalb, cat, print) and the `while` keyword
   3. PDF manual has a v5.0 chapter with usage examples for every new function and language feature
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 56-01-PLAN.md -- Help entries for print/anames/restart, general_help() update, tab completion for print
+- [ ] 56-02-PLAN.md -- PDF manual v5.0 chapter, v4.0 stale content fix
 
 ## Progress
 
@@ -285,4 +288,4 @@ Plans:
 | 53. Lists & List Operations | v5.0 | 2/2 | Complete | 2026-02-22 |
 | 54. Series & Utility Functions | v5.0 | 1/1 | Complete | 2026-02-22 |
 | 55. Iteration with Range Syntax | v5.0 | 1/1 | Complete | 2026-02-22 |
-| 56. Documentation | v5.0 | 0/? | Not started | - |
+| 56. Documentation | v5.0 | 0/2 | Not started | - |
