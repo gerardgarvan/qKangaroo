@@ -184,7 +184,10 @@ Plans:
   3. `op(2, [a, b, c])` returns `b`, and `op` works on series and other expression types
   4. `map(f, [1,2,3])` applies procedure or built-in `f` to each element, returning a list
   5. `sort([3,1,2])` returns `[1,2,3]` with numeric and lexicographic ordering
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 53-01-PLAN.md -- AstNode::Index parser refactor, list indexing, indexed assignment with backward compat
+- [ ] 53-02-PLAN.md -- nops, op, map, sort dispatch, help entries, tab completion
 
 ### Phase 54: Series & Utility Functions
 **Goal**: Researchers can extract series coefficients, decompose rational expressions, and use standard Maple utility functions
@@ -275,7 +278,7 @@ Plans:
 | 50. New Functions | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 52. Bug Fix & Language Extensions | v5.0 | 3/3 | Complete | 2026-02-22 |
-| 53. Lists & List Operations | v5.0 | 0/? | Not started | - |
+| 53. Lists & List Operations | v5.0 | 0/2 | Not started | - |
 | 54. Series & Utility Functions | v5.0 | 0/? | Not started | - |
 | 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
 | 56. Documentation | v5.0 | 0/? | Not started | - |
