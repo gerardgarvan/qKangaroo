@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 115 functions + 5 language
+//! - [`general_help`]: grouped listing of all 118 functions + 5 language
 //!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 //!   Also handles `for`, `proc`, `if`, `ditto`, and `lambda` language
@@ -155,6 +155,11 @@ Scripting:
   proc           - procedure: name := proc(params) body; end
   RETURN         - early return from procedure: RETURN(value)
   ->             - arrow / lambda: F := x -> expr
+  print          - display intermediate values: print(expr, ...)
+
+Variable Management:
+  anames         - list all assigned variable names
+  restart        - clear all variables and reset the session
 
 Commands:
   help [function]   - show this help or help for a specific function
@@ -186,7 +191,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 115 function help entries.
+/// All 118 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -1064,6 +1069,31 @@ const FUNC_HELP: &[FuncHelp] = &[
         example: "q> read(\"examples/rr.qk\")",
         example_output: "(loads and executes the script)",
     },
+
+    // -----------------------------------------------------------------------
+    // Group X: Variable Management & Output (3)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "print",
+        signature: "print(expr, ...)",
+        description: "Display one or more expressions, each on its own line.\n  Useful for showing intermediate results inside loops and procedures.\n  Returns the last argument's value (not NULL, unlike Maple's print).",
+        example: "q> for k from 1 to 3 do print(k^2) od",
+        example_output: "1\n4\n9",
+    },
+    FuncHelp {
+        name: "anames",
+        signature: "anames()",
+        description: "Return a list of all currently assigned variable names.\n  The names are returned as a sorted list of strings.",
+        example: "q> x := 1: y := 2: anames()",
+        example_output: "[\"x\", \"y\"]",
+    },
+    FuncHelp {
+        name: "restart",
+        signature: "restart()",
+        description: "Clear all variables, procedures, and reset the session.\n  Returns the string \"Restart.\"  Equivalent to the clear command.",
+        example: "q> x := 42: restart()",
+        example_output: "Restart.",
+    },
 ];
 
 /// Return per-function help for the given name, or `None` if unrecognized.
@@ -1186,6 +1216,7 @@ mod tests {
             "Iteration:",
             "Number Theory:",
             "Scripting:",
+            "Variable Management:",
         ] {
             assert!(
                 text.contains(category),
@@ -1320,8 +1351,9 @@ mod tests {
             "coeff", "degree", "numer", "denom", "modp", "mods", "type", "evalb", "cat",
             "add", "mul", "seq",
             "read",
+            "print", "anames", "restart",
         ];
-        assert_eq!(canonical.len(), 115, "test list should have 115 entries");
+        assert_eq!(canonical.len(), 118, "test list should have 118 entries");
 
         for name in &canonical {
             assert!(
@@ -1336,8 +1368,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            115,
-            "FUNC_HELP should have exactly 115 entries, got {}",
+            118,
+            "FUNC_HELP should have exactly 118 entries, got {}",
             FUNC_HELP.len()
         );
     }
