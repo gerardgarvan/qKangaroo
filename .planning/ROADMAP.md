@@ -199,7 +199,9 @@ Plans:
   3. `modp(7, 3)` returns `1`, `mods(7, 3)` returns `1`, `mods(5, 3)` returns `-1` (symmetric mod)
   4. `type(42, integer)` returns `true`, `type(aqprod(q,q,inf), series)` returns `true`, with correct type names for all Value variants
   5. `evalb(3 > 2)` returns `true`, and `cat(a, b, c)` returns `abc` as a symbol/name
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 54-01-PLAN.md -- coeff, degree, numer, denom, modp, mods, type, evalb, cat dispatch + help + tests
 
 ### Phase 55: Iteration with Range Syntax
 **Goal**: Researchers can use Maple-style add/mul/seq with `i=a..b` range expressions for summation, products, and sequence generation
@@ -279,6 +281,6 @@ Plans:
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 52. Bug Fix & Language Extensions | v5.0 | 3/3 | Complete | 2026-02-22 |
 | 53. Lists & List Operations | v5.0 | 2/2 | Complete | 2026-02-22 |
-| 54. Series & Utility Functions | v5.0 | 0/? | Not started | - |
+| 54. Series & Utility Functions | v5.0 | 0/1 | Not started | - |
 | 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
 | 56. Documentation | v5.0 | 0/? | Not started | - |
