@@ -1118,6 +1118,25 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 return Ok(target);
             }
 
+            // Special-case: print(expr, ...) displays intermediate results
+            if name == "print" {
+                if args.is_empty() {
+                    return Err(EvalError::WrongArgCount {
+                        function: "print".to_string(),
+                        expected: "at least 1".to_string(),
+                        got: 0,
+                        signature: "print(expr, ...)".to_string(),
+                    });
+                }
+                let mut last_val = Value::None;
+                for arg in args {
+                    let val = eval_expr(arg, env)?;
+                    println!("{}", crate::format::format_value(&val, &env.symbols));
+                    last_val = val;
+                }
+                return Ok(last_val);
+            }
+
             // Check if name refers to a user-defined procedure
             if let Some(Value::Procedure(proc_val)) = env.get_var(name).cloned() {
                 let mut evaluated = Vec::with_capacity(args.len());
@@ -12174,5 +12193,77 @@ mod tests {
         } else {
             panic!("s should be Integer(6)");
         }
+    }
+
+    // =======================================================
+    // print() special-case function tests (LANG-04)
+    // =======================================================
+
+    #[test]
+    fn print_zero_args_errors() {
+        let mut env = make_env();
+        let node = AstNode::FuncCall {
+            name: "print".to_string(),
+            args: vec![],
+        };
+        let result = eval_expr(&node, &mut env);
+        assert!(result.is_err(), "print() with no args should error");
+        let err = result.unwrap_err();
+        if let EvalError::WrongArgCount { function, .. } = err {
+            assert_eq!(function, "print");
+        } else {
+            panic!("expected WrongArgCount, got {:?}", err);
+        }
+    }
+
+    #[test]
+    fn print_single_integer_returns_value() {
+        // print(42) should return Value::Integer(42)
+        let mut env = make_env();
+        let node = AstNode::FuncCall {
+            name: "print".to_string(),
+            args: vec![AstNode::Integer(42)],
+        };
+        let result = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = result {
+            assert_eq!(n, QInt::from(42i64));
+        } else {
+            panic!("expected Integer(42), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn print_multiple_args_returns_last() {
+        // print(1, 2, 3) should return Value::Integer(3) (the last arg)
+        let mut env = make_env();
+        let node = AstNode::FuncCall {
+            name: "print".to_string(),
+            args: vec![
+                AstNode::Integer(1),
+                AstNode::Integer(2),
+                AstNode::Integer(3),
+            ],
+        };
+        let result = eval_expr(&node, &mut env).unwrap();
+        if let Value::Integer(n) = result {
+            assert_eq!(n, QInt::from(3i64), "print returns last arg value");
+        } else {
+            panic!("expected Integer(3), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn print_with_series_returns_series() {
+        // print(series) should return the series value
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        let fps = qseries::theta3(sym, 10);
+        env.set_var("f", Value::Series(fps));
+        let node = AstNode::FuncCall {
+            name: "print".to_string(),
+            args: vec![AstNode::Variable("f".to_string())],
+        };
+        let result = eval_expr(&node, &mut env).unwrap();
+        assert!(matches!(result, Value::Series(_)), "print should return Series");
     }
 }
