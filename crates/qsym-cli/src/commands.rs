@@ -73,6 +73,16 @@ pub fn parse_command(line: &str) -> Option<Command> {
         return None;
     }
 
+    // ?topic -> help topic
+    if let Some(topic) = trimmed.strip_prefix('?') {
+        let topic = topic.trim();
+        if topic.is_empty() {
+            return Some(Command::Help(None));
+        } else {
+            return Some(Command::Help(Some(topic.to_string())));
+        }
+    }
+
     let words: Vec<&str> = trimmed.split_whitespace().collect();
     if words.is_empty() {
         return None;

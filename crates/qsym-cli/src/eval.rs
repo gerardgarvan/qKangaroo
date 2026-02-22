@@ -1248,6 +1248,14 @@ fn is_truthy(val: &Value) -> Result<bool, EvalError> {
     match val {
         Value::Bool(b) => Ok(*b),
         Value::Integer(n) => Ok(!n.is_zero()),
+        Value::Symbol(s) => match s.as_str() {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            _ => Err(EvalError::Other(format!(
+                "expected boolean or integer in condition, got symbol '{}'",
+                s
+            ))),
+        },
         other => Err(EvalError::Other(format!(
             "expected boolean or integer in condition, got {}",
             other.type_name()
