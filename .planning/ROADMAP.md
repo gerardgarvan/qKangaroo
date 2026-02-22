@@ -154,7 +154,7 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 - [x] **Phase 52: Bug Fix & Language Extensions** - Polynomial division fix, while-loops, Unicode resilience, print() -- 2026-02-22
 - [x] **Phase 53: Lists & List Operations** - Value::List, list literals, indexing, nops, op, map, sort -- 2026-02-22
 - [x] **Phase 54: Series & Utility Functions** - coeff, degree, numer/denom, modp/mods, type, evalb, cat -- 2026-02-22
-- [ ] **Phase 55: Iteration with Range Syntax** - add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b)
+- [x] **Phase 55: Iteration with Range Syntax** - add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b) -- 2026-02-22
 - [ ] **Phase 56: Documentation** - Help entries, tab completion, PDF manual chapter
 
 ## Phase Details
@@ -214,7 +214,7 @@ Plans:
   4. Range variable `i` is locally scoped -- outer variable `i` is not modified by add/mul/seq
 **Plans**: 1 plan
 Plans:
-- [ ] 55-01-PLAN.md -- Token::DotDot, AstNode::Range, parser infix, eval special-case add/mul/seq, help, completion
+- [x] 55-01-PLAN.md -- Token::DotDot, AstNode::Range, parser infix, eval special-case add/mul/seq, help, completion
 
 ### Phase 56: Documentation
 **Goal**: All v5.0 additions are documented with help entries, tab completion, and a PDF manual chapter
@@ -284,5 +284,5 @@ Plans:
 | 52. Bug Fix & Language Extensions | v5.0 | 3/3 | Complete | 2026-02-22 |
 | 53. Lists & List Operations | v5.0 | 2/2 | Complete | 2026-02-22 |
 | 54. Series & Utility Functions | v5.0 | 1/1 | Complete | 2026-02-22 |
-| 55. Iteration with Range Syntax | v5.0 | 0/1 | Not started | - |
+| 55. Iteration with Range Syntax | v5.0 | 1/1 | Complete | 2026-02-22 |
 | 56. Documentation | v5.0 | 0/? | Not started | - |
