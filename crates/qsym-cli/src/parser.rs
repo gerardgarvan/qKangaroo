@@ -499,6 +499,12 @@ impl Parser {
                             rhs: Box::new(rhs),
                         };
                     }
+                    Token::DotDot => {
+                        lhs = AstNode::Range {
+                            lo: Box::new(lhs),
+                            hi: Box::new(rhs),
+                        };
+                    }
                     _ => unreachable!(),
                 }
 
@@ -603,6 +609,7 @@ fn infix_bp(token: &Token) -> Option<(u8, u8)> {
         Token::And => Some((5, 6)),
         Token::Equal | Token::NotEqual | Token::Less | Token::Greater
         | Token::LessEq | Token::GreaterEq => Some((9, 10)),
+        Token::DotDot => Some((10, 10)),
         Token::Plus | Token::Minus => Some((11, 12)),
         Token::Star | Token::Slash => Some((13, 14)),
         Token::Caret => Some((17, 18)),
@@ -659,6 +666,7 @@ fn token_name(token: &Token) -> String {
         Token::Greater => "'>'".to_string(),
         Token::LessEq => "'<='".to_string(),
         Token::GreaterEq => "'>='".to_string(),
+        Token::DotDot => "'..'".to_string(),
         Token::Eof => "end of input".to_string(),
     }
 }
@@ -2055,5 +2063,59 @@ mod tests {
         let err = result.unwrap_err();
         assert!(err.to_string().contains("od") || err.to_string().contains("'od'"),
             "error should mention missing od: {}", err);
+    }
+
+    // =======================================================
+    // PARSE-17: Range (DotDot) operator
+    // =======================================================
+
+    #[test]
+    fn parse_range_simple() {
+        let node = parse_expr("1..5");
+        assert_eq!(
+            node,
+            AstNode::Range {
+                lo: Box::new(AstNode::Integer(1)),
+                hi: Box::new(AstNode::Integer(5)),
+            }
+        );
+    }
+
+    #[test]
+    fn parse_range_in_eq_context() {
+        // i=1..5 should parse as Compare(Eq, Variable("i"), Range(1, 5))
+        let node = parse_expr("i=1..5");
+        assert_eq!(
+            node,
+            AstNode::Compare {
+                op: CompOp::Eq,
+                lhs: Box::new(AstNode::Variable("i".to_string())),
+                rhs: Box::new(AstNode::Range {
+                    lo: Box::new(AstNode::Integer(1)),
+                    hi: Box::new(AstNode::Integer(5)),
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn parse_range_arithmetic_bounds() {
+        // 1+2..3+4 should parse as Range(Add(1,2), Add(3,4))
+        let node = parse_expr("1+2..3+4");
+        assert_eq!(
+            node,
+            AstNode::Range {
+                lo: Box::new(AstNode::BinOp {
+                    op: BinOp::Add,
+                    lhs: Box::new(AstNode::Integer(1)),
+                    rhs: Box::new(AstNode::Integer(2)),
+                }),
+                hi: Box::new(AstNode::BinOp {
+                    op: BinOp::Add,
+                    lhs: Box::new(AstNode::Integer(3)),
+                    rhs: Box::new(AstNode::Integer(4)),
+                }),
+            }
+        );
     }
 }

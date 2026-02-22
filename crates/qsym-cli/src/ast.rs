@@ -140,6 +140,11 @@ pub enum AstNode {
         param: String,
         body: Box<AstNode>,
     },
+    /// Range expression: `lo..hi` (used in add/mul/seq iteration).
+    Range {
+        lo: Box<AstNode>,
+        hi: Box<AstNode>,
+    },
 }
 
 /// Statement terminator kind.

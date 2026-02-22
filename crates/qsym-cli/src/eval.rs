@@ -1304,6 +1304,12 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                 memo: Rc::new(RefCell::new(HashMap::new())),
             }))
         }
+
+        AstNode::Range { .. } => {
+            Err(EvalError::Other(
+                "range expressions (a..b) are only valid inside add(), mul(), or seq()".to_string()
+            ))
+        }
     }
 }
 

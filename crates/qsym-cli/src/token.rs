@@ -106,6 +106,9 @@ pub enum Token {
     /// `>=` greater than or equal.
     GreaterEq,
 
+    /// `..` range operator.
+    DotDot,
+
     /// End of input.
     Eof,
 }

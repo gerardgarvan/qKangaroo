@@ -296,6 +296,23 @@ pub fn tokenize(input: &str) -> Result<Vec<SpannedToken>, ParseError> {
             continue;
         }
 
+        // Two-character greedy match for `.` -- `..` is DotDot, `.` alone is error
+        if b == b'.' {
+            if pos + 1 < bytes.len() && bytes[pos + 1] == b'.' {
+                tokens.push(SpannedToken {
+                    token: Token::DotDot,
+                    span: Span::new(pos, pos + 2),
+                });
+                pos += 2;
+            } else {
+                return Err(ParseError::new(
+                    "unexpected character '.'".to_string(),
+                    Span::new(pos, pos + 1),
+                ));
+            }
+            continue;
+        }
+
         // Unknown character
         let c = normalized[pos..].chars().next().unwrap();
         return Err(ParseError::new(
@@ -864,6 +881,41 @@ mod tests {
                 Token::Eof,
             ]
         );
+    }
+
+    // =======================================================
+    // DotDot (range) operator lexing
+    // =======================================================
+
+    #[test]
+    fn test_dotdot_range() {
+        let toks = tokens("1..5");
+        assert_eq!(
+            toks,
+            vec![Token::Integer(1), Token::DotDot, Token::Integer(5), Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_dotdot_with_var() {
+        let toks = tokens("i=1..5");
+        assert_eq!(
+            toks,
+            vec![
+                Token::Ident("i".to_string()),
+                Token::Equal,
+                Token::Integer(1),
+                Token::DotDot,
+                Token::Integer(5),
+                Token::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_single_dot_error() {
+        let err = tokenize(".").unwrap_err();
+        assert!(err.message.contains("unexpected character '.'"), "got: {}", err.message);
     }
 
     #[test]
