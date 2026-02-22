@@ -172,7 +172,7 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 Plans:
 - [x] 52-01-PLAN.md -- Fix POLYNOMIAL_ORDER division hang, Unicode normalization, print() function
 - [x] 52-02-PLAN.md -- While-loop parsing, evaluation, REPL support, and help
-- [ ] 52-03-PLAN.md -- Gap closure: is_truthy Symbol handling, ? prefix help dispatch
+- [x] 52-03-PLAN.md -- Gap closure: is_truthy Symbol handling, ? prefix help dispatch
 
 ### Phase 53: Lists & List Operations
 **Goal**: Researchers can create, display, index, and manipulate lists as first-class values using Maple syntax
@@ -274,7 +274,7 @@ Plans:
 | 49. Display Formatting | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 50. New Functions | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
-| 52. Bug Fix & Language Extensions | v5.0 | 2/3 | Gap closure | 2026-02-22 |
+| 52. Bug Fix & Language Extensions | v5.0 | 3/3 | Complete | 2026-02-22 |
 | 53. Lists & List Operations | v5.0 | 0/? | Not started | - |
 | 54. Series & Utility Functions | v5.0 | 0/? | Not started | - |
 | 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
