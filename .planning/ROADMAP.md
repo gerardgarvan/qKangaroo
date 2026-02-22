@@ -152,7 +152,7 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 **Milestone Goal:** Close remaining Maple language and function gaps -- fix the polynomial division hang, add while-loops, lists as first-class values, Maple built-in functions (coeff, add, seq, nops, op, map, sort, etc.), and Unicode paste resilience so researchers can run more Maple code without modification.
 
 - [x] **Phase 52: Bug Fix & Language Extensions** - Polynomial division fix, while-loops, Unicode resilience, print() -- 2026-02-22
-- [ ] **Phase 53: Lists & List Operations** - Value::List, list literals, indexing, nops, op, map, sort
+- [x] **Phase 53: Lists & List Operations** - Value::List, list literals, indexing, nops, op, map, sort -- 2026-02-22
 - [ ] **Phase 54: Series & Utility Functions** - coeff, degree, numer/denom, modp/mods, type, evalb, cat
 - [ ] **Phase 55: Iteration with Range Syntax** - add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b)
 - [ ] **Phase 56: Documentation** - Help entries, tab completion, PDF manual chapter
@@ -186,8 +186,8 @@ Plans:
   5. `sort([3,1,2])` returns `[1,2,3]` with numeric and lexicographic ordering
 **Plans**: 2 plans
 Plans:
-- [ ] 53-01-PLAN.md -- AstNode::Index parser refactor, list indexing, indexed assignment with backward compat
-- [ ] 53-02-PLAN.md -- nops, op, map, sort dispatch, help entries, tab completion
+- [x] 53-01-PLAN.md -- AstNode::Index parser refactor, list indexing, indexed assignment with backward compat
+- [x] 53-02-PLAN.md -- nops, op, map, sort dispatch, help entries, tab completion
 
 ### Phase 54: Series & Utility Functions
 **Goal**: Researchers can extract series coefficients, decompose rational expressions, and use standard Maple utility functions
@@ -278,7 +278,7 @@ Plans:
 | 50. New Functions | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 52. Bug Fix & Language Extensions | v5.0 | 3/3 | Complete | 2026-02-22 |
-| 53. Lists & List Operations | v5.0 | 0/2 | Not started | - |
+| 53. Lists & List Operations | v5.0 | 2/2 | Complete | 2026-02-22 |
 | 54. Series & Utility Functions | v5.0 | 0/? | Not started | - |
 | 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
 | 56. Documentation | v5.0 | 0/? | Not started | - |
