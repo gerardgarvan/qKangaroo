@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 103 functions + 5 language
+//! - [`general_help`]: grouped listing of all 112 functions + 5 language
 //!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 //!   Also handles `for`, `proc`, `if`, `ditto`, and `lambda` language
@@ -65,6 +65,17 @@ List Operations:
   op      - extract i-th operand: op(2, [a,b,c]) = b
   map     - apply function to each element: map(f, [1,2,3])
   sort    - sort list elements: sort([3,1,2]) = [1,2,3]
+
+Series Coefficients & Utility:
+  coeff    - extract coefficient of q^n from a series: coeff(f, q, n)
+  degree   - highest power of q with nonzero coefficient
+  numer    - numerator of a rational number
+  denom    - denominator of a rational number
+  modp     - a mod p (non-negative result)
+  mods     - a mod p (symmetric, centered at 0)
+  type     - check expression type: type(expr, integer)
+  evalb    - evaluate expression as boolean
+  cat      - concatenate arguments into a name: cat(a, b, c)
 
 Series Analysis:
   sift           - extract arithmetic subsequence: sift(s, q, n, k, T)
@@ -170,7 +181,7 @@ struct FuncHelp {
     example_output: &'static str,
 }
 
-/// All 103 function help entries.
+/// All 112 function help entries.
 const FUNC_HELP: &[FuncHelp] = &[
     // -----------------------------------------------------------------------
     // Group 1: Products (7)
@@ -947,6 +958,73 @@ const FUNC_HELP: &[FuncHelp] = &[
     },
 
     // -----------------------------------------------------------------------
+    // Group V: Series Coefficient & Utility Functions (9)
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "coeff",
+        signature: "coeff(f, q, n)",
+        description: "Extract the coefficient of q^n in the series f.\n  For constants: coeff(c, q, 0) returns c, coeff(c, q, k) returns 0 for k>0.\n  Returns an error if n is beyond the truncation order of f.",
+        example: "q> coeff(aqprod(q, q, infinity, 20), q, 5)",
+        example_output: "-1",
+    },
+    FuncHelp {
+        name: "degree",
+        signature: "degree(f, q)",
+        description: "Return the highest power of q with a nonzero coefficient in f.\n  For constants, returns 0.  For the zero series, returns 0.",
+        example: "q> degree(1 + q + q^2, q)",
+        example_output: "2",
+    },
+    FuncHelp {
+        name: "numer",
+        signature: "numer(x)",
+        description: "Return the numerator of a rational number.\n  For integers, returns the integer itself.",
+        example: "q> numer(3/4)",
+        example_output: "3",
+    },
+    FuncHelp {
+        name: "denom",
+        signature: "denom(x)",
+        description: "Return the denominator of a rational number.\n  For integers, returns 1.",
+        example: "q> denom(3/4)",
+        example_output: "4",
+    },
+    FuncHelp {
+        name: "modp",
+        signature: "modp(a, p)",
+        description: "Compute a mod p, always returning a non-negative result in [0, p-1].\n  The modulus p must be a positive integer.",
+        example: "q> modp(-7, 3)",
+        example_output: "2",
+    },
+    FuncHelp {
+        name: "mods",
+        signature: "mods(a, p)",
+        description: "Compute a mod p using symmetric representation, returning a result\n  centered at 0.  If r = modp(a,p) > p/2, returns r-p instead.",
+        example: "q> mods(5, 3)",
+        example_output: "-1",
+    },
+    FuncHelp {
+        name: "type",
+        signature: "type(expr, t)",
+        description: "Check if expr has the given type t.  Supported types: integer, rational,\n  numeric (integer or rational), series, list, string, boolean,\n  symbol/name, procedure, infinity.  Returns true or false.",
+        example: "q> type(42, integer)",
+        example_output: "true",
+    },
+    FuncHelp {
+        name: "evalb",
+        signature: "evalb(expr)",
+        description: "Evaluate an expression as a boolean value.  Booleans pass through.\n  Integers: 0 is false, nonzero is true.  Other types produce an error.",
+        example: "q> evalb(3 > 2)",
+        example_output: "true",
+    },
+    FuncHelp {
+        name: "cat",
+        signature: "cat(s1, s2, ...)",
+        description: "Concatenate one or more arguments into a single name (symbol).\n  Symbols contribute their name, integers their decimal representation,\n  rationals their n/d form, booleans \"true\"/\"false\".",
+        example: "q> cat(a, b, c)",
+        example_output: "abc",
+    },
+
+    // -----------------------------------------------------------------------
     // Group 14: Script Loading (1)
     // -----------------------------------------------------------------------
     FuncHelp {
@@ -1074,6 +1152,7 @@ mod tests {
             "Polynomial Operations:",
             "Simplification:",
             "List Operations:",
+            "Series Coefficients & Utility:",
             "Number Theory:",
             "Scripting:",
         ] {
@@ -1207,9 +1286,10 @@ mod tests {
             "floor", "legendre", "min", "max",
             "radsimp",
             "nops", "op", "map", "sort",
+            "coeff", "degree", "numer", "denom", "modp", "mods", "type", "evalb", "cat",
             "read",
         ];
-        assert_eq!(canonical.len(), 103, "test list should have 103 entries");
+        assert_eq!(canonical.len(), 112, "test list should have 112 entries");
 
         for name in &canonical {
             assert!(
@@ -1224,8 +1304,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            103,
-            "FUNC_HELP should have exactly 103 entries, got {}",
+            112,
+            "FUNC_HELP should have exactly 112 entries, got {}",
             FUNC_HELP.len()
         );
     }

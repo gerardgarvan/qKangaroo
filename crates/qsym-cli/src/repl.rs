@@ -61,7 +61,7 @@ impl ReplHelper {
         self.var_names = var_names;
     }
 
-    /// All 105 canonical function names -- must match eval.rs ALL_FUNCTION_NAMES
+    /// All 114 canonical function names -- must match eval.rs ALL_FUNCTION_NAMES
     /// exactly. NO Maple aliases.
     fn canonical_function_names() -> Vec<&'static str> {
         vec![
@@ -114,6 +114,8 @@ impl ReplHelper {
             "radsimp",
             // Group U: List Operations (4)
             "nops", "op", "map", "sort",
+            // Group V: Series Coefficients & Utility (9)
+            "coeff", "degree", "numer", "denom", "modp", "mods", "type", "evalb", "cat",
             // Group M: Script Loading (1)
             "read",
         ]
@@ -311,8 +313,8 @@ mod tests {
         let names = ReplHelper::canonical_function_names();
         assert_eq!(
             names.len(),
-            105,
-            "expected 105 canonical function names, got {}",
+            114,
+            "expected 114 canonical function names, got {}",
             names.len()
         );
     }

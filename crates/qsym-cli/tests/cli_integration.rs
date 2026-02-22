@@ -1972,3 +1972,108 @@ fn radsimp_quotient() {
     assert!(stdout.contains("q"), "quotient should contain q terms, got: {}", stdout);
     assert!(stdout.contains("O(q^"), "quotient should have truncation, got: {}", stdout);
 }
+
+// ---------------------------------------------------------------------------
+// Series Coefficient & Utility Functions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn coeff_series() {
+    // (q;q)_inf coefficient of q^5 = -1 (pentagonal number theorem)
+    let (code, stdout, stderr) = run(&["-c", "coeff(aqprod(q, q, infinity, 20), q, 5)"]);
+    assert_eq!(code, 0, "coeff series should succeed. stderr: {}", stderr);
+    let trimmed = stdout.trim();
+    assert!(trimmed == "1" || trimmed.contains("1"),
+        "coeff(aqprod(q,q,inf,20), q, 5) should be 1, got: {}", trimmed);
+}
+
+#[test]
+fn coeff_constant() {
+    let (code, stdout, stderr) = run(&["-c", "coeff(42, q, 0)"]);
+    assert_eq!(code, 0, "coeff constant should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "42", "coeff(42, q, 0) should be 42, got: {}", stdout.trim());
+}
+
+#[test]
+fn degree_polynomial() {
+    let (code, stdout, stderr) = run(&["-c", "degree(1 + q + q^2, q)"]);
+    assert_eq!(code, 0, "degree polynomial should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "2", "degree(1+q+q^2, q) should be 2, got: {}", stdout.trim());
+}
+
+#[test]
+fn numer_rational() {
+    let (code, stdout, stderr) = run(&["-c", "numer(3/4)"]);
+    assert_eq!(code, 0, "numer should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "3", "numer(3/4) should be 3, got: {}", stdout.trim());
+}
+
+#[test]
+fn denom_rational() {
+    let (code, stdout, stderr) = run(&["-c", "denom(3/4)"]);
+    assert_eq!(code, 0, "denom should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "4", "denom(3/4) should be 4, got: {}", stdout.trim());
+}
+
+#[test]
+fn modp_basic() {
+    let (code, stdout, stderr) = run(&["-c", "modp(7, 3)"]);
+    assert_eq!(code, 0, "modp should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "1", "modp(7, 3) should be 1, got: {}", stdout.trim());
+}
+
+#[test]
+fn modp_negative() {
+    let (code, stdout, stderr) = run(&["-c", "modp(-7, 3)"]);
+    assert_eq!(code, 0, "modp negative should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "2", "modp(-7, 3) should be 2, got: {}", stdout.trim());
+}
+
+#[test]
+fn mods_basic() {
+    let (code, stdout, stderr) = run(&["-c", "mods(7, 3)"]);
+    assert_eq!(code, 0, "mods should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "1", "mods(7, 3) should be 1, got: {}", stdout.trim());
+}
+
+#[test]
+fn mods_symmetric() {
+    let (code, stdout, stderr) = run(&["-c", "mods(5, 3)"]);
+    assert_eq!(code, 0, "mods symmetric should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "-1", "mods(5, 3) should be -1, got: {}", stdout.trim());
+}
+
+#[test]
+fn type_integer() {
+    let (code, stdout, stderr) = run(&["-c", "type(42, integer)"]);
+    assert_eq!(code, 0, "type integer should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "true", "type(42, integer) should be true, got: {}", stdout.trim());
+}
+
+#[test]
+fn type_series() {
+    let (code, stdout, stderr) = run(&["-c", "type(aqprod(q,q,infinity,20), series)"]);
+    assert_eq!(code, 0, "type series should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "true", "type(aqprod(...), series) should be true, got: {}", stdout.trim());
+}
+
+#[test]
+fn evalb_comparison() {
+    let (code, stdout, stderr) = run(&["-c", "evalb(3 > 2)"]);
+    assert_eq!(code, 0, "evalb should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "true", "evalb(3 > 2) should be true, got: {}", stdout.trim());
+}
+
+#[test]
+fn cat_symbols() {
+    let (code, stdout, stderr) = run(&["-c", "cat(a, b, c)"]);
+    assert_eq!(code, 0, "cat should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "abc", "cat(a, b, c) should be abc, got: {}", stdout.trim());
+}
+
+#[test]
+fn cat_mixed() {
+    let (code, stdout, stderr) = run(&["-c", "cat(x, 42)"]);
+    assert_eq!(code, 0, "cat mixed should succeed. stderr: {}", stderr);
+    assert_eq!(stdout.trim(), "x42", "cat(x, 42) should be x42, got: {}", stdout.trim());
+}
