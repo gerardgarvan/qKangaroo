@@ -153,7 +153,7 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 
 - [x] **Phase 52: Bug Fix & Language Extensions** - Polynomial division fix, while-loops, Unicode resilience, print() -- 2026-02-22
 - [x] **Phase 53: Lists & List Operations** - Value::List, list literals, indexing, nops, op, map, sort -- 2026-02-22
-- [ ] **Phase 54: Series & Utility Functions** - coeff, degree, numer/denom, modp/mods, type, evalb, cat
+- [x] **Phase 54: Series & Utility Functions** - coeff, degree, numer/denom, modp/mods, type, evalb, cat -- 2026-02-22
 - [ ] **Phase 55: Iteration with Range Syntax** - add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b)
 - [ ] **Phase 56: Documentation** - Help entries, tab completion, PDF manual chapter
 
@@ -201,7 +201,7 @@ Plans:
   5. `evalb(3 > 2)` returns `true`, and `cat(a, b, c)` returns `abc` as a symbol/name
 **Plans**: 1 plan
 Plans:
-- [ ] 54-01-PLAN.md -- coeff, degree, numer, denom, modp, mods, type, evalb, cat dispatch + help + tests
+- [x] 54-01-PLAN.md -- coeff, degree, numer, denom, modp, mods, type, evalb, cat dispatch + help + tests
 
 ### Phase 55: Iteration with Range Syntax
 **Goal**: Researchers can use Maple-style add/mul/seq with `i=a..b` range expressions for summation, products, and sequence generation
@@ -281,6 +281,6 @@ Plans:
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 52. Bug Fix & Language Extensions | v5.0 | 3/3 | Complete | 2026-02-22 |
 | 53. Lists & List Operations | v5.0 | 2/2 | Complete | 2026-02-22 |
-| 54. Series & Utility Functions | v5.0 | 0/1 | Not started | - |
+| 54. Series & Utility Functions | v5.0 | 1/1 | Complete | 2026-02-22 |
 | 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
 | 56. Documentation | v5.0 | 0/? | Not started | - |
