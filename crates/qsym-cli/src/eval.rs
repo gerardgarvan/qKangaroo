@@ -5432,6 +5432,185 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Series Coefficient & Utility Functions
+        // =================================================================
+
+        "coeff" => {
+            expect_args(name, args, 3)?;
+            match &args[0] {
+                Value::Series(fps) => {
+                    let _sym = extract_symbol_id(name, args, 1, env)?;
+                    let n = extract_i64(name, args, 2)?;
+                    if n >= fps.truncation_order() {
+                        return Err(EvalError::Other(format!(
+                            "coeff: q^{} is beyond truncation order O(q^{})",
+                            n, fps.truncation_order()
+                        )));
+                    }
+                    let c = fps.coeff(n);
+                    if *c.denom() == 1 {
+                        Ok(Value::Integer(QInt(c.numer().clone())))
+                    } else {
+                        Ok(Value::Rational(c))
+                    }
+                }
+                Value::Integer(n_val) => {
+                    let _sym = extract_symbol_id(name, args, 1, env)?;
+                    let exp = extract_i64(name, args, 2)?;
+                    if exp == 0 { Ok(Value::Integer(n_val.clone())) }
+                    else { Ok(Value::Integer(QInt::from(0i64))) }
+                }
+                Value::Rational(r) => {
+                    let _sym = extract_symbol_id(name, args, 1, env)?;
+                    let exp = extract_i64(name, args, 2)?;
+                    if exp == 0 { Ok(Value::Rational(r.clone())) }
+                    else { Ok(Value::Integer(QInt::from(0i64))) }
+                }
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "series, integer, or rational",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "degree" => {
+            expect_args(name, args, 2)?;
+            let _sym = extract_symbol_id(name, args, 1, env)?;
+            match &args[0] {
+                Value::Series(fps) => {
+                    match qseries::qdegree(fps) {
+                        Some(d) => Ok(Value::Integer(QInt::from(d))),
+                        None => Ok(Value::Integer(QInt::from(0i64))),
+                    }
+                }
+                Value::Integer(_) | Value::Rational(_) => {
+                    Ok(Value::Integer(QInt::from(0i64)))
+                }
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "series, integer, or rational",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "numer" => {
+            expect_args(name, args, 1)?;
+            match &args[0] {
+                Value::Rational(r) => Ok(Value::Integer(QInt(r.numer().clone()))),
+                Value::Integer(n) => Ok(Value::Integer(n.clone())),
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "rational or integer",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "denom" => {
+            expect_args(name, args, 1)?;
+            match &args[0] {
+                Value::Rational(r) => Ok(Value::Integer(QInt(r.denom().clone()))),
+                Value::Integer(_) => Ok(Value::Integer(QInt::from(1i64))),
+                other => Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 0,
+                    expected: "rational or integer",
+                    got: other.type_name().to_string(),
+                }),
+            }
+        }
+
+        "modp" => {
+            expect_args(name, args, 2)?;
+            let a = extract_i64(name, args, 0)?;
+            let p = extract_i64(name, args, 1)?;
+            if p <= 0 {
+                return Err(EvalError::Other("modp: modulus must be positive".into()));
+            }
+            let result = ((a % p) + p) % p;
+            Ok(Value::Integer(QInt::from(result)))
+        }
+
+        "mods" => {
+            expect_args(name, args, 2)?;
+            let a = extract_i64(name, args, 0)?;
+            let p = extract_i64(name, args, 1)?;
+            if p <= 0 {
+                return Err(EvalError::Other("mods: modulus must be positive".into()));
+            }
+            let r = ((a % p) + p) % p;
+            if r * 2 > p { Ok(Value::Integer(QInt::from(r - p))) }
+            else { Ok(Value::Integer(QInt::from(r))) }
+        }
+
+        "type" => {
+            expect_args(name, args, 2)?;
+            let type_name_str = match &args[1] {
+                Value::Symbol(s) => s.clone(),
+                Value::String(s) => s.clone(),
+                other => return Err(EvalError::ArgType {
+                    function: name.to_string(),
+                    arg_index: 1,
+                    expected: "symbol or string (type name)",
+                    got: other.type_name().to_string(),
+                }),
+            };
+            let matches = match type_name_str.as_str() {
+                "integer" => matches!(&args[0], Value::Integer(_)),
+                "rational" => matches!(&args[0], Value::Rational(_)),
+                "numeric" => matches!(&args[0], Value::Integer(_) | Value::Rational(_)),
+                "series" => matches!(&args[0], Value::Series(_)),
+                "list" => matches!(&args[0], Value::List(_)),
+                "string" => matches!(&args[0], Value::String(_)),
+                "boolean" => matches!(&args[0], Value::Bool(_)),
+                "symbol" | "name" => matches!(&args[0], Value::Symbol(_)),
+                "procedure" => matches!(&args[0], Value::Procedure(_)),
+                "infinity" => matches!(&args[0], Value::Infinity),
+                _ => false,
+            };
+            Ok(Value::Bool(matches))
+        }
+
+        "evalb" => {
+            expect_args(name, args, 1)?;
+            match &args[0] {
+                Value::Bool(b) => Ok(Value::Bool(*b)),
+                Value::Integer(n) => Ok(Value::Bool(!n.is_zero())),
+                other => Err(EvalError::Other(format!(
+                    "evalb: expected boolean or integer, got {}", other.type_name()
+                ))),
+            }
+        }
+
+        "cat" => {
+            if args.is_empty() {
+                return Err(EvalError::WrongArgCount {
+                    function: name.to_string(),
+                    expected: "1+".to_string(),
+                    got: 0,
+                    signature: get_signature(name),
+                });
+            }
+            let mut result = String::new();
+            for arg in args {
+                match arg {
+                    Value::Symbol(s) => result.push_str(s),
+                    Value::String(s) => result.push_str(s),
+                    Value::Integer(n) => result.push_str(&n.0.to_string()),
+                    Value::Rational(r) => result.push_str(&format!("{}/{}", r.numer(), r.denom())),
+                    Value::Bool(b) => result.push_str(if *b { "true" } else { "false" }),
+                    _ => result.push_str(arg.type_name()),
+                }
+            }
+            Ok(Value::Symbol(result))
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -6199,6 +6378,16 @@ fn get_signature(name: &str) -> String {
         "op" => "(i, expr) -- extract i-th operand (1-indexed)".to_string(),
         "map" => "(f, list) -- apply function to each element".to_string(),
         "sort" => "(list) -- sort list elements".to_string(),
+        // Group V: Series Coefficient & Utility
+        "coeff" => "(f, q, n) -- coefficient of q^n in series f".to_string(),
+        "degree" => "(f, q) -- highest degree of q in polynomial/series f".to_string(),
+        "numer" => "(x) -- numerator of rational number".to_string(),
+        "denom" => "(x) -- denominator of rational number".to_string(),
+        "modp" => "(a, p) -- a mod p (non-negative)".to_string(),
+        "mods" => "(a, p) -- a mod p (symmetric, centered at 0)".to_string(),
+        "type" => "(expr, t) -- check if expr has type t".to_string(),
+        "evalb" => "(expr) -- evaluate expression as boolean".to_string(),
+        "cat" => "(s1, s2, ...) -- concatenate arguments into a name".to_string(),
         _ => String::new(),
     }
 }
@@ -6297,6 +6486,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "radsimp",
     // Pattern U: List operations
     "nops", "op", "map", "sort",
+    // Pattern V: Series Coefficient & Utility
+    "coeff", "degree", "numer", "denom", "modp", "mods", "type", "evalb", "cat",
 ];
 
 /// All alias names for fuzzy matching.
@@ -13024,5 +13215,367 @@ mod tests {
         let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
         let text = format_value(&result, &env.symbols);
         assert_eq!(text, "[1, 2, 3]");
+    }
+
+    // -----------------------------------------------------------------------
+    // coeff dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_coeff_integer_constant() {
+        let mut env = make_env();
+        // coeff(42, q, 0) = 42
+        let args = vec![
+            Value::Integer(QInt::from(42i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(0i64)),
+        ];
+        let result = dispatch("coeff", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(42i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+
+        // coeff(42, q, 1) = 0
+        let args = vec![
+            Value::Integer(QInt::from(42i64)),
+            Value::Symbol("q".to_string()),
+            Value::Integer(QInt::from(1i64)),
+        ];
+        let result = dispatch("coeff", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(0i64));
+        } else {
+            panic!("expected Integer(0), got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // numer/denom dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_numer_rational() {
+        let mut env = make_env();
+        let args = vec![Value::Rational(QRat::from((3, 4)))];
+        let result = dispatch("numer", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(3i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_denom_rational() {
+        let mut env = make_env();
+        let args = vec![Value::Rational(QRat::from((3, 4)))];
+        let result = dispatch("denom", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(4i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_numer_integer() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(42i64))];
+        let result = dispatch("numer", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(42i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_denom_integer() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(42i64))];
+        let result = dispatch("denom", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(1i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // modp/mods dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_modp_basic() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(7i64)),
+            Value::Integer(QInt::from(3i64)),
+        ];
+        let result = dispatch("modp", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(1i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_modp_negative() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(-7i64)),
+            Value::Integer(QInt::from(3i64)),
+        ];
+        let result = dispatch("modp", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(2i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_mods_basic() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(7i64)),
+            Value::Integer(QInt::from(3i64)),
+        ];
+        let result = dispatch("mods", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(1i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_mods_symmetric() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(5i64)),
+            Value::Integer(QInt::from(3i64)),
+        ];
+        let result = dispatch("mods", &args, &mut env).unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(-1i64));
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // type dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_type_integer() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(42i64)),
+            Value::Symbol("integer".to_string()),
+        ];
+        let result = dispatch("type", &args, &mut env).unwrap();
+        if let Value::Bool(b) = &result {
+            assert!(*b);
+        } else {
+            panic!("expected Bool, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_type_series_false() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Integer(QInt::from(42i64)),
+            Value::Symbol("series".to_string()),
+        ];
+        let result = dispatch("type", &args, &mut env).unwrap();
+        if let Value::Bool(b) = &result {
+            assert!(!*b);
+        } else {
+            panic!("expected Bool, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // evalb dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_evalb_true() {
+        let mut env = make_env();
+        let args = vec![Value::Bool(true)];
+        let result = dispatch("evalb", &args, &mut env).unwrap();
+        if let Value::Bool(b) = &result {
+            assert!(*b);
+        } else {
+            panic!("expected Bool, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_evalb_zero() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(0i64))];
+        let result = dispatch("evalb", &args, &mut env).unwrap();
+        if let Value::Bool(b) = &result {
+            assert!(!*b);
+        } else {
+            panic!("expected Bool, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_evalb_nonzero() {
+        let mut env = make_env();
+        let args = vec![Value::Integer(QInt::from(42i64))];
+        let result = dispatch("evalb", &args, &mut env).unwrap();
+        if let Value::Bool(b) = &result {
+            assert!(*b);
+        } else {
+            panic!("expected Bool, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // cat dispatch tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dispatch_cat_symbols() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("a".to_string()),
+            Value::Symbol("b".to_string()),
+            Value::Symbol("c".to_string()),
+        ];
+        let result = dispatch("cat", &args, &mut env).unwrap();
+        if let Value::Symbol(s) = &result {
+            assert_eq!(s, "abc");
+        } else {
+            panic!("expected Symbol, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn dispatch_cat_mixed() {
+        let mut env = make_env();
+        let args = vec![
+            Value::Symbol("x".to_string()),
+            Value::Integer(QInt::from(42i64)),
+        ];
+        let result = dispatch("cat", &args, &mut env).unwrap();
+        if let Value::Symbol(s) = &result {
+            assert_eq!(s, "x42");
+        } else {
+            panic!("expected Symbol, got {:?}", result);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Integration tests (parse + eval) -- Series Coefficient & Utility
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn eval_coeff_constant() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("coeff(42, q, 0)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "42");
+    }
+
+    #[test]
+    fn eval_degree_constant() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("degree(42, q)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "0");
+    }
+
+    #[test]
+    fn eval_modp_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("modp(7, 3)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "1");
+    }
+
+    #[test]
+    fn eval_mods_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("mods(5, 3)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "-1");
+    }
+
+    #[test]
+    fn eval_type_integer() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("type(42, integer)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "true");
+    }
+
+    #[test]
+    fn eval_evalb_comparison() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("evalb(3 > 2)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "true");
+    }
+
+    #[test]
+    fn eval_cat_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("cat(a, b, c)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "abc");
+    }
+
+    #[test]
+    fn eval_numer_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("numer(3/4)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "3");
+    }
+
+    #[test]
+    fn eval_denom_expr() {
+        use crate::parser::parse;
+        use crate::format::format_value;
+        let mut env = make_env();
+        let stmts = parse("denom(3/4)").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        let text = format_value(&result, &env.symbols);
+        assert_eq!(text, "4");
     }
 }
