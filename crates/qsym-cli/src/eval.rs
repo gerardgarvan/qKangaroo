@@ -12398,4 +12398,110 @@ mod tests {
         let result = eval_expr(&node, &mut env).unwrap();
         assert!(matches!(result, Value::Series(_)), "print should return Series");
     }
+
+    // --- List indexing tests ---
+
+    #[test]
+    fn eval_list_indexing() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("L := [10, 20, 30]; L[1]").unwrap();
+        let mut last = Value::None;
+        for stmt in &stmts {
+            if let Some(val) = eval_stmt(stmt, &mut env).unwrap() {
+                last = val;
+            }
+        }
+        if let Value::Integer(n) = &last {
+            assert_eq!(*n, QInt::from(10i64), "L[1] should be 10");
+        } else {
+            panic!("expected Integer, got {:?}", last);
+        }
+        // Also check L[2] and L[3]
+        let stmts2 = parse("L[2]").unwrap();
+        let val2 = eval_stmt(&stmts2[0], &mut env).unwrap().unwrap();
+        if let Value::Integer(n) = &val2 {
+            assert_eq!(*n, QInt::from(20i64), "L[2] should be 20");
+        } else {
+            panic!("expected Integer for L[2], got {:?}", val2);
+        }
+        let stmts3 = parse("L[3]").unwrap();
+        let val3 = eval_stmt(&stmts3[0], &mut env).unwrap().unwrap();
+        if let Value::Integer(n) = &val3 {
+            assert_eq!(*n, QInt::from(30i64), "L[3] should be 30");
+        } else {
+            panic!("expected Integer for L[3], got {:?}", val3);
+        }
+    }
+
+    #[test]
+    fn eval_list_index_out_of_range() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("L := [1, 2]; L[3]").unwrap();
+        // First statement assigns, second should error
+        eval_stmt(&stmts[0], &mut env).unwrap();
+        let result = eval_stmt(&stmts[1], &mut env);
+        assert!(result.is_err(), "L[3] on 2-element list should error");
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("out of range"), "error should mention out of range: {}", err);
+    }
+
+    #[test]
+    fn eval_list_index_zero() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("L := [1, 2]; L[0]").unwrap();
+        eval_stmt(&stmts[0], &mut env).unwrap();
+        let result = eval_stmt(&stmts[1], &mut env);
+        assert!(result.is_err(), "L[0] should error (1-indexed)");
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("out of range"), "error should mention out of range: {}", err);
+    }
+
+    #[test]
+    fn eval_list_index_assign() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("L := [1, 2, 3]; L[2] := 99; L[2]").unwrap();
+        for stmt in &stmts[..2] {
+            eval_stmt(stmt, &mut env).unwrap();
+        }
+        let result = eval_stmt(&stmts[2], &mut env).unwrap().unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(99i64), "L[2] should be 99 after assignment");
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_table_style_backward_compat() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        // X is not defined as a list -- falls back to table-style
+        let stmts = parse("X[1] := 42; X[1]").unwrap();
+        for stmt in &stmts[..1] {
+            eval_stmt(stmt, &mut env).unwrap();
+        }
+        let result = eval_stmt(&stmts[1], &mut env).unwrap().unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(42i64), "X[1] should be 42 (table-style)");
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn eval_list_literal_index() {
+        use crate::parser::parse;
+        let mut env = make_env();
+        let stmts = parse("[10, 20, 30][2]").unwrap();
+        let result = eval_stmt(&stmts[0], &mut env).unwrap().unwrap();
+        if let Value::Integer(n) = &result {
+            assert_eq!(*n, QInt::from(20i64), "[10,20,30][2] should be 20");
+        } else {
+            panic!("expected Integer, got {:?}", result);
+        }
+    }
 }
