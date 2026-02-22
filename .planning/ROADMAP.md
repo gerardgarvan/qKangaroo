@@ -155,7 +155,7 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 - [x] **Phase 53: Lists & List Operations** - Value::List, list literals, indexing, nops, op, map, sort -- 2026-02-22
 - [x] **Phase 54: Series & Utility Functions** - coeff, degree, numer/denom, modp/mods, type, evalb, cat -- 2026-02-22
 - [x] **Phase 55: Iteration with Range Syntax** - add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b) -- 2026-02-22
-- [ ] **Phase 56: Documentation** - Help entries, tab completion, PDF manual chapter
+- [x] **Phase 56: Documentation** - Help entries, tab completion, PDF manual chapter -- 2026-02-22
 
 ## Phase Details
 
@@ -226,8 +226,8 @@ Plans:
   3. PDF manual has a v5.0 chapter with usage examples for every new function and language feature
 **Plans**: 2 plans
 Plans:
-- [ ] 56-01-PLAN.md -- Help entries for print/anames/restart, general_help() update, tab completion for print
-- [ ] 56-02-PLAN.md -- PDF manual v5.0 chapter, v4.0 stale content fix
+- [x] 56-01-PLAN.md -- Help entries for print/anames/restart, general_help() update, tab completion for print
+- [x] 56-02-PLAN.md -- PDF manual v5.0 chapter, v4.0 stale content fix
 
 ## Progress
 
@@ -288,4 +288,4 @@ Plans:
 | 53. Lists & List Operations | v5.0 | 2/2 | Complete | 2026-02-22 |
 | 54. Series & Utility Functions | v5.0 | 1/1 | Complete | 2026-02-22 |
 | 55. Iteration with Range Syntax | v5.0 | 1/1 | Complete | 2026-02-22 |
-| 56. Documentation | v5.0 | 0/2 | Not started | - |
+| 56. Documentation | v5.0 | 2/2 | Complete | 2026-02-22 |
