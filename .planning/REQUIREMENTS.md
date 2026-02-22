@@ -61,32 +61,32 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | — | Pending |
-| LANG-01 | — | Pending |
-| LANG-02 | — | Pending |
-| LANG-03 | — | Pending |
-| LANG-04 | — | Pending |
-| SERIES-01 | — | Pending |
-| SERIES-02 | — | Pending |
-| SERIES-03 | — | Pending |
-| ITER-01 | — | Pending |
-| ITER-02 | — | Pending |
-| ITER-03 | — | Pending |
-| LIST-01 | — | Pending |
-| LIST-02 | — | Pending |
-| LIST-03 | — | Pending |
-| LIST-04 | — | Pending |
-| UTIL-01 | — | Pending |
-| UTIL-02 | — | Pending |
-| UTIL-03 | — | Pending |
-| UTIL-04 | — | Pending |
-| DOC-01 | — | Pending |
-| DOC-02 | — | Pending |
+| BUG-01 | Phase 52 | Pending |
+| LANG-01 | Phase 52 | Pending |
+| LANG-02 | Phase 53 | Pending |
+| LANG-03 | Phase 52 | Pending |
+| LANG-04 | Phase 52 | Pending |
+| SERIES-01 | Phase 54 | Pending |
+| SERIES-02 | Phase 54 | Pending |
+| SERIES-03 | Phase 54 | Pending |
+| ITER-01 | Phase 55 | Pending |
+| ITER-02 | Phase 55 | Pending |
+| ITER-03 | Phase 55 | Pending |
+| LIST-01 | Phase 53 | Pending |
+| LIST-02 | Phase 53 | Pending |
+| LIST-03 | Phase 53 | Pending |
+| LIST-04 | Phase 53 | Pending |
+| UTIL-01 | Phase 54 | Pending |
+| UTIL-02 | Phase 54 | Pending |
+| UTIL-03 | Phase 54 | Pending |
+| UTIL-04 | Phase 54 | Pending |
+| DOC-01 | Phase 56 | Pending |
+| DOC-02 | Phase 56 | Pending |
 
 **Coverage:**
 - v5.0 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-21*

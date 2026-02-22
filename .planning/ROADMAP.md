@@ -12,6 +12,7 @@
 - v2.0 Maple Compatibility - Phases 33-40 (shipped 2026-02-20)
 - v3.0 Scripting & Bivariate Series - Phases 41-46 (shipped 2026-02-21)
 - v4.0 Full qmaple.pdf Parity - Phases 47-51 (shipped 2026-02-21)
+- v5.0 Maximum Maple Compatibility - Phases 52-56 (in progress)
 
 ## Phases
 
@@ -146,6 +147,74 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 
 </details>
 
+### v5.0 Maximum Maple Compatibility (Phases 52-56)
+
+**Milestone Goal:** Close remaining Maple language and function gaps -- fix the polynomial division hang, add while-loops, lists as first-class values, Maple built-in functions (coeff, add, seq, nops, op, map, sort, etc.), and Unicode paste resilience so researchers can run more Maple code without modification.
+
+- [ ] **Phase 52: Bug Fix & Language Extensions** - Polynomial division fix, while-loops, Unicode resilience, print()
+- [ ] **Phase 53: Lists & List Operations** - Value::List, list literals, indexing, nops, op, map, sort
+- [ ] **Phase 54: Series & Utility Functions** - coeff, degree, numer/denom, modp/mods, type, evalb, cat
+- [ ] **Phase 55: Iteration with Range Syntax** - add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b)
+- [ ] **Phase 56: Documentation** - Help entries, tab completion, PDF manual chapter
+
+## Phase Details
+
+### Phase 52: Bug Fix & Language Extensions
+**Goal**: Researchers can run for-loops with polynomial division and use while-loops, print(), and pasted Unicode without errors
+**Depends on**: Phase 51 (v4.0 complete)
+**Requirements**: BUG-01, LANG-01, LANG-03, LANG-04
+**Success Criteria** (what must be TRUE):
+  1. `1/aqprod(q,q,5)` returns a series result without hanging, and `for n from 1 to 5 do q^n/aqprod(q,q,n) od` completes in bounded time
+  2. `i:=0: while i<10 do i:=i+1 od: i;` evaluates to 10, and while-loops work with all comparison operators
+  3. Pasting text containing Unicode math operators (caret `^` as `∧`, minus `−` as hyphen-minus, etc.) parses correctly instead of producing errors
+  4. `print(expr)` inside a for-loop or procedure displays each intermediate value as it executes
+**Plans**: TBD
+
+### Phase 53: Lists & List Operations
+**Goal**: Researchers can create, display, index, and manipulate lists as first-class values using Maple syntax
+**Depends on**: Phase 52
+**Requirements**: LANG-02, LIST-01, LIST-02, LIST-03, LIST-04
+**Success Criteria** (what must be TRUE):
+  1. `L := [1, 2, 3];` creates a list that displays as `[1, 2, 3]`, and `L[2]` returns `2` (1-indexed, Maple convention)
+  2. `nops([a, b, c])` returns `3`, and `nops` works on series and other expression types
+  3. `op(2, [a, b, c])` returns `b`, and `op` works on series and other expression types
+  4. `map(f, [1,2,3])` applies procedure or built-in `f` to each element, returning a list
+  5. `sort([3,1,2])` returns `[1,2,3]` with numeric and lexicographic ordering
+**Plans**: TBD
+
+### Phase 54: Series & Utility Functions
+**Goal**: Researchers can extract series coefficients, decompose rational expressions, and use standard Maple utility functions
+**Depends on**: Phase 52
+**Requirements**: SERIES-01, SERIES-02, SERIES-03, UTIL-01, UTIL-02, UTIL-03, UTIL-04
+**Success Criteria** (what must be TRUE):
+  1. `coeff(aqprod(q,q,inf), q, 5)` extracts the coefficient of q^5, and `degree(1+q+q^2, q)` returns `2`
+  2. `numer(3/4)` returns `3` and `denom(3/4)` returns `4`, and they work on rational series terms
+  3. `modp(7, 3)` returns `1`, `mods(7, 3)` returns `1`, `mods(5, 3)` returns `-1` (symmetric mod)
+  4. `type(42, integer)` returns `true`, `type(aqprod(q,q,inf), series)` returns `true`, with correct type names for all Value variants
+  5. `evalb(3 > 2)` returns `true`, and `cat(a, b, c)` returns `abc` as a symbol/name
+**Plans**: TBD
+
+### Phase 55: Iteration with Range Syntax
+**Goal**: Researchers can use Maple-style add/mul/seq with `i=a..b` range expressions for summation, products, and sequence generation
+**Depends on**: Phase 53 (seq returns lists), Phase 54
+**Requirements**: ITER-01, ITER-02, ITER-03
+**Success Criteria** (what must be TRUE):
+  1. `add(i^2, i=1..5)` returns `55` and `add(q^i/aqprod(q,q,i), i=0..5)` computes a series sum
+  2. `mul(1-q^i, i=1..5)` returns the product polynomial and matches `aqprod(q,q,5)`
+  3. `seq(i^2, i=1..5)` returns the list `[1, 4, 9, 16, 25]`
+  4. Range variable `i` is locally scoped -- outer variable `i` is not modified by add/mul/seq
+**Plans**: TBD
+
+### Phase 56: Documentation
+**Goal**: All v5.0 additions are documented with help entries, tab completion, and a PDF manual chapter
+**Depends on**: Phase 55
+**Requirements**: DOC-01, DOC-02
+**Success Criteria** (what must be TRUE):
+  1. `?coeff`, `?add`, `?seq`, `?nops`, `?map`, `?while` and all other new functions/keywords show help text in the REPL
+  2. Tab completion includes all new function names (coeff, degree, numer, denom, add, mul, seq, nops, op, map, sort, modp, mods, type, evalb, cat, print) and the `while` keyword
+  3. PDF manual has a v5.0 chapter with usage examples for every new function and language feature
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -201,3 +270,8 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 | 49. Display Formatting | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 50. New Functions | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
+| 52. Bug Fix & Language Extensions | v5.0 | 0/? | Not started | - |
+| 53. Lists & List Operations | v5.0 | 0/? | Not started | - |
+| 54. Series & Utility Functions | v5.0 | 0/? | Not started | - |
+| 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
+| 56. Documentation | v5.0 | 0/? | Not started | - |
