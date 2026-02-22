@@ -11926,4 +11926,253 @@ mod tests {
             panic!("expected Series, got {:?}", result);
         }
     }
+
+    // -- While-loop eval tests ------------------------------------------------
+
+    #[test]
+    fn test_while_loop_basic() {
+        // i:=0: while i<10 do i:=i+1 od: i  =>  10
+        let mut env = make_env();
+        env.set_var("i", Value::Integer(QInt::from(0i64)));
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Variable("i".to_string())),
+                rhs: Box::new(AstNode::Integer(10)),
+            }),
+            body: vec![Stmt {
+                node: AstNode::Assign {
+                    name: "i".to_string(),
+                    value: Box::new(AstNode::BinOp {
+                        op: BinOp::Add,
+                        lhs: Box::new(AstNode::Variable("i".to_string())),
+                        rhs: Box::new(AstNode::Integer(1)),
+                    }),
+                },
+                terminator: Terminator::Colon,
+            }],
+        };
+        let _result = eval_expr(&node, &mut env).unwrap();
+        // Check i is now 10
+        if let Some(Value::Integer(n)) = env.get_var("i") {
+            assert_eq!(*n, QInt::from(10i64));
+        } else {
+            panic!("i should be Integer(10)");
+        }
+    }
+
+    #[test]
+    fn test_while_loop_doubling() {
+        // x:=1: while x<100 do x:=x*2 od: x  =>  128
+        let mut env = make_env();
+        env.set_var("x", Value::Integer(QInt::from(1i64)));
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(100)),
+            }),
+            body: vec![Stmt {
+                node: AstNode::Assign {
+                    name: "x".to_string(),
+                    value: Box::new(AstNode::BinOp {
+                        op: BinOp::Mul,
+                        lhs: Box::new(AstNode::Variable("x".to_string())),
+                        rhs: Box::new(AstNode::Integer(2)),
+                    }),
+                },
+                terminator: Terminator::Colon,
+            }],
+        };
+        let _result = eval_expr(&node, &mut env).unwrap();
+        if let Some(Value::Integer(n)) = env.get_var("x") {
+            assert_eq!(*n, QInt::from(128i64));
+        } else {
+            panic!("x should be Integer(128)");
+        }
+    }
+
+    #[test]
+    fn test_while_loop_zero_iterations() {
+        // while false do 42 od  =>  Value::None
+        let mut env = make_env();
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Variable("false".to_string())),
+            body: vec![Stmt {
+                node: AstNode::Integer(42),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        // "false" resolves to Value::Bool(false) because the variable is unset
+        // Actually, "false" as a Variable will fail because it's not defined.
+        // Let's use a Compare that's immediately false.
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Greater,
+                lhs: Box::new(AstNode::Integer(0)),
+                rhs: Box::new(AstNode::Integer(1)),
+            }),
+            body: vec![Stmt {
+                node: AstNode::Integer(42),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        let result = eval_expr(&node, &mut env).unwrap();
+        assert!(matches!(result, Value::None), "while with false condition should return None");
+    }
+
+    #[test]
+    fn test_while_loop_safety_limit() {
+        // while true do 1 od  => error "maximum iteration count"
+        let mut env = make_env();
+        // Use an integer 1 as condition (truthy via Maple convention: nonzero = true)
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Integer(1)),
+            body: vec![Stmt {
+                node: AstNode::Integer(1),
+                terminator: Terminator::Colon,
+            }],
+        };
+        let result = eval_expr(&node, &mut env);
+        assert!(result.is_err(), "infinite while loop should hit safety limit");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("maximum iteration count"),
+            "error should mention maximum iteration count: {}", err_msg);
+    }
+
+    #[test]
+    fn test_while_loop_comparison_operators() {
+        // Test while with each comparison operator
+        let ops_and_setups: Vec<(CompOp, i64, i64, i64)> = vec![
+            // (op, initial_x, rhs_bound, expected_final_x)
+            (CompOp::Less, 0, 5, 5),        // while x < 5
+            (CompOp::LessEq, 0, 5, 6),      // while x <= 5
+            (CompOp::Greater, 5, 0, 0),      // while x > 0
+            (CompOp::GreaterEq, 5, 0, -1),   // while x >= 0
+            (CompOp::NotEq, 0, 3, 3),        // while x <> 3
+        ];
+        for (op, init, bound, expected) in ops_and_setups {
+            let mut env = make_env();
+            env.set_var("x", Value::Integer(QInt::from(init)));
+            let step = if init <= bound { 1 } else { -1 };
+            let node = AstNode::WhileLoop {
+                condition: Box::new(AstNode::Compare {
+                    op,
+                    lhs: Box::new(AstNode::Variable("x".to_string())),
+                    rhs: Box::new(AstNode::Integer(bound)),
+                }),
+                body: vec![Stmt {
+                    node: AstNode::Assign {
+                        name: "x".to_string(),
+                        value: Box::new(AstNode::BinOp {
+                            op: BinOp::Add,
+                            lhs: Box::new(AstNode::Variable("x".to_string())),
+                            rhs: Box::new(AstNode::Integer(step)),
+                        }),
+                    },
+                    terminator: Terminator::Colon,
+                }],
+            };
+            let _result = eval_expr(&node, &mut env).unwrap();
+            if let Some(Value::Integer(n)) = env.get_var("x") {
+                assert_eq!(*n, QInt::from(expected),
+                    "while x {:?} {} with step {} should end at {}", op, bound, step, expected);
+            } else {
+                panic!("x should be Integer({})", expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_while_loop_with_eq() {
+        // while x = 0 do x := 1 od  =>  x = 1 (one iteration)
+        let mut env = make_env();
+        env.set_var("x", Value::Integer(QInt::from(0i64)));
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Eq,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(0)),
+            }),
+            body: vec![Stmt {
+                node: AstNode::Assign {
+                    name: "x".to_string(),
+                    value: Box::new(AstNode::Integer(1)),
+                },
+                terminator: Terminator::Colon,
+            }],
+        };
+        let _result = eval_expr(&node, &mut env).unwrap();
+        if let Some(Value::Integer(n)) = env.get_var("x") {
+            assert_eq!(*n, QInt::from(1i64));
+        } else {
+            panic!("x should be Integer(1)");
+        }
+    }
+
+    #[test]
+    fn test_while_nested_in_for() {
+        // for n from 1 to 3 do s := s + n od with while-loop inside
+        // s:=0: for n from 1 to 3 do x:=0: while x < n do x:=x+1: s:=s+1 od od: s
+        // should be s = 1+2+3 = 6
+        let mut env = make_env();
+        env.set_var("s", Value::Integer(QInt::from(0i64)));
+        let while_body = vec![
+            Stmt {
+                node: AstNode::Assign {
+                    name: "x".to_string(),
+                    value: Box::new(AstNode::BinOp {
+                        op: BinOp::Add,
+                        lhs: Box::new(AstNode::Variable("x".to_string())),
+                        rhs: Box::new(AstNode::Integer(1)),
+                    }),
+                },
+                terminator: Terminator::Colon,
+            },
+            Stmt {
+                node: AstNode::Assign {
+                    name: "s".to_string(),
+                    value: Box::new(AstNode::BinOp {
+                        op: BinOp::Add,
+                        lhs: Box::new(AstNode::Variable("s".to_string())),
+                        rhs: Box::new(AstNode::Integer(1)),
+                    }),
+                },
+                terminator: Terminator::Colon,
+            },
+        ];
+        let for_body = vec![
+            Stmt {
+                node: AstNode::Assign {
+                    name: "x".to_string(),
+                    value: Box::new(AstNode::Integer(0)),
+                },
+                terminator: Terminator::Colon,
+            },
+            Stmt {
+                node: AstNode::WhileLoop {
+                    condition: Box::new(AstNode::Compare {
+                        op: CompOp::Less,
+                        lhs: Box::new(AstNode::Variable("x".to_string())),
+                        rhs: Box::new(AstNode::Variable("n".to_string())),
+                    }),
+                    body: while_body,
+                },
+                terminator: Terminator::Colon,
+            },
+        ];
+        let node = AstNode::ForLoop {
+            var: "n".to_string(),
+            from: Box::new(AstNode::Integer(1)),
+            to: Box::new(AstNode::Integer(3)),
+            by: None,
+            body: for_body,
+        };
+        let _result = eval_expr(&node, &mut env).unwrap();
+        if let Some(Value::Integer(n)) = env.get_var("s") {
+            assert_eq!(*n, QInt::from(6i64), "s should be 6 (1+2+3)");
+        } else {
+            panic!("s should be Integer(6)");
+        }
+    }
 }

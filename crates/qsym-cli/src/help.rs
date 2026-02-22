@@ -128,6 +128,7 @@ Number Theory:
 
 Scripting:
   for            - for-loop: for var from start to end [by step] do body od
+  while          - while-loop: while condition do body od
   if             - conditional: if cond then body [elif ...] [else body] fi
   proc           - procedure: name := proc(params) body; end
   RETURN         - early return from procedure: RETURN(value)
@@ -935,6 +936,19 @@ pub fn function_help(name: &str) -> Option<String> {
              \x20   15\n\n\
              \x20 See also: if, proc"
         )),
+        "while" => return Some(String::from(
+            "while condition do body od\n\n\
+             \x20 Execute body repeatedly while condition is true.\n\
+             \x20 Condition is re-evaluated before each iteration.\n\
+             \x20 Body statements are separated by ; or :\n\n\
+             \x20 Safety limit: 1,000,000 iterations maximum.\n\n\
+             \x20 Examples:\n\
+             \x20   i:=0: while i<10 do i:=i+1 od: i;\n\
+             \x20   => 10\n\n\
+             \x20   x:=1: while x<100 do x:=x*2 od: x;\n\
+             \x20   => 128\n\n\
+             \x20 See also: for, if"
+        )),
         "proc" => return Some(String::from(
             "name := proc(params) [local vars;] [option remember;] body; end\n\n\
              \x20 Define a named procedure. Local variables are scoped to the procedure.\n\
@@ -1385,5 +1399,22 @@ mod tests {
     fn general_help_contains_ditto_reference() {
         let text = general_help();
         assert!(text.contains("ditto"), "general_help should reference ditto");
+    }
+
+    #[test]
+    fn function_help_while_returns_some() {
+        let help = function_help("while");
+        assert!(help.is_some(), "while should have a help entry");
+        let text = help.unwrap();
+        assert!(text.contains("while condition do"), "help should contain syntax");
+        assert!(text.contains("1,000,000"), "help should mention safety limit");
+        assert!(text.contains("See also:"), "help should contain cross-references");
+    }
+
+    #[test]
+    fn general_help_contains_while() {
+        let text = general_help();
+        assert!(text.contains("while"), "general_help should contain while");
+        assert!(text.contains("while-loop"), "general_help should describe while-loop");
     }
 }

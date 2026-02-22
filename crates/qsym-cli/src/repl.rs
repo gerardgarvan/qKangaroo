@@ -43,6 +43,7 @@ impl ReplHelper {
             function_names: Self::canonical_function_names(),
             keyword_names: vec![
                 "for", "from", "to", "by", "do", "od",
+                "while",
                 "if", "then", "elif", "else", "fi",
                 "proc", "local", "end",
                 "RETURN",
@@ -243,7 +244,7 @@ impl ReplHelper {
 
     fn check_keyword(word: &str, for_depth: &mut i32, if_depth: &mut i32, proc_depth: &mut i32) {
         match word {
-            "for" => *for_depth += 1,
+            "for" | "while" => *for_depth += 1,
             "od" => *for_depth -= 1,
             "if" => *if_depth += 1,
             "fi" => *if_depth -= 1,
@@ -580,5 +581,38 @@ mod tests {
         let (_, pairs) = h.complete_inner("od", 2);
         let od_pair = pairs.iter().find(|p| p.0 == "od").unwrap();
         assert_eq!(od_pair.1, "od", "keyword 'od' should complete without paren");
+    }
+
+    // -- While-loop REPL tests ------------------------------------------------
+
+    #[test]
+    fn validator_while_incomplete() {
+        assert!(ReplHelper::is_incomplete("while x < 10 do"));
+    }
+
+    #[test]
+    fn validator_while_complete() {
+        assert!(!ReplHelper::is_incomplete("while x < 10 do x od"));
+    }
+
+    #[test]
+    fn validator_nested_for_while_incomplete() {
+        // for still open after while is closed
+        assert!(ReplHelper::is_incomplete("for n from 1 to 3 do while x > 0 do x od"));
+    }
+
+    #[test]
+    fn validator_nested_for_while_complete() {
+        assert!(!ReplHelper::is_incomplete("for n from 1 to 3 do while x > 0 do x od od"));
+    }
+
+    #[test]
+    fn complete_while_keyword() {
+        let h = ReplHelper::new();
+        let (_, pairs) = h.complete_inner("whi", 3);
+        let displays: Vec<&str> = pairs.iter().map(|p| p.0.as_str()).collect();
+        assert!(displays.contains(&"while"), "should complete 'whi' to 'while'");
+        let while_pair = pairs.iter().find(|p| p.0 == "while").unwrap();
+        assert_eq!(while_pair.1, "while", "keyword 'while' should not have trailing paren");
     }
 }
