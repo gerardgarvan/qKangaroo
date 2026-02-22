@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (21,000+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) and an interactive REPL (`q-kangaroo` zero-dependency standalone executable, 14,000+ lines, 101 functions with Garvan-exact Maple syntax plus a scripting language) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, machine-assisted identity proving, bivariate series, and scripting that Garvan's packages don't cover. Every executable example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly without modification.
+An open-source symbolic computation engine for q-series, purpose-built to replace Frank Garvan's Maple packages (`qseries`, `thetaids`, `ETA`) and extend beyond them. Rust core engine (21,000+ lines) with Python bindings (`q_kangaroo`, 79 DSL functions in 13 groups) and an interactive REPL (`q-kangaroo` zero-dependency standalone executable, 15,000+ lines, 118 functions with Garvan-exact Maple syntax plus a full scripting language) for the q-series research community -- freeing researchers from the Maple dependency while providing the same rigor and expanding into mock theta functions, Bailey chains, hypergeometric transformations, machine-assisted identity proving, bivariate series, lists, iteration, and scripting that Garvan's packages don't cover. Every executable example in Garvan's "q-Product Tutorial" (qmaple.pdf) runs correctly without modification, and researchers can use standard Maple built-ins (coeff, add, seq, nops, type, etc.) directly.
 
 ## Core Value
 
@@ -10,7 +10,7 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ## Current State
 
-**v4.0 shipped.** The project provides two access paths for researchers:
+**v5.0 shipped.** The project provides two access paths for researchers:
 
 **Python API** (`pip install q-kangaroo`):
 - 79 DSL functions across 13 groups with research-quality docstrings
@@ -19,21 +19,25 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - Sphinx docs site with audience-aware navigation and function decision guide
 
 **Interactive REPL** (`q-kangaroo` standalone executable):
-- Zero-dependency standalone binary — static GMP/MPFR/MPC linking, no DLLs needed
-- Maple-exact syntax — researchers copy-paste from Garvan's Maple worksheets
-- 101 canonical function names with Garvan-compatible calling conventions
+- Zero-dependency standalone binary -- static GMP/MPFR/MPC linking, no DLLs needed
+- Maple-exact syntax -- researchers copy-paste from Garvan's Maple worksheets
+- 118 canonical function names with Garvan-compatible calling conventions
 - Full qmaple.pdf parity: ditto operator, arrow lambdas, fractional q-powers, product-form/eta-notation display
-- Scripting language: for-loops, if/elif/else conditionals, procedures with local variables, memoization, early return
+- Scripting language: for-loops, while-loops, if/elif/else conditionals, procedures with local variables, memoization, early return
+- First-class lists: literals [a,b,c], 1-indexed access, nops/op/map/sort operations
+- Maple-style iteration: add/mul/seq with i=a..b range expressions
+- Series/utility functions: coeff, degree, numer/denom, modp/mods, type, evalb, cat
 - Bivariate series: tripleprod/quinprod/winquist with symbolic z variables, Laurent polynomial display
 - Expression operations: series() truncation, expand(), factor() cyclotomic factoring, subs() with indexed variables
 - Bare symbol variables, q-monomials as parameters, symbolic labels in output
+- Unicode paste resilience -- PDF/webpage content with math operators parses correctly
 - Script execution (`q-kangaroo script.qk`), pipe input, `-c` expression mode
 - 7 distinct exit codes (sysexits-compatible) with filename:line:col error diagnostics
-- Tab completion (101 functions + 18 keywords), 10-category help system, persistent history
+- Tab completion (118 functions + 19 keywords), 10-category help system, persistent history
 - LaTeX output and save-to-file commands
 
 **Documentation:**
-- 101-function PDF reference manual (Typst) with formal mathematics, scripting chapter, and v4.0 qmaple.pdf walkthrough
+- 118-function PDF reference manual (Typst) with formal mathematics, scripting chapter, v4.0 qmaple.pdf walkthrough, and v5.0 additions chapter
 - Workflow-oriented Maple migration guide with two-column comparison tables
 - 9 worked examples with Garvan-canonical signatures, scholarly citations
 - CI-compiled PDF included in GitHub release artifacts
@@ -45,12 +49,12 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 **Codebase:**
 - ~21,000 lines Rust core (`crates/qsym-core/src/`)
-- ~14,000 lines CLI (`crates/qsym-cli/src/`)
+- ~15,000 lines CLI (`crates/qsym-cli/src/`)
 - 6,320 lines Python API (`crates/qsym-python/src/`)
-- ~5,000 lines Typst manual (`manual/`)
+- ~5,100 lines Typst manual (`manual/`)
 - ~47,000 lines documentation (`docs/` including notebooks)
-- 879 Rust core tests + 720 CLI tests + 9 Python integration tests
-- 146 plans across 51 phases (v1.0-v4.0)
+- 879 Rust core tests + 834 CLI tests + 9 Python integration tests
+- 155 plans across 56 phases (v1.0-v5.0)
 
 ## Requirements
 
@@ -105,12 +109,15 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 - Full qmaple.pdf parity: ditto, arrow, fractional powers, aqprod/theta/qfactor fixes, product-form/eta display -- v4.0
 - jac2series 2-arg, radsimp, quinprod identity modes, indexed subs -- v4.0
 - 101-function PDF manual with v4.0 chapter reproducing all executable qmaple.pdf examples -- v4.0
+- POLYNOMIAL_ORDER division hang fix, while-loops, Unicode operator resilience, print() function -- v5.0
+- First-class lists with 1-indexed Maple-style access, nops/op/map/sort operations -- v5.0
+- Series/utility functions: coeff, degree, numer/denom, modp/mods, type, evalb, cat -- v5.0
+- Maple-style add/mul/seq with i=a..b range expressions for summation, products, sequences -- v5.0
+- 118-function PDF manual with v5.0 chapter documenting all new functions and language features -- v5.0
 
 ### Active
 
-## Current Milestone: v5.0 Maximum Maple Compatibility
-
-**Goal:** Close as many Maple language and function gaps as possible — fix the POLYNOMIAL_ORDER division hang, add missing Maple built-in functions (print, coeff, add, seq, nops, op, numer, denom, etc.), while-loops, list support, and Unicode paste resilience.
+(None -- next milestone not yet defined)
 
 ### Future
 
@@ -185,6 +192,14 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 | Cyclotomic trial division high-to-low | Scan from highest n down for correct factor discovery | Good |
 | Special-case help for language constructs | Match arms before FUNC_HELP lookup avoids count assertion changes | Good |
 | Direct Pochhammer for winquist bivariate | Instead of tripleprod decomposition; simpler, fewer truncation issues | Good |
+| Fix division hang in eval_div not core invert() | CLI-layer fix for POLYNOMIAL_ORDER sentinel; core arithmetic correct | Good |
+| Unicode normalization before tokenization | Handles PDF/webpage paste with math operators; string contents also normalized | Good |
+| print() returns last value (not NULL) | Simpler semantics than Maple NULL; consistent with other functions | Good |
+| while/for share od-depth counter in REPL | Consistent multiline detection for both loop types | Good |
+| 1-indexed Maple convention for lists | L[0] is out-of-range error; matches Maple behavior | Good |
+| DotDot binding power (10,10) | Tighter than = (9,10), looser than + (11,12); natural precedence | Good |
+| Empty ranges return mathematical identity | 0 for add, 1 for mul, [] for seq; standard convention | Good |
+| AST interception for add/mul/seq | Catches unevaluated expression templates before eager evaluation; follows subs() pattern | Good |
 
 ---
-*Last updated: 2026-02-21 after v4.0 milestone complete*
+*Last updated: 2026-02-22 after v5.0 milestone complete*

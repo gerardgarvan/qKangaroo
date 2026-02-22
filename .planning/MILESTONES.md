@@ -316,3 +316,34 @@ See STATE.md Accumulated Context for full decision log.
 - 43 commits, 22 tasks across 11 plans
 - Timeline: 2026-02-20 to 2026-02-21 (2 days)
 - Total project: 146 plans across 51 phases (v1.0-v4.0)
+
+## v5.0: Maximum Maple Compatibility (Complete)
+
+**Shipped:** 2026-02-22
+**Phases:** 52-56 (9 plans, 5 phases)
+
+### What Shipped
+
+| Phase | Capability |
+|-------|-----------|
+| 52 | Bug fix & language extensions -- POLYNOMIAL_ORDER division hang fix, while-loops, Unicode operator resilience, print() function |
+| 53 | Lists & list operations -- Value::List type, list literals [a,b,c], 1-indexed Maple-style indexing, nops, op, map, sort |
+| 54 | Series & utility functions -- coeff, degree, numer/denom, modp/mods, type, evalb, cat dispatch |
+| 55 | Iteration with range syntax -- add(expr,i=a..b), mul(expr,i=a..b), seq(expr,i=a..b) with Token::DotDot and AstNode::Range |
+| 56 | Documentation -- 118 help entries, 118 tab-completion names, 455-line PDF manual v5.0 chapter |
+
+### Key Accomplishments
+
+- Fixed POLYNOMIAL_ORDER division hang that blocked polynomial-division-in-loops workflows
+- While-loops with all comparison operators and 1,000,000-iteration safety limit
+- First-class list values with Maple-style 1-indexed access, nops/op/map/sort operations
+- Maple-style add/mul/seq with i=a..b range expressions for summation, products, and sequence generation
+- 17 new functions (coeff, degree, numer, denom, modp, mods, type, evalb, cat, nops, op, map, sort, add, mul, seq, print)
+- 118 canonical functions (up from 101 in v4.0), Unicode paste resilience for PDF/webpage content
+
+### Key Metrics
+
+- 21 v5.0 requirements: 21/21 complete
+- 35 commits, ~2,814 insertions across 9 plans
+- Timeline: 2026-02-22 (1 day)
+- Total project: 155 plans across 56 phases (v1.0-v5.0)
