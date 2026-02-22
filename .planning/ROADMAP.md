@@ -212,7 +212,9 @@ Plans:
   2. `mul(1-q^i, i=1..5)` returns the product polynomial and matches `aqprod(q,q,5)`
   3. `seq(i^2, i=1..5)` returns the list `[1, 4, 9, 16, 25]`
   4. Range variable `i` is locally scoped -- outer variable `i` is not modified by add/mul/seq
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 55-01-PLAN.md -- Token::DotDot, AstNode::Range, parser infix, eval special-case add/mul/seq, help, completion
 
 ### Phase 56: Documentation
 **Goal**: All v5.0 additions are documented with help entries, tab completion, and a PDF manual chapter
@@ -282,5 +284,5 @@ Plans:
 | 52. Bug Fix & Language Extensions | v5.0 | 3/3 | Complete | 2026-02-22 |
 | 53. Lists & List Operations | v5.0 | 2/2 | Complete | 2026-02-22 |
 | 54. Series & Utility Functions | v5.0 | 1/1 | Complete | 2026-02-22 |
-| 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
+| 55. Iteration with Range Syntax | v5.0 | 0/1 | Not started | - |
 | 56. Documentation | v5.0 | 0/? | Not started | - |
