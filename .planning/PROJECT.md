@@ -108,7 +108,9 @@ Every function in Garvan's Maple packages works correctly in q-Kangaroo, produci
 
 ### Active
 
-No active milestone. All planned work through v4.0 is complete.
+## Current Milestone: v5.0 Maximum Maple Compatibility
+
+**Goal:** Close as many Maple language and function gaps as possible — fix the POLYNOMIAL_ORDER division hang, add missing Maple built-in functions (print, coeff, add, seq, nops, op, numer, denom, etc.), while-loops, list support, and Unicode paste resilience.
 
 ### Future
 
