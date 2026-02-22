@@ -1,7 +1,7 @@
 //! Help system for the q-Kangaroo REPL.
 //!
 //! Provides two public functions:
-//! - [`general_help`]: grouped listing of all 118 functions + 5 language
+//! - [`general_help`]: grouped listing of all 121 functions + 5 language
 //!   constructs + session commands.
 //! - [`function_help`]: per-function signature, description, and example.
 //!   Also handles `for`, `proc`, `if`, `ditto`, and `lambda` language
@@ -88,6 +88,7 @@ Series Analysis:
   lqdegree       - lowest power of q with nonzero coefficient
   lqdegree0      - lowest q-degree (Garvan compat alias)
   qfactor        - factor polynomial into (1-q^i) factors
+  zqfactor       - factor (z,q)-series into (1-z^a*q^b) products
   prodmake       - find infinite product form via log derivative
   etamake        - find eta quotient form
   jacprodmake    - find Jacobi product form
@@ -160,6 +161,10 @@ Scripting:
 Variable Management:
   anames         - list all assigned variable names
   restart        - clear all variables and reset the session
+
+Package Info:
+  changes        - print recent changes to q-Kangaroo
+  packageversion - print package version
 
 Commands:
   help [function]   - show this help or help for a specific function
@@ -975,7 +980,7 @@ const FUNC_HELP: &[FuncHelp] = &[
         signature: "coeff(f, q, n)",
         description: "Extract the coefficient of q^n in the series f.\n  For constants: coeff(c, q, 0) returns c, coeff(c, q, k) returns 0 for k>0.\n  Returns an error if n is beyond the truncation order of f.",
         example: "q> coeff(aqprod(q, q, infinity, 20), q, 5)",
-        example_output: "-1",
+        example_output: "1",
     },
     FuncHelp {
         name: "degree",
@@ -1093,6 +1098,30 @@ const FUNC_HELP: &[FuncHelp] = &[
         description: "Clear all variables, procedures, and reset the session.\n  Returns the string \"Restart.\"  Equivalent to the clear command.",
         example: "q> x := 42: restart()",
         example_output: "Restart.",
+    },
+    // -----------------------------------------------------------------------
+    // Package Info
+    // -----------------------------------------------------------------------
+    FuncHelp {
+        name: "changes",
+        signature: "changes()",
+        description: "Print the changelog of q-Kangaroo.\n  Lists all versions and their key changes.\n  Maple-compatible: mirrors the qseries package changes() function.",
+        example: "q> changes()",
+        example_output: "q-Kangaroo changelog:\n  v5.0 (2026-02-22): ...",
+    },
+    FuncHelp {
+        name: "packageversion",
+        signature: "packageversion()",
+        description: "Print the current q-Kangaroo version.\n  Maple-compatible: mirrors the qseries package packageversion() function.",
+        example: "q> packageversion()",
+        example_output: "q-Kangaroo v5.0 (2026-02-22)",
+    },
+    FuncHelp {
+        name: "zqfactor",
+        signature: "zqfactor(f, z, q) or zqfactor(f, z, q, maxdeg)",
+        description: "Factor a bivariate (z,q)-series into a product of (1-z^a*q^b) terms.\n  The input f must be a bivariate series (e.g., from tripleprod(z,q,T)).\n  Returns the factorization as a product expression.\n  Maple-compatible: mirrors the qseries package zqfactor() function.",
+        example: "q> f := tripleprod(z, q, 5): zqfactor(f, z, q)",
+        example_output: "(1-z)*(1-z*q)*(1-z*q^2)*...",
     },
 ];
 
@@ -1352,8 +1381,9 @@ mod tests {
             "add", "mul", "seq",
             "read",
             "print", "anames", "restart",
+            "changes", "packageversion", "zqfactor",
         ];
-        assert_eq!(canonical.len(), 118, "test list should have 118 entries");
+        assert_eq!(canonical.len(), 121, "test list should have 121 entries");
 
         for name in &canonical {
             assert!(
@@ -1368,8 +1398,8 @@ mod tests {
     fn func_help_count_matches_canonical() {
         assert_eq!(
             FUNC_HELP.len(),
-            118,
-            "FUNC_HELP should have exactly 118 entries, got {}",
+            121,
+            "FUNC_HELP should have exactly 121 entries, got {}",
             FUNC_HELP.len()
         );
     }

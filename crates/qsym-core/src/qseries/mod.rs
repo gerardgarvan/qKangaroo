@@ -55,7 +55,7 @@ pub mod zeilberger;
 pub mod petkovsek;
 pub mod nonterminating;
 
-pub use factoring::{qfactor, QFactorization};
+pub use factoring::{qfactor, QFactorization, zqfactor, ZQFactorization};
 pub use hypergeometric::{HypergeometricSeries, BilateralHypergeometricSeries, eval_phi, eval_psi, SummationResult, TransformationResult, try_q_gauss, try_q_vandermonde, try_q_saalschutz, try_q_kummer, try_q_dixon, try_all_summations, heine_transform_1, heine_transform_2, heine_transform_3, sears_transform, watson_transform, bailey_4phi3_q2, TransformationStep, TransformationChainResult, find_transformation_chain};
 pub use linalg::{rational_null_space, build_coefficient_matrix, modular_null_space};
 pub use relations::{findlincombo, findhom, findpoly, PolynomialRelation, findcong, findcong_garvan, findnonhom, findhomcombo, findnonhomcombo, Congruence, findlincombomodp, findhommodp, findhomcombomodp, findmaxind, findprod, generate_monomials, generate_nonhom_monomials};

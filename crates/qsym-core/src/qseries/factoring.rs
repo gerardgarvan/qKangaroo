@@ -229,17 +229,307 @@ fn poly_degree(f: &FormalPowerSeries) -> Option<i64> {
     f.iter().last().map(|(&k, _)| k)
 }
 
-/// Stub for two-variable q-factoring (zqfactor).
+/// Result of factoring a bivariate (z,q)-polynomial into product form.
 ///
-/// Garvan documents this as unreliable. Returns a non-exact factorization
-/// with no factors extracted.
+/// Represents: `scalar * prod (1 - z^{z_pow} * q^{q_pow})^{mult}`
+/// plus any remaining unfactored (1-q^i) factors.
+#[derive(Clone, Debug)]
+pub struct ZQFactorization {
+    /// Bivariate factors: (z_power, q_power) -> multiplicity.
+    /// A factor (z_pow, q_pow) represents (1 - z^{z_pow} * q^{q_pow}).
+    pub factors: Vec<(i64, i64, i64)>,
+    /// Pure q-factors extracted: i -> multiplicity for (1-q^i)^mult.
+    pub q_factors: BTreeMap<i64, i64>,
+    /// Overall rational scalar.
+    pub scalar: QRat,
+    /// Whether the factorization fully accounts for the input.
+    pub is_exact: bool,
+}
+
+/// Factor a bivariate (z,q)-series into products of (1-z^a*q^b) terms.
 ///
-/// TODO: Implement proper two-variable factoring if needed for advanced use cases.
-#[allow(dead_code)]
-pub fn zqfactor(_f: &FormalPowerSeries) -> QFactorization {
-    QFactorization {
-        factors: BTreeMap::new(),
-        scalar: QRat::one(),
-        is_exact: false,
+/// Given f(z,q) as a BivariateSeries (Laurent polynomial in z with FPS
+/// coefficients in q), attempts to decompose it as:
+///
+///   f(z,q) = scalar * prod (1 - z^{a_i} * q^{b_i})^{m_i}
+///
+/// The algorithm uses trial division in the z-direction: for each candidate
+/// factor (1-z*q^a), it performs polynomial division on the z-coefficients
+/// (each of which is an FPS in q).
+pub fn zqfactor(f: &crate::series::bivariate::BivariateSeries) -> ZQFactorization {
+    use crate::series::bivariate::BivariateSeries;
+
+    if f.is_zero() {
+        return ZQFactorization {
+            factors: Vec::new(),
+            q_factors: BTreeMap::new(),
+            scalar: QRat::zero(),
+            is_exact: true,
+        };
     }
+
+    let trunc = f.truncation_order();
+    let inner_var = f.inner_variable;
+
+    let mut current = f.clone();
+    let mut factors: Vec<(i64, i64, i64)> = Vec::new();
+    let mut scalar = QRat::one();
+
+    // Extract scalar from the constant-in-z term at q^0
+    if let Some(z0_fps) = current.terms.get(&0) {
+        let c0 = z0_fps.coeff(0);
+        if !c0.is_zero() && c0 != QRat::one() {
+            let inv = QRat::one() / c0.clone();
+            scalar = c0;
+            let mut new_terms = BTreeMap::new();
+            for (&z_exp, fps) in &current.terms {
+                new_terms.insert(z_exp, scale_fps(fps, &inv));
+            }
+            current = BivariateSeries {
+                outer_variable: current.outer_variable.clone(),
+                terms: new_terms,
+                inner_variable: inner_var,
+                truncation_order: trunc,
+            };
+        }
+    }
+
+    let max_q_degree = trunc - 1;
+
+    // Interleave positive and negative z-factor extraction.
+    // For each q-power a, try extracting both (1-z*q^a) and (1-z^{-1}*q^a)
+    // before moving to a+1. This ensures factors are found regardless of
+    // the order they appear in the product.
+
+    // First handle a=0: only (1-z), since (1-z^{-1}) = -(1/z)(z-1) is related
+    loop {
+        match try_bivariate_divide_pos(&current, 0, inner_var, trunc) {
+            Some(quotient) => {
+                if let Some(entry) = factors.iter_mut().find(|(zp, qp, _)| *zp == 1 && *qp == 0) {
+                    entry.2 += 1;
+                } else {
+                    factors.push((1, 0, 1));
+                }
+                current = quotient;
+            }
+            None => break,
+        }
+        if current.is_zero() || current.terms.len() <= 1 { break; }
+    }
+
+    // For a >= 1, try both (1-z*q^a) and (1-z^{-1}*q^a) at each level
+    for a in 1..=max_q_degree {
+        if current.is_zero() || current.terms.len() <= 1 { break; }
+
+        // Keep extracting at this level until neither factor divides
+        let mut found_any = true;
+        while found_any {
+            found_any = false;
+
+            // Try (1-z*q^a)
+            loop {
+                match try_bivariate_divide_pos(&current, a, inner_var, trunc) {
+                    Some(quotient) => {
+                        if let Some(entry) = factors.iter_mut().find(|(zp, qp, _)| *zp == 1 && *qp == a) {
+                            entry.2 += 1;
+                        } else {
+                            factors.push((1, a, 1));
+                        }
+                        current = quotient;
+                        found_any = true;
+                    }
+                    None => break,
+                }
+                if current.is_zero() || current.terms.len() <= 1 { break; }
+            }
+
+            // Try (1-z^{-1}*q^a)
+            loop {
+                match try_bivariate_divide_neg(&current, a, inner_var, trunc) {
+                    Some(quotient) => {
+                        if let Some(entry) = factors.iter_mut().find(|(zp, qp, _)| *zp == -1 && *qp == a) {
+                            entry.2 += 1;
+                        } else {
+                            factors.push((-1, a, 1));
+                        }
+                        current = quotient;
+                        found_any = true;
+                    }
+                    None => break,
+                }
+                if current.is_zero() || current.terms.len() <= 1 { break; }
+            }
+        }
+    }
+
+    // Check if what remains is purely a function of q (z^0 term only)
+    let mut q_factors_map = BTreeMap::new();
+    let remaining_is_q_only = current.terms.len() <= 1
+        && current.terms.keys().all(|&k| k == 0);
+
+    if remaining_is_q_only {
+        if let Some(q_fps) = current.terms.get(&0) {
+            if !q_fps.is_zero() && q_fps.coeff(0) != QRat::zero() {
+                // Try to factor the remaining q-polynomial
+                let qf = qfactor(q_fps);
+                q_factors_map = qf.factors;
+                scalar = scalar * qf.scalar;
+            }
+        }
+    }
+
+    let is_exact = remaining_is_q_only;
+
+    ZQFactorization {
+        factors,
+        q_factors: q_factors_map,
+        scalar,
+        is_exact,
+    }
+}
+
+/// Try to divide a BivariateSeries by (1 - z * q^a).
+///
+/// Division algorithm for f = g * (1 - z*q^a):
+///   c_k(q) = d_k(q) - q^a * d_{k-1}(q)
+/// => d_k(q) = c_k(q) + q^a * d_{k-1}(q)
+///
+/// Working from lowest z-power upward. If the remainder at the
+/// highest z-power is zero, the division is exact.
+fn try_bivariate_divide_pos(
+    f: &crate::series::bivariate::BivariateSeries,
+    a: i64,
+    inner_var: crate::symbol::SymbolId,
+    trunc: i64,
+) -> Option<crate::series::bivariate::BivariateSeries> {
+    use crate::series::arithmetic;
+    use crate::series::bivariate::BivariateSeries;
+
+    if f.terms.is_empty() {
+        return None;
+    }
+
+    let z_lo = *f.terms.keys().next()?;
+    let z_hi = *f.terms.keys().next_back()?;
+
+    if z_hi <= z_lo {
+        return None;
+    }
+
+    let zero_fps = FormalPowerSeries::zero(inner_var, trunc);
+
+    // g has z-powers from z_lo to z_hi-1
+    let mut d: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+
+    // d[z_lo] = c[z_lo]
+    let c_lo = f.terms.get(&z_lo).unwrap_or(&zero_fps);
+    d.insert(z_lo, c_lo.clone());
+
+    // For k = z_lo+1 to z_hi-1: d[k] = c[k] + q^a * d[k-1]
+    for k in (z_lo + 1)..z_hi {
+        let c_k = f.terms.get(&k).unwrap_or(&zero_fps);
+        let d_prev = d.get(&(k - 1)).unwrap_or(&zero_fps);
+        let shifted = shift_fps_exponents(d_prev, a, trunc);
+        let dk = arithmetic::add(c_k, &shifted);
+        if !dk.is_zero() {
+            d.insert(k, dk);
+        }
+    }
+
+    // Check: c[z_hi] + q^a * d[z_hi-1] should be zero
+    let c_hi = f.terms.get(&z_hi).unwrap_or(&zero_fps);
+    let d_prev = d.get(&(z_hi - 1)).unwrap_or(&zero_fps);
+    let shifted = shift_fps_exponents(d_prev, a, trunc);
+    let remainder = arithmetic::add(c_hi, &shifted);
+
+    if remainder.is_zero() {
+        // Clean up zero entries
+        d.retain(|_, v| !v.is_zero());
+        Some(BivariateSeries {
+            outer_variable: f.outer_variable.clone(),
+            terms: d,
+            inner_variable: inner_var,
+            truncation_order: trunc,
+        })
+    } else {
+        None
+    }
+}
+
+/// Try to divide a BivariateSeries by (1 - z^{-1} * q^a).
+///
+/// Division algorithm for f = g * (1 - z^{-1}*q^a):
+///   c_k(q) = d_k(q) - q^a * d_{k+1}(q)
+/// => d_k(q) = c_k(q) + q^a * d_{k+1}(q)
+///
+/// Working from highest z-power downward.
+fn try_bivariate_divide_neg(
+    f: &crate::series::bivariate::BivariateSeries,
+    a: i64,
+    inner_var: crate::symbol::SymbolId,
+    trunc: i64,
+) -> Option<crate::series::bivariate::BivariateSeries> {
+    use crate::series::arithmetic;
+    use crate::series::bivariate::BivariateSeries;
+
+    if f.terms.is_empty() {
+        return None;
+    }
+
+    let z_lo = *f.terms.keys().next()?;
+    let z_hi = *f.terms.keys().next_back()?;
+
+    if z_hi <= z_lo {
+        return None;
+    }
+
+    let zero_fps = FormalPowerSeries::zero(inner_var, trunc);
+
+    // g has z-powers from z_lo+1 to z_hi
+    let mut d: BTreeMap<i64, FormalPowerSeries> = BTreeMap::new();
+
+    // d[z_hi] = c[z_hi]
+    let c_hi = f.terms.get(&z_hi).unwrap_or(&zero_fps);
+    d.insert(z_hi, c_hi.clone());
+
+    // For k = z_hi-1 down to z_lo+1: d[k] = c[k] + q^a * d[k+1]
+    for k in ((z_lo + 1)..z_hi).rev() {
+        let c_k = f.terms.get(&k).unwrap_or(&zero_fps);
+        let d_next = d.get(&(k + 1)).unwrap_or(&zero_fps);
+        let shifted = shift_fps_exponents(d_next, a, trunc);
+        let dk = arithmetic::add(c_k, &shifted);
+        if !dk.is_zero() {
+            d.insert(k, dk);
+        }
+    }
+
+    // Check: c[z_lo] + q^a * d[z_lo+1] should be zero
+    let c_lo = f.terms.get(&z_lo).unwrap_or(&zero_fps);
+    let d_next = d.get(&(z_lo + 1)).unwrap_or(&zero_fps);
+    let shifted = shift_fps_exponents(d_next, a, trunc);
+    let remainder = arithmetic::add(c_lo, &shifted);
+
+    if remainder.is_zero() {
+        d.retain(|_, v| !v.is_zero());
+        Some(BivariateSeries {
+            outer_variable: f.outer_variable.clone(),
+            terms: d,
+            inner_variable: inner_var,
+            truncation_order: trunc,
+        })
+    } else {
+        None
+    }
+}
+
+/// Shift all exponents in an FPS by `shift`: f(q) -> q^shift * f(q).
+fn shift_fps_exponents(f: &FormalPowerSeries, shift: i64, trunc: i64) -> FormalPowerSeries {
+    let mut coeffs = BTreeMap::new();
+    for (&k, v) in f.iter() {
+        let new_k = k + shift;
+        if new_k < trunc {
+            coeffs.insert(new_k, v.clone());
+        }
+    }
+    FormalPowerSeries::from_coeffs(f.variable(), coeffs, trunc)
 }

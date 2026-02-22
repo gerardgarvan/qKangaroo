@@ -829,6 +829,156 @@ fn format_findpoly_result(rel: &qseries::PolynomialRelation) -> String {
     }
 }
 
+/// Verify a findpoly result by evaluating P(x, y) and checking it equals zero
+/// to O(q^check_order).
+fn verify_findpoly_result(
+    rel: &qseries::PolynomialRelation,
+    x: &FormalPowerSeries,
+    y: &FormalPowerSeries,
+    check_order: i64,
+) -> bool {
+    let var = x.variable();
+    let trunc = check_order.min(x.truncation_order()).min(y.truncation_order());
+
+    // Truncate inputs to check_order
+    let x_trunc = truncate_fps(x, trunc);
+    let y_trunc = truncate_fps(y, trunc);
+
+    let mut total = FormalPowerSeries::zero(var, trunc);
+
+    for (i, row) in rel.coefficients.iter().enumerate() {
+        for (j, c) in row.iter().enumerate() {
+            if c.is_zero() {
+                continue;
+            }
+            // Compute x^i * y^j
+            let mut term = FormalPowerSeries::one(var, trunc);
+            for _ in 0..i {
+                term = fps_mul_truncated(&term, &x_trunc, trunc);
+            }
+            for _ in 0..j {
+                term = fps_mul_truncated(&term, &y_trunc, trunc);
+            }
+            // Scale by coefficient c
+            let scaled = fps_scale(&term, c);
+            total = fps_add(&total, &scaled);
+        }
+    }
+
+    // Verify all coefficients below check_order are zero
+    for (&k, v) in total.iter() {
+        if k < trunc && !v.is_zero() {
+            return false;
+        }
+    }
+    true
+}
+
+/// Truncate an FPS to the given order.
+fn truncate_fps(f: &FormalPowerSeries, trunc: i64) -> FormalPowerSeries {
+    let mut coeffs = std::collections::BTreeMap::new();
+    for (&k, v) in f.iter() {
+        if k < trunc {
+            coeffs.insert(k, v.clone());
+        }
+    }
+    FormalPowerSeries::from_coeffs(f.variable(), coeffs, trunc)
+}
+
+/// Multiply two FPS and truncate to the given order.
+fn fps_mul_truncated(a: &FormalPowerSeries, b: &FormalPowerSeries, trunc: i64) -> FormalPowerSeries {
+    let mut coeffs = std::collections::BTreeMap::new();
+    for (&ka, va) in a.iter() {
+        for (&kb, vb) in b.iter() {
+            let k = ka + kb;
+            if k < trunc {
+                let prod = va.clone() * vb.clone();
+                let entry = coeffs.entry(k).or_insert_with(QRat::zero);
+                *entry = entry.clone() + prod;
+            }
+        }
+    }
+    coeffs.retain(|_, v| !v.is_zero());
+    FormalPowerSeries::from_coeffs(a.variable(), coeffs, trunc)
+}
+
+/// Scale all coefficients of an FPS by a rational.
+fn fps_scale(f: &FormalPowerSeries, s: &QRat) -> FormalPowerSeries {
+    let mut coeffs = std::collections::BTreeMap::new();
+    for (&k, v) in f.iter() {
+        let scaled = v.clone() * s.clone();
+        if !scaled.is_zero() {
+            coeffs.insert(k, scaled);
+        }
+    }
+    FormalPowerSeries::from_coeffs(f.variable(), coeffs, f.truncation_order())
+}
+
+/// Add two FPS.
+fn fps_add(a: &FormalPowerSeries, b: &FormalPowerSeries) -> FormalPowerSeries {
+    let trunc = a.truncation_order().min(b.truncation_order());
+    let mut coeffs = std::collections::BTreeMap::new();
+    for (&k, v) in a.iter() {
+        if k < trunc {
+            coeffs.insert(k, v.clone());
+        }
+    }
+    for (&k, v) in b.iter() {
+        if k < trunc {
+            let entry = coeffs.entry(k).or_insert_with(QRat::zero);
+            *entry = entry.clone() + v.clone();
+        }
+    }
+    coeffs.retain(|_, v| !v.is_zero());
+    FormalPowerSeries::from_coeffs(a.variable(), coeffs, trunc)
+}
+
+/// Format a ZQFactorization result as a human-readable product string.
+fn format_zqfactor_result(zqf: &qseries::ZQFactorization, z_var: &str) -> String {
+    if zqf.scalar.is_zero() {
+        return "0".to_string();
+    }
+
+    let mut parts = Vec::new();
+
+    if zqf.scalar != QRat::one() {
+        parts.push(format!("{}", zqf.scalar));
+    }
+
+    for &(z_pow, q_pow, mult) in &zqf.factors {
+        let factor_str = match (z_pow, q_pow) {
+            (1, 0) => format!("(1-{})", z_var),
+            (1, p) => format!("(1-{}*q^{})", z_var, p),
+            (-1, p) => format!("(1-q^{}/{})", p, z_var),
+            (zp, 0) => format!("(1-{}^{})", z_var, zp),
+            (zp, qp) if zp > 0 => format!("(1-{}^{}*q^{})", z_var, zp, qp),
+            (zp, qp) => format!("(1-q^{}/{}^{})", qp, z_var, -zp),
+        };
+        if mult == 1 {
+            parts.push(factor_str);
+        } else {
+            parts.push(format!("{}^{}", factor_str, mult));
+        }
+    }
+
+    for (&i, &mult) in &zqf.q_factors {
+        let factor_str = format!("(1-q^{})", i);
+        if mult == 1 {
+            parts.push(factor_str);
+        } else if mult > 0 {
+            parts.push(format!("{}^{}", factor_str, mult));
+        } else {
+            parts.push(format!("1/{}^{}", factor_str, -mult));
+        }
+    }
+
+    if parts.is_empty() {
+        "1".to_string()
+    } else {
+        parts.join("*")
+    }
+}
+
 /// Generate default labels X[1], X[2], ..., X[k] matching Garvan's convention.
 fn default_labels(k: usize) -> Vec<String> {
     (1..=k).map(|i| format!("X[{}]", i)).collect()
@@ -1175,8 +1325,24 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
                         AstNode::Compare { op: CompOp::Eq, lhs, rhs } => {
                             let var_name = match lhs.as_ref() {
                                 AstNode::Variable(vname) => vname.clone(),
+                                AstNode::Index { expr, index } => {
+                                    // Handle indexed variables: X[1]=val -> var_name "X[1]"
+                                    let base_name = match expr.as_ref() {
+                                        AstNode::Variable(n) => n.clone(),
+                                        _ => return Err(EvalError::Other(
+                                            "subs: indexed left side must be name[index]".into()
+                                        )),
+                                    };
+                                    let idx = match index.as_ref() {
+                                        AstNode::Integer(n) => *n,
+                                        _ => return Err(EvalError::Other(
+                                            "subs: index must be an integer".into()
+                                        )),
+                                    };
+                                    format!("{}[{}]", base_name, idx)
+                                }
                                 _ => return Err(EvalError::Other(
-                                    "subs: left side of = must be a variable name".into()
+                                    "subs: left side of = must be a variable name or name[index]".into()
                                 )),
                             };
                             let sub_value = eval_expr(rhs, env)?;
@@ -4144,6 +4310,28 @@ pub fn dispatch(
             }
         }
 
+        "zqfactor" => {
+            // Maple: zqfactor(f, z, q) or zqfactor(f, z, q, maxdeg)
+            expect_args_range(name, args, 3, 4)?;
+            let bseries = match &args[0] {
+                Value::BivariateSeries(bs) => bs.clone(),
+                other => {
+                    return Err(EvalError::ArgType {
+                        function: name.to_string(),
+                        arg_index: 0,
+                        expected: "bivariate series",
+                        got: other.type_name().to_string(),
+                    });
+                }
+            };
+            let _z_sym = extract_symbol_id(name, args, 1, env)?;
+            let _q_sym = extract_symbol_id(name, args, 2, env)?;
+            let result = qseries::zqfactor(&bseries);
+            let s = format_zqfactor_result(&result, &bseries.outer_variable);
+            println!("{}", s);
+            Ok(Value::String(s))
+        }
+
         "checkmult" => {
             // Garvan: checkmult(QS, T) or checkmult(QS, T, 'yes')
             expect_args_range(name, args, 2, 3)?;
@@ -4533,7 +4721,12 @@ pub fn dispatch(
                     println!("The polynomial is");
                     println!("{}", s);
                     if let Some(check_order) = check {
-                        println!("Verification requested (check={})", check_order);
+                        let verified = verify_findpoly_result(&rel, &x, &y, check_order);
+                        if verified {
+                            println!("The relation has been verified to O(q^{})", check_order);
+                        } else {
+                            println!("WARNING: verification FAILED at O(q^{})", check_order);
+                        }
                     }
                     Ok(Value::String(s))
                 }
@@ -5713,6 +5906,33 @@ pub fn dispatch(
         }
 
         // =================================================================
+        // Package Info (Maple parity)
+        // =================================================================
+
+        "changes" => {
+            expect_args(name, args, 0)?;
+            let text = "\
+q-Kangaroo changelog:
+  v5.0 (2026-02-22): while-loops, lists, add/mul/seq ranges, 121 functions
+  v4.0 (2026-02-21): ditto, arrow lambdas, qmaple.pdf parity, 101 functions
+  v3.0 (2026-02-21): for-loops, procedures, bivariate series
+  v2.0 (2026-02-20): Maple-compatible function signatures, 89 functions
+  v1.6 (2026-02-18): static GMP linking, script execution, PDF manual
+  v1.5 (2026-02-18): interactive REPL, Pratt parser, 81 functions
+  v1.2 (2026-02-16): q-Gosper, q-Zeilberger, WZ certificates
+  v1.0 (2026-02-14): core engine, 73 functions, 578 tests";
+            println!("{}", text);
+            Ok(Value::String(text.to_string()))
+        }
+
+        "packageversion" => {
+            expect_args(name, args, 0)?;
+            let version = "q-Kangaroo v5.0 (2026-02-22)";
+            println!("{}", version);
+            Ok(Value::String(version.to_string()))
+        }
+
+        // =================================================================
         // Unknown function
         // =================================================================
         _ => {
@@ -5768,6 +5988,20 @@ fn perform_substitution(
     target: Value,
     env: &mut Environment,
 ) -> Result<Value, EvalError> {
+    // For indexed variables (like X[1]), handle Symbol targets by matching
+    if var_name.contains('[') {
+        match &target {
+            Value::Symbol(s) if *s == var_name => {
+                return Ok(sub_value);
+            }
+            Value::String(s) if s.contains(var_name) => {
+                let replaced = s.replace(var_name, &format!("({})", format_value_for_subs(&sub_value, env)));
+                return Ok(Value::String(replaced));
+            }
+            _ => {}
+        }
+    }
+
     // For non-Series targets, substitution is a no-op (constant)
     let fps = match &target {
         Value::Series(fps) => fps,
@@ -5840,6 +6074,11 @@ fn perform_substitution(
             "subs: substitution value must be a number or q^k expression".into()
         )),
     }
+}
+
+/// Format a Value for string-based substitution in subs().
+fn format_value_for_subs(val: &Value, env: &Environment) -> String {
+    crate::format::format_value(val, &env.symbols)
 }
 
 /// Evaluate a FPS at a rational point: sum c_k * val^k over all terms.
@@ -6406,6 +6645,7 @@ fn get_signature(name: &str) -> String {
         "mprodmake" => "(f, q, T)".to_string(),
         "qetamake" => "(f, q, T)".to_string(),
         "qfactor" => "(f, q) or (f, T) or (f, q, T)".to_string(),
+        "zqfactor" => "(f, z, q) or (f, z, q, maxdeg)".to_string(),
         // Group 5: Relation Discovery
         "findlincombo" => "(f, L, SL, q, topshift)".to_string(),
         "findhomcombo" => "(f, L, q, n, topshift)".to_string(),
@@ -6494,6 +6734,9 @@ fn get_signature(name: &str) -> String {
         "type" => "(expr, t) -- check if expr has type t".to_string(),
         "evalb" => "(expr) -- evaluate expression as boolean".to_string(),
         "cat" => "(s1, s2, ...) -- concatenate arguments into a name".to_string(),
+        // Package info
+        "changes" => "() -- print recent changes to q-Kangaroo".to_string(),
+        "packageversion" => "() -- print package version".to_string(),
         _ => String::new(),
     }
 }
@@ -6533,7 +6776,8 @@ fn resolve_alias(name: &str) -> String {
 // Fuzzy matching for "Did you mean?" suggestions
 // ---------------------------------------------------------------------------
 
-/// All canonical function names (90 functions) for fuzzy matching.
+/// All canonical function names (120 functions) for fuzzy matching.
+/// (print is special-cased before dispatch and not included here)
 const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern A: Series generators
     "aqprod", "qbin", "etaq", "jacprod", "tripleprod", "quinprod", "winquist",
@@ -6543,7 +6787,7 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     // Pattern B: No-session
     "numbpart",
     // Pattern C: Series-input analysis
-    "sift", "qdegree", "lqdegree", "lqdegree0", "qfactor",
+    "sift", "qdegree", "lqdegree", "lqdegree0", "qfactor", "zqfactor",
     "checkmult", "checkprod",
     "prodmake", "etamake", "jacprodmake", "mprodmake", "qetamake",
     // Pattern D: Target + candidates
@@ -6596,6 +6840,8 @@ const ALL_FUNCTION_NAMES: &[&str] = &[
     "coeff", "degree", "numer", "denom", "modp", "mods", "type", "evalb", "cat",
     // Pattern W: Iteration
     "add", "mul", "seq",
+    // Pattern X: Package info
+    "changes", "packageversion",
 ];
 
 /// All alias names for fuzzy matching.
