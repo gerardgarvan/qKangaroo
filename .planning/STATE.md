@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 Phase: 53 (second of 5 in v5.0)
 Plan: --
 Status: Ready to plan
-Last activity: 2026-02-22 -- Phase 52 verified and complete
+Last activity: 2026-02-22 -- Phase 52 plan 03 (UAT gap closure) complete
 
 Progress: [##########..........] 52/56 phases (93% overall)
 
@@ -20,7 +20,7 @@ Progress: [##########..........] 52/56 phases (93% overall)
 
 ### Cumulative Summary
 
-- Total plans completed: 148
+- Total plans completed: 149
 - Total phases: 52 complete (v1.0-v4.0, v5.0 phase 52)
 - Total milestones: 10 complete (v1.0-v1.6, v2.0, v3.0, v4.0)
 - Average duration: ~5 min/plan
@@ -39,6 +39,8 @@ v4.0 decisions archived in .planning/milestones/v4.0-ROADMAP.md.
 - 52-02: while and for share the same od-depth counter in REPL is_incomplete
 - 52-02: while-loop does not introduce a new scope (unlike for-loop)
 - 52-02: Safety limit set at 1,000,000 iterations
+- 52-03: Symbol true/false handled in is_truthy, not in parser or lexer
+- 52-03: ? prefix check placed before word splitting in parse_command
 
 ### Pending Todos
 
@@ -51,5 +53,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Phase 52 complete, verified (9/9 must-haves)
+Stopped at: Completed 52-03-PLAN.md (UAT gap closure)
 Resume: Plan Phase 53 (Lists & List Operations)
