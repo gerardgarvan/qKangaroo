@@ -12068,6 +12068,58 @@ mod tests {
     }
 
     #[test]
+    fn while_symbol_true_hits_safety_limit() {
+        // "true" is Variable("true") -> Symbol("true") -- is_truthy must accept it
+        let mut env = make_env();
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Variable("true".to_string())),
+            body: vec![Stmt {
+                node: AstNode::Integer(1),
+                terminator: Terminator::Colon,
+            }],
+        };
+        let result = eval_expr(&node, &mut env);
+        assert!(result.is_err(), "while true should hit safety limit");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("maximum iteration count"),
+            "should hit safety limit, not type error: {}", err_msg);
+    }
+
+    #[test]
+    fn while_symbol_false_does_not_execute() {
+        // "false" is Variable("false") -> Symbol("false") -- is_truthy returns false
+        let mut env = make_env();
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Variable("false".to_string())),
+            body: vec![Stmt {
+                node: AstNode::Integer(42),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        let result = eval_expr(&node, &mut env).unwrap();
+        assert!(matches!(result, Value::None),
+            "while false should return None, got: {:?}", result);
+    }
+
+    #[test]
+    fn is_truthy_rejects_unknown_symbol() {
+        // Unknown symbols like "x" should error, not be treated as true/false
+        let mut env = make_env();
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Variable("x".to_string())),
+            body: vec![Stmt {
+                node: AstNode::Integer(1),
+                terminator: Terminator::Implicit,
+            }],
+        };
+        let result = eval_expr(&node, &mut env);
+        assert!(result.is_err(), "unknown symbol in condition should error");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("symbol 'x'"),
+            "error should mention the symbol name: {}", err_msg);
+    }
+
+    #[test]
     fn test_while_loop_comparison_operators() {
         // Test while with each comparison operator
         let ops_and_setups: Vec<(CompOp, i64, i64, i64)> = vec![

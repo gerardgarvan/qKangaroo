@@ -329,6 +329,29 @@ mod tests {
         assert_eq!(parse_command("help(x)"), None);
     }
 
+    // -- ? prefix help shorthand tests ----------------------------------------
+
+    #[test]
+    fn parse_question_mark_topic() {
+        assert_eq!(
+            parse_command("?while"),
+            Some(Command::Help(Some("while".to_string())))
+        );
+    }
+
+    #[test]
+    fn parse_question_mark_bare() {
+        assert_eq!(parse_command("?"), Some(Command::Help(None)));
+    }
+
+    #[test]
+    fn parse_question_mark_with_spaces() {
+        assert_eq!(
+            parse_command("? aqprod"),
+            Some(Command::Help(Some("aqprod".to_string())))
+        );
+    }
+
     #[test]
     fn parse_set_precision_valid() {
         assert_eq!(
