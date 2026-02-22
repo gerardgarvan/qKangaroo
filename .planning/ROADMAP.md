@@ -168,7 +168,10 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
   2. `i:=0: while i<10 do i:=i+1 od: i;` evaluates to 10, and while-loops work with all comparison operators
   3. Pasting text containing Unicode math operators (caret `^` as `∧`, minus `−` as hyphen-minus, etc.) parses correctly instead of producing errors
   4. `print(expr)` inside a for-loop or procedure displays each intermediate value as it executes
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 52-01-PLAN.md -- Fix POLYNOMIAL_ORDER division hang, Unicode normalization, print() function
+- [ ] 52-02-PLAN.md -- While-loop parsing, evaluation, REPL support, and help
 
 ### Phase 53: Lists & List Operations
 **Goal**: Researchers can create, display, index, and manipulate lists as first-class values using Maple syntax
@@ -270,7 +273,7 @@ See `.planning/milestones/v4.0-ROADMAP.md` for details.
 | 49. Display Formatting | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 50. New Functions | v4.0 | 2/2 | Complete | 2026-02-21 |
 | 51. Documentation | v4.0 | 2/2 | Complete | 2026-02-21 |
-| 52. Bug Fix & Language Extensions | v5.0 | 0/? | Not started | - |
+| 52. Bug Fix & Language Extensions | v5.0 | 0/2 | Not started | - |
 | 53. Lists & List Operations | v5.0 | 0/? | Not started | - |
 | 54. Series & Utility Functions | v5.0 | 0/? | Not started | - |
 | 55. Iteration with Range Syntax | v5.0 | 0/? | Not started | - |
