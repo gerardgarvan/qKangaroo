@@ -105,6 +105,11 @@ pub enum AstNode {
         by: Option<Box<AstNode>>,
         body: Vec<Stmt>,
     },
+    /// While loop: `while condition do body od`.
+    WhileLoop {
+        condition: Box<AstNode>,
+        body: Vec<Stmt>,
+    },
     /// Conditional: `if cond then body [elif cond then body]* [else body] fi`.
     IfExpr {
         condition: Box<AstNode>,
@@ -359,6 +364,35 @@ mod tests {
                     assert_ne!(ops[i], ops[j]);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn ast_while_loop_construction() {
+        let node = AstNode::WhileLoop {
+            condition: Box::new(AstNode::Compare {
+                op: CompOp::Less,
+                lhs: Box::new(AstNode::Variable("x".to_string())),
+                rhs: Box::new(AstNode::Integer(10)),
+            }),
+            body: vec![Stmt {
+                node: AstNode::Assign {
+                    name: "x".to_string(),
+                    value: Box::new(AstNode::BinOp {
+                        op: BinOp::Add,
+                        lhs: Box::new(AstNode::Variable("x".to_string())),
+                        rhs: Box::new(AstNode::Integer(1)),
+                    }),
+                },
+                terminator: Terminator::Implicit,
+            }],
+        };
+        if let AstNode::WhileLoop { condition, body } = &node {
+            assert!(matches!(condition.as_ref(), AstNode::Compare { op: CompOp::Less, .. }));
+            assert_eq!(body.len(), 1);
+            assert!(matches!(&body[0].node, AstNode::Assign { .. }));
+        } else {
+            panic!("Expected WhileLoop variant");
         }
     }
 }

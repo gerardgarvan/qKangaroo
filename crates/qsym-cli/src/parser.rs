@@ -242,6 +242,17 @@ impl Parser {
                     body,
                 }
             }
+            Token::While => {
+                self.advance(); // consume 'while'
+                let condition = self.expr_bp(0)?;
+                self.expect(&Token::Do, "'do' after while condition")?;
+                let body = self.parse_stmt_sequence(&[Token::Od])?;
+                self.expect(&Token::Od, "'od' to close while loop")?;
+                AstNode::WhileLoop {
+                    condition: Box::new(condition),
+                    body,
+                }
+            }
             Token::Proc => {
                 self.advance(); // consume 'proc'
                 self.expect(&Token::LParen, "'(' after 'proc'")?;
@@ -1952,5 +1963,53 @@ mod tests {
         } else {
             panic!("Expected BinOp(Add), got {:?}", node);
         }
+    }
+
+    // -- While-loop parser tests ------------------------------------------------
+
+    #[test]
+    fn parse_while_loop_basic() {
+        let node = parse_expr("while x < 10 do x := x + 1 od");
+        if let AstNode::WhileLoop { condition, body } = &node {
+            assert!(matches!(condition.as_ref(), AstNode::Compare { op: CompOp::Less, .. }));
+            assert_eq!(body.len(), 1);
+            assert!(matches!(&body[0].node, AstNode::Assign { .. }));
+        } else {
+            panic!("Expected WhileLoop, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn parse_while_loop_boolean_condition() {
+        // "true" is parsed as Variable("true") -- the evaluator resolves it
+        let node = parse_expr("while true do x od");
+        if let AstNode::WhileLoop { condition, body } = &node {
+            assert!(matches!(condition.as_ref(), AstNode::Variable(_)));
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("Expected WhileLoop, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn parse_while_loop_nested() {
+        let node = parse_expr("while x > 0 do if x = 1 then x := 0 fi: x := x - 1 od");
+        if let AstNode::WhileLoop { condition, body } = &node {
+            assert!(matches!(condition.as_ref(), AstNode::Compare { op: CompOp::Greater, .. }));
+            assert_eq!(body.len(), 2); // if-expr and assignment
+            assert!(matches!(&body[0].node, AstNode::IfExpr { .. }));
+            assert!(matches!(&body[1].node, AstNode::Assign { .. }));
+        } else {
+            panic!("Expected WhileLoop, got {:?}", node);
+        }
+    }
+
+    #[test]
+    fn parse_while_loop_missing_od_error() {
+        let result = parse("while x < 10 do x");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("od") || err.to_string().contains("'od'"),
+            "error should mention missing od: {}", err);
     }
 }

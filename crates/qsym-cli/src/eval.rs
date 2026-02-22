@@ -1180,6 +1180,10 @@ pub fn eval_expr(node: &AstNode, env: &mut Environment) -> Result<Value, EvalErr
             eval_for_loop(var, from, to, by.as_deref(), body, env)
         }
 
+        AstNode::WhileLoop { condition, body } => {
+            eval_while_loop(condition, body, env)
+        }
+
         AstNode::IfExpr { condition, then_body, elif_branches, else_body } => {
             eval_if_expr(condition, then_body, elif_branches, else_body.as_deref(), env)
         }
@@ -1528,6 +1532,37 @@ fn eval_for_loop(
     }
 
     loop_result
+}
+
+/// Evaluate a while-loop.
+///
+/// Repeatedly evaluates the condition and executes the body while the condition
+/// is truthy. Returns the value of the last body execution, or Value::None if
+/// the loop body never executes.
+///
+/// Includes a safety limit of 1,000,000 iterations to prevent infinite loops.
+fn eval_while_loop(
+    condition: &AstNode,
+    body: &[Stmt],
+    env: &mut Environment,
+) -> Result<Value, EvalError> {
+    let mut last = Value::None;
+    let max_iterations: u64 = 1_000_000;
+    let mut count: u64 = 0;
+    loop {
+        let cond_val = eval_expr(condition, env)?;
+        if !is_truthy(&cond_val)? {
+            break;
+        }
+        last = eval_stmt_sequence(body, env)?;
+        count += 1;
+        if count >= max_iterations {
+            return Err(EvalError::Other(
+                "while loop exceeded maximum iteration count (1000000)".into(),
+            ));
+        }
+    }
+    Ok(last)
 }
 
 /// Evaluate an if/elif/else expression.
@@ -2047,11 +2082,37 @@ fn eval_mul(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
     }
 }
 
+/// Cap a series' truncation_order if it equals the POLYNOMIAL_ORDER sentinel.
+/// Returns a truncated copy using `fallback` as the new order.
+/// If the series is not POLYNOMIAL_ORDER, returns a clone unchanged.
+fn cap_poly_order(fps: &FormalPowerSeries, fallback: i64) -> FormalPowerSeries {
+    if fps.truncation_order() == POLYNOMIAL_ORDER {
+        let mut coeffs = BTreeMap::new();
+        for (&k, v) in fps.iter() {
+            if k < fallback {
+                coeffs.insert(k, v.clone());
+            }
+        }
+        FormalPowerSeries::from_coeffs(fps.variable(), coeffs, fallback)
+    } else {
+        fps.clone()
+    }
+}
+
 fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, EvalError> {
     match (&left, &right) {
         (Value::Series(a), Value::Series(b)) => {
-            let inv = arithmetic::invert(b);
-            Ok(Value::Series(arithmetic::mul(a, &inv)))
+            let effective_order = match (a.truncation_order() == POLYNOMIAL_ORDER,
+                                          b.truncation_order() == POLYNOMIAL_ORDER) {
+                (true, true) => env.default_order,
+                (true, false) => b.truncation_order(),
+                (false, true) => a.truncation_order(),
+                (false, false) => a.truncation_order().min(b.truncation_order()),
+            };
+            let a_work = cap_poly_order(a, effective_order);
+            let b_work = cap_poly_order(b, effective_order);
+            let inv = arithmetic::invert(&b_work);
+            Ok(Value::Series(arithmetic::mul(&a_work, &inv)))
         }
         // Integer / Integer -> Rational
         (Value::Integer(a), Value::Integer(b)) => {
@@ -2074,8 +2135,14 @@ fn eval_div(left: Value, right: Value, env: &mut Environment) -> Result<Value, E
         }
         // scalar / Series -> const_fps / series
         (_, Value::Series(fps)) if value_to_qrat(&left).is_some() => {
-            let const_fps = value_to_constant_fps(&left, fps.variable(), fps.truncation_order()).unwrap();
-            let inv = arithmetic::invert(fps);
+            let effective_order = if fps.truncation_order() == POLYNOMIAL_ORDER {
+                env.default_order
+            } else {
+                fps.truncation_order()
+            };
+            let const_fps = value_to_constant_fps(&left, fps.variable(), effective_order).unwrap();
+            let fps_work = cap_poly_order(fps, effective_order);
+            let inv = arithmetic::invert(&fps_work);
             Ok(Value::Series(arithmetic::mul(&const_fps, &inv)))
         }
         // Symbol / scalar -> series / scalar
@@ -2164,13 +2231,17 @@ fn series_div_general(numer: &FormalPowerSeries, denom_fps: &FormalPowerSeries) 
         if min_ord != 0 {
             // Shift divisor down so it has a constant term
             let shifted_denom = arithmetic::shift(denom_fps, -min_ord);
-            let inv = arithmetic::invert(&shifted_denom);
+            let fallback = if numer.truncation_order() == POLYNOMIAL_ORDER { 20 } else { numer.truncation_order() };
+            let capped = cap_poly_order(&shifted_denom, fallback);
+            let inv = arithmetic::invert(&capped);
             let shifted_numer = arithmetic::shift(numer, -min_ord);
             return arithmetic::mul(&shifted_numer, &inv);
         }
     }
     // Divisor already has a constant term
-    let inv = arithmetic::invert(denom_fps);
+    let fallback = if numer.truncation_order() == POLYNOMIAL_ORDER { 20 } else { numer.truncation_order() };
+    let capped = cap_poly_order(denom_fps, fallback);
+    let inv = arithmetic::invert(&capped);
     arithmetic::mul(numer, &inv)
 }
 
@@ -11744,6 +11815,115 @@ mod tests {
             assert_eq!(*n, QInt::from(5i64), "radsimp(5) should return 5");
         } else {
             panic!("expected Integer, got {:?}", result);
+        }
+    }
+
+    // =======================================================
+    // POLYNOMIAL_ORDER division cap tests (BUG-01)
+    // =======================================================
+
+    #[test]
+    fn cap_poly_order_with_polynomial_order() {
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        // Build a series with POLYNOMIAL_ORDER truncation
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0, QRat::one());
+        coeffs.insert(1, QRat::from((-1i64, 1i64)));
+        let fps = FormalPowerSeries::from_coeffs(sym, coeffs, POLYNOMIAL_ORDER);
+        assert_eq!(fps.truncation_order(), POLYNOMIAL_ORDER);
+        // Cap to 10
+        let capped = cap_poly_order(&fps, 10);
+        assert_eq!(capped.truncation_order(), 10, "should cap to fallback");
+        assert_eq!(capped.coeff(0), QRat::one(), "constant term preserved");
+        assert_eq!(capped.coeff(1), QRat::from((-1i64, 1i64)), "q^1 preserved");
+    }
+
+    #[test]
+    fn cap_poly_order_normal_passthrough() {
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        let fps = FormalPowerSeries::monomial(sym, QRat::one(), 0, 20);
+        let capped = cap_poly_order(&fps, 10);
+        // Should NOT change truncation since it's not POLYNOMIAL_ORDER
+        assert_eq!(capped.truncation_order(), 20, "normal series unchanged");
+    }
+
+    #[test]
+    fn div_scalar_by_polynomial_order_series() {
+        // Test 1/(series with POLYNOMIAL_ORDER) completes -- the key BUG-01 regression test.
+        // Before the fix, this would hang trying to loop 1 billion times in invert().
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        // Build a series with POLYNOMIAL_ORDER truncation (simulates aqprod 3-arg output)
+        let mut coeffs = BTreeMap::new();
+        coeffs.insert(0, QRat::one());
+        coeffs.insert(1, QRat::from((-1i64, 1i64)));
+        coeffs.insert(2, QRat::from((-1i64, 1i64)));
+        let poly_series = FormalPowerSeries::from_coeffs(sym, coeffs, POLYNOMIAL_ORDER);
+        assert_eq!(poly_series.truncation_order(), POLYNOMIAL_ORDER);
+        // Now do 1 / poly_series -- this should NOT hang
+        let result = eval_div(
+            Value::Integer(QInt::from(1i64)),
+            Value::Series(poly_series),
+            &mut env,
+        ).unwrap();
+        if let Value::Series(fps) = result {
+            // Should complete and have a constant term
+            assert_eq!(fps.coeff(0), QRat::one(), "1/(poly_order series) should have constant term 1");
+            // Truncation should be env.default_order (20), not POLYNOMIAL_ORDER
+            assert!(fps.truncation_order() <= env.default_order,
+                "truncation should be capped to default_order");
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn div_series_series_both_polynomial_order() {
+        // Both sides POLYNOMIAL_ORDER -> use env.default_order
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        let mut coeffs_a = BTreeMap::new();
+        coeffs_a.insert(0, QRat::one());
+        coeffs_a.insert(1, QRat::from((2i64, 1i64)));
+        let a = FormalPowerSeries::from_coeffs(sym, coeffs_a, POLYNOMIAL_ORDER);
+        let mut coeffs_b = BTreeMap::new();
+        coeffs_b.insert(0, QRat::one());
+        let b = FormalPowerSeries::from_coeffs(sym, coeffs_b, POLYNOMIAL_ORDER);
+        let result = eval_div(
+            Value::Series(a),
+            Value::Series(b),
+            &mut env,
+        ).unwrap();
+        if let Value::Series(fps) = result {
+            assert!(fps.truncation_order() <= env.default_order,
+                "both POLYNOMIAL_ORDER should cap to default_order");
+        } else {
+            panic!("expected Series, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn div_normal_series_still_works() {
+        // Normal division (non-POLYNOMIAL_ORDER) should still work correctly
+        let mut env = make_env();
+        let sym = env.symbols.intern("q");
+        let mut coeffs_a = BTreeMap::new();
+        coeffs_a.insert(0, QRat::one());
+        let a = FormalPowerSeries::from_coeffs(sym, coeffs_a, 10);
+        let mut coeffs_b = BTreeMap::new();
+        coeffs_b.insert(0, QRat::from((2i64, 1i64)));
+        let b = FormalPowerSeries::from_coeffs(sym, coeffs_b, 10);
+        let result = eval_div(
+            Value::Series(a),
+            Value::Series(b),
+            &mut env,
+        ).unwrap();
+        if let Value::Series(fps) = result {
+            assert_eq!(fps.coeff(0), QRat::from((1i64, 2i64)), "1/2 constant term");
+        } else {
+            panic!("expected Series, got {:?}", result);
         }
     }
 }
